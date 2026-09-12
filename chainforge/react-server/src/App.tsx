@@ -17,6 +17,7 @@ import ReactFlow, {
 import {
   Button,
   LoadingOverlay,
+  Menu,
   Text,
   Box,
   List,
@@ -44,6 +45,9 @@ import {
   IconCheckbox,
   IconTransform,
   IconSortAscending,
+  IconChevronDown,
+  IconFileCode,
+  IconFileDownload,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -1717,28 +1721,51 @@ const App = () => {
                 </Button>
               )}
             />
-            <Button
-              onClick={() => exportFlow()}
-              size="sm"
-              variant="outline"
-              color={colorScheme === "light" ? "blue" : "gray"}
-              bg={colorScheme === "light" ? "#eee" : "#222"}
-              compact
-              mr="xs"
-            >
-              Export
-            </Button>
-            <Button
-              onClick={() => exportYml()}
-              size="sm"
-              variant="outline"
-              color={colorScheme === "light" ? "blue" : "gray"}
-              bg={colorScheme === "light" ? "#eee" : "#222"}
-              compact
-              mr="xs"
-            >
-              Export YML
-            </Button>
+            {/* Export is a split button: the common case stays one click,
+                while YAML -- which most people never use -- moves into the
+                caret instead of occupying a second slot in the toolbar. */}
+            <Button.Group mr="xs">
+              <Button
+                onClick={() => exportFlow()}
+                size="sm"
+                variant="outline"
+                color={colorScheme === "light" ? "blue" : "gray"}
+                bg={colorScheme === "light" ? "#eee" : "#222"}
+                compact
+              >
+                Export
+              </Button>
+              <Menu shadow="md" width={210} position="bottom-end">
+                <Menu.Target>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    color={colorScheme === "light" ? "blue" : "gray"}
+                    bg={colorScheme === "light" ? "#eee" : "#222"}
+                    compact
+                    px={4}
+                    title="More export options"
+                    aria-label="More export options"
+                  >
+                    <IconChevronDown size={14} />
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    icon={<IconFileDownload size={14} />}
+                    onClick={() => exportFlow()}
+                  >
+                    Export flow (.cforge)
+                  </Menu.Item>
+                  <Menu.Item
+                    icon={<IconFileCode size={14} />}
+                    onClick={() => exportYml()}
+                  >
+                    Export as YAML (.yml)
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            </Button.Group>
             <Button
               onClick={importFlowFromFile}
               size="sm"

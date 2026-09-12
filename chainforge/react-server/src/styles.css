@@ -172,6 +172,10 @@ html[data-mantine-color-scheme="dark"] .llm-list-backdrop {
     0 1px 2px rgba(0, 0, 0, 0.24);
   margin: 0 0 8px 0;
   display: grid;
+  /* Title takes the slack, actions hug the right edge. Without this the grid
+     falls back to one column and the action icons wrap under the title,
+     left-aligned. */
+  grid-template-columns: 1fr auto;
   align-items: center;
   column-gap: 12px;
 }
@@ -186,7 +190,6 @@ html[data-mantine-color-scheme="dark"] .llm-list-backdrop {
   font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
     "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   text-align: start;
-  float: left;
   margin: 0;
   white-space: nowrap; /* keep on one line */
   overflow: hidden;

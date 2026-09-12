@@ -6,15 +6,15 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { Button, Text, Modal, ScrollArea } from "@mantine/core";
+import { ActionIcon, Button, Text, Modal, ScrollArea } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { IconSettings, IconTrash } from "@tabler/icons-react";
 import Form from "@rjsf/core";
 import validator from "@rjsf/validator-ajv8";
 import { v4 as uuid } from "uuid";
 import { ChunkMethodSchemas, ChunkMethodGroups } from "./ChunkMethodSchemas";
 import { canRunNow } from "./backend/ragCapabilities";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
-import LLMItemButtonGroup from "./LLMItemButtonGroup";
 import useStore from "./store";
 import { ensureUniqueName } from "./backend/utils";
 
@@ -74,17 +74,33 @@ const ChunkMethodListItem: React.FC<{
 
   return (
     <div className="llm-list-item llm-list-card">
-      <div>
-        <div className="llm-card-header">
-          {methodItem.emoji ? methodItem.emoji + " " : ""}
-          {methodItem.name}
-        </div>
+      {/* Title (left) */}
+      <div className="llm-card-header">
+        {methodItem.emoji ? methodItem.emoji + " " : ""}
+        {methodItem.name}
+      </div>
 
-        <LLMItemButtonGroup
-          onClickTrash={() => onRemove(methodItem.key)}
-          onClickSettings={open} // from useDisclosure(false)
-          hideTrashIcon={false}
-        />
+      {/* Actions (right) -- same icons and sizing as the retrieval rows, so
+          the three method lists read as one component. */}
+      <div className="llm-row-actions">
+        <ActionIcon
+          size="sm"
+          variant="subtle"
+          color="red"
+          onClick={() => onRemove(methodItem.key)}
+          title="Remove"
+        >
+          <IconTrash size={14} />
+        </ActionIcon>
+        <ActionIcon
+          size="sm"
+          variant="subtle"
+          color="blue"
+          onClick={open}
+          title="Settings"
+        >
+          <IconSettings size={14} />
+        </ActionIcon>
       </div>
 
       <Modal

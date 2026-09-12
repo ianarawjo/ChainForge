@@ -488,13 +488,8 @@ const RetrievalMethodListItem: React.FC<
                 : "0"
             : 6,
 
-          // row look & single-line layout
-          boxShadow: "0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.24)",
-          padding: "6px 8px",
-          display: "grid",
-          gridTemplateColumns: "1fr auto",
-          alignItems: "center",
-          columnGap: 12,
+          // Layout comes from .llm-list-card, shared with the chunk and
+          // rerank rows so the three lists cannot drift apart again.
         }}
       >
         {/* Title (left) */}
