@@ -38,6 +38,10 @@ jest.mock("@huggingface/transformers", () => ({
           logits: {
             tolist: () =>
               inputs.pair.map((doc: string) => {
+                // Sentinels, so tests can drive the extremes a real
+                // cross-encoder reaches instead of only small overlaps.
+                if (doc.includes("VERYLOW")) return [-40];
+                if (doc.includes("VERYHIGH")) return [40];
                 let overlap = 0;
                 for (const w of words(doc)) if (q.has(w)) overlap++;
                 return [overlap];
@@ -163,6 +167,50 @@ describe("scoring", () => {
     const out = await mod.rerankInBrowser(DOCS, "reset my password please");
     expect(out[0].document).toBe(DOCS[1]);
     expect(out[0].score).toBeGreaterThan(out[1].score);
+  });
+
+  test("scores are relevances in (0, 1), not raw logits", async () => {
+    const mod = freshModule();
+    const out = await mod.rerankInBrowser(DOCS, "reset my password please");
+    for (const r of out) {
+      expect(r.score).toBeGreaterThan(0);
+      expect(r.score).toBeLessThan(1);
+    }
+  });
+
+  test("squashing preserves the order the model produced", async () => {
+    // Sigmoid is monotonic, so it may change how scores read but never which
+    // document wins. The fake scores by overlap, so the order is derivable.
+    const mod = freshModule();
+    const out = await mod.rerankInBrowser(DOCS, "reset your password screen");
+    const overlap = (doc: string) => {
+      const q = new Set("reset your password screen".split(" "));
+      return doc.split(/\W+/).filter((w) => q.has(w.toLowerCase())).length;
+    };
+    const byOverlap = [...DOCS].sort((a, b) => overlap(b) - overlap(a));
+    expect(out.map((r: any) => r.document)).toEqual(byOverlap);
+  });
+
+  test("extreme logits stay finite and inside the bounds", async () => {
+    // Real cross-encoder logits run to roughly +-15; these go further, so
+    // the mapping is pinned well outside the range it will actually meet.
+    const mod = freshModule();
+    const out = await mod.rerankInBrowser(
+      ["a VERYHIGH match", "a VERYLOW match"],
+      "query",
+    );
+    expect(out.map((r: any) => r.document)).toEqual([
+      "a VERYHIGH match",
+      "a VERYLOW match",
+    ]);
+    for (const r of out) {
+      expect(Number.isFinite(r.score)).toBe(true);
+      expect(r.score).toBeGreaterThanOrEqual(0);
+      expect(r.score).toBeLessThanOrEqual(1);
+    }
+    // Still separated, not both flattened onto the same endpoint.
+    expect(out[0].score).toBeGreaterThan(0.99);
+    expect(out[1].score).toBeLessThan(0.01);
   });
 
   test("each result carries the index it had on the way in", async () => {

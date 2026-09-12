@@ -85,9 +85,25 @@ export function canRerankInBrowser(baseMethod: string): boolean {
   return baseMethod === BROWSER_RERANK_METHOD;
 }
 
+/**
+ * Maps an unbounded logit to a relevance in (0, 1).
+ *
+ * Written in the two-branch form so exp() is never called on a large
+ * positive argument. At the magnitudes these models actually produce --
+ * roughly -15 to +12 -- the naive 1/(1+exp(-x)) agrees to full precision, so
+ * this is insurance rather than a fix for an observed bug; it costs one
+ * comparison.
+ */
+function sigmoid(x: number): number {
+  if (x >= 0) return 1 / (1 + Math.exp(-x));
+  const e = Math.exp(x);
+  return e / (1 + e);
+}
+
 /** One reranked document, in the shape the /rerank response uses. */
 export interface RerankedDocument {
   document: string;
+  /** Relevance in (0, 1); higher is a better match for the query. */
   score: number;
   /** Position in the input list, so callers can map back to their own rows. */
   index: number;
@@ -165,10 +181,14 @@ export function loadReranker(
           { text_pair: documents, padding: true, truncation: true },
         );
         const { logits } = await model(inputs);
-        // These models emit a single logit per pair. It is unbounded and
-        // frequently negative; only the ordering is meaningful, and the
-        // backend returns it raw too, so it is not squashed here.
-        return (logits.tolist() as number[][]).map((row) => Number(row[0]));
+        // These models emit a single unbounded logit per pair, routinely
+        // negative even for the best match. Squashed to a relevance in (0, 1),
+        // which is what Cohere's reranker already returns and what a reader
+        // expects a relevance to look like. Sigmoid is monotonic, so this
+        // changes how the scores read, never their order.
+        return (logits.tolist() as number[][]).map((row) =>
+          sigmoid(Number(row[0])),
+        );
       },
     };
   })();
@@ -189,10 +209,14 @@ function num(settings: Dict<any>, key: string, fallback: number): number {
 /**
  * Reranks documents against a query, entirely client-side.
  *
- * Mirrors the backend's cross_encoder handler: documents come back sorted by
- * descending score, each carrying the index it had on the way in, and an
- * empty query returns the original order with synthetic descending scores
- * rather than pretending to have judged anything.
+ * Documents come back sorted by descending relevance, each carrying the index
+ * it had on the way in. An empty query returns the original order with
+ * synthetic descending scores rather than pretending to have judged anything.
+ *
+ * Scores are relevances in (0, 1) rather than the raw logits the backend's
+ * cross_encoder hands back. A best match reported as -4.29 reads as a
+ * failure to anyone who has not seen a cross-encoder before, which is most
+ * of the audience for running this in a browser.
  */
 export async function rerankInBrowser(
   documents: string[],
