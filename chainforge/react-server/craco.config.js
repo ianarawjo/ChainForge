@@ -7,6 +7,17 @@ module.exports = {
   eslint: {
     enable: false,
   },
+  jest: {
+    configure: {
+      // Several provider SDKs ship ESM only, which CRA's CommonJS Jest cannot
+      // parse -- importing them anywhere in the graph fails a whole suite.
+      // Our tests cover ChainForge's own logic, so stub them out.
+      moduleNameMapper: {
+        "^@google/genai$":
+          "<rootDir>/src/backend/__test__/__mocks__/esmStub.ts",
+      },
+    },
+  },
   webpack: {
     configure: {
       // WebLLM currently publishes sourcemap references to TS sources that are

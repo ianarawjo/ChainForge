@@ -23,8 +23,12 @@ import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
-import { TemplateVarInfo } from "./backend/typing";
 import { MediaLookup } from "./backend/cache";
+import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
+import { TemplateVarInfo } from "./backend/typing";
+
+/** Renders a byte count as MB, for the browser storage budget readout. */
+const formatMB = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
 interface UploadNodeProps {
   data: {
@@ -51,6 +55,12 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
   const showAlert = useContext(AlertModalContext);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Without a local server, uploaded files live in the browser under a fixed
+  // budget, so show what's being used. Meaningless when running locally
+  // (files go to disk), hence the flag.
+  const [storageUsage, setStorageUsage] = useState(MediaLookup.storageUsage());
+  const showStorageUsage = !APP_IS_RUNNING_LOCALLY();
+
   // Handle file uploads
   const handleFilesUpload = useCallback(
     async (files: FileList) => {
@@ -58,6 +68,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
 
       setStatus(Status.LOADING);
       const updatedFields = [...fields];
+      let anyFailed = false;
 
       for (const file of Array.from(files)) {
         try {
@@ -84,7 +95,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
         } catch (error: any) {
           console.error("Error uploading file:", error);
           showAlert?.(`Error uploading ${file.name}: ${error.message}`);
-          setStatus(Status.ERROR);
+          anyFailed = true;
         }
       }
 
@@ -92,7 +103,10 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
 
       // Also set the node's output for the flow
       setDataPropsForNode(id, { fields: updatedFields, output: updatedFields });
-      setStatus(Status.READY);
+      // Keep the error state visible if anything failed -- setting READY
+      // unconditionally here hid it immediately.
+      setStatus(anyFailed ? Status.ERROR : Status.READY);
+      setStorageUsage(MediaLookup.storageUsage());
     },
     [fields, id, setDataPropsForNode, showAlert],
   );
@@ -141,6 +155,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
     const updatedFields = fields.filter((_, i) => i !== index);
     setFields(updatedFields);
     setDataPropsForNode(id, { fields: updatedFields, output: updatedFields });
+    setStorageUsage(MediaLookup.storageUsage());
   };
 
   // Clear all
@@ -164,6 +179,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
     setFields([]);
     setDataPropsForNode(id, { fields: [], output: [] });
     setStatus(Status.READY);
+    setStorageUsage(MediaLookup.storageUsage());
   }, [fields, id, setDataPropsForNode]);
 
   // Refresh logic
@@ -214,6 +230,12 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
         <Group position="apart" mb="xs">
           <Text size="sm" weight={500}>
             Uploaded Files ({fields.length})
+            {showStorageUsage && storageUsage.bytes > 0 && (
+              <Text span size="xs" color="dimmed" ml={6}>
+                {formatMB(storageUsage.bytes)} /{" "}
+                {formatMB(storageUsage.limitBytes)} in browser
+              </Text>
+            )}
           </Text>
           {fields.length > 0 && (
             <Button size="xs" variant="light" compact onClick={toggleFileList}>

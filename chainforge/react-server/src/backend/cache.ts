@@ -359,6 +359,54 @@ export class MediaLookup {
   // Maximum size of the temporary cache in bytes (50MB)
   private readonly MAX_TEMP_CACHE_SIZE = 50 * 1024 * 1024;
 
+  /**
+   * Browser-only limits.
+   *
+   * When there's no Flask backend, `cache` is the *authoritative* store for
+   * uploaded files -- not a read-through cache -- so it cannot evict like
+   * `tempCache` does: dropping a blob would break any node referencing its
+   * uid. We therefore refuse uploads past a budget instead, with an error the
+   * UI can show.
+   *
+   * The budget is sized for export rather than for memory: exporting a flow
+   * in browser mode base64-encodes every blob into the .cforge JSON, which
+   * inflates it by ~33%.
+   */
+  private readonly MAX_BROWSER_FILE_BYTES = 25 * 1024 * 1024; // per file
+  private readonly MAX_BROWSER_CACHE_BYTES = 100 * 1024 * 1024; // all files
+
+  /** Total bytes currently held in the browser-mode store. */
+  private browserCacheBytes(): number {
+    return Object.values(this.cache).reduce(
+      (total, blob) => total + (blob?.size ?? 0),
+      0,
+    );
+  }
+
+  /**
+   * Throws a user-facing error if caching `blob` would exceed the browser
+   * budget. No-op when a backend is available, where files go to disk.
+   */
+  private assertBrowserCacheHasRoom(blob: Blob, name?: string): void {
+    const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    const label = name ? `"${name}"` : "This file";
+
+    if (blob.size > this.MAX_BROWSER_FILE_BYTES)
+      throw new Error(
+        `${label} is ${mb(blob.size)}, over the ${mb(this.MAX_BROWSER_FILE_BYTES)} ` +
+          `per-file limit for running ChainForge without a local server. ` +
+          `Run ChainForge locally to work with larger files.`,
+      );
+
+    const used = this.browserCacheBytes();
+    if (used + blob.size > this.MAX_BROWSER_CACHE_BYTES)
+      throw new Error(
+        `Adding ${label} (${mb(blob.size)}) would exceed the ${mb(this.MAX_BROWSER_CACHE_BYTES)} ` +
+          `total limit for files held in the browser (${mb(used)} already in use). ` +
+          `Remove some files, or run ChainForge locally.`,
+      );
+  }
+
   // A rate limiter for uploads
   private static uploadLimiter = new Bottleneck({
     maxConcurrent: 2, // Allow 3 concurrent uploads
@@ -440,24 +488,54 @@ export class MediaLookup {
   }
 
   /**
-   * Saves the current state of the media lookup table to localStorage.
+   * Records which media uids are in play, in the StorageCache.
+   *
+   * Only the uid list is stored. Blobs are deliberately left out: the
+   * StorageCache is persisted with JSON.stringify, and `JSON.stringify(blob)`
+   * is `{}` -- so storing them wrote a useless placeholder per file and, on
+   * restore, installed those placeholders as though they were real Blobs.
+   *
+   * Blob bytes are held in memory for the session, and serialized properly
+   * (as data URLs) by `toJSON()` when a flow is exported.
    */
   public saveStateToStorageCache(): void {
-    const savedState = {
+    StorageCache.store("__media", {
       mediaUIDs: Array.from(this.mediaUIDs),
-      cache: this.cache,
-    };
-    StorageCache.store("__media", savedState);
+    });
   }
 
+  /**
+   * Restores the set of known media uids from the StorageCache.
+   *
+   * Note that this recovers uids only, not file contents -- see
+   * saveStateToStorageCache. Callers should treat a uid with no cached blob as
+   * "referenced but unavailable" rather than assuming the bytes are present.
+   */
   public restoreStateFromStorageCache(): boolean {
     const savedState = StorageCache.get("__media");
-    if (savedState) {
+    if (savedState && Array.isArray(savedState.mediaUIDs)) {
       this.mediaUIDs = new Set(savedState.mediaUIDs);
-      this.cache = savedState.cache;
       return true;
     }
     return false;
+  }
+
+  /**
+   * How much file data the browser is currently holding, for display in the UI.
+   */
+  public static storageUsage(): {
+    files: number;
+    bytes: number;
+    limitBytes: number;
+    fileLimitBytes: number;
+  } {
+    const mediaLookup = MediaLookup.getInstance();
+    return {
+      files: Object.keys(mediaLookup.cache).length,
+      bytes: mediaLookup.browserCacheBytes(),
+      limitBytes: mediaLookup.MAX_BROWSER_CACHE_BYTES,
+      fileLimitBytes: mediaLookup.MAX_BROWSER_FILE_BYTES,
+    };
   }
 
   /**
@@ -525,11 +603,19 @@ export class MediaLookup {
         return uid;
       });
     } else {
+      // No backend: the browser holds the file itself, so enforce a budget
+      // before taking it (throws with a message the caller can surface).
+      const mediaLookup = MediaLookup.getInstance();
+      mediaLookup.assertBrowserCacheHasRoom(
+        file,
+        "name" in file ? file.name : undefined,
+      );
+
       // Make a uid for the file, and use it to cache the file:
       // NOTE: We keep the file name around, if there is one, just in case we need to recover it later.
       const uid =
         `cache__${uuid()}__cache` + ("name" in file ? `__${file.name}` : "");
-      MediaLookup.getInstance().add(uid, file);
+      mediaLookup.add(uid, file);
       return uid;
     }
   }

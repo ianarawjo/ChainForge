@@ -808,11 +808,20 @@ const App = () => {
         const saveToLocalStorage = () => {
           // This line only saves the front-end state. Cache files
           // are not pulled or overwritten upon loading from localStorage.
-          StorageCache.saveToLocalStorage("chainforge-flow", flow);
+          const flowSaved = StorageCache.saveToLocalStorage(
+            "chainforge-flow",
+            flow,
+          );
 
           // Attempt to save the current back-end state,
           // in the StorageCache. (This does LZ compression to save space.)
-          StorageCache.saveToLocalStorage("chainforge-state");
+          const stateSaved =
+            StorageCache.saveToLocalStorage("chainforge-state");
+
+          // Both must land for the flow to be recoverable. The usual cause of
+          // failure is the browser's localStorage quota (~5MB in most
+          // browsers), which large flows and uploaded documents can exhaust.
+          return flowSaved && stateSaved;
         };
 
         const onFlowSaved = () => {
@@ -835,12 +844,24 @@ const App = () => {
           )?.then(onFlowSaved);
         } else {
           // SAVE TO BROWSER LOCALSTORAGE
-          saveToLocalStorage();
-          onFlowSaved();
+          // NOTE: Do not report success unconditionally here. saveToLocalStorage
+          // returns false when the browser refuses the write (quota exceeded),
+          // and claiming "Flow saved!" in that case loses the user's work
+          // silently.
+          if (saveToLocalStorage()) onFlowSaved();
+          else {
+            const msg =
+              "Could not save this flow to browser storage: the browser's " +
+              "storage limit was reached. Export the flow to a file to avoid " +
+              "losing work, and consider removing large uploaded documents " +
+              "or running ChainForge locally.";
+            if (hideErrorAlert) console.error(msg);
+            else handleError(msg);
+          }
         }
       });
     },
-    [rfInstance, exportFlow, flowFileName],
+    [rfInstance, exportFlow, flowFileName, handleError],
   );
 
   // Keyboard save handler
