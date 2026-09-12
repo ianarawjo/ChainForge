@@ -449,7 +449,7 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
               withArrow
               position="left"
             >
-              <Badge color="green" size="md" radius="sm" style={badgeStyle}>
+              <Badge color="indigo" size="md" radius="sm" style={badgeStyle}>
                 documents
               </Badge>
             </Tooltip>
@@ -477,13 +477,7 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
               multiline
               width={260}
             >
-              <Badge
-                color="indigo"
-                size="md"
-                radius="sm"
-                style={badgeStyle}
-                variant="outline"
-              >
+              <Badge color="indigo" size="md" radius="sm" style={badgeStyle}>
                 query (optional)
               </Badge>
             </Tooltip>
