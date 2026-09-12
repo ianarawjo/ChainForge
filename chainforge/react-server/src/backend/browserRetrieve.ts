@@ -16,9 +16,27 @@ import { Dict } from "./typing";
 import {
   RetrievalChunk,
   RetrievalHit,
+  RetrievalResult,
   canRetrieveInBrowser,
   retrieveInBrowser,
 } from "./browserRetrievers";
+import { ProgressFn } from "./browserEmbeddings";
+import { semanticRetriever } from "./browserSemanticRetriever";
+
+/**
+ * Separates the two halves of a staging key. Written as an escape rather than
+ * a literal NUL so the file stays text as far as git and grep are concerned.
+ */
+const KEY_SEP = "\u0000";
+
+/**
+ * The `baseMethod` of the client-side semantic retriever.
+ *
+ * It is registered here rather than in BROWSER_RETRIEVERS because the
+ * semantic module imports from browserRetrievers, and registering it there
+ * would close an import cycle.
+ */
+export const BROWSER_SEMANTIC_METHOD = "browser_embedding";
 
 /** A retrieval method as the Retrieval node sends it. */
 export interface RetrieveMethodSpec {
@@ -56,22 +74,48 @@ export interface RetrieveResponseRow {
   llm: string;
 }
 
+/** Whether one method can run client-side. */
+function supportsMethod(m: RetrieveMethodSpec): boolean {
+  if (m.baseMethod === BROWSER_SEMANTIC_METHOD) return true;
+  // An embeddingProvider means the backend would compute the vectors.
+  return !m.embeddingProvider && canRetrieveInBrowser(m.baseMethod);
+}
+
+/** Runs one method, whether its implementation is sync or async. */
+function runMethod(
+  method: RetrieveMethodSpec,
+  chunkGroup: RetrievalChunk[],
+  queries: Dict<any>[],
+  onProgress?: ProgressFn,
+): Promise<RetrievalResult[]> {
+  if (method.baseMethod === BROWSER_SEMANTIC_METHOD)
+    return semanticRetriever(
+      chunkGroup,
+      queries,
+      method.settings ?? {},
+      onProgress,
+    );
+  return Promise.resolve(
+    retrieveInBrowser(
+      method.baseMethod,
+      chunkGroup,
+      queries,
+      method.settings ?? {},
+    ),
+  );
+}
+
 /** Whether every requested method can run client-side. */
 export function canRetrieveRequestInBrowser(
   methods: RetrieveMethodSpec[],
 ): boolean {
-  return (
-    methods.length > 0 &&
-    methods.every(
-      (m) => !m.embeddingProvider && canRetrieveInBrowser(m.baseMethod),
-    )
-  );
+  return methods.length > 0 && methods.every(supportsMethod);
 }
 
 /** Names the methods that would need a backend, for an error message. */
 export function methodsNeedingBackend(methods: RetrieveMethodSpec[]): string[] {
   return methods
-    .filter((m) => m.embeddingProvider || !canRetrieveInBrowser(m.baseMethod))
+    .filter((m) => !supportsMethod(m))
     .map((m) => m.methodName || m.baseMethod);
 }
 
@@ -188,9 +232,10 @@ function weightsFor(group: FusionGroup): Dict<number> {
  * @throws If any method needs the backend; check with
  *   canRetrieveRequestInBrowser first.
  */
-export function retrieveRequestInBrowser(
+export async function retrieveRequestInBrowser(
   request: RetrieveRequest,
-): RetrieveResponseRow[] {
+  onProgress?: ProgressFn,
+): Promise<RetrieveResponseRow[]> {
   const { methods, chunks, queries } = request;
 
   if (!methods || methods.length === 0)
@@ -247,11 +292,11 @@ export function retrieveRequestInBrowser(
 
     for (const method of methods) {
       try {
-        const results = retrieveInBrowser(
-          method.baseMethod,
+        const results = await runMethod(
+          method,
           chunkGroup,
           normalizedQueries,
-          method.settings ?? {},
+          onProgress,
         );
 
         for (const result of results) {
@@ -289,7 +334,7 @@ export function retrieveRequestInBrowser(
             };
 
             if (fusionEnabled) {
-              const key = `${queryText} ${chunkMethod}`;
+              const key = `${queryText}${KEY_SEP}${chunkMethod}`;
               ((staging[key] ??= {})[method.id] ??= []).push({
                 doc_id: hit.chunkId ?? "",
                 rank: i + 1,
@@ -316,7 +361,7 @@ export function retrieveRequestInBrowser(
   // Fusion, over the staged per-method rankings.
   if (fusionEnabled && linkedGroups.length > 0) {
     for (const [key, perMethod] of Object.entries(staging)) {
-      const chunkMethod = key.split(" ")[1];
+      const chunkMethod = key.split(KEY_SEP)[1];
       const groups: Dict<Dict<StagedHit[]>> = {};
       for (const [mid, items] of Object.entries(perMethod)) {
         const gid = groupByMethodId[mid];

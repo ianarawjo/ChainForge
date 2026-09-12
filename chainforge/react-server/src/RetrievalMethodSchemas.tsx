@@ -1,5 +1,9 @@
 import { RunsIn } from "./backend/ragCapabilities";
 import { ModelSettingsDict } from "./backend/typing";
+import {
+  BROWSER_EMBEDDING_MODELS,
+  DEFAULT_BROWSER_EMBEDDING_MODEL,
+} from "./backend/browserEmbeddings";
 
 // Available embedding models
 export const embeddingProviders = [
@@ -575,6 +579,74 @@ export const rankFusionMethods = [
   },
 ];
 
+/**
+ * Semantic retrieval that runs client-side, on a small ONNX model.
+ *
+ * Separate from EmbeddingSimilaritySchema on purpose: that one picks a
+ * provider and a vector store on the server, while this one has exactly one
+ * real decision -- which model to download.
+ */
+export const BrowserEmbeddingSchema: ModelSettingsDict = {
+  fullName: "Semantic Search (in-browser)",
+  description:
+    "Retrieves documents by meaning using a small embedding model that runs " +
+    "in your browser. No server needed. The model downloads once on first use.",
+  schema: {
+    type: "object",
+    required: ["top_k", "browserEmbeddingModel"],
+    properties: {
+      shortName: {
+        type: "string",
+        default: "Semantic Search",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+      },
+      browserEmbeddingModel: {
+        type: "string",
+        title: "Embedding Model",
+        default: DEFAULT_BROWSER_EMBEDDING_MODEL,
+        enum: Object.keys(BROWSER_EMBEDDING_MODELS),
+        description:
+          "Downloaded once and cached by your browser. Larger models rank " +
+          "better; smaller ones start faster.",
+      },
+      top_k: {
+        type: "number",
+        default: 5,
+        title: "Top K Results",
+      },
+    },
+  },
+  uiSchema: {
+    shortName: {
+      "ui:widget": "text",
+      "ui:options": {
+        placeholder: "Custom name for your retrieval method",
+      },
+    },
+    browserEmbeddingModel: {
+      "ui:widget": "select",
+      "ui:options": {
+        enumOptions: Object.values(BROWSER_EMBEDDING_MODELS).map((m) => ({
+          value: m.id,
+          label: `${m.label} (~${m.sizeMB}MB) -- ${m.note}`,
+        })),
+      },
+      "ui:help": "The first run downloads the model; later runs reuse it.",
+    },
+    top_k: {
+      "ui:widget": "range",
+      "ui:options": {
+        min: 1,
+        max: 20,
+        step: 1,
+      },
+    },
+  },
+  postprocessors: {},
+};
+
 // Combined schema object for all retrieval methods
 export const RetrievalMethodSchemas: {
   [baseMethod: string]: ModelSettingsDict;
@@ -584,6 +656,7 @@ export const RetrievalMethodSchemas: {
   boolean: BooleanSearchSchema,
   overlap: KeywordOverlapSchema,
   embedding: EmbeddingSimilaritySchema,
+  browser_embedding: BrowserEmbeddingSchema,
   // Deprecated methods (kept for backwards compatibility)
   cosine: EmbeddingSimilaritySchema,
   euclidean: EmbeddingSimilaritySchema,
@@ -667,6 +740,18 @@ export const retrievalMethodGroups: RetrievalMethodGroup[] = [
   {
     label: "Embedding-based Retrieval",
     items: [
+      {
+        baseMethod: "browser_embedding",
+        runsIn: "browser" as RunsIn,
+        methodName: "Semantic Search (in-browser)",
+        library: "Transformers.js",
+        emoji: "\u2728",
+        group: "Embedding-based Retrieval",
+        needsEmbeddingModel: false,
+        embeddingProvider: undefined,
+        description:
+          "Retrieve by meaning rather than shared words, using a small model that runs in your browser. No server or API key needed; the model downloads once on first use.",
+      },
       {
         baseMethod: "embedding",
         runsIn: "backend" as RunsIn,

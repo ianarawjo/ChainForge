@@ -94,7 +94,14 @@ function anyBrowserChunker(): boolean {
   );
 }
 
-/** Whether at least one retrieval method can run client-side. */
+/**
+ * Whether at least one retrieval method can run client-side.
+ *
+ * Only the lexical retrievers are consulted. The semantic one is registered in
+ * browserRetrieve.ts rather than in BROWSER_RETRIEVERS -- importing it here
+ * would close a cycle -- but it is always available, so this staying true is
+ * what matters.
+ */
 function anyBrowserRetriever(): boolean {
   return (
     canRetrieveInBrowser("bm25") ||
@@ -117,9 +124,10 @@ export function anyRagFeatureAvailable(): boolean {
 export function ragLimitationNotice(): string | undefined {
   if (ragBackendAvailable()) return undefined;
   return (
-    "Running without a local ChainForge server: documents, chunking and " +
-    "keyword retrieval run in the browser. Run ChainForge locally for " +
-    "embeddings, vector stores, TF-IDF and reranking."
+    "Running without a local ChainForge server: documents, chunking, keyword " +
+    "retrieval and in-browser semantic search all run client-side. Run " +
+    "ChainForge locally for hosted embedding providers, persistent vector " +
+    "stores, TF-IDF and reranking."
   );
 }
 

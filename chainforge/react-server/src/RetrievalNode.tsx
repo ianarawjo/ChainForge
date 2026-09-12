@@ -254,7 +254,19 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         // Every requested method has a client-side implementation, so run it
         // here: the same rows the endpoint would return (a fixture pins that),
         // minus a round trip -- and it works with no local server at all.
-        retrievalResults = retrieveRequestInBrowser(retrieveRequest as any);
+        // Semantic retrieval fetches a model on first use, so drive the same
+        // progress bar the backend poll would: a silent 30MB download reads
+        // as a hang.
+        retrievalResults = await retrieveRequestInBrowser(
+          retrieveRequest as any,
+          (p) => {
+            if (currentRunId !== runIdRef.current) return;
+            setProgressAnimated(true);
+            if (p.phase === "download")
+              setProgress(Math.min(50, 5 + (p.percent ?? 0) * 0.45));
+            else setProgress(Math.min(95, 50 + (p.percent ?? 0) * 0.45));
+          },
+        );
         if (currentRunId !== runIdRef.current) return;
       } else {
         const response = await fetch(`${FLASK_BASE_URL}retrieve`, {

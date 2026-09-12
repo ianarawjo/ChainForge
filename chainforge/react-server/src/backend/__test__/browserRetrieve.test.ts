@@ -1,5 +1,6 @@
 import { describe, expect, test } from "@jest/globals";
 import {
+  BROWSER_SEMANTIC_METHOD,
   canRetrieveRequestInBrowser,
   methodsNeedingBackend,
   retrieveRequestInBrowser,
@@ -59,8 +60,8 @@ describe("the endpoint fixture", () => {
 });
 
 describe("matches the Flask endpoint row for row", () => {
-  test.each(fixture.cases)("$name", ({ request, response }) => {
-    const actual = retrieveRequestInBrowser(request);
+  test.each(fixture.cases)("$name", async ({ request, response }) => {
+    const actual = await retrieveRequestInBrowser(request);
     expect(normalize(actual)).toEqual(normalize(response));
   });
 });
@@ -98,6 +99,30 @@ describe("which requests can run client-side", () => {
     ).toBe(false);
   });
 
+  const semantic = {
+    id: "s1",
+    baseMethod: BROWSER_SEMANTIC_METHOD,
+    methodName: "Semantic Search (in-browser)",
+    settings: {},
+  };
+
+  test("the in-browser semantic method can", () => {
+    expect(canRetrieveRequestInBrowser([semantic])).toBe(true);
+  });
+
+  test("semantic mixed with keyword can, which is what fusion needs", () => {
+    expect(canRetrieveRequestInBrowser([keyword, semantic])).toBe(true);
+  });
+
+  test("semantic mixed with a backend-only method cannot", () => {
+    expect(
+      methodsNeedingBackend([
+        semantic,
+        { id: "m", baseMethod: "tfidf", methodName: "TF-IDF" },
+      ]),
+    ).toEqual(["TF-IDF"]);
+  });
+
   test("one unsupported method disqualifies the whole request", () => {
     expect(
       canRetrieveRequestInBrowser([
@@ -130,39 +155,39 @@ describe("input validation mirrors the endpoint", () => {
     { id: "m1", baseMethod: "bm25", methodName: "BM25", settings: {} },
   ];
 
-  test("no methods", () => {
-    expect(() =>
+  test("no methods", async () => {
+    await expect(
       retrieveRequestInBrowser({
         methods: [],
         chunks,
         queries: [{ text: "q" }],
       }),
-    ).toThrow(/No retrieval methods provided/);
+    ).rejects.toThrow(/No retrieval methods provided/);
   });
 
-  test("no chunks", () => {
-    expect(() =>
+  test("no chunks", async () => {
+    await expect(
       retrieveRequestInBrowser({
         methods,
         chunks: [],
         queries: [{ text: "q" }],
       }),
-    ).toThrow(/No chunks provided/);
+    ).rejects.toThrow(/No chunks provided/);
   });
 
-  test("no queries", () => {
-    expect(() =>
+  test("no queries", async () => {
+    await expect(
       retrieveRequestInBrowser({ methods, chunks, queries: [] }),
-    ).toThrow(/No queries provided/);
+    ).rejects.toThrow(/No queries provided/);
   });
 
-  test("a method needing the backend is refused by name", () => {
-    expect(() =>
+  test("a method needing the backend is refused by name", async () => {
+    await expect(
       retrieveRequestInBrowser({
         methods: [{ id: "m", baseMethod: "tfidf", methodName: "TF-IDF" }],
         chunks,
         queries: [{ text: "q" }],
       }),
-    ).toThrow(/TF-IDF/);
+    ).rejects.toThrow(/TF-IDF/);
   });
 });
