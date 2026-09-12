@@ -1,3 +1,4 @@
+import { RunsIn } from "./backend/ragCapabilities";
 import { ModelSettingsDict } from "./backend/typing";
 
 // Available embedding models
@@ -589,13 +590,33 @@ export const RetrievalMethodSchemas: {
   clustered: EmbeddingSimilaritySchema,
 };
 
+/** One selectable retrieval method in the Retrieval node's menu. */
+export interface RetrievalMethodGroupItem {
+  baseMethod: string;
+  methodName: string;
+  library: string;
+  emoji?: string;
+  group?: string;
+  needsEmbeddingModel?: boolean;
+  embeddingProvider?: string;
+  description?: string;
+  /** Where this method can execute. Defaults to backend-only when omitted. */
+  runsIn?: RunsIn;
+}
+
+export interface RetrievalMethodGroup {
+  label: string;
+  items: RetrievalMethodGroupItem[];
+}
+
 // Method groupings for the menu
-export const retrievalMethodGroups = [
+export const retrievalMethodGroups: RetrievalMethodGroup[] = [
   {
     label: "Keyword-based Retrieval",
     items: [
       {
         baseMethod: "bm25",
+        runsIn: "both" as RunsIn,
         methodName: "BM25 Retrieval",
         library: "BM25",
         emoji: "📊",
@@ -607,6 +628,7 @@ export const retrievalMethodGroups = [
       },
       {
         baseMethod: "tfidf",
+        runsIn: "backend" as RunsIn,
         methodName: "TF-IDF Retrieval",
         library: "TF-IDF",
         emoji: "📈",
@@ -618,6 +640,7 @@ export const retrievalMethodGroups = [
       },
       {
         baseMethod: "boolean",
+        runsIn: "both" as RunsIn,
         methodName: "Boolean Search",
         library: "Boolean Search",
         emoji: "🔍",
@@ -629,6 +652,7 @@ export const retrievalMethodGroups = [
       },
       {
         baseMethod: "overlap",
+        runsIn: "both" as RunsIn,
         methodName: "Keyword Overlap",
         library: "KeywordOverlap",
         emoji: "🎯",
@@ -645,6 +669,7 @@ export const retrievalMethodGroups = [
     items: [
       {
         baseMethod: "embedding",
+        runsIn: "backend" as RunsIn,
         methodName: "HuggingFace Embedding",
         library: "EmbeddingSimilarity",
         emoji: "🤗",
@@ -656,6 +681,7 @@ export const retrievalMethodGroups = [
       },
       {
         baseMethod: "embedding",
+        runsIn: "backend" as RunsIn,
         methodName: "OpenAI Embedding",
         library: "EmbeddingSimilarity",
         emoji: "🤖",
@@ -667,6 +693,7 @@ export const retrievalMethodGroups = [
       },
       {
         baseMethod: "embedding",
+        runsIn: "backend" as RunsIn,
         methodName: "Azure OpenAI Embedding",
         library: "EmbeddingSimilarity",
         emoji: "🔷",
@@ -678,6 +705,7 @@ export const retrievalMethodGroups = [
       },
       {
         baseMethod: "embedding",
+        runsIn: "backend" as RunsIn,
         methodName: "Cohere Embedding",
         library: "EmbeddingSimilarity",
         emoji: "💬",
@@ -689,6 +717,7 @@ export const retrievalMethodGroups = [
       },
       {
         baseMethod: "embedding",
+        runsIn: "backend" as RunsIn,
         methodName: "Sentence Transformers Embedding",
         library: "EmbeddingSimilarity",
         emoji: "🧠",

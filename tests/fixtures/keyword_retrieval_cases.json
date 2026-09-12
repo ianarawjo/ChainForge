@@ -1,0 +1,5086 @@
+{
+  "_comment": "Shared cases for the keyword retrievers, which have two implementations: chainforge/rag/retrievers.py (reference) and chainforge/react-server/src/backend/browserRetrievers.ts. Both test suites read this file so a divergence fails a build. Expected values were generated from the Python implementation. Similarities are rounded to 10 decimal places to absorb float formatting differences only. Keep a query containing a term present in more than half the corpus (currently 'is'), or BM25's negative-idf epsilon floor stops being exercised.",
+  "corpus": [
+    {
+      "text": "Python is an interpreted high-level programming language that emphasizes code readability.",
+      "docTitle": "langs.md",
+      "chunkId": "c1"
+    },
+    {
+      "text": "JavaScript runs in the browser and conforms to the ECMAScript specification.",
+      "docTitle": "langs.md",
+      "chunkId": "c2"
+    },
+    {
+      "text": "Rust is a systems programming language focused on memory safety.",
+      "docTitle": "systems.md",
+      "chunkId": "c3"
+    },
+    {
+      "text": "Python is also widely used for data analysis and machine learning.",
+      "docTitle": "langs.md",
+      "chunkId": "c4"
+    },
+    {
+      "text": "Memory safety without a garbage collector is Rust's defining feature.",
+      "docTitle": "systems.md",
+      "chunkId": "c5"
+    },
+    {
+      "text": "café naïve résumé unicode words",
+      "docTitle": "unicode.md",
+      "chunkId": "c6"
+    },
+    {
+      "text": "",
+      "docTitle": "empty.md",
+      "chunkId": "c7"
+    }
+  ],
+  "tokenizer": [
+    {
+      "input": "Hello, World!",
+      "tokens": [
+        "hello",
+        "world"
+      ]
+    },
+    {
+      "input": "the quick brown fox",
+      "tokens": [
+        "the",
+        "quick",
+        "brown",
+        "fox"
+      ]
+    },
+    {
+      "input": "version 1.2.3 works",
+      "tokens": [
+        "version",
+        "works"
+      ]
+    },
+    {
+      "input": "answer is 42 today",
+      "tokens": [
+        "answer",
+        "is",
+        "today"
+      ]
+    },
+    {
+      "input": "a bb ccc dddd",
+      "tokens": [
+        "bb",
+        "ccc",
+        "dddd"
+      ]
+    },
+    {
+      "input": "_leading underscore",
+      "tokens": [
+        "underscore"
+      ]
+    },
+    {
+      "input": "snake_case_word",
+      "tokens": [
+        "snake_case_word"
+      ]
+    },
+    {
+      "input": "trailing_",
+      "tokens": [
+        "trailing_"
+      ]
+    },
+    {
+      "input": "café naïve",
+      "tokens": [
+        "café",
+        "naïve"
+      ]
+    },
+    {
+      "input": "土 ہوا 火",
+      "tokens": [
+        "ہوا"
+      ]
+    },
+    {
+      "input": "Ελληνικά κείμενο",
+      "tokens": [
+        "ελληνικά",
+        "κείμενο"
+      ]
+    },
+    {
+      "input": "Привет мир",
+      "tokens": [
+        "привет",
+        "мир"
+      ]
+    },
+    {
+      "input": "extraordinarily-long-hyphenated-words",
+      "tokens": [
+        "extraordinarily",
+        "long",
+        "hyphenated",
+        "words"
+      ]
+    },
+    {
+      "input": "averyveryverylongsingletokenover15chars",
+      "tokens": [
+        "chars"
+      ]
+    },
+    {
+      "input": "don't can't won't",
+      "tokens": [
+        "don",
+        "can",
+        "won"
+      ]
+    },
+    {
+      "input": "e-mail e_mail",
+      "tokens": [
+        "mail",
+        "e_mail"
+      ]
+    },
+    {
+      "input": "MiXeD CaSe",
+      "tokens": [
+        "mixed",
+        "case"
+      ]
+    },
+    {
+      "input": "  spaced   out  ",
+      "tokens": [
+        "spaced",
+        "out"
+      ]
+    },
+    {
+      "input": "!!! ??? ...",
+      "tokens": []
+    },
+    {
+      "input": "",
+      "tokens": []
+    },
+    {
+      "input": "tab\tseparated\nnewline",
+      "tokens": [
+        "tab",
+        "separated",
+        "newline"
+      ]
+    },
+    {
+      "input": "100% sure",
+      "tokens": [
+        "sure"
+      ]
+    },
+    {
+      "input": "x2 y3 2x 3y",
+      "tokens": []
+    },
+    {
+      "input": "ABC123def",
+      "tokens": [
+        "abc",
+        "def"
+      ]
+    },
+    {
+      "input": "٣٤٥ arabic digits",
+      "tokens": [
+        "arabic",
+        "digits"
+      ]
+    },
+    {
+      "input": "emoji 🎉 here",
+      "tokens": [
+        "emoji",
+        "here"
+      ]
+    },
+    {
+      "input": "a",
+      "tokens": []
+    },
+    {
+      "input": "ab",
+      "tokens": [
+        "ab"
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "method": "bm25",
+      "query": "python readability",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.3663696651
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "browser",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9544468547
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "programming language",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.863340564
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "café",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.3663696651
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "the and of",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.2656395393
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "is",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.9045454545
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python is",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9544468547
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.3272013093
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.863340564
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.1736871939
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.1111752113
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python readability",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "browser",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "programming language",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "café",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "the and of",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "is",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python is",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python readability",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.3663696651
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "browser",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9544468547
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "programming language",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.863340564
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "café",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.3663696651
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "the and of",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.2656395393
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "is",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.9045454545
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.863340564
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python is",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9544468547
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.3272013093
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.3272013093
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.863340564
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.1736871939
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.1571079618
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.1111752113
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.1061108308
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python readability",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.3603692942
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "browser",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9703389831
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "programming language",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9110169492
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "café",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.3603692942
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "the and of",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.2755646776
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "is",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.9388646288
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python is",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9703389831
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.3152408217
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9110169492
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.1736871939
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.1153932873
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python readability",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.3663696651
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "browser",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9544468547
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "programming language",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.863340564
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "café",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.3663696651
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "the and of",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.2656395393
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "is",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.9045454545
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "python is",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9544468547
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.3272013093
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.863340564
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.1736871939
+        }
+      ]
+    },
+    {
+      "method": "bm25",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.1111752113
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "python readability",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5454545455
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "browser",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": []
+    },
+    {
+      "method": "boolean",
+      "query": "python",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9166666667
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "programming language",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.75
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "café",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5454545455
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "the and of",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.4545454545
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "is",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.8181818182
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "python is",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9166666667
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.6111111111
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.75
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.3333333333
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.2045454545
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "python readability",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "browser",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": []
+    },
+    {
+      "method": "boolean",
+      "query": "python",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "programming language",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "café",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "the and of",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "is",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "python is",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "python readability",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5454545455
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "browser",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": []
+    },
+    {
+      "method": "boolean",
+      "query": "python",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9166666667
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "programming language",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.75
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "café",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5454545455
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "the and of",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.4545454545
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "is",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.8181818182
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.75
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "python is",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9166666667
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.6111111111
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.6111111111
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.75
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.3333333333
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.2727272727
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.2045454545
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.1875
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "python readability",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5454545455
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "browser",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": []
+    },
+    {
+      "method": "boolean",
+      "query": "python",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9166666667
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "programming language",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.75
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "café",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5454545455
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "the and of",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.4545454545
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "is",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.8181818182
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "python is",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9166666667
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.6111111111
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.75
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.3333333333
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.2045454545
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "python readability",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "browser",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": []
+    },
+    {
+      "method": "boolean",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": []
+    },
+    {
+      "method": "boolean",
+      "query": "python",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": []
+    },
+    {
+      "method": "boolean",
+      "query": "programming language",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.75
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "café",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": []
+    },
+    {
+      "method": "boolean",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "the and of",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "is",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": []
+    },
+    {
+      "method": "boolean",
+      "query": "python is",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.9166666667
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.75
+        }
+      ]
+    },
+    {
+      "method": "boolean",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "python readability",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "browser",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": []
+    },
+    {
+      "method": "overlap",
+      "query": "python",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "programming language",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "café",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "the and of",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "is",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "python is",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.5
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.3333333333
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 3
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.25
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "python readability",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "browser",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": []
+    },
+    {
+      "method": "overlap",
+      "query": "python",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "programming language",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "café",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "the and of",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "is",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "python is",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 1
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "python readability",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "browser",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": []
+    },
+    {
+      "method": "overlap",
+      "query": "python",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "programming language",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "café",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "the and of",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "is",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "python is",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.3333333333
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 0.3333333333
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 10
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.25
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.25
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c7",
+          "docTitle": "empty.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "python readability",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "browser",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": []
+    },
+    {
+      "method": "overlap",
+      "query": "python",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "programming language",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "café",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "the and of",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "is",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "python is",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.5
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.3333333333
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 3,
+        "bm25_k1": 1.2,
+        "bm25_b": 0.5
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.25
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "python readability",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "memory safety",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "browser",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "zzzz qqqq",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": []
+    },
+    {
+      "method": "overlap",
+      "query": "python",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "programming language",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "café",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c6",
+          "docTitle": "unicode.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "PYTHON READABILITY",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "the and of",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.5
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "machine learning data analysis",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        },
+        {
+          "chunkId": "c2",
+          "docTitle": "langs.md",
+          "similarity": 0.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "is",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "python is",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 0.5
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "is a programming language",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c4",
+          "docTitle": "langs.md",
+          "similarity": 0.3333333333
+        }
+      ]
+    },
+    {
+      "method": "overlap",
+      "query": "memory safety is rust",
+      "settings": {
+        "top_k": 3,
+        "required_match_count": 2
+      },
+      "hits": [
+        {
+          "chunkId": "c3",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c5",
+          "docTitle": "systems.md",
+          "similarity": 1.0
+        },
+        {
+          "chunkId": "c1",
+          "docTitle": "langs.md",
+          "similarity": 0.25
+        }
+      ]
+    }
+  ]
+}

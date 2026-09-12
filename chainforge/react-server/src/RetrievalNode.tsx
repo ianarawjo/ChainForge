@@ -22,6 +22,10 @@ import RetrievalMethodListContainer, {
 } from "./RetrievalMethodListComponent";
 import { LLMResponse, TemplateVarInfo } from "./backend/typing";
 import { FLASK_BASE_URL } from "./backend/utils";
+import {
+  canRetrieveRequestInBrowser,
+  retrieveRequestInBrowser,
+} from "./backend/browserRetrieve";
 import type { LinkedMethodGroup } from "./RetrievalMethodListComponent";
 import { Status } from "./StatusIndicatorComponent";
 
@@ -180,31 +184,45 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
     setProgress(5); // Start at 5%
     setProgressAnimated(true);
 
+    const formattedMethods = methodItems.map((method) => ({
+      id: method.key,
+      baseMethod: method.baseMethod,
+      methodName: method.methodName,
+      library: method.library,
+      embeddingProvider: method.embeddingProvider,
+      settings: method.settings || {},
+    }));
+
+    // Only poll the backend for progress when the backend is doing the work.
+    // Browser-side retrieval is synchronous, and the endpoint would not exist.
+    const runsHere = canRetrieveRequestInBrowser(formattedMethods as any);
+
     // Start Polling the "Faked" Endpoint
-    pollIntervalRef.current = window.setInterval(async () => {
-      try {
-        const resp = await fetch(`${FLASK_BASE_URL}getRetrieveProgress`);
-        if (currentRunId !== runIdRef.current) return;
-        const data = await resp.json();
+    if (!runsHere)
+      pollIntervalRef.current = window.setInterval(async () => {
+        try {
+          const resp = await fetch(`${FLASK_BASE_URL}getRetrieveProgress`);
+          if (currentRunId !== runIdRef.current) return;
+          const data = await resp.json();
 
-        let currentProgress = 0;
-        if (typeof data === "number") {
-          currentProgress = data;
-        } else if (data && typeof data === "object") {
-          // Sum all values in the object (assuming they are numbers representing % completion)
-          const values = Object.values(data) as number[];
-          currentProgress = values.reduce(
-            (acc, val) => acc + (typeof val === "number" ? val : 0),
-            0,
-          );
+          let currentProgress = 0;
+          if (typeof data === "number") {
+            currentProgress = data;
+          } else if (data && typeof data === "object") {
+            // Sum all values in the object (assuming they are numbers representing % completion)
+            const values = Object.values(data) as number[];
+            currentProgress = values.reduce(
+              (acc, val) => acc + (typeof val === "number" ? val : 0),
+              0,
+            );
+          }
+
+          // Clamp between 5 and 95 so it doesn't look finished until it actually is
+          setProgress(Math.min(95, Math.max(5, currentProgress)));
+        } catch (e) {
+          console.warn("Could not fetch progress", e);
         }
-
-        // Clamp between 5 and 95 so it doesn't look finished until it actually is
-        setProgress(Math.min(95, Math.max(5, currentProgress)));
-      } catch (e) {
-        console.warn("Could not fetch progress", e);
-      }
-    }, 500);
+      }, 500);
 
     try {
       // Get input data from connected nodes
@@ -214,15 +232,6 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       };
 
       // Format methods for the API request
-      const formattedMethods = methodItems.map((method) => ({
-        id: method.key,
-        baseMethod: method.baseMethod,
-        methodName: method.methodName,
-        library: method.library,
-        embeddingProvider: method.embeddingProvider,
-        settings: method.settings || {},
-      }));
-
       // Updated error checks for clarity
       if (!inputData.chunks || inputData.chunks.length === 0) {
         throw new Error("Input 'chunks' is missing or empty.");
@@ -231,38 +240,48 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         throw new Error("Input 'queries' is missing or empty.");
       }
 
-      // Make the API request
-      const response = await fetch(`${FLASK_BASE_URL}retrieve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          methods: formattedMethods,
-          chunks: inputData.chunks,
-          queries: inputData.queries,
-          api_keys: apiKeys,
-          fusion_enabled: linkedGroups.length > 0,
-          linked_groups: linkedGroups.length > 0 ? linkedGroups : [],
-        }),
-      });
+      const retrieveRequest = {
+        methods: formattedMethods,
+        chunks: inputData.chunks,
+        queries: inputData.queries,
+        fusion_enabled: linkedGroups.length > 0,
+        linked_groups: linkedGroups.length > 0 ? linkedGroups : [],
+      };
 
-      if (currentRunId !== runIdRef.current) {
-        console.log("Retrieval result ignored (stopped by user).");
-        return;
+      let retrievalResults: any;
+
+      if (runsHere) {
+        // Every requested method has a client-side implementation, so run it
+        // here: the same rows the endpoint would return (a fixture pins that),
+        // minus a round trip -- and it works with no local server at all.
+        retrievalResults = retrieveRequestInBrowser(retrieveRequest as any);
+        if (currentRunId !== runIdRef.current) return;
+      } else {
+        const response = await fetch(`${FLASK_BASE_URL}retrieve`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...retrieveRequest, api_keys: apiKeys }),
+        });
+
+        if (currentRunId !== runIdRef.current) {
+          console.log("Retrieval result ignored (stopped by user).");
+          return;
+        }
+
+        if (!response.ok) {
+          const body = await response.json();
+          const message =
+            body && typeof body.error === "string"
+              ? body.error
+              : `Retrieval failed: ${response.statusText}`;
+
+          throw new Error(message);
+        }
+
+        // The response is a flat array of objects
+        retrievalResults = await response.json();
+        if (currentRunId !== runIdRef.current) return;
       }
-
-      if (!response.ok) {
-        const body = await response.json();
-        const message =
-          body && typeof body.error === "string"
-            ? body.error
-            : `Retrieval failed: ${response.statusText}`;
-
-        throw new Error(message);
-      }
-
-      // The response is now a flat array of objects
-      const retrievalResults = await response.json();
-      if (currentRunId !== runIdRef.current) return;
 
       // --- Hide individual members of fused groups; keep only the fused column ---
       const fusedMemberIds = new Set(

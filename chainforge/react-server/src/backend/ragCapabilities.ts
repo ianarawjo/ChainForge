@@ -18,6 +18,7 @@
 
 import { RAG_AVAILABLE } from "./utils";
 import { canChunkInBrowser } from "./browserChunkers";
+import { canRetrieveInBrowser } from "./browserRetrievers";
 import { canExtractTextInBrowser } from "./extractText";
 
 /** Where a capability can execute. */
@@ -62,20 +63,22 @@ export function willRunInBrowser(runsIn: RunsIn): boolean {
  *
  * Without a backend only the nodes with client-side implementations are
  * offered, rather than showing every node and failing once someone runs it.
- * Retrieval and reranking are server-side for now; when browser retrievers
- * land, they move here.
+ * Reranking is the one still missing.
  */
 export function ragNodeAvailable(nodeType: RagNodeType): boolean {
   if (ragBackendAvailable()) return true;
 
   switch (nodeType) {
     case "upload":
-      // Uploading and reading text both work client-side (.txt / .md).
+      // Uploading works client-side, as does reading .txt/.md/.pdf/.docx.
       return true;
     case "chunk":
       return anyBrowserChunker();
     case "retrieval":
+      return anyBrowserRetriever();
     case "rerank":
+      // Reranking needs a cross-encoder model or the Cohere API; nothing to
+      // run client-side yet.
       return false;
     default:
       return false;
@@ -88,6 +91,15 @@ function anyBrowserChunker(): boolean {
     canChunkInBrowser("markdown_header") ||
     canChunkInBrowser("browser_character") ||
     canChunkInBrowser("browser_sentence")
+  );
+}
+
+/** Whether at least one retrieval method can run client-side. */
+function anyBrowserRetriever(): boolean {
+  return (
+    canRetrieveInBrowser("bm25") ||
+    canRetrieveInBrowser("boolean") ||
+    canRetrieveInBrowser("overlap")
   );
 }
 
@@ -105,11 +117,11 @@ export function anyRagFeatureAvailable(): boolean {
 export function ragLimitationNotice(): string | undefined {
   if (ragBackendAvailable()) return undefined;
   return (
-    "Running without a local ChainForge server: only browser-based document " +
-    "and chunking features are available. Run ChainForge locally for PDF/DOCX, " +
-    "embeddings, vector stores and reranking."
+    "Running without a local ChainForge server: documents, chunking and " +
+    "keyword retrieval run in the browser. Run ChainForge locally for " +
+    "embeddings, vector stores, TF-IDF and reranking."
   );
 }
 
 /** Re-exported so callers need only this module to reason about availability. */
-export { canChunkInBrowser, canExtractTextInBrowser };
+export { canChunkInBrowser, canRetrieveInBrowser, canExtractTextInBrowser };

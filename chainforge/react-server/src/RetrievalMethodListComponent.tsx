@@ -1,3 +1,4 @@
+import { canRunNow } from "./backend/ragCapabilities";
 import React, {
   useState,
   useRef,
@@ -810,19 +811,24 @@ export const RetrievalMethodListContainer = forwardRef<
 
   const addMenuItems: NestedMenuItemProps[] = useMemo(() => {
     // Built-in retrieval groups
-    const builtInGroups: NestedMenuItemProps[] = retrievalMethodGroups.map(
-      (group) => ({
+    // Methods that cannot run in the current setup are left out rather than
+    // offered and then failing: without a local server, embeddings, vector
+    // stores and TF-IDF are unavailable. A group left with nothing is dropped.
+    const builtInGroups: NestedMenuItemProps[] = retrievalMethodGroups
+      .map((group) => ({
         key: `group-${group.label}`,
         title: group.label,
-        items: group.items.map((m) => ({
-          key: `method-${m.baseMethod}-${m.embeddingProvider || "default"}`,
-          title: m.methodName,
-          tooltip: m.description,
-          icon: m.emoji ? <Text>{m.emoji}</Text> : undefined,
-          onClick: () => addMethod(m, m.embeddingProvider),
-        })),
-      }),
-    );
+        items: group.items
+          .filter((m) => canRunNow(m.runsIn ?? "backend"))
+          .map((m) => ({
+            key: `method-${m.baseMethod}-${m.embeddingProvider || "default"}`,
+            title: m.methodName,
+            tooltip: m.description,
+            icon: m.emoji ? <Text>{m.emoji}</Text> : undefined,
+            onClick: () => addMethod(m, m.embeddingProvider),
+          })),
+      }))
+      .filter((group) => (group.items?.length ?? 0) > 0);
 
     // Custom retrievers group (if any)
     const customGroup: NestedMenuItemProps[] =

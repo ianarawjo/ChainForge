@@ -99,14 +99,18 @@ describe("ragNodeAvailable", () => {
     expect(ragNodeAvailable("chunk")).toBe(true);
   });
 
-  test("retrieval and rerank need a backend for now", () => {
-    expect(ragNodeAvailable("retrieval")).toBe(false);
+  test("retrieval works without a backend, via the keyword methods", () => {
+    expect(ragNodeAvailable("retrieval")).toBe(true);
+  });
+
+  test("rerank still needs a backend", () => {
+    // Cross-encoders need a model; Cohere rerank needs its API.
     expect(ragNodeAvailable("rerank")).toBe(false);
   });
 
   test("nothing is available-by-accident before the probe resolves", () => {
     beforeProbeResolves();
-    expect(ragNodeAvailable("retrieval")).toBe(false);
+    expect(ragNodeAvailable("rerank")).toBe(false);
   });
 });
 
