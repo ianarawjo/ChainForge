@@ -689,7 +689,7 @@ def initCustomProvider():
 
     # Copy the passed Python script to a local file in the package directory
     try:
-        with open(os.path.join(provider_scripts_dir, f"{script_id}.py"), 'w') as f:
+        with open(os.path.join(provider_scripts_dir, f"{script_id}.py"), 'w', encoding="utf-8") as f:
             f.write(data['code'])
     except Exception as e:
         return jsonify({'error': f"Error saving script 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
@@ -716,7 +716,7 @@ def loadCachedCustomProviders():
                 ProviderRegistry.set_curr_script_id(os.path.splitext(file_name)[0])  
 
                 # Read the Python script
-                with open(file_path, 'r') as f:
+                with open(file_path, 'r', encoding="utf-8") as f:
                     code = f.read()
                 
                 # Try to execute it in the global context

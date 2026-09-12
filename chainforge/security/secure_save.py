@@ -29,7 +29,7 @@ def load_json_file(filepath_w_ext: str, secure: bool, password: Union[str, None]
 
   if not secure:
     if os.path.exists(filepath_w_ext):
-      with open(filepath_w_ext, "r") as f:
+      with open(filepath_w_ext, "r", encoding="utf-8") as f:
         return json.load(f), filepath_w_ext
     print(f"❌ File not found at path: {filepath_w_ext}. Failed to load.")
     return None, None  # File not found
@@ -71,7 +71,7 @@ def save_json_file(data: dict, filepath_w_ext: str, secure: bool, password: Unio
   if not secure:
     try: 
       # Save the config to a JSON file
-      with open(filepath_w_ext, "w") as f:
+      with open(filepath_w_ext, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
       return True  # Success
     except Exception as e:

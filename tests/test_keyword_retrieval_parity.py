@@ -24,7 +24,7 @@ FIXTURE = (
 
 
 def _fixture():
-    return json.loads(FIXTURE.read_text())
+    return json.loads(FIXTURE.read_text(encoding="utf-8"))
 
 
 PORTED_METHODS = ["bm25", "boolean", "overlap"]

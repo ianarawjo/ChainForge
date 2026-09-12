@@ -154,7 +154,7 @@ class TestMarkdownHeaderChunking:
   def _cases():
     import json, pathlib as _p
     fixture = _p.Path(__file__).parent / "fixtures" / "markdown_header_cases.json"
-    return json.loads(fixture.read_text())["cases"]
+    return json.loads(fixture.read_text(encoding="utf-8"))["cases"]
 
   def _chunk(self, text, **kwargs):
     from chainforge.rag.chunkers import ChunkingMethodRegistry
