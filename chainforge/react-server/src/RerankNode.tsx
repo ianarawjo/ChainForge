@@ -6,7 +6,7 @@ import React, {
   useContext,
 } from "react";
 import { Handle, Position } from "reactflow";
-import { Badge } from "@mantine/core";
+import { Badge, Tooltip } from "@mantine/core";
 import { Status } from "./StatusIndicatorComponent";
 import { AlertModalContext } from "./AlertModal";
 import BaseNode from "./BaseNode";
@@ -160,6 +160,58 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
       return;
     }
 
+    /**
+     * The query a retrieved document was found for.
+     *
+     * A RetrievalNode records this on every row it emits, so the rerank node
+     * can read it back instead of being told again on a second wire.
+     */
+    const queryOfDocument = (doc: TemplateVarInfo): string => {
+      // RetrievalNode stores the endpoint's `vars` as fill_history, and the
+      // query is one of them. `prompt` carries it too, and is the fallback
+      // for rows that came from somewhere else.
+      const recorded = doc.fill_history?.query;
+      if (recorded !== undefined)
+        return StringLookup.get(recorded as any) || "";
+      return doc.prompt ? StringLookup.get(doc.prompt as any) || "" : "";
+    };
+
+    /**
+     * What to rerank, and against what.
+     *
+     * Documents are grouped by the query that retrieved them, so each group
+     * is scored against its own query. Reranking the whole pooled set against
+     * every query in turn -- which is what a single shared query wire forces
+     * -- mixes documents retrieved for one question into the ranking for
+     * another.
+     *
+     * A query wired in explicitly overrides that, which is what makes the
+     * node still usable on raw chunks straight from a ChunkNode, where there
+     * is no retrieval step to have recorded anything.
+     */
+    const wiredQueries = queryArr
+      .map((q) => (q?.text ? StringLookup.get(q.text) || "" : ""))
+      .filter((q) => q.length > 0);
+
+    let rerankGroups: { query: string; documents: TemplateVarInfo[] }[];
+    if (wiredQueries.length > 0) {
+      rerankGroups = wiredQueries.map((query) => ({
+        query,
+        documents: validDocuments,
+      }));
+    } else {
+      const byQuery = new Map<string, TemplateVarInfo[]>();
+      for (const doc of validDocuments) {
+        const q = queryOfDocument(doc);
+        if (!byQuery.has(q)) byQuery.set(q, []);
+        (byQuery.get(q) as TemplateVarInfo[]).push(doc);
+      }
+      rerankGroups = [...byQuery.entries()].map(([query, documents]) => ({
+        query,
+        documents,
+      }));
+    }
+
     setStatus(Status.LOADING);
     setJSONResponses([]);
 
@@ -182,19 +234,13 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
       allReranksByMethodName[name] = [];
       allResponsesByMethodName[name] = [];
 
-      // If we have queries, rerank for each query
-      // Otherwise, rerank all documents together
-      const queriesToProcess = queryArr.length > 0 ? queryArr : [null];
-
-      for (const queryInfo of queriesToProcess) {
-        const query =
-          queryInfo && queryInfo.text
-            ? StringLookup.get(queryInfo.text) || ""
-            : "";
+      for (const group of rerankGroups) {
+        const query = group.query;
+        const groupDocuments = group.documents;
 
         for (const method of methods) {
           try {
-            const documents = validDocuments.map(
+            const documents = groupDocuments.map(
               (doc) => StringLookup.get(doc.text) || "",
             );
 
@@ -271,11 +317,24 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
                 score = 1.0 - index / rerankedResults.length;
               }
 
+              // The row this result came from, so what retrieval knew about
+              // it -- which document, which chunk -- survives the rerank
+              // instead of being replaced by rank and score alone.
+              const sourceIndex =
+                typeof result?.index === "number" ? result.index : undefined;
+              const source =
+                sourceIndex !== undefined
+                  ? groupDocuments[sourceIndex]
+                  : groupDocuments.find(
+                      (d) => StringLookup.get(d.text) === resultText,
+                    );
+
               // Create the reranked document object
               const rerankVar: TemplateVarInfo = {
                 text: resultText,
                 prompt: query || "N/A",
                 fill_history: {
+                  ...(source?.fill_history ?? {}),
                   rerankMethod: `${method.methodType} (${method.name})`,
                   query: query || "N/A",
                   originalRank: String(index),
@@ -287,6 +346,7 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
                 // number risks being resolved against the intern table instead
                 // of being carried through as data.
                 metavars: {
+                  ...(source?.metavars ?? {}),
                   query: query || "N/A",
                   rerankMethod: method.methodType,
                   originalRank: String(index),
@@ -378,12 +438,21 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
       />
 
       <div>
-        {/* Labeled Handle for 'chunks' */}
+        {/* What gets reranked: normally a RetrievalNode's results, though
+            raw chunks work too. The handle id stays "chunks" so flows saved
+            before the rename keep their connections; only the label, which
+            is the part anyone actually reads, changes. */}
         <div style={{ ...handleWrapperBaseStyle, top: `${HANDLE_Y_START}px` }}>
           <div style={badgeWrapperStyle}>
-            <Badge color="green" size="md" radius="sm" style={badgeStyle}>
-              chunks
-            </Badge>
+            <Tooltip
+              label="Retrieval results (or chunks) to reorder"
+              withArrow
+              position="left"
+            >
+              <Badge color="green" size="md" radius="sm" style={badgeStyle}>
+                documents
+              </Badge>
+            </Tooltip>
           </div>
           <Handle
             type="target"
@@ -401,9 +470,23 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
           }}
         >
           <div style={badgeWrapperStyle}>
-            <Badge color="indigo" size="md" radius="sm" style={badgeStyle}>
-              query
-            </Badge>
+            <Tooltip
+              label="Optional. Retrieval results already carry the query they were found for; connect one only to override that, or when reranking raw chunks."
+              withArrow
+              position="left"
+              multiline
+              width={260}
+            >
+              <Badge
+                color="indigo"
+                size="md"
+                radius="sm"
+                style={badgeStyle}
+                variant="outline"
+              >
+                query (optional)
+              </Badge>
+            </Tooltip>
           </div>
           <Handle
             type="target"
