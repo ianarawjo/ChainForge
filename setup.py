@@ -60,12 +60,25 @@ setup(
         # Extra dependencies for functionality like RAGForge,
         # which may not be needed by all users
         "rag": rag_deps,
-        # FAISS is an optional alternative vector store. It is not part of
-        # [rag] because faiss-cpu needs swig, which on macOS is only available
-        # via homebrew ("brew install swig"). chainforge.rag soft-fails without
-        # it; install this extra to enable the FAISS retrieval methods.
-        "faiss": ["faiss-cpu"],
-        "all": rag_deps + ["faiss-cpu"],
+        # NOTE: there is deliberately no "faiss" or "all" extra.
+        #
+        # FAISS is still supported -- chainforge.rag soft-imports it and the
+        # faiss_vector_store retrieval method works whenever it is present --
+        # but ChainForge will not install it for you. The pip wheels bundle
+        # their own OpenMP runtime, which collides with any other library that
+        # brings one: with PyTorch, the test suite segfaults partway through
+        # test_retrievers.py on an install that has both, while the identical
+        # suite passes without FAISS. It is not specific to PyTorch either;
+        # upstream has the same crash reported against unrelated libraries and
+        # has closed every report without a fix (facebookresearch/faiss#2463,
+        # #4273, #2765, the oldest open since 2022).
+        #
+        # Shipping a one-command way to build that combination is not worth a
+        # second vector store: LanceDB is already in [rag] and covers
+        # persistent storage. Anyone who needs FAISS can `pip install
+        # faiss-cpu` themselves, or register a custom retriever. When it is
+        # present, chainforge/_openmp.py keeps the two runtimes from killing
+        # the process.
     },
     entry_points={
         "console_scripts": [

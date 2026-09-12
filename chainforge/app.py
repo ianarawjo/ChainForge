@@ -62,6 +62,17 @@ def main():
     if args.dir:
         print(f"Using directory for storing flows: {args.dir}")
 
+    # Say so rather than letting embeddings quietly run slower for no visible
+    # reason. See chainforge/_openmp.py for why this is necessary.
+    from chainforge import _openmp
+
+    if _openmp.limited_openmp_for_faiss:
+        print(
+            "FAISS detected alongside PyTorch: limiting OpenMP to 1 thread to "
+            "avoid a crash in their bundled runtimes. Embedding will be slower. "
+            "Set OMP_NUM_THREADS yourself to override."
+        )
+
     print(f"Serving Flask server on {host} on port {port}...")
     run_server(host=host, port=port, flows_dir=args.dir, secure=args.secure)
 

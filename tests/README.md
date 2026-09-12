@@ -39,7 +39,7 @@ when it is absent, so a plain `pytest` stays green and free.
 ## FAISS tests run separately
 
 ```bash
-pip install -e '.[faiss]'
+pip install faiss-cpu
 pytest -m "needs_faiss and not slow"
 ```
 

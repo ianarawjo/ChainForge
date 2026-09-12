@@ -56,7 +56,7 @@ def needs_faiss(obj):
     obj = pytest.mark.needs_faiss(obj)
     return pytest.mark.skipif(
         not faiss_installed(),
-        reason="faiss not installed (pip install 'chainforge[faiss]')",
+        reason="faiss not installed (pip install faiss-cpu)",
     )(obj)
 
 

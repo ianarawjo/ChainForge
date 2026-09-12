@@ -75,13 +75,19 @@ jobs:
         # so this job stays green (and free) without secrets.
       run: pytest -v -m "not needs_faiss"
 
-    # A second, isolated invocation for the optional FAISS backend. Installing
-    # faiss-cpu only now means it cannot destabilise the run above, and
+    # A second, isolated invocation for the optional FAISS backend. ChainForge
+    # no longer offers a faiss extra -- the pip wheels collide with any other
+    # OpenMP library, so we do not install it for anyone -- but the
+    # faiss_vector_store retrieval method still works when a user installs it
+    # themselves, and this keeps that path from rotting. faiss-cpu is named
+    # directly here for the same reason.
+    #
+    # Installing it only now means it cannot destabilise the run above, and
     # excluding `slow` keeps this process from loading a real ML model, which
     # is the combination that crashes.
     - name: Install faiss and run the FAISS backend tests
       env:
         HF_HUB_DISABLE_TELEMETRY: "1"
       run: |
-        pip install -e .[faiss]
+        pip install faiss-cpu
         pytest -v -m "needs_faiss and not slow"

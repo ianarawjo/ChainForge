@@ -32,7 +32,7 @@ ChainForge is built on [ReactFlow](https://reactflow.dev) and [Flask](https://fl
 
 You can install ChainForge locally, or try it out on the web at **https://chainforge.ai/play/**. The web version of ChainForge has a limited feature set. In a locally installed version you can load API keys automatically from environment variables, write Python code to evaluate LLM responses, or query locally-run models hosted via Ollama.
 
-To install Chainforge on your machine, make sure you have Python 3.8 or higher, then run
+To install Chainforge on your machine, make sure you have Python 3.10 or higher, then run
 
 ```bash
 pip install chainforge
@@ -45,6 +45,38 @@ chainforge serve
 ```
 
 Open [localhost:8000](http://localhost:8000/) in a Google Chrome, Firefox, Microsoft Edge, or Brave browser.
+
+## Retrieval-augmented generation (RAG)
+
+ChainForge's RAG nodes -- Upload, Chunk, Retrieval and Rerank -- work in the
+browser with no extra installation: documents, chunking, keyword retrieval,
+semantic search and reranking all run client-side on small models fetched the
+first time you use them.
+
+For the server-side RAG stack as well -- hosted embedding providers, persistent
+LanceDB vector stores, TF-IDF and the larger rerankers -- install the extra:
+
+```bash
+pip install chainforge[rag]
+```
+
+### A note on FAISS
+
+The `faiss_vector_store` retrieval method works whenever `faiss` is importable,
+but ChainForge deliberately does not install it for you. The FAISS pip wheels
+bundle their own OpenMP runtime, which collides with any other library that
+brings one: installed alongside PyTorch, the combination crashes the process
+outright, and upstream has closed every report of this without a fix. If you
+need FAISS, install it yourself:
+
+```bash
+pip install faiss-cpu
+```
+
+ChainForge will then limit OpenMP to a single thread at startup to keep the two
+runtimes from killing each other, and say so when it does. That makes embedding
+slower, which is why it only happens when FAISS is actually present. Set
+`OMP_NUM_THREADS` yourself to override it.
 
 You can set your API keys by clicking the Settings icon in the top-right corner. If you prefer to not worry about this everytime you open ChainForge, we **highly recommend** that save your OpenAI, Anthropic, Google, etc API keys and/or Amazon AWS credentials to your local environment. For more details, see the [How to Install](https://chainforge.ai/docs/getting_started/).
 
