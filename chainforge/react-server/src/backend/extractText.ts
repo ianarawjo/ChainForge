@@ -18,14 +18,17 @@
  */
 const PLAIN_TEXT_EXTENSIONS = new Set([".txt", ".md"]);
 
-/** Formats the backend can read but the browser currently cannot. */
-const BACKEND_ONLY_EXTENSIONS = new Set([
-  ".pdf",
-  ".docx",
-  ".xlsx",
-  ".xls",
-  ".pptx",
-]);
+/**
+ * Formats needing a parser we do ship to the browser, loaded on demand.
+ *
+ * Unlike the plain-text formats these do NOT round-trip identically against
+ * the backend: /mediaToText uses markitdown (PyMuPDF), a different engine. The
+ * backend is preferred whenever one exists; this is the fallback.
+ */
+const BROWSER_PARSED_EXTENSIONS = new Set([".pdf"]);
+
+/** Formats the backend can read but the browser still cannot. */
+const BACKEND_ONLY_EXTENSIONS = new Set([".docx", ".xlsx", ".xls", ".pptx"]);
 
 /** The prefix MediaLookup gives uids it mints in the browser. */
 const BROWSER_UID_MARKER = "__cache__";
@@ -73,12 +76,13 @@ export function fileExtension(name: string): string {
 /** Whether this file can be turned into text without a backend. */
 export function canExtractTextInBrowser(nameOrUID: string): boolean {
   const name = fileNameFromUID(nameOrUID) ?? nameOrUID;
-  return PLAIN_TEXT_EXTENSIONS.has(fileExtension(name));
+  const ext = fileExtension(name);
+  return PLAIN_TEXT_EXTENSIONS.has(ext) || BROWSER_PARSED_EXTENSIONS.has(ext);
 }
 
 /** Extensions readable in the browser, for populating file pickers. */
 export function browserTextExtensions(): string[] {
-  return Array.from(PLAIN_TEXT_EXTENSIONS).sort();
+  return [...PLAIN_TEXT_EXTENSIONS, ...BROWSER_PARSED_EXTENSIONS].sort();
 }
 
 /**
@@ -106,9 +110,19 @@ export async function extractTextInBrowser(
   // errors="ignore" decode.
   if (PLAIN_TEXT_EXTENSIONS.has(ext)) return await readBlobAsText(blob);
 
+  // Formats needing a parser. pdf.js is pulled in only at this point.
+  if (BROWSER_PARSED_EXTENSIONS.has(ext)) {
+    const { extractPdfText } = await import("./pdfExtract");
+    return await extractPdfText(blob);
+  }
+
   // No usable extension: fall back to the MIME type the browser reported.
   if (ext === "" && blob.type.startsWith("text/"))
     return await readBlobAsText(blob);
+  if (ext === "" && blob.type === "application/pdf") {
+    const { extractPdfText } = await import("./pdfExtract");
+    return await extractPdfText(blob);
+  }
 
   const readable = browserTextExtensions().join(", ");
   if (BACKEND_ONLY_EXTENSIONS.has(ext))

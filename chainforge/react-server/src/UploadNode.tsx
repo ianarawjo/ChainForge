@@ -63,9 +63,9 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
   const runningLocally = APP_IS_RUNNING_LOCALLY();
   const showStorageUsage = !runningLocally;
 
-  // PDF and DOCX are converted by the backend (markitdown). Without one, only
-  // already-textual formats can be read, so don't offer the rest -- picking a
-  // PDF would just fail after upload.
+  // With a backend, markitdown converts every format below. Without one we can
+  // read text files and (via pdf.js) PDFs, but not DOCX/XLSX/PPTX -- so don't
+  // offer those, since picking one would only fail after the upload.
   const acceptedExtensions = useMemo(
     () =>
       runningLocally
@@ -229,7 +229,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
         </Text>
         {!runningLocally && (
           <Text size="xs" color="dimmed" mt={2} ta="center">
-            Run ChainForge locally to also use .pdf and .docx
+            Run ChainForge locally to also use .docx, .xlsx and .pptx
           </Text>
         )}
         <input

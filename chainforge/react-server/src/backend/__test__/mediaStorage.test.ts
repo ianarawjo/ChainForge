@@ -7,6 +7,10 @@ import { beforeEach, describe, expect, test, jest } from "@jest/globals";
 // Only the handful of helpers cache.ts actually imports are provided, so the
 // real utils module -- and its ESM-only provider SDKs and load-time RAG
 // availability probe -- stay out of the test.
+jest.mock("../pdfExtract", () => ({
+  extractPdfText: () => Promise.resolve("text lifted out of the PDF"),
+}));
+
 jest.mock("../utils", () => {
   const toDataURL = (blob: Blob) =>
     new Promise<string>((resolve, reject) => {
@@ -254,11 +258,18 @@ describe("browser-mode text extraction", () => {
     expect(await MediaLookup.getAsText(uid)).toBe(md);
   });
 
-  test("a .pdf upload reports that it needs a local server", async () => {
+  test("a .pdf upload is read with the bundled PDF parser", async () => {
     const uid = await MediaLookup.upload(
       new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], "paper.pdf", {
         type: "application/pdf",
       }),
+    );
+    expect(await MediaLookup.getAsText(uid)).toBe("text lifted out of the PDF");
+  });
+
+  test("a .docx upload still reports that it needs a local server", async () => {
+    const uid = await MediaLookup.upload(
+      new File([new Uint8Array([0x50, 0x4b])], "memo.docx", {}),
     );
     await expect(MediaLookup.getAsText(uid)).rejects.toThrow(
       /requires the local ChainForge server/,

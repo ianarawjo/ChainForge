@@ -1,4 +1,14 @@
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, test, jest } from "@jest/globals";
+
+// pdf.js is dynamically imported by extractTextInBrowser. Stub it: loading the
+// real thing in Jest fails on import.meta, and these tests are about dispatch,
+// not about pdf.js.
+jest.mock("../pdfExtract", () => ({
+  extractPdfText: (blob: Blob) =>
+    Promise.resolve(`[pdf text from ${blob.size} bytes]`),
+}));
+
+// eslint-disable-next-line import/first
 import {
   browserTextExtensions,
   canExtractTextInBrowser,
@@ -68,15 +78,21 @@ describe("canExtractTextInBrowser", () => {
     expect(canExtractTextInBrowser("notes.md")).toBe(true);
   });
 
-  test("rejects formats that need a parser", () => {
-    expect(canExtractTextInBrowser("paper.pdf")).toBe(false);
+  test("accepts PDFs, which ship a browser parser", () => {
+    expect(canExtractTextInBrowser("paper.pdf")).toBe(true);
+    expect(canExtractTextInBrowser("PAPER.PDF")).toBe(true);
+  });
+
+  test("rejects formats with no browser parser", () => {
     expect(canExtractTextInBrowser("memo.docx")).toBe(false);
     expect(canExtractTextInBrowser("sheet.xlsx")).toBe(false);
+    expect(canExtractTextInBrowser("deck.pptx")).toBe(false);
   });
 
   test("accepts a browser uid for a readable file", () => {
     expect(canExtractTextInBrowser("cache__x__cache__notes.md")).toBe(true);
-    expect(canExtractTextInBrowser("cache__x__cache__paper.pdf")).toBe(false);
+    expect(canExtractTextInBrowser("cache__x__cache__paper.pdf")).toBe(true);
+    expect(canExtractTextInBrowser("cache__x__cache__memo.docx")).toBe(false);
   });
 
   test("the advertised extensions are all actually accepted", () => {
@@ -148,7 +164,7 @@ describe("extractTextInBrowser", () => {
   });
 
   describe("formats needing the backend", () => {
-    test.each([".pdf", ".docx", ".xlsx", ".xls", ".pptx"])(
+    test.each([".docx", ".xlsx", ".xls", ".pptx"])(
       "%s explains that a local server is required",
       async (ext) => {
         const blob = new Blob([new Uint8Array([1, 2, 3])]);
@@ -160,10 +176,24 @@ describe("extractTextInBrowser", () => {
 
     test("the message names the readable alternatives", async () => {
       const blob = new Blob([new Uint8Array([1, 2, 3])]);
-      await expect(extractTextInBrowser(blob, "doc.pdf")).rejects.toThrow(
-        /\.md, \.txt/,
+      await expect(extractTextInBrowser(blob, "doc.docx")).rejects.toThrow(
+        /\.md, \.pdf, \.txt/,
       );
     });
+  });
+
+  test("a .pdf is handed to the PDF parser", async () => {
+    const blob = new Blob([new Uint8Array(1024)], { type: "application/pdf" });
+    expect(await extractTextInBrowser(blob, "paper.pdf")).toBe(
+      "[pdf text from 1024 bytes]",
+    );
+  });
+
+  test("a PDF is recognised by MIME type when it has no extension", async () => {
+    const blob = new Blob([new Uint8Array(8)], { type: "application/pdf" });
+    expect(await extractTextInBrowser(blob, "noextension")).toBe(
+      "[pdf text from 8 bytes]",
+    );
   });
 
   test("an unknown format is rejected with the supported list", async () => {
