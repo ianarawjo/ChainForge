@@ -93,7 +93,12 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
   const pollIntervalRef = useRef<number | null>(null);
 
   // Fusion            // wire to the Fusion button
-  const [linkedGroups, setLinkedGroups] = useState<LinkedMethodGroup[]>([]);
+  // Seeded from the saved flow: the method list was already being given
+  // data.linked_groups, so a reloaded flow *looked* fused while this state
+  // stayed empty and the run silently retrieved each method separately.
+  const [linkedGroups, setLinkedGroups] = useState<LinkedMethodGroup[]>(
+    data.linked_groups ?? [],
+  );
 
   // Refs
   const inspectorModalRef = useRef<LLMResponseInspectorModalRef>(null);
