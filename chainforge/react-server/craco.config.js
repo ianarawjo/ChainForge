@@ -14,7 +14,9 @@ module.exports = {
       // Our tests cover ChainForge's own logic, so stub them out.
       moduleNameMapper: {
         "^@google/genai$":
-          "<rootDir>/src/backend/__test__/__mocks__/esmStub.ts",
+          "<rootDir>/src/backend/__test__/__mocks__/esmStub.js",
+        "^mdast-util-from-markdown$":
+          "<rootDir>/src/backend/__test__/__mocks__/esmStub.js",
       },
     },
   },

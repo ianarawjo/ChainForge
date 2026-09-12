@@ -10,7 +10,12 @@ import {
 import { v4 as uuid } from "uuid";
 import Bottleneck from "bottleneck";
 
-const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
+// NOTE: call APP_IS_RUNNING_LOCALLY() where it is needed rather than caching it
+// at module scope. cache.ts and utils.ts import each other, so evaluating it
+// during module initialization throws
+// "ReferenceError: Cannot access '_APP_IS_RUNNING_LOCALLY' before
+// initialization" whenever the cycle is entered through utils.ts. The result is
+// already memoized inside APP_IS_RUNNING_LOCALLY itself.
 
 /**
  * Singleton JSON cache that functions like a local filesystem in a Python backend,
@@ -268,14 +273,19 @@ export class StringLookup {
     const entries = Object.entries(d);
     for (const [key, value] of entries) {
       const ignore = ignoreKey.includes(key);
+      // A number here is *usually* an index into the intern table, but it can
+      // also be genuine numeric data (a score, a rank, a year) -- the two share
+      // one value space. When the lookup misses, keep the number rather than
+      // replacing it with undefined: doing so silently deleted the value, since
+      // callers JSON round-trip these dicts and JSON drops undefined.
       if (!ignore && typeof value === "number")
-        newDict[key] = StringLookup.get(value);
+        newDict[key] = StringLookup.get(value) ?? value;
       else if (
         !ignore &&
         Array.isArray(value) &&
         value.every((v) => typeof v === "number")
       )
-        newDict[key] = value.map((v) => StringLookup.get(v));
+        newDict[key] = value.map((v) => StringLookup.get(v) ?? v);
       else if (
         !ignore &&
         depth > 0 &&
@@ -579,7 +589,7 @@ export class MediaLookup {
    * @returns The UID assigned by the backend
    */
   public static async upload(file: File | Blob): Promise<string> {
-    if (IS_RUNNING_LOCALLY) {
+    if (APP_IS_RUNNING_LOCALLY()) {
       // Use the limiter to throttle uploads
       return MediaLookup.uploadLimiter.schedule(async () => {
         const formData = new FormData();
@@ -684,7 +694,7 @@ export class MediaLookup {
       return tempCachedBlob;
     }
 
-    if (IS_RUNNING_LOCALLY && !uid.startsWith("cache__")) {
+    if (APP_IS_RUNNING_LOCALLY() && !uid.startsWith("cache__")) {
       // Fetch the file from the backend
       // NOTE: We use the limiter to throttle lookups, so we don't overload the server.
       return MediaLookup.lookupLimiter.schedule(async () => {
@@ -741,7 +751,7 @@ export class MediaLookup {
       );
     }
 
-    if (IS_RUNNING_LOCALLY) {
+    if (APP_IS_RUNNING_LOCALLY()) {
       // Fetch the file from the backend
       const res = await fetch(`${FLASK_BASE_URL}mediaToText/${uid}`);
       if (!res.ok) {
