@@ -70,6 +70,20 @@ export function browserTextExtensions(): string[] {
 }
 
 /**
+ * Everything a local server can read, via markitdown.
+ *
+ * markitdown is a core dependency, not part of the `rag` extra, so these
+ * work on any local install -- including one without RAG.
+ */
+export function backendTextExtensions(): string[] {
+  return [
+    ...PLAIN_TEXT_EXTENSIONS,
+    ...BROWSER_PARSED_EXTENSIONS,
+    ...BACKEND_ONLY_EXTENSIONS,
+  ].sort();
+}
+
+/**
  * Reads text out of an uploaded file, client-side.
  *
  * @param blob The file contents.

@@ -226,3 +226,32 @@ describe("extractTextInBrowser", () => {
     );
   });
 });
+
+describe("which extensions each mode offers", () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const mod = require("../extractText");
+
+  test("the browser offers only what it can parse itself", () => {
+    expect(mod.browserTextExtensions().sort()).toEqual([
+      ".docx",
+      ".md",
+      ".pdf",
+      ".txt",
+    ]);
+  });
+
+  test("a local server also offers the formats markitdown handles", () => {
+    // markitdown is a core dependency, not part of the `rag` extra, so these
+    // work even on an install without RAG. The Upload node used to promise
+    // these in its hint text while refusing to accept them.
+    expect(mod.backendTextExtensions()).toEqual(
+      expect.arrayContaining([".xlsx", ".xls", ".pptx"]),
+    );
+  });
+
+  test("the server list is a superset of the browser list", () => {
+    const backend = new Set(mod.backendTextExtensions());
+    for (const ext of mod.browserTextExtensions())
+      expect(backend.has(ext)).toBe(true);
+  });
+});

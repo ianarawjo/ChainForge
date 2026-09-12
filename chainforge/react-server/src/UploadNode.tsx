@@ -25,7 +25,10 @@ import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import { MediaLookup } from "./backend/cache";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
-import { browserTextExtensions } from "./backend/extractText";
+import {
+  backendTextExtensions,
+  browserTextExtensions,
+} from "./backend/extractText";
 import { TemplateVarInfo } from "./backend/typing";
 
 /** Renders a byte count as MB, for the browser storage budget readout. */
@@ -63,15 +66,13 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
   const runningLocally = APP_IS_RUNNING_LOCALLY();
   const showStorageUsage = !runningLocally;
 
-  // With a backend, markitdown converts every format below. Without one we can
-  // read text files, PDFs (pdf.js) and Word files (mammoth), but not
-  // spreadsheets or slides -- so don't offer those, since picking one would
-  // only fail after the upload.
+  // With a local server, markitdown converts spreadsheets and slides too, and
+  // it is a core dependency rather than part of the `rag` extra, so this holds
+  // even on an install without RAG. Without a server we can read text files,
+  // PDFs (pdf.js) and Word files (mammoth), but not spreadsheets or slides --
+  // so don't offer those, since picking one would only fail after the upload.
   const acceptedExtensions = useMemo(
-    () =>
-      runningLocally
-        ? [".pdf", ".docx", ".txt", ".md"]
-        : browserTextExtensions(),
+    () => (runningLocally ? backendTextExtensions() : browserTextExtensions()),
     [runningLocally],
   );
   const acceptAttr = useMemo(
