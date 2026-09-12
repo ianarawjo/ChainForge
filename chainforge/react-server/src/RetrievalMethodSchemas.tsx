@@ -3,6 +3,7 @@ import { ModelSettingsDict } from "./backend/typing";
 import {
   BROWSER_EMBEDDING_MODELS,
   DEFAULT_BROWSER_EMBEDDING_MODEL,
+  modelDownloadLabel,
 } from "./backend/browserEmbeddings";
 
 // Available embedding models
@@ -630,7 +631,7 @@ export const BrowserEmbeddingSchema: ModelSettingsDict = {
       "ui:options": {
         enumOptions: Object.values(BROWSER_EMBEDDING_MODELS).map((m) => ({
           value: m.id,
-          label: `${m.label} (~${m.sizeMB}MB) -- ${m.note}`,
+          label: `${m.label} (${modelDownloadLabel(m)}) -- ${m.note}`,
         })),
       },
       "ui:help": "The first run downloads the model; later runs reuse it.",

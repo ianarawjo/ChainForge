@@ -80,9 +80,25 @@ describe("the model registry", () => {
       // download on demand, which is the whole premise here.
       expect(model.sizeMB).toBeGreaterThan(0);
       expect(model.sizeMB).toBeLessThanOrEqual(100);
+      expect(model.webgpuSizeMB).toBeGreaterThan(0);
+      expect(model.webgpuSizeMB).toBeLessThanOrEqual(100);
       expect(["cls", "mean"]).toContain(model.pooling);
       expect(typeof model.note).toBe("string");
     }
+  });
+
+  test("no model asks for q8 on WebGPU, which measured 6x slower than wasm", () => {
+    for (const model of Object.values<any>(models))
+      expect(["q4f16", "fp16"]).toContain(model.webgpuDtype);
+  });
+
+  test("the download label spans both paths only when they differ", () => {
+    expect(mod.modelDownloadLabel({ sizeMB: 34, webgpuSizeMB: 36 })).toBe(
+      "~36MB",
+    );
+    expect(mod.modelDownloadLabel({ sizeMB: 23, webgpuSizeMB: 45 })).toBe(
+      "~23-45MB",
+    );
   });
 
   test("an unknown or missing id falls back to the default", () => {
@@ -148,10 +164,13 @@ describe("loading a model", () => {
     expect(mockPipelineCalls).toHaveLength(2);
   });
 
-  test("weights are requested quantized", async () => {
+  test("without WebGPU, weights load as q8 on wasm", async () => {
     const mod = freshModule();
     await mod.loadEmbedder("Xenova/bge-small-en-v1.5");
-    expect(mockPipelineCalls[0].opts.dtype).toBe("q8");
+    expect(mockPipelineCalls[0].opts).toMatchObject({
+      device: "wasm",
+      dtype: "q8",
+    });
   });
 
   test("download progress is reported, and non-progress events ignored", async () => {
@@ -255,5 +274,96 @@ describe("cosine similarity", () => {
         new Float32Array([1, 0, 0, 99]),
       ),
     ).toBeCloseTo(1);
+  });
+});
+
+describe("choosing an execution backend", () => {
+  /** Installs a fake navigator.gpu, or removes it. */
+  function setGPU(adapter: unknown | null) {
+    if (adapter === undefined) delete (navigator as any).gpu;
+    else
+      Object.defineProperty(navigator, "gpu", {
+        value: { requestAdapter: async () => adapter },
+        configurable: true,
+      });
+  }
+
+  test("jsdom has no WebGPU, so the probe says no", async () => {
+    const mod = freshModule();
+    setGPU(undefined);
+    expect(await mod.webgpuAvailable()).toBe(false);
+  });
+
+  test("an adapter means WebGPU is usable", async () => {
+    const mod = freshModule();
+    setGPU({ name: "fake" });
+    expect(await mod.webgpuAvailable()).toBe(true);
+  });
+
+  test("the API present but no adapter still means no", async () => {
+    const mod = freshModule();
+    setGPU(null);
+    expect(await mod.webgpuAvailable()).toBe(false);
+  });
+
+  test("a throwing requestAdapter does not break the run", async () => {
+    const mod = freshModule();
+    Object.defineProperty(navigator, "gpu", {
+      value: {
+        requestAdapter: async () => {
+          throw new Error("no gpu process");
+        },
+      },
+      configurable: true,
+    });
+    expect(await mod.webgpuAvailable()).toBe(false);
+  });
+
+  test("with WebGPU, the model's float format is used instead of q8", async () => {
+    const mod = freshModule();
+    setGPU({ name: "fake" });
+    await mod.loadEmbedder("Xenova/bge-small-en-v1.5");
+    expect(mockPipelineCalls[0].opts).toMatchObject({
+      device: "webgpu",
+      dtype: "q4f16",
+    });
+  });
+
+  test("a model without a q4f16 build falls back to fp16, not q8", async () => {
+    const mod = freshModule();
+    setGPU({ name: "fake" });
+    await mod.loadEmbedder("Snowflake/snowflake-arctic-embed-xs");
+    expect(mockPipelineCalls[0].opts).toMatchObject({
+      device: "webgpu",
+      dtype: "fp16",
+    });
+  });
+
+  test("the plan reports the size that will actually be downloaded", async () => {
+    const mod = freshModule();
+    setGPU({ name: "fake" });
+    const model = mod.browserEmbeddingModel("Xenova/bge-small-en-v1.5");
+    expect(await mod.executionPlan(model)).toEqual({
+      device: "webgpu",
+      dtype: "q4f16",
+      sizeMB: model.webgpuSizeMB,
+    });
+  });
+
+  test("the probe runs once, not per model load", async () => {
+    const mod = freshModule();
+    let probes = 0;
+    Object.defineProperty(navigator, "gpu", {
+      value: {
+        requestAdapter: async () => {
+          probes++;
+          return { name: "fake" };
+        },
+      },
+      configurable: true,
+    });
+    await mod.loadEmbedder("Xenova/bge-small-en-v1.5");
+    await mod.loadEmbedder("Xenova/all-MiniLM-L6-v2");
+    expect(probes).toBe(1);
   });
 });
