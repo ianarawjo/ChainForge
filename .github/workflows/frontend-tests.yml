@@ -1,0 +1,58 @@
+name: Frontend Tests
+
+# The React app had no CI of its own: the Docker workflow builds it, which
+# catches a compile error but never runs a single test. Everything the browser
+# does -- chunking, retrieval, reranking, document extraction, browser storage
+# -- is tested only here.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Type-check, lint and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: chainforge/react-server
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Node 20 matches the frontend-builder stage in docker/Dockerfile, so a
+      # green run here means the image build sees the same toolchain.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: chainforge/react-server/package-lock.json
+
+      # npm ci, not npm install: it installs exactly the lockfile and fails if
+      # package.json has drifted out of sync with it.
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      # `npm test` is prettier -w && eslint && craco test, and the -w rewrites
+      # files. CI checks rather than fixes, so the steps are run separately.
+      - name: Check formatting
+        run: npx prettier -c .
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      # The suite is entirely offline -- the embedding and reranking models are
+      # mocked, so nothing is downloaded from HuggingFace -- and runs in a few
+      # seconds.
+      - name: Run tests
+        run: npx craco test
+        env:
+          CI: true
