@@ -9,6 +9,14 @@ module.exports = {
   },
   webpack: {
     configure: {
+      // WebLLM currently publishes sourcemap references to TS sources that are
+      // not included in the npm package. Ignore only those warnings.
+      ignoreWarnings: [
+        {
+          module: /@mlc-ai\/web-llm/,
+          message: /Failed to parse source map/,
+        },
+      ],
       resolve: {
         fallback: {
           process: require.resolve("process/browser"),

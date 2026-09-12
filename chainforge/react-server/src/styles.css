@@ -430,7 +430,7 @@ html[data-mantine-color-scheme="dark"] .eval-inspect-response-footer button {
   } */
 
 .ace-editor-container {
-  resize: vertical;
+  position: relative;
 }
 
 .vis-node {
@@ -442,7 +442,7 @@ html[data-mantine-color-scheme="dark"] .eval-inspect-response-footer button {
 .plotly-vis {
   width: 100%;
   height: 100%;
-  resize: both;
+  position: relative;
   overflow: auto;
 }
 .plot-legend {
@@ -529,7 +529,7 @@ html[data-mantine-color-scheme="dark"] .settings-var-inline {
   height: 200px;
   max-width: 1150px;
   max-height: 750px;
-  resize: both;
+  position: relative;
 }
 .inspect-modal-response-container .response-var-header {
   padding: 10px;
@@ -880,7 +880,7 @@ html[data-mantine-color-scheme="dark"] .comment-node textarea {
   min-width: 280px;
 }
 .tabular-data-container {
-  resize: both;
+  position: relative;
   overflow: auto;
   /* max-width: 800px; */
   width: 400px;
@@ -1076,6 +1076,10 @@ html[data-mantine-color-scheme="dark"] .add-text-field-btn button:active {
   height: 20px;
 }
 .add-llm-model-btn button {
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: none;
+  background-color: transparent;
   border-style: solid;
   border-color: #777;
   border-width: 1pt;

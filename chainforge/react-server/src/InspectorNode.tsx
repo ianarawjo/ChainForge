@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { Handle, Position } from "reactflow";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
@@ -7,6 +7,7 @@ import LLMResponseInspector, { exportToExcel } from "./LLMResponseInspector";
 import { grabResponses } from "./backend/backend";
 import { LLMResponse } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
+import ResizeHandle from "./ResizeHandle";
 
 export interface InspectorNodeProps {
   data: {
@@ -28,6 +29,7 @@ const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const showAlert = useContext(AlertModalContext);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleOnConnect = () => {
     // For some reason, 'on connect' is called twice upon connection.
@@ -89,6 +91,7 @@ const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
         ]}
       />
       <div
+        ref={containerRef}
         className="inspect-response-container nowheel nodrag"
         style={{ marginTop: "-8pt" }}
       >
@@ -97,6 +100,7 @@ const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
           isOpen={true}
           wideFormat={false}
         />
+        <ResizeHandle targetRef={containerRef} minWidth={150} minHeight={270} />
       </div>
       <Handle
         type="target"

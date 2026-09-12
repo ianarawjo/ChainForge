@@ -101,6 +101,26 @@ const refreshableOutputNodeTypes = new Set([
 
 export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
   {
+    group: "In-browser LLMs",
+    emoji: "🌐",
+    items: [
+      {
+        name: "Qwen2.5 0.5B",
+        emoji: "🌐",
+        model: NativeLLM.WebLLM_Qwen2_5_0_5B,
+        base_model: "webllm",
+        temp: 0.7,
+      },
+      {
+        name: "SmolLM2 1.7B",
+        emoji: "🌐",
+        model: NativeLLM.WebLLM_SmolLM2_1_7B,
+        base_model: "webllm",
+        temp: 0.7,
+      },
+    ],
+  },
+  {
     group: "OpenAI",
     emoji: "🤖",
     items: [
@@ -275,6 +295,26 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         model: "deepseek-reasoner",
         base_model: "deepseek",
         temp: 1.0,
+      },
+    ],
+  },
+  {
+    group: "MiniMax",
+    emoji: "🔮",
+    items: [
+      {
+        name: "MiniMax M2.7",
+        emoji: "🔮",
+        model: "MiniMax-M2.7",
+        base_model: "minimax",
+        temp: 0.7,
+      },
+      {
+        name: "MiniMax M2.7 Highspeed",
+        emoji: "⚡",
+        model: "MiniMax-M2.7-highspeed",
+        base_model: "minimax",
+        temp: 0.7,
       },
     ],
   },

@@ -207,6 +207,55 @@ let AWS_SESSION_TOKEN = get_environ("AWS_SESSION_TOKEN");
 let AWS_REGION = get_environ("AWS_REGION");
 let TOGETHER_API_KEY = get_environ("TOGETHER_API_KEY");
 let DEEPSEEK_API_KEY = get_environ("DEEPSEEK_API_KEY");
+let MINIMAX_API_KEY = get_environ("MINIMAX_API_KEY");
+
+let _WEBLLM_MODULE_PROMISE: Promise<any> | undefined;
+let _WEBLLM_ENGINE: any;
+let _WEBLLM_MODEL: string | undefined;
+let _WEBLLM_LOAD_PROMISE: Promise<any> | undefined;
+
+async function get_webllm_module(): Promise<any> {
+  if (!_WEBLLM_MODULE_PROMISE) {
+    _WEBLLM_MODULE_PROMISE = import("@mlc-ai/web-llm");
+  }
+  return _WEBLLM_MODULE_PROMISE;
+}
+
+async function get_webllm_engine(model: string): Promise<any> {
+  if (_WEBLLM_LOAD_PROMISE) await _WEBLLM_LOAD_PROMISE;
+
+  if (_WEBLLM_ENGINE && _WEBLLM_MODEL === model) return _WEBLLM_ENGINE;
+
+  if (_WEBLLM_ENGINE && typeof _WEBLLM_ENGINE.reload === "function") {
+    _WEBLLM_LOAD_PROMISE = _WEBLLM_ENGINE.reload(model);
+    try {
+      await _WEBLLM_LOAD_PROMISE;
+      _WEBLLM_MODEL = model;
+      return _WEBLLM_ENGINE;
+    } finally {
+      _WEBLLM_LOAD_PROMISE = undefined;
+    }
+  }
+
+  const webllm = await get_webllm_module();
+  _WEBLLM_LOAD_PROMISE = webllm.CreateMLCEngine(model, {
+    initProgressCallback: (report: Dict) => {
+      if (report?.text) console.log(`[WebLLM] ${report.text}`);
+    },
+  });
+
+  try {
+    _WEBLLM_ENGINE = await _WEBLLM_LOAD_PROMISE;
+    _WEBLLM_MODEL = model;
+    return _WEBLLM_ENGINE;
+  } catch (e) {
+    _WEBLLM_ENGINE = undefined;
+    _WEBLLM_MODEL = undefined;
+    throw e;
+  } finally {
+    _WEBLLM_LOAD_PROMISE = undefined;
+  }
+}
 
 /**
  * Sets the local API keys for the revelant LLM API(s).
@@ -242,6 +291,7 @@ export function set_api_keys(api_keys: Dict<string>): void {
   if (key_is_present("AWS_Region")) AWS_REGION = api_keys.AWS_Region;
   if (key_is_present("Together")) TOGETHER_API_KEY = api_keys.Together;
   if (key_is_present("DeepSeek")) DEEPSEEK_API_KEY = api_keys.DeepSeek;
+  if (key_is_present("MiniMax")) MINIMAX_API_KEY = api_keys.MiniMax;
 }
 
 export function get_azure_openai_api_keys(): [
@@ -424,13 +474,14 @@ export async function call_chatgpt(
   BASE_URL?: string,
   API_KEY?: string,
 ): Promise<[Dict, Dict]> {
-  if (!OPENAI_API_KEY)
+  const effectiveKey = API_KEY ?? OPENAI_API_KEY;
+  if (!effectiveKey)
     throw new Error(
       "Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.",
     );
 
   const configuration = new OpenAIConfig({
-    apiKey: API_KEY ?? OPENAI_API_KEY,
+    apiKey: effectiveKey,
     basePath: BASE_URL ?? OPENAI_BASE_URL ?? undefined,
   });
 
@@ -580,6 +631,41 @@ export async function call_deepseek(
     images,
     "https://api.deepseek.com",
     DEEPSEEK_API_KEY,
+  );
+}
+
+/**
+ * Calls MiniMax models via MiniMax's OpenAI-compatible API.
+ */
+export async function call_minimax(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  if (!MINIMAX_API_KEY)
+    throw new Error(
+      "Could not find a MiniMax API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  console.log(`Querying MiniMax model '${model}' with prompt '${prompt}'...`);
+
+  // MiniMax requires temperature to be strictly greater than 0
+  const clampedTemp = Math.max(temperature, 0.01);
+
+  return await call_chatgpt(
+    prompt,
+    model,
+    n,
+    clampedTemp,
+    params,
+    should_cancel,
+    images,
+    "https://api.minimax.io/v1",
+    MINIMAX_API_KEY,
   );
 }
 
@@ -1190,7 +1276,7 @@ export async function call_huggingface(
   const url =
     using_custom_model_endpoint && params?.custom_model.startsWith("https:")
       ? params.custom_model
-      : `https://api-inference.huggingface.co/models/${
+      : `https://api-inference.huggingface.co/inference-endpoint/${
           using_custom_model_endpoint ? params?.custom_model.trim() : model
         }`;
 
@@ -1718,6 +1804,71 @@ async function call_custom_provider(
   return [query, responses];
 }
 
+async function call_webllm(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  if (images && images.length > 0)
+    throw new Error(
+      "WebLLM text models currently do not support image inputs in ChainForge.",
+    );
+
+  const llm_model = model.toString();
+  const engine = await get_webllm_engine(llm_model);
+  const call_params = deepcopy(params) ?? {};
+
+  const chat_history: ChatHistory | undefined = call_params.chat_history;
+  const system_msg: string | undefined =
+    call_params.system_msg !== undefined ? call_params.system_msg : undefined;
+  delete call_params.chat_history;
+  delete call_params.system_msg;
+
+  const messages = construct_chat_history(
+    prompt,
+    undefined,
+    chat_history,
+    system_msg,
+  ).map((m) => ({ role: m.role, content: m.content }));
+
+  const max_tokens = call_params.max_tokens;
+  const top_p = call_params.top_p;
+  delete call_params.max_tokens;
+  delete call_params.top_p;
+
+  const query: Dict = {
+    model: llm_model,
+    n,
+    temperature,
+    messages,
+    ...call_params,
+  };
+
+  const choices: Dict[] = [];
+  while (choices.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+    const completion = await engine.chat.completions.create({
+      model: llm_model,
+      messages,
+      temperature,
+      ...(max_tokens !== undefined ? { max_tokens } : {}),
+      ...(top_p !== undefined ? { top_p } : {}),
+      ...call_params,
+    });
+
+    if (completion?.choices && completion.choices.length > 0)
+      choices.push(...completion.choices);
+    else throw new Error("WebLLM returned no choices.");
+  }
+
+  return [query, { choices: choices.slice(0, n) }];
+}
+
 /**
  * Switcher that routes the request to the appropriate API call function. If call doesn't exist, throws error.
  */
@@ -1743,7 +1894,8 @@ export async function call_llm(
     if (llm_name.startsWith("dall-e") || llm_name.startsWith("gpt-image"))
       call_api = call_openai_image_gen;
     else call_api = call_chatgpt;
-  } else if (llm_provider === LLMProvider.Azure_OpenAI)
+  } else if (llm_provider === LLMProvider.WebLLM) call_api = call_webllm;
+  else if (llm_provider === LLMProvider.Azure_OpenAI)
     call_api = call_azure_openai;
   else if (llm_provider === LLMProvider.Google) call_api = call_google_ai;
   else if (llm_provider === LLMProvider.Anthropic) call_api = call_anthropic;
@@ -1755,6 +1907,7 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.Bedrock) call_api = call_bedrock;
   else if (llm_provider === LLMProvider.Together) call_api = call_together;
   else if (llm_provider === LLMProvider.DeepSeek) call_api = call_deepseek;
+  else if (llm_provider === LLMProvider.MiniMax) call_api = call_minimax;
   if (call_api === undefined)
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
@@ -1940,6 +2093,8 @@ export function extract_responses(
       else if (llm_name.includes("davinci") || llm_name.includes("instruct"))
         return _extract_openai_completion_responses(response);
       else return _extract_chatgpt_responses(response);
+    case LLMProvider.WebLLM:
+      return _extract_chatgpt_responses(response);
     case LLMProvider.Azure_OpenAI:
       return _extract_openai_responses(response);
     case LLMProvider.Google:
@@ -1959,6 +2114,8 @@ export function extract_responses(
     case LLMProvider.Together:
       return _extract_openai_responses(response as Dict[]);
     case LLMProvider.DeepSeek:
+      return _extract_openai_responses(response as Dict[]);
+    case LLMProvider.MiniMax:
       return _extract_openai_responses(response as Dict[]);
     default:
       if (

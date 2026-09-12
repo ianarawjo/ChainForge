@@ -61,7 +61,7 @@ const OPERATORS: Operator[] = [
   "appears in",
 ];
 
-const createJSEvalCodeFor = (
+export const createJSEvalCodeFor = (
   responseFormat: ResponseFormat,
   operation: Operator,
   value: string,

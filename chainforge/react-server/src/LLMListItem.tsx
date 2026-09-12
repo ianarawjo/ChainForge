@@ -56,7 +56,7 @@ const CardHeader = styled.div`
   font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
     "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   text-align: start;
-  float: left;
+  flex: 1;
   margin-top: 1px;
 `;
 const TemperatureStatus = styled.span`
@@ -64,15 +64,13 @@ const TemperatureStatus = styled.span`
 `;
 
 export const DragItem = styled.div`
-  padding: 6px;
+  padding: 3px 6px;
   border-radius: 6px;
   box-shadow:
     0 1px 3px rgba(0, 0, 0, 0.12),
     0 1px 2px rgba(0, 0, 0, 0.24);
   margin: 0 0 8px 0;
-  display: grid;
-  grid-gap: 20px;
-  flex-direction: column;
+  overflow: hidden;
 `;
 
 export interface LLMListItemProps {
@@ -113,9 +111,16 @@ const LLMListItem: React.FC<LLMListItemProps> = ({
       {...provided.dragHandleProps}
     >
       <div>
-        <CardHeader>
-          {item.emoji}&nbsp;{item.name}
-          {/* {temperature !== undefined ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <CardHeader>
+            {item.emoji}&nbsp;{item.name}
+            {/* {temperature !== undefined ? (
             <Tooltip label={"temp = " + (temperature || "0")} withArrow>
               <TemperatureStatus style={{ color: tempColor }}>
                 &nbsp;
@@ -134,15 +139,16 @@ const LLMListItem: React.FC<LLMListItemProps> = ({
           ) : (
             <></>
           )} */}
-        </CardHeader>
-        <LLMItemButtonGroup
-          onClickTrash={() =>
-            removeCallback && removeCallback(item.key ?? "undefined")
-          }
-          ringProgress={progress}
-          onClickSettings={onClickSettings}
-          hideTrashIcon={hideTrashIcon}
-        />
+          </CardHeader>
+          <LLMItemButtonGroup
+            onClickTrash={() =>
+              removeCallback && removeCallback(item.key ?? "undefined")
+            }
+            ringProgress={progress}
+            onClickSettings={onClickSettings}
+            hideTrashIcon={hideTrashIcon}
+          />
+        </div>
       </div>
     </DragItem>
   );
@@ -172,27 +178,35 @@ export const LLMListItemClone: React.FC<LLMListItemProps> = ({
       snapshot={snapshot}
     >
       <div>
-        <CardHeader>
-          {item.emoji}&nbsp;{item.name}
-          {temperature !== undefined ? (
-            <TemperatureStatus style={{ color: tempColor }}>
-              &nbsp;
-              <IconTemperature
-                size={14}
-                stroke={2}
-                style={{
-                  position: "relative",
-                  top: "2px",
-                  marginRight: "-3px",
-                }}
-              />
-              :{temperature !== undefined ? temperature : ""}
-            </TemperatureStatus>
-          ) : (
-            <></>
-          )}
-        </CardHeader>
-        <LLMItemButtonGroup hideTrashIcon={hideTrashIcon} />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <CardHeader>
+            {item.emoji}&nbsp;{item.name}
+            {temperature !== undefined ? (
+              <TemperatureStatus style={{ color: tempColor }}>
+                &nbsp;
+                <IconTemperature
+                  size={14}
+                  stroke={2}
+                  style={{
+                    position: "relative",
+                    top: "2px",
+                    marginRight: "-3px",
+                  }}
+                />
+                :{temperature !== undefined ? temperature : ""}
+              </TemperatureStatus>
+            ) : (
+              <></>
+            )}
+          </CardHeader>
+          <LLMItemButtonGroup hideTrashIcon={hideTrashIcon} />
+        </div>
       </div>
     </DragItem>
   );

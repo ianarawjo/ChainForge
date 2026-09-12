@@ -30,6 +30,7 @@ import {
 import TemplateHooks from "./TemplateHooksComponent";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
+import ResizeHandle from "./ResizeHandle";
 import { AlertModalContext } from "./AlertModal";
 import RenameValueModal, { RenameValueModalRef } from "./RenameValueModal";
 import useStore from "./store";
@@ -815,6 +816,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
           handleInsertColumn={handleInsertColumn}
           handleRenameColumn={openRenameColumnModal}
         />
+        <ResizeHandle targetRef={ref} minWidth={200} minHeight={100} />
       </div>
 
       <div className="tabular-data-footer">

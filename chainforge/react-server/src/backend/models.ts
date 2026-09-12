@@ -5,6 +5,10 @@ import Bottleneck from "bottleneck";
 import { UserForcedPrematureExit } from "./errors";
 
 export enum NativeLLM {
+  // WebLLM (fully in-browser)
+  WebLLM_Qwen2_5_0_5B = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+  WebLLM_SmolLM2_1_7B = "SmolLM2-1.7B-Instruct-q4f16_1-MLC",
+
   // OpenAI Chat
   OpenAI_ChatGPT = "gpt-3.5-turbo",
   OpenAI_ChatGPT_16k = "gpt-3.5-turbo-16k",
@@ -92,6 +96,10 @@ export enum NativeLLM {
   // DeepSeek
   DeepSeek_Chat = "deepseek-chat",
   DeepSeek_Reasoner = "deepseek-reasoner",
+
+  // MiniMax
+  MiniMax_M2_7 = "MiniMax-M2.7",
+  MiniMax_M2_7_highspeed = "MiniMax-M2.7-highspeed",
 
   // Aleph Alpha
   Aleph_Alpha_Luminous_Extended = "luminous-extended",
@@ -235,6 +243,7 @@ export function getEnumName(
  * A list of model providers
  */
 export enum LLMProvider {
+  WebLLM = "webllm",
   OpenAI = "openai",
   Azure_OpenAI = "azure",
   Anthropic = "anthropic",
@@ -245,6 +254,7 @@ export enum LLMProvider {
   Bedrock = "bedrock",
   Together = "together",
   DeepSeek = "deepseek",
+  MiniMax = "minimax",
   Custom = "__custom",
 }
 
@@ -255,7 +265,8 @@ export enum LLMProvider {
  */
 export function getProvider(llm: LLM): LLMProvider | undefined {
   const llm_name = getEnumName(NativeLLM, llm.toString());
-  if (llm_name?.startsWith("OpenAI")) return LLMProvider.OpenAI;
+  if (llm_name?.startsWith("WebLLM")) return LLMProvider.WebLLM;
+  else if (llm_name?.startsWith("OpenAI")) return LLMProvider.OpenAI;
   else if (llm_name?.startsWith("Azure")) return LLMProvider.Azure_OpenAI;
   else if (llm_name?.startsWith("GEMINI")) return LLMProvider.Google;
   else if (llm_name?.startsWith("HF_")) return LLMProvider.HuggingFace;
@@ -265,7 +276,10 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
   else if (llm_name?.startsWith("Bedrock")) return LLMProvider.Bedrock;
   else if (llm_name?.startsWith("Together")) return LLMProvider.Together;
   else if (llm_name?.startsWith("DeepSeek")) return LLMProvider.DeepSeek;
+  else if (llm_name?.startsWith("MiniMax")) return LLMProvider.MiniMax;
   else if (llm.toString().startsWith("__custom/")) return LLMProvider.Custom;
+  else if (llm.toString().toLowerCase().endsWith("-mlc"))
+    return LLMProvider.WebLLM;
 
   return undefined;
 }
@@ -276,6 +290,8 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
 #   If a model is missing from below, it means we must send and receive only 1 request at a time (synchronous).
 #   The following is only a guideline, and a bit on the conservative side.  */
 export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
+  [NativeLLM.WebLLM_Qwen2_5_0_5B]: 120,
+  [NativeLLM.WebLLM_SmolLM2_1_7B]: 120,
   [NativeLLM.OpenAI_ChatGPT]: 1000, // max RPM (API requests per minute)
   [NativeLLM.OpenAI_ChatGPT_0301]: 1000,
   [NativeLLM.OpenAI_ChatGPT_0613]: 1000,
@@ -318,16 +334,21 @@ export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
 };
 
 export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
+  [LLMProvider.WebLLM]: 120, // In-browser inference should be serialized and conservative by default.
   [LLMProvider.OpenAI]: 1000, // Tier 3 pricing limit is 5000 per minute, across most models, we use 1000 to be safe.
   [LLMProvider.Azure_OpenAI]: 1000, // Tier 3 pricing limit is 5000 per minute, across most models, we use 1000 to be safe.
   [LLMProvider.Anthropic]: 25, // Tier 1 pricing limit is 50 per minute, across all models; we halve this, to be safe.
   [LLMProvider.Together]: 30, // Paid tier limit is 60 per minute, across all models; we halve this, to be safe.
   [LLMProvider.Google]: 1000, // RPM for Google Gemini models 1.5 is quite generous; at base it is 1000 RPM. If you are using the free version it's 15 RPM, but we can expect most CF users to be using paid (and anyway you can just re-run prompt node until satisfied).
   [LLMProvider.DeepSeek]: 1000, // DeepSeek does not constrain users atm but they might in the future. To be safe we are limiting it to 1000 queries per minute.
+  [LLMProvider.MiniMax]: 1000, // MiniMax API rate limits are generous; 1000 RPM to be safe.
 };
 
 // Max concurrent requests. Add to this to further constrain the rate limiter.
 export const MAX_CONCURRENT: { [key in string | NativeLLM]?: number } = {};
+
+MAX_CONCURRENT[NativeLLM.WebLLM_Qwen2_5_0_5B] = 1;
+MAX_CONCURRENT[NativeLLM.WebLLM_SmolLM2_1_7B] = 1;
 
 const DEFAULT_RATE_LIMIT = 100; // RPM for any models not listed above
 

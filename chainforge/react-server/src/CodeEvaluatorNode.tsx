@@ -48,6 +48,7 @@ import {
   toStandardResponseFormat,
 } from "./backend/utils";
 import InspectFooter from "./InspectFooter";
+import ResizeHandle from "./ResizeHandle";
 import { escapeBraces } from "./backend/template";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { AIGenCodeEvaluatorPopover } from "./AiPopover";
@@ -243,6 +244,8 @@ export const CodeEvaluatorComponent = forwardRef<
   const [codeTextOnLastRun, setCodeTextOnLastRun] = useState<boolean | string>(
     false,
   );
+  const aceEditorRef = useRef<any>(null);
+  const aceContainerRef = useRef<HTMLDivElement>(null);
 
   // Color theme
   const { colorScheme } = useMantineColorScheme();
@@ -352,7 +355,11 @@ export const CodeEvaluatorComponent = forwardRef<
   return (
     <div className="core-mirror-field">
       {showUserInstruction ? code_instruct_header : <></>}
-      <div className="ace-editor-container nodrag">
+      <div
+        ref={aceContainerRef}
+        className="ace-editor-container nodrag"
+        style={{ minWidth: "310px", minHeight: "60px", height: "100px" }}
+      >
         <AceEditor
           mode={progLang}
           theme={colorScheme === "light" ? "xcode" : "monokai"}
@@ -361,15 +368,18 @@ export const CodeEvaluatorComponent = forwardRef<
           name={"aceeditor_" + id}
           editorProps={{ $blockScrolling: true }}
           width="100%"
-          height="100px"
-          style={{ minWidth: "310px" }}
+          height="100%"
           setOptions={{ useWorker: false }}
           tabSize={2}
           onLoad={(editorInstance) => {
-            // Make Ace Editor div resizeable.
-            editorInstance.container.style.resize = "both";
-            document.addEventListener("mouseup", () => editorInstance.resize());
+            aceEditorRef.current = editorInstance;
           }}
+        />
+        <ResizeHandle
+          targetRef={aceContainerRef}
+          minWidth={310}
+          minHeight={60}
+          onResizeEnd={() => aceEditorRef.current?.resize()}
         />
       </div>
     </div>
