@@ -324,6 +324,10 @@ const App = () => {
   // Offload intensive computation to redraw and avoid blocking UI
   const [isSaving, startSaveTransition] = useTransition();
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  // Sticky, unlike showSaveSuccess: autosave runs every minute with alerts
+  // suppressed, so a quota failure there would otherwise only reach the
+  // console. This keeps the save button showing a problem until a save works.
+  const [saveFailed, setSaveFailed] = useState(false);
 
   // For modal popup to set global settings like API keys
   const settingsModal = useRef<GlobalSettingsModalRef>(null);
@@ -860,13 +864,18 @@ const App = () => {
           // returns false when the browser refuses the write (quota exceeded),
           // and claiming "Flow saved!" in that case loses the user's work
           // silently.
-          if (saveToLocalStorage()) onFlowSaved();
-          else {
+          if (saveToLocalStorage()) {
+            setSaveFailed(false);
+            onFlowSaved();
+          } else {
             const msg =
               "Could not save this flow to browser storage: the browser's " +
               "storage limit was reached. Export the flow to a file to avoid " +
               "losing work, and consider removing large uploaded documents " +
               "or running ChainForge locally.";
+            // Autosave passes hideErrorAlert, so don't pop an alert every
+            // minute -- but do leave the failure visible on the save button.
+            setSaveFailed(true);
             if (hideErrorAlert) console.error(msg);
             else handleError(msg);
           }
@@ -1578,9 +1587,14 @@ const App = () => {
   const saveMessage = useMemo(() => {
     if (isSaving) return "Saving...";
     else if (showSaveSuccess) return "Success!";
+    else if (saveFailed)
+      return (
+        "Last save FAILED -- browser storage is full. Export this flow to a " +
+        "file to avoid losing work."
+      );
     else if (IS_RUNNING_LOCALLY) return "Save to local disk";
     else return "Save to local cache";
-  }, [isSaving, showSaveSuccess]);
+  }, [isSaving, showSaveSuccess, saveFailed]);
 
   const flowSidebar = useMemo(() => {
     if (!IS_RUNNING_LOCALLY) return undefined;
@@ -1730,7 +1744,9 @@ const App = () => {
                 size="sm"
                 compact
                 onClick={() => saveFlow()}
-                color={colorScheme === "light" ? "blue" : "gray"}
+                color={
+                  saveFailed ? "red" : colorScheme === "light" ? "blue" : "gray"
+                }
                 bg={colorScheme === "light" ? "#eee" : "#222"}
                 loading={isSaving}
                 disabled={isLoading || isSaving}
