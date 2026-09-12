@@ -12,6 +12,7 @@ import Form from "@rjsf/core";
 import validator from "@rjsf/validator-ajv8";
 import { v4 as uuid } from "uuid";
 import { ChunkMethodSchemas, ChunkMethodGroups } from "./ChunkMethodSchemas";
+import { canRunNow } from "./backend/ragCapabilities";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 import LLMItemButtonGroup from "./LLMItemButtonGroup";
 import useStore from "./store";
@@ -199,20 +200,26 @@ const ChunkMethodListContainer = forwardRef<
   const customChunkers = useStore((s) => s.customChunkers);
 
   const addMenuItems: NestedMenuItemProps[] = useMemo(() => {
-    // Built-in groups as top-level submenus
+    // Built-in groups as top-level submenus. Methods that cannot run in the
+    // current setup are left out rather than offered and then failing: without
+    // a local server, anything needing a tokenizer, embeddings or a vector
+    // store is unavailable. A group whose methods are all unavailable is
+    // dropped too.
     const builtInGroups: NestedMenuItemProps[] = ChunkMethodGroups.map(
       (group) => ({
         key: `group-${group.label}`,
         title: group.label,
-        items: group.items.map((m) => ({
-          key: `method-${m.baseMethod}`,
-          title: m.name,
-          tooltip: m.description,
-          icon: m.emoji ? <Text>{m.emoji}</Text> : undefined,
-          onClick: () => addMethod(m),
-        })),
+        items: group.items
+          .filter((m) => canRunNow(m.runsIn ?? "backend"))
+          .map((m) => ({
+            key: `method-${m.baseMethod}`,
+            title: m.name,
+            tooltip: m.description,
+            icon: m.emoji ? <Text>{m.emoji}</Text> : undefined,
+            onClick: () => addMethod(m),
+          })),
       }),
-    );
+    ).filter((group) => (group.items?.length ?? 0) > 0);
 
     // Custom chunkers as another top-level submenu (if any)
     const customGroup: NestedMenuItemProps[] =

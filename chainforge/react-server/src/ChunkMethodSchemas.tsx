@@ -1,4 +1,21 @@
 import { ModelSettingsDict } from "./backend/typing";
+import { RunsIn } from "./backend/ragCapabilities";
+
+/** One selectable chunking method in the Chunk node's menu. */
+export interface ChunkMethodGroupItem {
+  baseMethod: string;
+  methodType: string;
+  name: string;
+  emoji: string;
+  description: string;
+  /** Where this method can execute. Defaults to backend-only when omitted. */
+  runsIn?: RunsIn;
+}
+
+export interface ChunkMethodGroup {
+  label: string;
+  items: ChunkMethodGroupItem[];
+}
 
 /**
  * Overlapping + OpenAI tiktoken
@@ -440,7 +457,71 @@ export const ChonkieLateSchema: ModelSettingsDict = {
   postprocessors: {},
 };
 
+/**
+ * Fixed-size chunking by character count -- runs in the browser
+ */
+export const BrowserCharacterSchema: ModelSettingsDict = {
+  fullName: "Fixed size (characters)",
+  description:
+    "Split text into fixed-length pieces measured in characters, with optional overlap. Runs entirely in the browser.",
+  schema: {
+    type: "object",
+    required: ["chunk_size", "chunk_overlap"],
+    properties: {
+      chunk_size: {
+        type: "number",
+        default: 1000,
+        title: "Characters per chunk",
+        description:
+          "Measured in characters, not tokens: counting tokens needs a tokenizer that isn't available in the browser.",
+      },
+      chunk_overlap: {
+        type: "number",
+        default: 100,
+        title: "Overlap characters",
+        description:
+          "How much of the previous chunk to repeat. Clamped below the chunk size.",
+      },
+    },
+  },
+  uiSchema: {},
+  postprocessors: {},
+};
+
+/**
+ * Sentence-grouping chunking -- runs in the browser
+ */
+export const BrowserSentenceSchema: ModelSettingsDict = {
+  fullName: "Sentences",
+  description:
+    "Group whole sentences up to a character budget, so chunks stay readable. Runs entirely in the browser.",
+  schema: {
+    type: "object",
+    required: ["chunk_size"],
+    properties: {
+      chunk_size: {
+        type: "number",
+        default: 1000,
+        title: "Characters per chunk",
+        description:
+          "Sentences are added until the next one would exceed this. A single longer sentence becomes its own chunk.",
+      },
+      sentence_overlap: {
+        type: "number",
+        default: 0,
+        title: "Overlapping sentences",
+        description:
+          "How many trailing sentences to repeat at the start of the next chunk.",
+      },
+    },
+  },
+  uiSchema: {},
+  postprocessors: {},
+};
+
 export const ChunkMethodSchemas: { [baseMethod: string]: ModelSettingsDict } = {
+  browser_character: BrowserCharacterSchema,
+  browser_sentence: BrowserSentenceSchema,
   overlapping_openai_tiktoken: OverlappingOpenAITiktokenSchema,
   overlapping_huggingface_tokenizers: OverlappingHuggingfaceTokenizerSchema,
   markdown_header: MarkdownHeaderSchema,
@@ -453,7 +534,30 @@ export const ChunkMethodSchemas: { [baseMethod: string]: ModelSettingsDict } = {
   chonkie_late: ChonkieLateSchema,
 };
 
-export const ChunkMethodGroups = [
+export const ChunkMethodGroups: ChunkMethodGroup[] = [
+  {
+    label: "Basic (no server needed)",
+    items: [
+      {
+        baseMethod: "browser_character",
+        methodType: "Fixed Size",
+        name: "Fixed size (characters)",
+        emoji: "📏",
+        runsIn: "browser",
+        description:
+          "Split into fixed-length pieces with optional overlap. The simplest way to see how chunk size affects retrieval.",
+      },
+      {
+        baseMethod: "browser_sentence",
+        methodType: "Sentences",
+        name: "Sentences",
+        emoji: "✍️",
+        runsIn: "browser",
+        description:
+          "Group whole sentences up to a size budget, so chunks stay readable.",
+      },
+    ],
+  },
   {
     label: "Token-Based",
     items: [
@@ -462,6 +566,7 @@ export const ChunkMethodGroups = [
         methodType: "Chonkie",
         name: "Token Chunker",
         emoji: "🐿️",
+        runsIn: "backend",
         description:
           "Split text into fixed-size token chunks with optional overlap. Fastest and cheapest option.",
       },
@@ -470,6 +575,7 @@ export const ChunkMethodGroups = [
         methodType: "Overlapping Chunking",
         name: "OpenAI tiktoken",
         emoji: "🤖",
+        runsIn: "backend",
         description:
           "Use OpenAI’s tiktoken to count tokens for chunk sizes and overlaps.",
       },
@@ -478,6 +584,7 @@ export const ChunkMethodGroups = [
         methodType: "Overlapping Chunking",
         name: "HuggingFace Tokenizers",
         emoji: "🤗",
+        runsIn: "backend",
         description:
           "Use a HuggingFace tokenizer to count tokens for chunk sizes and overlaps.",
       },
@@ -491,6 +598,7 @@ export const ChunkMethodGroups = [
         methodType: "Chonkie",
         name: "Sentence Chunker",
         emoji: "✂️",
+        runsIn: "backend",
         description:
           "Split on sentence boundaries. Nice for QA / summarization where you want readable chunks.",
       },
@@ -499,6 +607,7 @@ export const ChunkMethodGroups = [
         methodType: "Markdown",
         name: "Markdown Chunker",
         emoji: "📝",
+        runsIn: "both",
         description:
           "Respect markdown headings when splitting (e.g. #, ##). Great for docs and notebooks.",
       },
@@ -507,6 +616,7 @@ export const ChunkMethodGroups = [
         methodType: "Syntax-Based Chunking",
         name: "NLTK Sentence Splitter",
         emoji: "🐍",
+        runsIn: "backend",
         description:
           "Sentence splitting powered by NLTK. More robust for messy text.",
       },
@@ -515,6 +625,7 @@ export const ChunkMethodGroups = [
         methodType: "Syntax-Based Chunking",
         name: "Stopword Chunker",
         emoji: "📑",
+        runsIn: "backend",
         description:
           "Topic-based segmentation using TextTiling. Helps break long text into sections based on lexical shifts.",
       },
@@ -523,6 +634,7 @@ export const ChunkMethodGroups = [
         methodType: "Chonkie",
         name: "Recursive Chunker",
         emoji: "🔄",
+        runsIn: "backend",
         description:
           "Try large chunks first and recursively split until under a token limit. Good when you want big chunks but must respect model limits.",
       },
@@ -536,6 +648,7 @@ export const ChunkMethodGroups = [
         methodType: "Chonkie",
         name: "Semantic Chunker",
         emoji: "🤖",
+        runsIn: "backend",
         description:
           "Use embeddings to cut at semantically meaningful boundaries (topic changes, sections). More accurate but more expensive.",
       },
@@ -544,6 +657,7 @@ export const ChunkMethodGroups = [
         methodType: "Chonkie",
         name: "Late Chunker",
         emoji: "⏳",
+        runsIn: "backend",
         description:
           "Apply length-based chunking at run time instead of precomputing chunks.",
       },

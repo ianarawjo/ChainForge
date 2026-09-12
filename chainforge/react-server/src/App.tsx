@@ -97,7 +97,6 @@ import {
   APP_IS_RUNNING_LOCALLY,
   browserTabIsActive,
   FLASK_BASE_URL,
-  RAG_AVAILABLE,
 } from "./backend/utils";
 import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
 import {
@@ -125,6 +124,7 @@ import {
 } from "react-device-detect";
 import FlowSidebar from "./FlowSidebar";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
+import { ragNodeAvailable } from "./backend/ragCapabilities";
 import RequestClarificationModal, {
   RequestClarificationModalProps,
 } from "./RequestClarificationModal";
@@ -368,13 +368,16 @@ const App = () => {
 
   // Add Nodes list
   const addNodesMenuItems = useMemo(() => {
-    // RAG-related nodes only if RAG is available
+    // RAG nodes are offered individually, by whether they can actually run:
+    // some work client-side, others need the Flask backend with the `rag`
+    // extra. See backend/ragCapabilities.
     const ragNodes = [
       {
         // Menu.Label
         key: "RAG",
       },
       {
+        available: ragNodeAvailable("upload"),
         key: "upload",
         title: "Upload Docs Node",
         icon: nodeEmojis.upload,
@@ -382,6 +385,7 @@ const App = () => {
         onClick: () => addNode("upload"),
       },
       {
+        available: ragNodeAvailable("chunk"),
         key: "chunk",
         title: "Chunking Node",
         icon: nodeEmojis.chunk,
@@ -390,6 +394,7 @@ const App = () => {
         onClick: () => addNode("chunk"),
       },
       {
+        available: ragNodeAvailable("retrieval"),
         key: "retrieval",
         title: "Retrieval Node",
         icon: nodeEmojis.retrieval,
@@ -398,6 +403,7 @@ const App = () => {
         onClick: () => addNode("retrieval"),
       },
       {
+        available: ragNodeAvailable("rerank"),
         key: "rerank",
         title: "Rerank Node",
         icon: nodeEmojis.rerank,
@@ -407,7 +413,11 @@ const App = () => {
       {
         key: "divider",
       },
-    ] as NestedMenuItemProps[];
+    ]
+      // Drop the nodes that cannot run in the current setup, so nobody adds a
+      // node that only fails when they press run.
+      .filter((item) => (item as any).available !== false)
+      .map(({ available, ...item }: any) => item) as NestedMenuItemProps[];
 
     // Misc nodes
     const miscNodes: NestedMenuItemProps[] = [
@@ -635,8 +645,10 @@ const App = () => {
       },
     ] as NestedMenuItemProps[];
 
-    // Add RAG nodes to menu if RAG dependencies are installed on the backend
-    if (RAG_AVAILABLE) initNodes = [...initNodes, ...ragNodes, ...miscNodes];
+    // Show the RAG group if anything in it is usable. ragNodes still holds
+    // its label and divider when every node is filtered out, hence the >2.
+    if (ragNodes.length > 2)
+      initNodes = [...initNodes, ...ragNodes, ...miscNodes];
     else initNodes = [...initNodes, ...miscNodes];
 
     // Add favorite nodes to the menu

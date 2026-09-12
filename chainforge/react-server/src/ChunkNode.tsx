@@ -24,6 +24,7 @@ import ChunkMethodListContainer, {
 
 import { TemplateVarInfo, LLMResponse } from "./backend/typing";
 import { StringLookup } from "./backend/cache";
+import { canChunkInBrowser, chunkInBrowser } from "./backend/browserChunkers";
 import { FLASK_BASE_URL } from "./backend/utils";
 import { v4 as uuid } from "uuid";
 
@@ -136,32 +137,42 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
 
         for (const method of methods) {
           try {
-            const formData = new FormData();
-            formData.append("baseMethod", method.baseMethod);
-
-            // Get the full text and pack it as a "file" part instead of a plain field
             const fullText = StringLookup.get(fileInfo.text) ?? "";
-            const textBlob = new Blob([fullText], { type: "text/plain" });
+            let chunks: string[];
 
-            formData.append("document", textBlob);
+            if (canChunkInBrowser(method.baseMethod)) {
+              // Runs client-side even when a backend is available, so a flow
+              // chunks identically with or without one.
+              chunks = chunkInBrowser(
+                method.baseMethod,
+                fullText,
+                method.settings ?? {},
+              );
+            } else {
+              const formData = new FormData();
+              formData.append("baseMethod", method.baseMethod);
 
-            // Add the user settings
-            Object.entries(method.settings ?? {}).forEach(([k, v]) => {
-              formData.append(k, String(v));
-            });
+              // Pack the text as a "file" part instead of a plain field
+              const textBlob = new Blob([fullText], { type: "text/plain" });
+              formData.append("document", textBlob);
 
-            const res = await fetch(`${FLASK_BASE_URL}chunk`, {
-              method: "POST",
-              body: formData,
-            });
+              // Add the user settings
+              Object.entries(method.settings ?? {}).forEach(([k, v]) => {
+                formData.append(k, String(v));
+              });
 
-            if (!res.ok) {
-              const err = await res.json();
-              throw new Error(err.error || "Chunking request failed");
+              const res = await fetch(`${FLASK_BASE_URL}chunk`, {
+                method: "POST",
+                body: formData,
+              });
+
+              if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || "Chunking request failed");
+              }
+
+              chunks = (await res.json()).chunks as string[];
             }
-
-            const json = await res.json();
-            const chunks = json.chunks as string[];
 
             // We'll build chunk IDs for each doc
             const methodSafe = method.methodType.replace(/\W+/g, "_");
