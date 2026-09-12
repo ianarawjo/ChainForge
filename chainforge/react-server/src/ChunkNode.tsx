@@ -186,7 +186,10 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
                 text: cText,
                 prompt: "",
                 fill_history: {
-                  chunkMethod: `${method.methodType} (${method.name})`,
+                  // Just the method's own name. Prefixing the menu group or
+                  // library produced values like "Basic (Markdown Headers)",
+                  // and these strings are used as variable values downstream.
+                  chunkMethod: method.name,
                   docTitle,
                   chunkLibrary: name,
                   chunkId: index.toString(),

@@ -335,7 +335,10 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
                 prompt: query || "N/A",
                 fill_history: {
                   ...(source?.fill_history ?? {}),
-                  rerankMethod: `${method.methodType} (${method.name})`,
+                  // As with chunkMethod: the method's own name, not the
+                  // group prefixed onto it. This was reading
+                  // "Basic (no server needed) (Cross-encoder (in-browser))".
+                  rerankMethod: method.name,
                   query: query || "N/A",
                   originalRank: String(index),
                   score: String(score),
@@ -348,7 +351,7 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
                 metavars: {
                   ...(source?.metavars ?? {}),
                   query: query || "N/A",
-                  rerankMethod: method.methodType,
+                  rerankMethod: method.name,
                   originalRank: String(index),
                   score: String(score),
                 },
