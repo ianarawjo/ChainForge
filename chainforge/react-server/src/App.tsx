@@ -1584,6 +1584,18 @@ const App = () => {
     hideContextMenu,
   ]);
 
+  // Recover the index of files persisted in IndexedDB by earlier sessions, so
+  // the storage readout and export include them. Contents are loaded on demand
+  // by MediaLookup.get, so this stays cheap.
+  useEffect(() => {
+    if (IS_RUNNING_LOCALLY) return; // files live on disk in that case
+    MediaLookup.hydrateFromIndexedDB()
+      .then((n) => {
+        if (n > 0) console.log(`Recovered ${n} uploaded file(s) from storage.`);
+      })
+      .catch((err) => console.warn("Could not read persisted uploads:", err));
+  }, []);
+
   const saveMessage = useMemo(() => {
     if (isSaving) return "Saving...";
     else if (showSaveSuccess) return "Success!";

@@ -10,6 +10,13 @@ import {
 import { v4 as uuid } from "uuid";
 import Bottleneck from "bottleneck";
 import { extractTextInBrowser } from "./extractText";
+import {
+  clearMedia,
+  deleteMedia,
+  getMedia,
+  listMedia,
+  putMedia,
+} from "./mediaStore";
 
 // NOTE: call APP_IS_RUNNING_LOCALLY() where it is needed rather than caching it
 // at module scope. cache.ts and utils.ts import each other, so evaluating it
@@ -356,6 +363,16 @@ export class MediaLookup {
   // Use a cache if running locally, otherwise use the backend
   private cache: Dict<Blob> = {};
 
+  /**
+   * Sizes of every browser-stored file, whether or not its bytes are currently
+   * in `cache`.
+   *
+   * Files are persisted to IndexedDB, and loaded back on demand rather than all
+   * at once, so `cache` holds only a subset. This index is what lets us report
+   * usage and enforce the budget without pulling every Blob into memory.
+   */
+  private sizes: Map<string, number> = new Map();
+
   // Temporary in-memory cache with size limit
   private tempCache: {
     items: Map<string, Blob>;
@@ -379,19 +396,23 @@ export class MediaLookup {
    * uid. We therefore refuse uploads past a budget instead, with an error the
    * UI can show.
    *
-   * The budget is sized for export rather than for memory: exporting a flow
-   * in browser mode base64-encodes every blob into the .cforge JSON, which
-   * inflates it by ~33%.
+   * The budget is sized for export, which is now the binding constraint:
+   * exporting in browser mode base64-encodes every blob into one .cforge JSON
+   * string, inflating it by 4/3. V8 caps a single string at ~512M chars, so
+   * roughly 400MB of files would throw "RangeError: Invalid string length".
+   * 250MB keeps the worst case near 65% of that ceiling.
+   *
+   * Files themselves live in IndexedDB (see ./mediaStore), so this is no longer
+   * limited by how much can be held in memory.
    */
-  private readonly MAX_BROWSER_FILE_BYTES = 25 * 1024 * 1024; // per file
-  private readonly MAX_BROWSER_CACHE_BYTES = 100 * 1024 * 1024; // all files
+  private readonly MAX_BROWSER_FILE_BYTES = 50 * 1024 * 1024; // per file
+  private readonly MAX_BROWSER_CACHE_BYTES = 250 * 1024 * 1024; // all files
 
   /** Total bytes currently held in the browser-mode store. */
   private browserCacheBytes(): number {
-    return Object.values(this.cache).reduce(
-      (total, blob) => total + (blob?.size ?? 0),
-      0,
-    );
+    let total = 0;
+    for (const size of this.sizes.values()) total += size;
+    return total;
   }
 
   /**
@@ -532,6 +553,29 @@ export class MediaLookup {
   }
 
   /**
+   * Reloads the index of persisted files, without loading their contents.
+   *
+   * Call once at startup. Until this runs, files uploaded in a previous session
+   * are still readable through get() -- which falls back to IndexedDB per uid --
+   * but the reported usage and uid set would not include them.
+   *
+   * @returns How many persisted files were found.
+   */
+  public static async hydrateFromIndexedDB(): Promise<number> {
+    const mediaLookup = MediaLookup.getInstance();
+    const stored = await listMedia();
+
+    for (const { uid, size } of stored) {
+      mediaLookup.mediaUIDs.add(uid);
+      // Don't clobber a size already known from this session's own uploads.
+      if (!mediaLookup.sizes.has(uid)) mediaLookup.sizes.set(uid, size);
+    }
+
+    if (stored.length > 0) mediaLookup.saveStateToStorageCache();
+    return stored.length;
+  }
+
+  /**
    * How much file data the browser is currently holding, for display in the UI.
    */
   public static storageUsage(): {
@@ -542,7 +586,7 @@ export class MediaLookup {
   } {
     const mediaLookup = MediaLookup.getInstance();
     return {
-      files: Object.keys(mediaLookup.cache).length,
+      files: mediaLookup.sizes.size,
       bytes: mediaLookup.browserCacheBytes(),
       limitBytes: mediaLookup.MAX_BROWSER_CACHE_BYTES,
       fileLimitBytes: mediaLookup.MAX_BROWSER_FILE_BYTES,
@@ -558,7 +602,17 @@ export class MediaLookup {
   private add(uid: string, blob?: Blob | File): void {
     this.mediaUIDs.add(uid);
 
-    if (blob) this.cache[uid] = blob;
+    if (blob) {
+      this.cache[uid] = blob;
+      this.sizes.set(uid, blob.size);
+
+      // Persist without blocking the caller. Durability is best-effort: if
+      // IndexedDB is unavailable or full the file still works this session,
+      // which is exactly the behaviour before it was persisted at all.
+      putMedia(uid, blob).catch((err) =>
+        console.warn(`Could not persist ${uid}: ${String(err)}`),
+      );
+    }
 
     this.saveStateToStorageCache();
   }
@@ -567,6 +621,10 @@ export class MediaLookup {
     const mediaLookup = MediaLookup.getInstance();
     mediaLookup.mediaUIDs.add(uid);
     mediaLookup.cache[uid] = blob;
+    mediaLookup.sizes.set(uid, blob.size);
+    putMedia(uid, blob).catch((err) =>
+      console.warn(`Could not persist ${uid}: ${String(err)}`),
+    );
   }
 
   static getInstance(): MediaLookup {
@@ -580,7 +638,8 @@ export class MediaLookup {
     const mediaLookup = MediaLookup.getInstance();
     return (
       mediaLookup.mediaUIDs.size > 0 ||
-      Object.keys(mediaLookup.cache).length > 0
+      Object.keys(mediaLookup.cache).length > 0 ||
+      mediaLookup.sizes.size > 0
     );
   }
 
@@ -724,7 +783,19 @@ export class MediaLookup {
       });
     } else {
       // Check if the file is in the cache
-      const blob = mediaLookup.cache[uid];
+      let blob = mediaLookup.cache[uid];
+
+      // Not in memory: it may have been persisted in an earlier session.
+      // Loading on demand keeps memory proportional to what's actually used.
+      if (!blob) {
+        const persisted = await getMedia(uid);
+        if (persisted) {
+          blob = persisted;
+          mediaLookup.cache[uid] = persisted;
+          mediaLookup.sizes.set(uid, persisted.size);
+        }
+      }
+
       if (blob) {
         // If the file was for some reason not listed in the media UIDs, add it now:
         if (!isInLookup) mediaLookup.add(uid);
@@ -806,6 +877,8 @@ export class MediaLookup {
     const mediaLookup = MediaLookup.getInstance();
     mediaLookup.mediaUIDs.clear();
     mediaLookup.cache = {};
+    mediaLookup.sizes.clear();
+    clearMedia().catch(() => undefined);
 
     // Clear the temp cache
     mediaLookup.tempCache.items.clear();
@@ -823,6 +896,8 @@ export class MediaLookup {
     const mediaLookup = MediaLookup.getInstance();
     mediaLookup.mediaUIDs.delete(uid);
     delete mediaLookup.cache[uid];
+    mediaLookup.sizes.delete(uid);
+    deleteMedia(uid).catch(() => undefined);
 
     // Remove from temp cache if present
     if (mediaLookup.tempCache.items.has(uid)) {
@@ -861,6 +936,10 @@ export class MediaLookup {
       for (const [key, base64String] of Object.entries(savedState.cache)) {
         const blob = dataURLToBlob(base64String);
         mediaLookup.cache[key] = blob;
+        mediaLookup.sizes.set(key, blob.size);
+        // Persist too, so files that arrive by importing a flow survive a
+        // reload like uploaded ones do.
+        putMedia(key, blob).catch(() => undefined);
       }
     }
 
