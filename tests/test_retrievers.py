@@ -29,7 +29,7 @@ def temp_db_dir():
   yield temp_dir
   # Cleanup after test
   if os.path.exists(temp_dir):
-    shutil.rmtree(temp_dir)
+    shutil.rmtree(temp_dir, ignore_errors=True)
 
 @pytest.fixture
 def sample_chunks():

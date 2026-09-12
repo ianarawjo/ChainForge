@@ -172,7 +172,7 @@ class TestLocalVectorStore:
         for result in results:
             assert "id" in result
             assert "text" in result
-            assert "score" in result
+            assert "similarity" in result
             assert "metadata" in result
         
         # Try different distance_metrics 
@@ -220,5 +220,5 @@ class TestLocalVectorStore:
         for result in results:
             assert "id" in result
             assert "text" in result  
-            assert "score" in result
+            assert "similarity" in result
             assert "metadata" in result

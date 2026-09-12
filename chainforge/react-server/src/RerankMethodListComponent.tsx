@@ -59,7 +59,7 @@ const RerankMethodListItem: React.FC<{
   const [settingsModalOpen, { open, close }] = useDisclosure(false);
 
   return (
-    <div className="llm-list-item">
+    <div className="llm-list-item llm-list-card">
       <div>
         <div className="llm-card-header">
           {methodItem.emoji ? methodItem.emoji + " " : ""}

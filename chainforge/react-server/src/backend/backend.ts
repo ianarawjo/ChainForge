@@ -467,38 +467,58 @@ async function run_over_responses(
         }
       }
 
-      // Nouveau traitement pour format {text: ..., metavars: {...}}
+      // If type is just a processor
       if (process_type === "processor") {
-        if (
-          Array.isArray(processed) &&
-          processed.length > 0 &&
-          processed[0] &&
-          typeof processed[0] === "object" &&
-          "text" in processed[0] &&
-          "metavars" in processed[0]
-        ) {
-          // On prend le texte comme réponse, et le second élément comme metavars
-          resp_obj.responses = [processed[0].text];
-          resp_obj.metavars = processed[0].metavars;
-        } else if (
-          Array.isArray(processed) &&
-          processed.length > 0 &&
-          Array.isArray(processed[0]) &&
-          processed[0].length === 2 &&
-          typeof processed[0][1] === "object"
-        ) {
-          // Ancien cas tuple (texte, metavars)
-          resp_obj.responses = [processed[0][0]];
-          resp_obj.metavars = processed[0][1];
-        } else {
-          // Cas standard
-          resp_obj.responses = processed;
-        }
+        // A processor normally returns the transformed text for each response.
+        // It may instead return { text, metavars } (or the older [text, metavars]
+        // tuple) to attach metavars alongside the text. Unwrap each response
+        // individually, so that every generation is preserved, and merge any
+        // metavars on top of the existing ones rather than replacing them.
+        let attached_metavars: Dict<LLMResponseData> | undefined;
+
+        const unwrapProcessed = (p: any) => {
+          let text = p;
+          let metavars: Dict<LLMResponseData> | undefined;
+
+          if (
+            p &&
+            typeof p === "object" &&
+            !Array.isArray(p) &&
+            "text" in p &&
+            "metavars" in p
+          ) {
+            ({ text, metavars } = p);
+          } else if (
+            Array.isArray(p) &&
+            p.length === 2 &&
+            p[1] &&
+            typeof p[1] === "object" &&
+            !Array.isArray(p[1])
+          ) {
+            [text, metavars] = p;
+          }
+
+          if (metavars !== undefined)
+            attached_metavars = { ...(attached_metavars ?? {}), ...metavars };
+
+          return text as LLMResponseData;
+        };
+
+        // Replace response texts in resp_obj with the transformed ones:
+        resp_obj.responses = processed.map(unwrapProcessed);
+        if (attached_metavars !== undefined)
+          resp_obj.metavars = {
+            ...(resp_obj.metavars ?? {}),
+            ...attached_metavars,
+          };
       } else {
         // If type is an evaluator
+        // Check the type of evaluation results
+        // NOTE: We assume this is consistent across all evaluations, but it may not be.
         const eval_res_type = check_typeof_vals(processed);
 
         if (eval_res_type === MetricType.Numeric) {
+          // Store items with summary of mean, median, etc
           resp_obj.eval_res = {
             items: processed,
             dtype: (getEnumName(MetricType, eval_res_type) ??
@@ -511,6 +531,7 @@ async function run_over_responses(
             "Unsupported types found in evaluation results. Only supported types for metrics are: int, float, bool, str.",
           );
         } else {
+          // Categorical, KeyValue, etc, we just store the items:
           resp_obj.eval_res = {
             items: processed,
             dtype: (getEnumName(MetricType, eval_res_type) ??

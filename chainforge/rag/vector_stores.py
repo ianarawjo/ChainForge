@@ -5,7 +5,7 @@ import os
 import numpy as np
 import pandas as pd
 import lancedb
-import hashlib, pickle
+import hashlib, json, pickle
 
 # Faiss requires 'swig' to be installed, and the 'faiss-cpu' package (or 'faiss-gpu', built from source).
 # Swig is only installable via homebrew on macOS, which makes this dependency difficult to support 
@@ -14,6 +14,56 @@ try:
     import faiss
 except ImportError:
     faiss = None
+
+
+def _serialize_metadata(meta: Optional[Dict[str, Any]]) -> bytes:
+    """Serialize chunk metadata for storage.
+
+    JSON rather than pickle: these bytes are read back off disk, and unpickling
+    is arbitrary code execution. `default=str` keeps the call total for values
+    JSON does not model natively.
+    """
+    return json.dumps(meta or {}, default=str).encode("utf-8")
+
+
+def _deserialize_metadata(raw: Any) -> Dict[str, Any]:
+    """Read metadata written by :func:`_serialize_metadata`.
+
+    Databases created before the switch to JSON hold pickles, so fall back to
+    unpickling those rather than failing to open an existing local store.
+    """
+    if raw is None:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    data = bytes(raw)
+    if not data:
+        return {}
+    try:
+        return json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return pickle.loads(data)  # legacy store, written before JSON
+
+
+def _sql_string_literal(value: Any) -> str:
+    """Render a value as a SQL string literal for a LanceDB `where` filter.
+
+    LanceDB filters are SQL expressions, so an embedded single quote has to be
+    doubled. Without this, a query containing an apostrophe produces an invalid
+    predicate -- and, more generally, lets input rewrite the expression.
+    """
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def _sql_like_pattern(value: Any) -> str:
+    """Render a substring-match pattern for use with `LIKE ... ESCAPE '\\'`."""
+    escaped = (
+        str(value)
+        .replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
+    return _sql_string_literal(f"%{escaped}%")
 
 
 class VectorStore(ABC):
@@ -191,7 +241,10 @@ class LancedbVectorStore(VectorStore):
         self.table = None
         
         # Check if table exists
-        table_names = list(self.db.table_names())
+        # list_tables() replaced the deprecated table_names(); fall back for
+        # older LanceDB versions still allowed by our floor (>=0.17).
+        list_tables = getattr(self.db, "list_tables", None) or self.db.table_names
+        table_names = list(list_tables())
         if table_name in table_names:
             self.table = self.db.open_table(table_name)
         
@@ -229,7 +282,7 @@ class LancedbVectorStore(VectorStore):
         # on documents that already exist in the database, which could be expensive. 
         orig_doc_ids = doc_ids.copy()
         if self.table is not None:
-            doc_ids_str = ",".join([f"'{doc_id}'" for doc_id in doc_ids])
+            doc_ids_str = ",".join(_sql_string_literal(doc_id) for doc_id in doc_ids)
             existing_ids = self.table.search().where(f"id IN ({doc_ids_str})").to_pandas()
             existing_ids = set(existing_ids["id"].tolist())
             if existing_ids:
@@ -290,7 +343,6 @@ class LancedbVectorStore(VectorStore):
             #             # Convert other types to string
             #             metadata_fields.append(pa.field(key, pa.string()))
             
-            # Import pickle for serialization
             
             # Create a schema with metadata as a binary field
             schema = pa.schema([
@@ -308,7 +360,7 @@ class LancedbVectorStore(VectorStore):
                 "id": doc_id,
                 "text": text,
                 "vector": embedding,
-                "metadata": pickle.dumps(meta)  # Serialize metadata to binary
+                "metadata": _serialize_metadata(meta)
             }
             data.append(doc)
         
@@ -431,7 +483,9 @@ class LancedbVectorStore(VectorStore):
             vector_results = q.limit(k * 2).to_pandas()
             
             # Get keyword search results
-            keyword_query = self.table.search().where(f"text LIKE '%{keyword}%'").limit(k * 2)
+            keyword_query = self.table.search().where(
+                f"text LIKE {_sql_like_pattern(keyword)} ESCAPE '\\'"
+            ).limit(k * 2)
             keyword_results = keyword_query.to_pandas()
             
             # Combine results with blended scoring
@@ -486,7 +540,7 @@ class LancedbVectorStore(VectorStore):
                 "id": row["id"],
                 "text": row["text"],
                 "similarity": float(similarity),
-                "metadata": pickle.loads(row["metadata"])  # Deserialize metadata
+                "metadata": _deserialize_metadata(row["metadata"])
             })
         
         return formatted_results
@@ -504,7 +558,7 @@ class LancedbVectorStore(VectorStore):
         if self.table is None:
             return None
             
-        results = self.table.search().where(f"id = '{doc_id}'").to_pandas()
+        results = self.table.search().where(f"id = {_sql_string_literal(doc_id)}").to_pandas()
         
         if len(results) == 0:
             print(f"Document with ID {doc_id} not found")
@@ -515,7 +569,7 @@ class LancedbVectorStore(VectorStore):
             "id": row["id"],
             "text": row["text"],
             "embedding": row["vector"],
-            "metadata": pickle.loads(row["metadata"])  # Deserialize metadata
+            "metadata": _deserialize_metadata(row["metadata"])
         }
     
     def delete(self, doc_ids: List[str]) -> bool:
@@ -618,7 +672,7 @@ class LancedbVectorStore(VectorStore):
                 "id": row["id"],
                 "text": row["text"],
                 "embedding": row["vector"],
-                "metadata": pickle.loads(row["metadata"])  # Deserialize metadata
+                "metadata": _deserialize_metadata(row["metadata"])
             })
         
         return formatted_results
@@ -709,16 +763,35 @@ class FaissVectorStore(VectorStore):
     def _save(self):
         if self.index is not None:
             faiss.write_index(self.index, self.index_file)
-        with open(self.meta_file, "wb") as f:
-            pickle.dump({"id_to_meta": self.id_to_meta, "ids": self.ids}, f)
+        # Stored as JSON rather than a pickle; see _serialize_metadata. The
+        # per-document "metadata" values are already JSON bytes, so decode them
+        # for storage and re-encode on load.
+        payload = {
+            "id_to_meta": {
+                doc_id: {**meta, "metadata": _deserialize_metadata(meta.get("metadata"))}
+                for doc_id, meta in self.id_to_meta.items()
+            },
+            "ids": self.ids,
+        }
+        with open(self.meta_file, "w", encoding="utf-8") as f:
+            json.dump(payload, f, default=str)
 
     def _load(self):
         if os.path.exists(self.index_file) and os.path.exists(self.meta_file):
             self.index = faiss.read_index(self.index_file)
             with open(self.meta_file, "rb") as f:
-                data = pickle.load(f)
-                self.id_to_meta = data.get("id_to_meta", {})
-                self.ids = data.get("ids", [])
+                raw = f.read()
+            try:
+                data = json.loads(raw.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                data = pickle.loads(raw)  # legacy store, written before JSON
+            # Normalize metadata back to the serialized form used in memory.
+            self.id_to_meta = {
+                doc_id: {**meta, "metadata": _serialize_metadata(
+                    _deserialize_metadata(meta.get("metadata")))}
+                for doc_id, meta in (data.get("id_to_meta") or {}).items()
+            }
+            self.ids = data.get("ids", [])
         else:
             self.index = None
             self.id_to_meta = {}
@@ -776,7 +849,7 @@ class FaissVectorStore(VectorStore):
             self.ids.append(doc_id)
             self.id_to_meta[doc_id] = {
                 "text": new_texts[i],
-                "metadata": pickle.dumps(new_metadata[i]),
+                "metadata": _serialize_metadata(new_metadata[i]),
                 "vector_index": start_idx + i
             }
 
@@ -819,7 +892,7 @@ class FaissVectorStore(VectorStore):
                 "id": doc_id,
                 "text": meta["text"],
                 "similarity": similarity,
-                "metadata": pickle.loads(meta["metadata"])
+                "metadata": _deserialize_metadata(meta["metadata"])
             })
         results.sort(key=lambda x: x["similarity"], reverse=True)
         return results
@@ -832,7 +905,7 @@ class FaissVectorStore(VectorStore):
             "id": doc_id,
             "text": meta["text"],
             "embedding": None,  # Embedding not stored directly
-            "metadata": pickle.loads(meta["metadata"])
+            "metadata": _deserialize_metadata(meta["metadata"])
         }
 
     def delete(self, doc_ids: List[str]) -> bool:

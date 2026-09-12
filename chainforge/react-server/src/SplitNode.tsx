@@ -41,7 +41,7 @@ const formattingOptions = [
   { value: ",", label: "commas (,)" },
   { value: "code", label: "code blocks" },
   { value: "paragraph", label: "paragraphs (md)" },
-  { value: ";", label: "semicon (;)" },
+  { value: ";", label: "semicolons (;)" },
 ];
 
 /** Flattens markdown AST as dict to text (string) */

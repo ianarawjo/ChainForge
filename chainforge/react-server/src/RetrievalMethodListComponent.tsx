@@ -475,7 +475,7 @@ const RetrievalMethodListItem: React.FC<
   return (
     <>
       <div
-        className="llm-list-item"
+        className="llm-list-item llm-list-card"
         style={{
           marginBottom: isLinked && !isLastInGroup ? 2 : 8,
           borderLeft: isLinked ? "4px solid #228be6" : undefined,

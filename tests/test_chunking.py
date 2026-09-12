@@ -1,7 +1,7 @@
 import pytest
 from chainforge.rag.chunkers import (
     chonkie_token, chonkie_sentence, chonkie_recursive, chonkie_semantic, 
-    chonkie_late, chonkie_neural,
+    chonkie_late,
     overlapping_openai_tiktoken, overlapping_huggingface_tokenizers,
     syntax_nltk, syntax_texttiling
 )

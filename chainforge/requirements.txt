@@ -2,7 +2,7 @@ flask>=2.2.3
 flask[async]
 flask_cors
 grpcio
-numpy<2.0
+numpy>=1.26
 requests
 openai
 urllib3==1.26.6
@@ -22,8 +22,8 @@ cohere
 markitdown[pdf, docx, xlsx, xls, pptx]
 chonkie>=1.0
 model2vec>=0.5.0  # required by chonkie
-pyarrow>=14.0,<=16.0.0
-lancedb<=0.18.0
+pyarrow>=14.0
+lancedb>=0.17
 pandas
 accelerate
 tqdm

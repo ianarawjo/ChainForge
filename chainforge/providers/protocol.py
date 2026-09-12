@@ -203,8 +203,20 @@ def provider(name: str = 'Custom Provider',
 
     """
     def dec(cls: Union[CustomProviderProtocol, CustomChunkerProtocol, CustomRetrieverProtocol]):
-        # Allow functions OR classes-with-__call__
-        fn = cls() if inspect.isclass(cls) else cls
+        # Allow functions OR classes-with-__call__. A decorated class is
+        # instantiated once here, so that what gets registered is the callable
+        # instance rather than the class itself.
+        if inspect.isclass(cls):
+            try:
+                fn = cls()
+            except TypeError as e:
+                raise TypeError(
+                    f"Could not register custom provider '{name}': the decorated class "
+                    f"{cls.__name__} must be constructible with no arguments (its __call__ "
+                    f"receives the request parameters instead). Original error: {e}"
+                ) from e
+        else:
+            fn = cls
 
         # Friendly signature check
         if category == "retriever":

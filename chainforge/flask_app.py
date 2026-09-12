@@ -1,11 +1,11 @@
-import json, os, sys, asyncio, time, shutil, uuid, hashlib, tempfile, zipfile
+import json, os, sys, asyncio, time, shutil, uuid, hashlib, tempfile, zipfile, threading
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Literal
 from statistics import mean, median, stdev
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, after_this_request
-from flask_cors import CORS, cross_origin
+from flask_cors import CORS
 from chainforge.providers import ProviderRegistry
 from chainforge.security.password_utils import ensure_password
 from chainforge.security.secure_save import load_json_file, save_json_file
@@ -14,31 +14,56 @@ from platformdirs import user_data_dir
 import copy
 from collections import defaultdict
 
+# markitdown is a *core* dependency, not part of the optional [rag] extra:
+# media_to_text() needs it whether or not RAG features are installed.
+from markitdown import MarkItDown
+
 """ ========================================================
     DETECT RAGFORGE AVAILABILITY AND IMPORT RAGFORGE MODULES
     ========================================================
 """
-def IS_RAG_AVAILABLE():
+# The optional dependency set installed by `pip install chainforge[rag]`.
+# Several of these are imported lazily deep inside chainforge.rag, so we probe
+# for all of them up front rather than inferring availability from the imports
+# below succeeding.
+_RAG_PACKAGES = ["pyarrow", "lancedb", "pandas", "sentence_transformers",
+                 "chonkie", "rank_bm25", "numpy", "nltk"]
+
+def _rag_packages_installed() -> bool:
+    """Whether every optional RAG dependency is importable, without importing them."""
     from importlib.util import find_spec
-    try:
-        packages = ["pyarrow", "lancedb", "sentence_transformers", "chonkie", "rank_bm25", "numpy", "nltk"]
-        for package in packages:
+    for package in _RAG_PACKAGES:
+        try:
             if find_spec(package) is None:
                 return False
-        print("RAGForge dependencies detected. Enabling RAGForge features...")
-        return True
-    except ImportError:
-        print("You are running ChainForge core. RAGForge dependencies were not detected; hence, RAG features will be disabled.")
-        return False
-RAG_AVAILABLE = IS_RAG_AVAILABLE()
+        except (ImportError, ValueError):
+            # find_spec raises if a parent package is missing or not a package.
+            return False
+    return True
 
-# RAG-specific imports
-if RAG_AVAILABLE:
-    from chainforge.rag.chunkers import ChunkingMethodRegistry
-    from chainforge.rag.retrievers import RetrievalMethodRegistry
-    from chainforge.rag.rerankers import RerankingMethodRegistry, rrf_fuse, weighted_avg_fuse
-    from chainforge.rag.embeddings import EmbeddingMethodRegistry
-    from markitdown import MarkItDown
+RAG_AVAILABLE = False
+if _rag_packages_installed():
+    # Import eagerly, but tolerate failure. A dependency that is present yet
+    # broken (a half-installed torch, say) must degrade to "RAG disabled"
+    # rather than stop ChainForge from starting at all.
+    try:
+        from chainforge.rag.chunkers import ChunkingMethodRegistry
+        from chainforge.rag.retrievers import RetrievalMethodRegistry
+        from chainforge.rag.rerankers import RerankingMethodRegistry, rrf_fuse, weighted_avg_fuse
+        from chainforge.rag.embeddings import EmbeddingMethodRegistry
+        RAG_AVAILABLE = True
+        print("RAGForge dependencies detected. Enabling RAGForge features...")
+    except Exception as e:
+        print(f"RAGForge dependencies are installed but could not be loaded; RAG features "
+              f"will be disabled. ({type(e).__name__}: {e})", file=sys.stderr)
+
+if not RAG_AVAILABLE:
+    print("You are running ChainForge core. RAG features are disabled. "
+          "To enable them, install `chainforge[rag]`.")
+
+def IS_RAG_AVAILABLE() -> bool:
+    """Whether the optional RAG dependencies loaded successfully at startup."""
+    return RAG_AVAILABLE
 
 
 """ =================
@@ -68,8 +93,26 @@ MEDIA_DIR = os.path.join(FLOWS_DIR, 'media')
 SECURE_MODE: Literal['off', 'settings', 'all'] = 'off'  # The mode of encryption to use for files
 FLOWS_DIR_PWD = None  # The password to use for encryption/decryption
 
-# GLOBAL STATE: Stores progress for the current retrieval operation
+# GLOBAL STATE: Progress of each retrieval method in the current run, keyed by
+# method name and polled by the front-end via /getRetrieveProgress. Flask serves
+# requests on multiple threads, so guard it with a lock and mutate in place --
+# rebinding the dict would discard a concurrent run's progress, and reading it
+# unguarded can raise "dictionary changed size during iteration".
 RETRIEVAL_PROGRESS = {}
+RETRIEVAL_PROGRESS_LOCK = threading.Lock()
+
+def reset_retrieval_progress(method_names):
+    with RETRIEVAL_PROGRESS_LOCK:
+        RETRIEVAL_PROGRESS.clear()
+        RETRIEVAL_PROGRESS.update({name: 0 for name in method_names})
+
+def set_retrieval_progress(method_name, percent):
+    with RETRIEVAL_PROGRESS_LOCK:
+        RETRIEVAL_PROGRESS[method_name] = percent
+
+def get_retrieval_progress():
+    with RETRIEVAL_PROGRESS_LOCK:
+        return dict(RETRIEVAL_PROGRESS)
 
 class MetricType(Enum):
     KeyValue = 0
@@ -432,8 +475,11 @@ def fetchExampleFlow():
     return ret
 
 @app.get("/examples/<path:filename>")
-@cross_origin()
 def serve_cfzip(filename: str):
+    # CORS is already applied app-wide, so no @cross_origin() is needed here.
+    # send_from_directory() safe-joins the path, so traversal attempts 404.
+    if not filename.lower().endswith((".cfzip", ".zip")):
+        return jsonify({"error": "Only .cfzip flow bundles are served here."}), 404
     return send_from_directory(EXAMPLES_DIR, filename, mimetype="application/zip")
 
 
@@ -535,13 +581,7 @@ def checkRagAvailable():
     Check if RAG dependencies are available.
     Returns True if all required RAG packages are installed, False otherwise.
     """
-    try:
-        rag_available = IS_RAG_AVAILABLE()
-    except ImportError:
-        # One or more RAG dependencies are missing
-        rag_available = False
-    
-    ret = jsonify({"rag_available": rag_available})
+    ret = jsonify({"rag_available": IS_RAG_AVAILABLE()})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
@@ -1366,8 +1406,27 @@ def verify_media_file_integrity(uid):
 """
     RAGForge Endpoints and Functions
 """
+def requires_rag(view):
+    """Return a clean 501 if the optional RAG dependencies aren't installed.
+
+    The RAG routes are registered unconditionally so that the API surface does
+    not change with the install, but their registries only exist when the
+    `chainforge[rag]` extra loaded successfully.
+    """
+    from functools import wraps
+
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if not RAG_AVAILABLE:
+            return jsonify({"error": "RAG features are not available. Install them with "
+                                     "`pip install chainforge[rag]` and restart ChainForge."}), 501
+        return view(*args, **kwargs)
+    return wrapper
+
+
 # Chunking Endpoint
 @app.route("/chunk", methods=["POST"])
+@requires_rag
 def chunk():
     """
     Handles text processing requests, specifically chunking.
@@ -1447,6 +1506,7 @@ def chunk():
 
 # === Retrieval Endpoint===
 @app.route("/retrieve", methods=["POST"])
+@requires_rag
 def retrieve():
     """
     Process multiple retrieval methods against provided chunks and queries.
@@ -1518,7 +1578,6 @@ def retrieve():
         ...
     ]
     """
-    global RETRIEVAL_PROGRESS
     data = request.json
     methods = data.get("methods", [])
     chunks = data.get("chunks", [])
@@ -1531,8 +1590,6 @@ def retrieve():
 
     queries = [{'text': q} if isinstance(q, str) else q for q in queries]
 
-    print("[DEBUG] ", methods)
-
     try:
     
         # Validate inputs
@@ -1543,7 +1600,7 @@ def retrieve():
         if not queries:
             return jsonify({"error": "No queries provided"}), 400
         
-        RETRIEVAL_PROGRESS = {m["methodName"]: 0 for m in methods}
+        reset_retrieval_progress(m["methodName"] for m in methods)
         
         method_id_to_group = {}
         group_cfg = {}
@@ -1603,8 +1660,6 @@ def retrieve():
                 "chunkLibrary": chunk.get("metavars", {}).get("chunkLibrary", "")
             })
 
-        print(len(chunks_by_method))
-        
         # Group retrieval methods by embedding model to avoid redundant computation
         embedding_methods = {}  # model -> list of methods requiring this model
         keyword_methods = []    # methods not requiring embeddings
@@ -1622,9 +1677,11 @@ def retrieve():
                 # Non-embedding method
                 keyword_methods.append(method)
 
-        print("[DEBUG] ", embedding_methods)
         # Prepare the final flat results array
         flat_results = []
+        # Per-method failures. Individual methods are skipped rather than
+        # aborting the run, but we surface them if nothing succeeded at all.
+        method_errors = []
         
         # Process each chunking method separately
         for chunk_method, chunk_group in chunks_by_method.items():
@@ -1642,12 +1699,12 @@ def retrieve():
                     handler = resolved_handlers.get(base_method)
                     if not handler:
                         raise ValueError(f"Unknown method: {base_method}")
-                    RETRIEVAL_PROGRESS[method_name] = 10
+                    set_retrieval_progress(method_name, 10)
                     start_time = time.perf_counter()
                     
                     # Get retrieved chunks for this method and chunk group
                     retrieved = handler(chunk_group, queries, method.get("settings", {}))
-                    RETRIEVAL_PROGRESS[method_name] = 70
+                    set_retrieval_progress(method_name, 70)
                     end_time = time.perf_counter()
                     latency_ms = (end_time - start_time) * 1000
                     # Process retrieved chunks for each query
@@ -1687,7 +1744,7 @@ def retrieve():
                             }
 
                             if fusion_enabled:
-                                doc_id = chunk.get("chunkId");
+                                doc_id = chunk.get("chunkId")
                                 score = float(chunk.get("similarity", 0.0))
                                 rank = i + 1
                                 query_txt = query_object['text']
@@ -1696,24 +1753,28 @@ def retrieve():
                                 })
                             
                             flat_results.append(response_obj)
-                    RETRIEVAL_PROGRESS[method_name] = 100
+                    set_retrieval_progress(method_name, 100)
                 except Exception as e:
                     # Skip errors - we'll just not include results from this method
-                    print(f"Error with {method_name} on {chunk_method}: {str(e)}")
+                    msg = f"Error with {method_name} on {chunk_method}: {e}"
+                    print(msg, file=sys.stderr)
+                    method_errors.append(msg)
                     continue
 
             # Process embedding-based methods for this chunk group
-            for embedder, methods in embedding_methods.items():
+            # NOTE: bind to `embedder_methods`, not `methods` -- the latter is the
+            # full list of methods from the request body.
+            for embedder, embedder_methods in embedding_methods.items():
                 try:
                     provider, model_name = embedder.split("#", 1)
                     embedder_func = EmbeddingMethodRegistry.get_embedder(provider)
-                    model_path = next((m['settings'].get('embeddingLocalPath') for m in methods if
+                    model_path = next((m['settings'].get('embeddingLocalPath') for m in embedder_methods if
                                     m['settings'].get('embeddingLocalPath')), None)
 
                     if not embedder_func:
                         raise ValueError(f"Unknown embedding model: {model_name}")
-                    for m in methods:
-                         RETRIEVAL_PROGRESS[m["methodName"]] = 30
+                    for m in embedder_methods:
+                         set_retrieval_progress(m["methodName"], 30)
                     
                     # Compute embeddings once for all methods using this model
                     chunk_texts = [c["text"] for c in chunk_group]
@@ -1721,12 +1782,17 @@ def retrieve():
                     query_embeddings = embedder_func([query.get("text", "") for query in queries], model_name, model_path, api_keys)
                     
                 except Exception as e:
-                    raise RuntimeError(
-                        f"Embedding error with {embedder} on {chunk_method}: {e}"
-                    )
+                    # Skip just the methods using this embedder, as we do for
+                    # keyword methods, so one bad embedder cannot wipe out the
+                    # whole run. Collected errors are reported below if nothing
+                    # at all could be retrieved.
+                    msg = f"Embedding error with {embedder} on {chunk_method}: {e}"
+                    print(msg, file=sys.stderr)
+                    method_errors.append(msg)
+                    continue
                 
                 # Process each method with the same embeddings
-                for method in methods:
+                for method in embedder_methods:
                     method_id = method.get("id")
                     base_method = method.get("baseMethod")
                     method_name = method.get("methodName")
@@ -1739,11 +1805,11 @@ def retrieve():
                         handler = resolved_handlers.get(base_method)
                         if not handler:
                             raise ValueError(f"Unknown method: {base_method}")
-                        RETRIEVAL_PROGRESS[method_name] = 50
+                        set_retrieval_progress(method_name, 50)
                         start_time = time.perf_counter()
                         # Get retrieved chunks for this method and chunk group
                         retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings, method.get("settings", {}), db_path)
-                        RETRIEVAL_PROGRESS[method_name] = 80
+                        set_retrieval_progress(method_name, 80)
                         end_time = time.perf_counter()
                         latency_ms = (end_time - start_time) * 1000
                         # Process retrieved chunks for each query
@@ -1784,7 +1850,7 @@ def retrieve():
                                 }
 
                                 if fusion_enabled:
-                                    doc_id = chunk.get("chunkId");
+                                    doc_id = chunk.get("chunkId")
                                     score = float(chunk.get("similarity", 0.0))
                                     rank = i + 1
                                     query_txt = query_object['text']
@@ -1792,9 +1858,11 @@ def retrieve():
                                         "doc_id": doc_id, "rank": rank, "score": score, "obj": response_obj
                                     })
                                 flat_results.append(response_obj)
-                        RETRIEVAL_PROGRESS[method_name] = 100
+                        set_retrieval_progress(method_name, 100)
                     except Exception as e:
-                        print(f"Error with {method_name} on {chunk_method}: {str(e)}")
+                        msg = f"Error with {method_name} on {chunk_method}: {e}"
+                        print(msg, file=sys.stderr)
+                        method_errors.append(msg)
                         continue
         # === Retrieval Fusion (imported helpers) ===
         if fusion_enabled and linked_groups:
@@ -1807,14 +1875,14 @@ def retrieve():
                     cfg = group_cfg.get(gid, {})
                     fmethod = cfg.get("fusionMethod")
                     settings = cfg.get("fusionSettings") or {}
-                    if fmethod in ("reciprocal_rank_fusion"): 
+                    if fmethod == "reciprocal_rank_fusion":
                         method_keys = (cfg.get("methodKeys") or [])
                         weights_arr = settings.get("weights") or []
                         weights_map = {mid: float(w) for i, mid in enumerate(method_keys)
                                     for w in [weights_arr[i] if i < len(weights_arr) else None] if isinstance(w, (int, float))}
                         k_val = int(settings.get("k", settings.get("K", 60)))
                         fused = rrf_fuse(method_lists, k=k_val, weights_by_method=weights_map)
-                        fusion_sig, fusion_name = "fusion:rrf", "rrf"
+                        fusion_sig = "fusion:rrf"
                     else: # Weighted Average
                         method_keys = (cfg.get("methodKeys") or [])
                         weights_arr = settings.get("weights") or []
@@ -1828,7 +1896,7 @@ def retrieve():
                             method_lists,
                             weights_by_method=weights_map,
                         )
-                        fusion_sig, fusion_name = "fusion:weighted_average", "weighted_average"
+                        fusion_sig = "fusion:weighted_average"
                     group_method_ids = [mid for mid in (cfg.get("methodKeys") or []) if mid in method_lists]
                     pretty_names = [method_name_by_id[mid] for mid in group_method_ids]
                     fused_label = f"Fused ({' + '.join(pretty_names)})"
@@ -1843,22 +1911,28 @@ def retrieve():
                         })
                         flat_results.append(obj)
         
+        # Every method failed: report why rather than returning an empty list,
+        # which the front-end cannot distinguish from "no matches".
+        if not flat_results and method_errors:
+            return jsonify({"error": "No retrieval method succeeded.\n" + "\n".join(method_errors)}), 400
+
         return jsonify(flat_results), 200
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 400
 
 @app.route('/getRetrieveProgress', methods=['GET'])
+@requires_rag
 def get_retrieve_progress():
     """
     Returns the current progress of all active retrieval methods.
     Used by the frontend polling loop.
     """
-    global RETRIEVAL_PROGRESS
-    return jsonify(RETRIEVAL_PROGRESS)
+    return jsonify(get_retrieval_progress())
 
 
 # === Reranking Endpoint ===
 @app.route("/rerank", methods=["POST"])
+@requires_rag
 def rerank():
     """
     Rerank documents using the specified reranking method.

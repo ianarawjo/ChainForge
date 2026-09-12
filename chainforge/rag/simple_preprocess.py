@@ -30,7 +30,6 @@ Lesser General Public License for more details.
 """
 import re
 import unicodedata
-from six import u
 
 def to_unicode(text, encoding='utf8', errors='strict'):
     """Convert a string (bytestring in `encoding` or unicode), to unicode."""
@@ -52,7 +51,7 @@ def deaccent(text):
         # assume utf8 for byte strings, use default (strict) error handling
         text = text.decode('utf8')
     norm = unicodedata.normalize("NFD", text)
-    result = u('').join(ch for ch in norm if unicodedata.category(ch) != 'Mn')
+    result = ''.join(ch for ch in norm if unicodedata.category(ch) != 'Mn')
     return unicodedata.normalize("NFC", result)
 
 def tokenize(text, lowercase=False, deacc=False, errors="strict", to_lower=False, lower=False):
@@ -70,7 +69,7 @@ def tokenize(text, lowercase=False, deacc=False, errors="strict", to_lower=False
     [u'Nic', u'nemuze', u'letet', u'rychlosti', u'vyssi', u'nez', u'tisic', u'kilometru', u'za', u'sekundu']
 
     """
-    PAT_ALPHABETIC = re.compile('(((?![\d])\w)+)', re.UNICODE)
+    PAT_ALPHABETIC = re.compile(r'(((?![\d])\w)+)', re.UNICODE)
     lowercase = lowercase or to_lower or lower
     text = to_unicode(text, errors=errors)
     if lowercase:

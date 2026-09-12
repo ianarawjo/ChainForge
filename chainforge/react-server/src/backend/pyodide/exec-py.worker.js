@@ -24,11 +24,17 @@ self.onmessage = async function (event) {
   try {
     await self.pyodide.loadPackagesFromImports(python);
     let results = await self.pyodide.runPythonAsync(python);
-    // Conversion si possible
+    // Python dicts and lists come back as PyProxy objects, which postMessage
+    // cannot structured-clone. Convert them to plain JS, then free the proxy
+    // (Pyodide cannot garbage-collect it for us).
     if (results && typeof results.toJs === "function") {
-      results = results.toJs({ dict_converter: Object.fromEntries });
+      const proxy = results;
+      try {
+        results = proxy.toJs({ dict_converter: Object.fromEntries });
+      } finally {
+        if (typeof proxy.destroy === "function") proxy.destroy();
+      }
     }
-    console.log("About to postMessage:", results);
     self.postMessage({ results, id });
   } catch (error) {
     self.postMessage({ error: error.message, id });

@@ -60,8 +60,6 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
       const updatedFields = [...fields];
 
       for (const file of Array.from(files)) {
-        console.log("Uploading file:", file, file.name);
-
         try {
           // Upload the file to the lookup and get its UID
           const uid = await MediaLookup.upload(file);
@@ -69,8 +67,6 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
           // Grab the content of the file, in plain text
           // TODO: Make this work on the front-end if backend is not available
           const text = await MediaLookup.getAsText(uid);
-
-          console.log("File content:", text);
 
           // Add filename + text content as a new TemplateVarInfo
           updatedFields.push({

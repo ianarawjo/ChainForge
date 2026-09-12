@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 rag_deps = [
     # RAGForge dependencies
     "grpcio",
-    "numpy<2.0",  # numpy>=2.0 is not compatible with libraries like torch
+    "numpy>=1.26",
     "pymupdf",
     "python-docx",
     "tiktoken",
@@ -17,8 +17,15 @@ rag_deps = [
     "cohere",
     "chonkie>=1.0",
     "model2vec>=0.5.0",  # required by chonkie
-    "pyarrow>=14.0,<=16.0.0",  # newer versions of pyarrow require CMake 3.25 or higher, which is not compatible with all systems
-    "lancedb<0.18.0"  # pylance requires pyarrow 14 or higher. Later versions of LanceDB give strange errors with pyarrow<=16.0.0.
+    # NOTE: Do not cap pyarrow/lancedb. Older pyarrow (<=16) ships no wheels for
+    # Python 3.13+, so pip falls back to building from source, which fails.
+    "pyarrow>=14.0",
+    "lancedb>=0.17",
+    # Imported directly by chainforge/rag (vector_stores, embeddings). Do not
+    # rely on these arriving transitively via markitdown/transformers.
+    "pandas",
+    "tqdm",
+    "accelerate",
 ]
 
 def readme():
@@ -53,7 +60,12 @@ setup(
         # Extra dependencies for functionality like RAGForge,
         # which may not be needed by all users
         "rag": rag_deps,
-        "all": rag_deps,
+        # FAISS is an optional alternative vector store. It is not part of
+        # [rag] because faiss-cpu needs swig, which on macOS is only available
+        # via homebrew ("brew install swig"). chainforge.rag soft-fails without
+        # it; install this extra to enable the FAISS retrieval methods.
+        "faiss": ["faiss-cpu"],
+        "all": rag_deps + ["faiss-cpu"],
     },
     entry_points={
         "console_scripts": [
@@ -69,6 +81,8 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
     ],
     python_requires=">=3.10",
     include_package_data=True,

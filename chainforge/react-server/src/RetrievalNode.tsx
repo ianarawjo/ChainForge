@@ -231,8 +231,6 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         throw new Error("Input 'queries' is missing or empty.");
       }
 
-      console.log("Chunks:", inputData.chunks);
-
       // Make the API request
       const response = await fetch(`${FLASK_BASE_URL}retrieve`, {
         method: "POST",

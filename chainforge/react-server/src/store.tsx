@@ -34,7 +34,6 @@ import { TogetherChatSettings } from "./ModelSettingSchemas";
 import { NativeLLM } from "./backend/models";
 import { StringLookup } from "./backend/cache";
 import { saveGlobalConfig } from "./backend/backend";
-import { remove } from "jszip";
 import { ChunkMethodSpec } from "./ChunkMethodListComponent";
 import type { RetrievalMethodSpec } from "./RetrievalMethodListComponent";
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();

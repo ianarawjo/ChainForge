@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo, useState, useEffect, useRef } from "react";
+import React, { ReactNode, useMemo, useState } from "react";
 import { Menu, Tooltip, Popover, ActionIcon } from "@mantine/core";
 import { IconChevronRight, IconTrash } from "@tabler/icons-react";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
@@ -45,24 +45,6 @@ export default function NestedMenu({
 }) {
   const [menuOpened, setMenuOpened] = useState(false);
   const [submenusOpened, setSubmenusOpened] = useState<string[] | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpened(false);
-        setSubmenusOpened(null);
-      }
-    };
-
-    if (menuOpened) {
-      document.addEventListener("click", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("click", handleClickOutside);
-    };
-  }, [menuOpened]);
   const openSubmenu = (key: string) => {
     if (submenusOpened) {
       setSubmenusOpened((prev) => [...(prev as string[]), key]);
@@ -176,19 +158,27 @@ export default function NestedMenu({
   }, [items, submenusOpened]);
 
   return (
-    <div ref={menuRef}>
-      <Menu
-        opened={menuOpened}
-        shadow="md"
-        position="bottom-start"
-        width={200}
-        styles={NESTED_MENU_STYLE}
-        offset={1}
-        withinPortal
-      >
-        <Menu.Target>{button(() => setMenuOpened(!menuOpened))}</Menu.Target>
-        <Menu.Dropdown>{menuItems}</Menu.Dropdown>
-      </Menu>
-    </div>
+    <Menu
+      opened={menuOpened}
+      // Let Mantine close the menu on outside clicks and Escape. Its own
+      // handler accounts for the portaled dropdown, which a listener on an
+      // ancestor element cannot do.
+      onChange={(opened) => {
+        setMenuOpened(opened);
+        if (!opened) setSubmenusOpened(null);
+      }}
+      // Items close the menu themselves (see menuItemInfoToMenuItem), so that
+      // clicking a submenu parent, a label or a divider leaves it open.
+      closeOnItemClick={false}
+      shadow="md"
+      position="bottom-start"
+      width={200}
+      styles={NESTED_MENU_STYLE}
+      offset={1}
+      withinPortal
+    >
+      <Menu.Target>{button(() => setMenuOpened(!menuOpened))}</Menu.Target>
+      <Menu.Dropdown>{menuItems}</Menu.Dropdown>
+    </Menu>
   );
 }

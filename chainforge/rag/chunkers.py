@@ -181,6 +181,43 @@ def syntax_texttiling(text: str) -> List[str]:
     chunks = ttt.tokenize(text)
     return chunks if chunks else [text]
 
+def _chonkie_kwargs(chunker_cls: Any, **kwargs: Any) -> Dict[str, Any]:
+    """Adapt keyword arguments to the installed Chonkie version's signature.
+
+    Chonkie renamed some constructor parameters after 1.3.x (notably
+    `tokenizer_or_token_counter` -> `tokenizer` and `min_sentences` ->
+    `min_sentences_per_chunk`). Since we don't pin an exact Chonkie version,
+    pass whichever spelling the installed class actually accepts.
+    """
+    import inspect
+
+    aliases = {
+        "tokenizer_or_token_counter": ("tokenizer",),
+        "tokenizer": ("tokenizer_or_token_counter",),
+        "min_sentences": ("min_sentences_per_chunk",),
+        "min_sentences_per_chunk": ("min_sentences",),
+    }
+
+    try:
+        accepted = set(inspect.signature(chunker_cls.__init__).parameters)
+    except (TypeError, ValueError):
+        return kwargs  # Can't introspect; let Chonkie decide.
+
+    adapted: Dict[str, Any] = {}
+    for key, value in kwargs.items():
+        if key in accepted:
+            adapted[key] = value
+            continue
+        for alt in aliases.get(key, ()):
+            if alt in accepted:
+                adapted[alt] = value
+                break
+        else:
+            print(f"Warning: {chunker_cls.__name__} in the installed version of Chonkie "
+                  f"does not accept '{key}'; ignoring it.", file=sys.stderr)
+    return adapted
+
+
 """
    Chonkie Methods
 """
@@ -192,11 +229,12 @@ def chonkie_token(text: str, **kwargs: Any) -> List[str]:
     chunk_size = int(kwargs.get("chunk_size", 512))
     chunk_overlap = int(kwargs.get("chunk_overlap", 0))
 
-    chunker = TokenChunker(
+    chunker = TokenChunker(**_chonkie_kwargs(
+        TokenChunker,
         tokenizer=tokenizer,  # Supports string identifiers
         chunk_size=chunk_size,    # Maximum tokens per chunk
         chunk_overlap=chunk_overlap,  # Overlap between chunks
-    )
+    ))
 
     texts = [t.text for t in chunker.chunk(text)]
     return texts if texts else [text]
@@ -224,7 +262,8 @@ def chonkie_sentence(text: str, **kwargs: Any) -> List[str]:
         print(f"Invalid JSON format for delim: {delim}. Delimeter must be a JSON parseable string representing an array of characters. Skipping custom delimeter. Error: {e}", file=sys.stderr)
         delim = ['.', '!', '?', '\n']
 
-    chunker = SentenceChunker(
+    chunker = SentenceChunker(**_chonkie_kwargs(
+        SentenceChunker,
         tokenizer_or_token_counter=tokenizer_or_token_counter,
         chunk_size=chunk_size,       
         chunk_overlap=chunk_overlap,    
@@ -232,7 +271,7 @@ def chonkie_sentence(text: str, **kwargs: Any) -> List[str]:
         min_characters_per_sentence=min_characters_per_sentence,
         delim=delim,  # Custom delimiters
         include_delim=include_delim,  # Include delimiters in the chunk
-    )
+    ))
 
     texts = [t.text for t in chunker.chunk(text)]
     return texts if texts else [text]
@@ -279,12 +318,13 @@ def chonkie_recursive(text: str, **kwargs: Any) -> List[str]:
             print(f"Invalid recipe name for use_premade_recipe: {use_premade_recipe}. Error: {e}", file=sys.stderr)
             use_premade_recipe = None
 
-    chunker = RecursiveChunker(
+    chunker = RecursiveChunker(**_chonkie_kwargs(
+        RecursiveChunker,
         tokenizer_or_token_counter=tokenizer_or_token_counter,
         chunk_size=chunk_size,
         rules=rules,
         min_characters_per_chunk=min_characters_per_chunk,
-    )
+    ))
 
     texts = [t.text for t in chunker.chunk(text)]
     return texts if texts else [text]
@@ -325,15 +365,16 @@ def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
     # --- INITIALIZATION ---
     # Note: We removed 'mode', 'threshold_step', 'delim', and 'min_chunk_size' 
     # because Chonkie 1.3.1 no longer supports them.
-    chunker = SemanticChunker(
+    chunker = SemanticChunker(**_chonkie_kwargs(
+        SemanticChunker,
         embedding_model=embedding_model,
         threshold=threshold,
         chunk_size=chunk_size,
         similarity_window=similarity_window,
         min_sentences=min_sentences,
         min_characters_per_sentence=min_characters_per_sentence,
-        skip_window=skip_window 
-    )
+        skip_window=skip_window,
+    ))
 
     # --- EXECUTION ---
     texts = [t.text for t in chunker.chunk(text)]
@@ -400,12 +441,13 @@ def chonkie_late(text: str, **kwargs: Any) -> List[str]:
             use_premade_recipe = None
 
     # Initialize standard chunker with provided parameters
-    chunker = LateChunker(
+    chunker = LateChunker(**_chonkie_kwargs(
+        LateChunker,
         embedding_model=embedding_model,
         chunk_size=chunk_size,
         rules=rules,
         min_characters_per_chunk=min_characters_per_chunk,
-    )
+    ))
 
     chunks = chunker.chunk(text)
     return [chunk.text for chunk in chunks] if chunks else [text]
