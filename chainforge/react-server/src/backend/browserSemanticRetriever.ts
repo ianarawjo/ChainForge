@@ -27,6 +27,11 @@ import {
   cosineSimilarity,
   embedTexts,
 } from "./browserEmbeddings";
+import {
+  loadVectorsForModel,
+  saveVectors,
+  trimVectorStore,
+} from "./vectorStore";
 
 /** Separates the two parts of a cache key; cannot occur in either. */
 const KEY_SEP = "\u0000";
@@ -61,9 +66,38 @@ export function cachedVectorBytes(): number {
   return total;
 }
 
-/** Drops cached vectors. Exposed so the UI can free memory deliberately. */
+/** Drops in-memory vectors. Does not touch what IndexedDB holds. */
 export function clearVectorCache(): void {
   vectorCache.clear();
+  hydrated.clear();
+}
+
+/**
+ * Models whose stored vectors have been pulled into memory this session.
+ *
+ * Hydration is per model and happens once, lazily: reading every vector for a
+ * model the user is not using would be wasted work, and vectors from different
+ * models are not comparable anyway.
+ */
+const hydrated = new Map<string, Promise<void>>();
+
+/** Loads this model's persisted vectors into memory, at most once. */
+function hydrate(modelId: string): Promise<void> {
+  const existing = hydrated.get(modelId);
+  if (existing) return existing;
+
+  const loading = loadVectorsForModel(modelId, KEY_SEP)
+    .then((stored) => {
+      // Anything embedded this session is already correct; do not overwrite.
+      for (const [key, vector] of stored)
+        if (!vectorCache.has(key)) vectorCache.set(key, vector);
+    })
+    .catch(() => {
+      // Persistence is an optimization. Losing it costs a re-embed.
+    });
+
+  hydrated.set(modelId, loading);
+  return loading;
 }
 
 /**
@@ -91,9 +125,15 @@ async function embedCached(
 
   if (missing.length > 0) {
     const vectors = await embedTexts(modelId, missing, opts);
-    missing.forEach((text, i) =>
-      vectorCache.set(cacheKey(modelId, text, isQuery), vectors[i]),
-    );
+    const fresh = missing.map((text, i) => ({
+      key: cacheKey(modelId, text, isQuery),
+      vector: vectors[i],
+    }));
+    for (const { key, vector } of fresh) vectorCache.set(key, vector);
+
+    // Persist what we just paid to compute. Awaited so a run that finishes
+    // has actually been saved, rather than racing a reload.
+    if (await saveVectors(fresh)) await trimVectorStore();
   }
 
   return texts.map(
@@ -142,6 +182,10 @@ export async function semanticRetriever(
       query_object: normalizeQuery(q)[0],
       retrieved_chunks: [] as RetrievalHit[],
     }));
+
+  // Reuse whatever a previous session already embedded with this model before
+  // deciding what is missing.
+  await hydrate(modelId);
 
   // The corpus first: it is the bulk of the work, and it is what the download
   // and embedding progress is really reporting on.
