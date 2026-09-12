@@ -141,45 +141,35 @@ class TestChonkieChunking:
 
 
 class TestMarkdownHeaderChunking:
-  """The markdown_header chunker had no coverage."""
+  """The markdown_header chunker.
+
+  Cases come from tests/fixtures/markdown_header_cases.json, which the
+  TypeScript port in browserChunkers.ts reads too. The frontend runs its own
+  implementation (so a flow chunks the same with or without a backend), so the
+  two must agree; sharing the cases means a divergence fails a build rather
+  than quietly changing how documents are split.
+  """
+
+  @staticmethod
+  def _cases():
+    import json, pathlib as _p
+    fixture = _p.Path(__file__).parent / "fixtures" / "markdown_header_cases.json"
+    return json.loads(fixture.read_text())["cases"]
 
   def _chunk(self, text, **kwargs):
     from chainforge.rag.chunkers import ChunkingMethodRegistry
     return ChunkingMethodRegistry.get_handler("markdown_header")(text, **kwargs)
 
-  def test_splits_at_atx_headings_and_keeps_them(self):
-    chunks = self._chunk("# One\nalpha\n\n# Two\nbeta")
-    assert len(chunks) == 2
-    assert chunks[0].startswith("# One")
-    assert "alpha" in chunks[0]
-    assert chunks[1].startswith("# Two")
-
-  def test_all_heading_levels(self):
-    text = "\n".join(f"{'#' * lvl} H{lvl}\nbody{lvl}" for lvl in range(1, 7))
-    chunks = self._chunk(text)
-    assert len(chunks) == 6
-    for lvl, chunk in enumerate(chunks, start=1):
-      assert chunk.startswith(f"{'#' * lvl} H{lvl}")
-
-  def test_leading_preamble_becomes_its_own_chunk(self):
-    chunks = self._chunk("intro text\n\n# Section\nbody")
-    assert len(chunks) == 2
-    assert chunks[0] == "intro text"
-
-  def test_text_without_headings_is_one_chunk(self):
-    assert self._chunk("just a paragraph") == ["just a paragraph"]
-
-  def test_hash_without_a_following_space_is_not_a_heading(self):
-    # "#hashtag" is not an ATX heading.
-    assert len(self._chunk("#hashtag body text")) == 1
-
-  def test_crlf_line_endings(self):
-    chunks = self._chunk("# One\r\nalpha\r\n# Two\r\nbeta")
-    assert len(chunks) == 2
+  def test_shared_cases(self):
+    cases = self._cases()
+    assert len(cases) > 0
+    for case in cases:
+      assert self._chunk(case["input"]) == case["expected"], (
+        f"markdown_header diverged from the shared fixture on "
+        f"{case['input']!r}"
+      )
 
   def test_none_input(self):
+    # Not in the shared fixture: JSON has no way to express Python's None,
+    # and the TS side takes null/undefined instead.
     assert self._chunk(None) == [""]
-
-  def test_empty_and_whitespace_input(self):
-    assert self._chunk("") == [""]
-    assert self._chunk("   \n  ") == ["   \n  "]

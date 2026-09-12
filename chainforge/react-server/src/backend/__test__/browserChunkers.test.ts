@@ -12,53 +12,39 @@ import {
 // No mocks needed: browserChunkers imports only a type.
 
 describe("markdownHeaderChunker", () => {
-  // These cases were checked against chainforge/rag/chunkers.py's
-  // markdown_header and must produce identical output; the same flow has to
-  // chunk the same way with or without a backend.
-  test("splits at headings and keeps them with their section", () => {
-    expect(markdownHeaderChunker("# One\nalpha\n\n# Two\nbeta", {})).toEqual([
-      "# One\nalpha",
-      "# Two\nbeta",
-    ]);
+  // The reference implementation is chainforge/rag/chunkers.py: the backend
+  // still serves /chunk for any other caller, while the frontend runs this
+  // port so a flow chunks identically with or without a server. Cases are
+  // shared with the Python suite via a fixture, so a divergence fails a build
+  // instead of quietly changing how documents get split.
+  const sharedCases: { input: string; expected: string[] }[] = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fs = require("fs");
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const path = require("path");
+    const fixture = path.resolve(
+      __dirname,
+      "../../../../../tests/fixtures/markdown_header_cases.json",
+    );
+    return JSON.parse(fs.readFileSync(fixture, "utf8")).cases;
+  })();
+
+  test("the fixture was found and is non-empty", () => {
+    expect(sharedCases.length).toBeGreaterThan(0);
   });
 
-  test("text before the first heading is its own chunk", () => {
-    expect(markdownHeaderChunker("intro\n\n# S\nbody", {})).toEqual([
-      "intro",
-      "# S\nbody",
-    ]);
-  });
+  test.each(sharedCases)(
+    "matches the Python implementation for $input",
+    ({ input, expected }) => {
+      expect(markdownHeaderChunker(input, {})).toEqual(expected);
+    },
+  );
 
-  test("all six heading levels split", () => {
-    const text = [1, 2, 3, 4, 5, 6]
-      .map((lvl) => `${"#".repeat(lvl)} H${lvl}\nbody${lvl}`)
-      .join("\n");
-    expect(markdownHeaderChunker(text, {})).toHaveLength(6);
-  });
-
-  test("a hash without following whitespace is not a heading", () => {
-    expect(markdownHeaderChunker("#hashtag body", {})).toEqual([
-      "#hashtag body",
-    ]);
-  });
-
-  test("seven hashes is not a heading", () => {
-    expect(markdownHeaderChunker("####### deep", {})).toEqual(["####### deep"]);
-  });
-
-  test("CRLF line endings are normalized", () => {
-    expect(markdownHeaderChunker("# A\r\nx\r\n## B\r\ny", {})).toEqual([
-      "# A\nx",
-      "## B\ny",
-    ]);
-  });
-
-  test("text with no headings is one chunk", () => {
-    expect(markdownHeaderChunker("just text", {})).toEqual(["just text"]);
-  });
-
-  test("whitespace-only input falls back to the original text", () => {
-    expect(markdownHeaderChunker("   \n  ", {})).toEqual(["   \n  "]);
+  test("null and undefined are tolerated", () => {
+    // The Python side takes None here; JSON cannot express it, so it is
+    // covered separately in both suites.
+    expect(markdownHeaderChunker(null as any, {})).toEqual([""]);
+    expect(markdownHeaderChunker(undefined as any, {})).toEqual([""]);
   });
 });
 
