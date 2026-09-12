@@ -1465,8 +1465,11 @@ export async function call_ollama_provider(
       query.messages,
       "ollama",
     );
+    // construct_chat_history only attaches `images` when there are some, so a
+    // text-only prompt leaves the property undefined -- which made every
+    // image-free Ollama chat request throw before it was ever sent.
     n_images = query.messages.filter(
-      (msg: Dict) => msg.role === "user" && msg.images.length > 0,
+      (msg: Dict) => msg.role === "user" && (msg.images?.length ?? 0) > 0,
     ).length;
     console.log(
       "Resolved images in user messages: ",
