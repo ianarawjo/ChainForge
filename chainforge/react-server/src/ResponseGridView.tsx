@@ -45,6 +45,7 @@ import {
   LayoutOptions,
   metricValue,
   MODEL_AXIS,
+  passFail,
   resolveGridAxes,
   scoreMetrics,
 } from "./backend/responseGrid";
@@ -80,7 +81,14 @@ function heatColor(
   return `rgba(34, 139, 230, ${(0.08 + 0.52 * level).toFixed(3)})`;
 }
 
-const ScoreBadge: React.FC<{ label?: string }> = ({ label }) =>
+/**
+ * A score badge. Pass/fail scores are green or red, so they can be told apart
+ * at a glance whatever the cards are colored by; other scores are dark.
+ */
+const ScoreBadge: React.FC<{ label?: string; outcome?: boolean }> = ({
+  label,
+  outcome,
+}) =>
   label === undefined ? null : (
     <span
       style={{
@@ -90,7 +98,12 @@ const ScoreBadge: React.FC<{ label?: string }> = ({ label }) =>
         maxWidth: "85%",
         padding: "0 4px",
         borderRadius: 3,
-        background: "rgba(0, 0, 0, 0.6)",
+        background:
+          outcome === true
+            ? "rgba(43, 138, 62, 0.9)"
+            : outcome === false
+              ? "rgba(201, 42, 42, 0.9)"
+              : "rgba(0, 0, 0, 0.6)",
         color: "#fff",
         fontSize: 10,
         lineHeight: "15px",
@@ -107,13 +120,15 @@ const ScoreBadge: React.FC<{ label?: string }> = ({ label }) =>
 interface CellItemProps {
   size: number;
   badge?: string;
+  /** Whether the badge's score is a pass (true) or fail (false), if either. */
+  badgeOutcome?: boolean;
   tint?: string;
   onOpen: () => void;
 }
 
 const GridThumbnail: React.FC<
   CellItemProps & { item: Extract<GridItem, { kind: "image" }> }
-> = ({ item, size, badge, tint, onOpen }) => {
+> = ({ item, size, badge, badgeOutcome, tint, onOpen }) => {
   // Only mounted while near the visible region (VirtualResponseGrid), so the
   // thumbnail can load straight away, and is released when scrolled far off.
   const { url, status } = useThumbnailUrl(item.uid);
@@ -149,7 +164,7 @@ const GridThumbnail: React.FC<
           Unavailable
         </Text>
       ) : null}
-      <ScoreBadge label={badge} />
+      <ScoreBadge label={badge} outcome={badgeOutcome} />
     </button>
   );
 };
@@ -162,7 +177,17 @@ const TextCard: React.FC<
     /** Tints the card with its model's color (see .cf-grid-card-model). */
     modelColor?: string;
   }
-> = ({ item, size, lines, height, badge, tint, modelColor, onOpen }) => (
+> = ({
+  item,
+  size,
+  lines,
+  height,
+  badge,
+  badgeOutcome,
+  tint,
+  modelColor,
+  onOpen,
+}) => (
   <button
     type="button"
     onClick={onOpen}
@@ -206,7 +231,7 @@ const TextCard: React.FC<
     >
       {item.text}
     </div>
-    <ScoreBadge label={badge} />
+    <ScoreBadge label={badge} outcome={badgeOutcome} />
   </button>
 );
 
@@ -672,6 +697,7 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
     const badgeValue = badgeMetric ? metricValue(item, badgeMetric) : undefined;
     return {
       badge: badgeValue !== undefined ? formatScore(badgeValue) : undefined,
+      badgeOutcome: passFail(badgeValue),
       tint:
         scale && heatMetric
           ? heatColor(heatLevel(metricValue(item, heatMetric), scale), scale)
@@ -961,13 +987,14 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
           renderItem={(item) => {
             const i = indexOf.get(item) ?? 0;
             const open = () => setLightboxIndex(i);
-            const { badge, tint, modelColor } = decorate(item);
+            const { badge, badgeOutcome, tint, modelColor } = decorate(item);
             return item.kind === "image" ? (
               <GridThumbnail
                 item={item}
                 size={itemSize}
                 onOpen={open}
                 badge={badge}
+                badgeOutcome={badgeOutcome}
                 tint={tint}
               />
             ) : (
@@ -978,6 +1005,7 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
                 lines={lines}
                 onOpen={open}
                 badge={badge}
+                badgeOutcome={badgeOutcome}
                 tint={tint}
                 modelColor={modelColor}
               />
