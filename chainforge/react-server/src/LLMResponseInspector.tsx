@@ -1670,6 +1670,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                 modelOf={getLLMName}
                 modelLabel={customLLMFieldName || "LLM"}
                 wideFormat={wideFormat}
+                disableModelColors={disableBackgroundColor}
               />
             </Box>
           ) : (

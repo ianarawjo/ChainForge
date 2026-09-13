@@ -159,13 +159,22 @@ const TextCard: React.FC<
     item: Extract<GridItem, { kind: "text" }>;
     lines: number;
     height: number;
+    /** Tints the card with its model's color (see .cf-grid-card-model). */
+    modelColor?: string;
   }
-> = ({ item, size, lines, height, badge, tint, onOpen }) => (
+> = ({ item, size, lines, height, badge, tint, modelColor, onOpen }) => (
   <button
     type="button"
     onClick={onOpen}
     title="Open full response"
+    className={modelColor ? "cf-grid-card-model" : undefined}
     style={{
+      ...(modelColor
+        ? ({ "--cf-model-color": modelColor } as React.CSSProperties)
+        : {
+            border: "1px solid rgba(128, 128, 128, 0.25)",
+            background: tint ?? "rgba(128, 128, 128, 0.06)",
+          }),
       position: "relative",
       boxSizing: "border-box",
       // Text needs more width than an image thumbnail to be readable.
@@ -173,9 +182,7 @@ const TextCard: React.FC<
       // Fixed, so every card fills the same slot, even for short text.
       height,
       padding: `${TEXT_CARD_PADDING}px 8px`,
-      border: "1px solid rgba(128, 128, 128, 0.25)",
       borderRadius: 4,
-      background: tint ?? "rgba(128, 128, 128, 0.06)",
       color: "inherit",
       font: "inherit",
       textAlign: "left",
@@ -415,7 +422,32 @@ export interface ResponseGridViewProps {
   /** What to call the model axis, e.g. "LLM". */
   modelLabel: string;
   wideFormat?: boolean;
+  /** Don't color text responses by model, e.g. in nodes that turn it off. */
+  disableModelColors?: boolean;
 }
+
+/** "Color by" value for coloring text responses by their model. */
+const MODEL_COLORS = "$model";
+
+/** Which color each model's responses have, as dots with names. */
+const ModelLegend: React.FC<{ models: string[]; colors: Dict<string> }> = ({
+  models,
+  colors,
+}) => (
+  <Flex align="center" gap={10} wrap="wrap">
+    {models.map((model) => (
+      <Flex key={model} align="center" gap={0}>
+        <span
+          className="cf-model-dot"
+          style={{ backgroundColor: colors[model] ?? "gray" }}
+        />
+        <Text size="xs" color="dimmed">
+          {model}
+        </Text>
+      </Flex>
+    ))}
+  </Flex>
+);
 
 interface FormatSettings {
   itemSize?: number;
@@ -428,7 +460,10 @@ interface GridSettings {
   /** Axes the user chose; unset to follow the defaults. */
   axes?: GridAxes;
   filters?: Dict<string>;
-  /** "" for no coloring; unset to color by the first metric. */
+  /**
+   * MODEL_COLORS, a metric (heatmap), or "" for no coloring. Unset to color by
+   * model, or by the first metric where model colors are off.
+   */
   colorBy?: string;
   // Sizes differ between the wide inspector modal and narrow drawers and nodes.
   wide?: FormatSettings;
@@ -451,6 +486,7 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
   modelOf,
   modelLabel,
   wideFormat,
+  disableModelColors,
 }) => {
   const theme = useMantineTheme();
   const accessors: GridAccessors = useMemo(
@@ -528,12 +564,30 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
       ),
     [chosenFilters, available],
   );
-  // Color by the first metric unless the user chose one, or none ("").
+  // Text responses are colored by model, as elsewhere in ChainForge, unless
+  // the user picks a metric (a heatmap) or none (""). Images aren't colored
+  // by model, which would distract from them.
+  const modelColorsOn = !disableModelColors && hasText;
   const colorBy =
     chosenColor === "" ||
+    (chosenColor === MODEL_COLORS && modelColorsOn) ||
     (chosenColor !== undefined && metrics.includes(chosenColor))
       ? chosenColor
-      : metrics[0] ?? "";
+      : modelColorsOn
+        ? MODEL_COLORS
+        : metrics[0] ?? "";
+  const heatMetric = colorBy === MODEL_COLORS ? "" : colorBy;
+
+  // Models' colors, shared across ChainForge. A model without one is given
+  // one after rendering, since that changes the store.
+  const llmColors = useStore((state) => state.llmColors);
+  const getColorForLLMAndSetIfNotFound = useStore(
+    (state) => state.getColorForLLMAndSetIfNotFound,
+  );
+  useEffect(() => {
+    if (!disableModelColors)
+      models.forEach((model) => getColorForLLMAndSetIfNotFound(model));
+  }, [models, disableModelColors]);
 
   // Save changes once they settle, since sliders change many times a second;
   // or straight away if the grid closes first.
@@ -608,19 +662,23 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
     [grid],
   );
 
-  // Badges show the colored metric, or the first one when not coloring.
-  const badgeMetric = colorBy || metrics[0];
+  // Badges show the heatmap's metric, or the first one otherwise.
+  const badgeMetric = heatMetric || metrics[0];
   const scale = useMemo(
-    () => (colorBy ? heatScaleFor(items, colorBy) : undefined),
-    [items, colorBy],
+    () => (heatMetric ? heatScaleFor(items, heatMetric) : undefined),
+    [items, heatMetric],
   );
   const decorate = (item: GridItem) => {
     const badgeValue = badgeMetric ? metricValue(item, badgeMetric) : undefined;
     return {
       badge: badgeValue !== undefined ? formatScore(badgeValue) : undefined,
       tint:
-        scale && colorBy
-          ? heatColor(heatLevel(metricValue(item, colorBy), scale), scale)
+        scale && heatMetric
+          ? heatColor(heatLevel(metricValue(item, heatMetric), scale), scale)
+          : undefined,
+      modelColor:
+        colorBy === MODEL_COLORS
+          ? llmColors[accessors.modelOf(item.response)]
           : undefined,
     };
   };
@@ -648,14 +706,6 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
   const sz = wideFormat ? "sm" : "xs";
   const hasRows = Boolean(axes.rows);
   const hasCols = Boolean(axes.cols);
-  const headerStyle: React.CSSProperties = {
-    fontSize: wideFormat ? 13 : 11,
-    fontWeight: 500,
-    maxWidth: "100%",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  };
 
   // Every item fills the same slot, so VirtualResponseGrid can compute where
   // everything goes and render only what's near the visible region.
@@ -665,6 +715,23 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
     2 + // border
     (metrics.length > 0 ? BADGE_SPACE : 0) +
     lines * TEXT_LINE_HEIGHT;
+  // Column headers wrap onto up to 3 lines. The header row is as tall as the
+  // longest value needs, estimated from its length, since every column is at
+  // least one slot wide.
+  const colHeaderLineHeight = wideFormat ? 17 : 14;
+  const headerLines = useMemo(() => {
+    if (!hasCols) return 0;
+    const slotWidth = hasText
+      ? Math.max(cardWidth, hasImages ? itemSize : 0)
+      : itemSize;
+    const charsPerLine = Math.max(
+      6,
+      Math.floor((slotWidth - 8) / (wideFormat ? 7 : 6)),
+    );
+    const longest = Math.max(0, ...grid.colValues.map((v) => v.length));
+    return Math.min(3, Math.max(1, Math.ceil(longest / charsPerLine)));
+  }, [hasCols, hasText, hasImages, cardWidth, itemSize, wideFormat, grid]);
+
   const layoutOptions: Omit<LayoutOptions, "wrapWidth"> = useMemo(
     () => ({
       slotWidth: hasText
@@ -677,7 +744,7 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
       cellGap: CELL_GAP,
       // Row labels are often long (e.g. queries), so they get room to wrap.
       rowHeaderWidth: hasRows ? (wideFormat ? 220 : 110) : 0,
-      headerHeight: hasCols ? (wideFormat ? 22 : 18) : 0,
+      headerHeight: hasCols ? headerLines * colHeaderLineHeight + 6 : 0,
       titleHeight: axes.split ? (wideFormat ? 28 : 22) : 0,
       sectionGap: SECTION_GAP,
       wrap: !hasRows && !hasCols,
@@ -692,6 +759,8 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
       hasCols,
       wideFormat,
       axes.split,
+      headerLines,
+      colHeaderLineHeight,
     ],
   );
 
@@ -771,13 +840,17 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
                 />
               </InlineField>
             ))}
-            {metrics.length > 0 && (
+            {(metrics.length > 0 || modelColorsOn) && (
               <InlineField label="Color by">
                 <NativeSelect
                   aria-label="Color by"
                   value={colorBy}
                   onChange={(e) => setChosenColor(e.currentTarget.value)}
+                  // Model colors, or a metric as a heatmap.
                   data={[
+                    ...(modelColorsOn
+                      ? [{ value: MODEL_COLORS, label: modelLabel }]
+                      : []),
                     { value: "", label: "None" },
                     ...metrics.map((m) => ({ value: m, label: m })),
                   ]}
@@ -822,7 +895,12 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
             {countText}
           </Text>
         )}
-        {scale && colorBy && <HeatLegend metric={colorBy} scale={scale} />}
+        {scale && heatMetric && (
+          <HeatLegend metric={heatMetric} scale={scale} />
+        )}
+        {colorBy === MODEL_COLORS && models.length > 1 && (
+          <ModelLegend models={models} colors={llmColors} />
+        )}
       </Flex>
 
       {items.length === 0 ? (
@@ -841,9 +919,23 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
               {axes.split ? labelOf(axes.split) : ""} = {section.value}
             </Text>
           )}
-          // Centered over the column, which can hold several responses.
+          // Centered over the column, which can hold several responses, and
+          // wrapped onto up to 3 lines (full value on hover).
           renderColumnHeader={(value) => (
-            <div style={{ ...headerStyle, textAlign: "center" }} title={value}>
+            <div
+              title={value}
+              style={{
+                fontSize: wideFormat ? 13 : 11,
+                fontWeight: 500,
+                lineHeight: `${colHeaderLineHeight}px`,
+                textAlign: "center",
+                overflowWrap: "anywhere",
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: 3,
+                overflow: "hidden",
+              }}
+            >
               {value}
             </div>
           )}
@@ -869,12 +961,14 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
           renderItem={(item) => {
             const i = indexOf.get(item) ?? 0;
             const open = () => setLightboxIndex(i);
+            const { badge, tint, modelColor } = decorate(item);
             return item.kind === "image" ? (
               <GridThumbnail
                 item={item}
                 size={itemSize}
                 onOpen={open}
-                {...decorate(item)}
+                badge={badge}
+                tint={tint}
               />
             ) : (
               <TextCard
@@ -883,7 +977,9 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
                 height={cardHeight}
                 lines={lines}
                 onOpen={open}
-                {...decorate(item)}
+                badge={badge}
+                tint={tint}
+                modelColor={modelColor}
               />
             );
           }}

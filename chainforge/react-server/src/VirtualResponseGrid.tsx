@@ -383,15 +383,16 @@ const VirtualResponseGrid: React.FC<VirtualResponseGridProps> = ({
                     justifyContent: "center",
                   }}
                 >
-                  {/* Centered over the column, but kept in view while any of it is. */}
+                  {/* Centered over the column, but kept in view while any of it
+                      is. Long values wrap (the header row is as tall as the
+                      longest needs, up to a few lines). */}
                   <div
                     style={{
                       position: "sticky",
                       left: rowHeaderWidth,
                       right: 0,
-                      maxWidth: w,
+                      maxWidth: Math.max(0, w - 8),
                       paddingBottom: 2,
-                      whiteSpace: "nowrap",
                     }}
                   >
                     {renderColumnHeader(value)}

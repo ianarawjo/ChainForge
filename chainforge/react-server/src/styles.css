@@ -733,6 +733,21 @@ html[data-mantine-color-scheme="dark"] .cf-score-fail {
   margin-right: 6px;
 }
 
+/* Grid View text cards colored by model (ResponseGridView.tsx): a pale box
+   of the model's color with a solid edge along the top, as in the table. */
+.cf-grid-card-model {
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  border-top: 3px solid var(--cf-model-color);
+  background-color: color-mix(in srgb, var(--cf-model-color) 18%, transparent);
+}
+html[data-mantine-color-scheme="dark"] .cf-grid-card-model {
+  background-color: color-mix(in srgb, var(--cf-model-color) 28%, transparent);
+}
+/* The card's text; the card itself inherits its text color inline. */
+html[data-mantine-color-scheme="dark"] .cf-grid-card-model > div {
+  color: #e9ecef;
+}
+
 /* Rating buttons at the right end of a response's color strip: only the set
    ones (a grade or a note) show until the response is hovered, or while its
    note is being edited. */
