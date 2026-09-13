@@ -21,6 +21,8 @@ import { NodeRunner, outcomeFromStatus } from "./backend/runGraph";
 
 type StatusUpdate = Status | ((previous: Status) => Status);
 
+type ShowAlert = (msg?: string | Error) => void;
+
 /**
  * `useState` for a node's status, plus a ref that is current immediately.
  *
@@ -60,20 +62,62 @@ export function useNodeRunner(nodeId: string, run: NodeRunner): void {
 }
 
 /**
+ * The app's alert modal, except during a run driven from elsewhere.
+ *
+ * Nodes explain what went wrong through the alert modal. That suits a click on
+ * the node's own run button. In a run driven by a chat message, though, a modal
+ * over the canvas interrupts, and the driver -- which is where the user is
+ * looking -- could only say that the node failed, not why. So while
+ * runnerFromStatus runs the node, messages are collected for it to report.
+ */
+export function useCapturedAlert(
+  showAlert: ShowAlert | undefined,
+): [ShowAlert, MutableRefObject<string[] | null>] {
+  const capturedRef = useRef<string[] | null>(null);
+
+  const alert = useCallback(
+    (msg?: string | Error) => {
+      if (!capturedRef.current) {
+        showAlert?.(msg);
+        return;
+      }
+      const text = msg instanceof Error ? msg.message : msg;
+      if (text) capturedRef.current.push(text);
+    },
+    [showAlert],
+  );
+
+  return [alert, capturedRef];
+}
+
+/**
  * Adapts a run function that reports through its status into a NodeRunner.
  *
  * Resets the tracked status to "none" first. Run functions return early
  * without touching status when they refuse to start (no inputs, no methods
  * selected), so without the reset a "ready" left over from the previous run
  * would be read as this run succeeding.
+ *
+ * Given the ref from useCapturedAlert, alerts raised during the run are
+ * returned as the failure's reason instead of being shown.
  */
 export function runnerFromStatus(
   run: () => unknown,
   statusRef: MutableRefObject<Status>,
+  capturedAlertsRef?: MutableRefObject<string[] | null>,
 ): NodeRunner {
   return async () => {
     statusRef.current = Status.NONE;
-    await run();
-    return outcomeFromStatus(statusRef.current);
+    const alerts: string[] = [];
+    if (capturedAlertsRef) capturedAlertsRef.current = alerts;
+    try {
+      await run();
+    } finally {
+      if (capturedAlertsRef) capturedAlertsRef.current = null;
+    }
+    const outcome = outcomeFromStatus(statusRef.current);
+    return outcome === "failed" && alerts.length > 0
+      ? { outcome, error: alerts.join("\n") }
+      : outcome;
   };
 }

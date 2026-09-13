@@ -30,6 +30,7 @@ import type { LinkedMethodGroup } from "./RetrievalMethodListComponent";
 import { Status } from "./StatusIndicatorComponent";
 import {
   runnerFromStatus,
+  useCapturedAlert,
   useNodeRunner,
   useTrackedStatus,
 } from "./useNodeRunner";
@@ -80,7 +81,10 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
   const apiKeys = useStore((s) => s.apiKeys);
 
   // Context
-  const showAlert = useContext(AlertModalContext);
+  // Alerts from a run driven elsewhere, such as a chat, are reported there.
+  const [showAlert, alertsRef] = useCapturedAlert(
+    useContext(AlertModalContext),
+  );
 
   // State
   const [methodItems, setMethodItems] = useState<RetrievalMethodSpec[]>(
@@ -442,7 +446,7 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
   // it skips the "this may modify vector stores" modal. Sending a message is
   // already the confirmation; a modal on every chat turn would make the chat
   // unusable.
-  useNodeRunner(id, runnerFromStatus(runRetrieval, statusRef));
+  useNodeRunner(id, runnerFromStatus(runRetrieval, statusRef, alertsRef));
 
   // Update stored data when methods change
   useEffect(() => {

@@ -30,9 +30,15 @@ export interface NodeRunResult {
   error?: string;
 }
 
+/** How a node's run ended, with the reason when it failed. */
+export interface RunReport {
+  outcome: RunOutcome;
+  error?: string;
+}
+
 /** Runs one node and reports how it ended. Must not resolve before the node's
  * output is in the store, or the next node would read stale data. */
-export type NodeRunner = () => Promise<RunOutcome>;
+export type NodeRunner = () => Promise<RunOutcome | RunReport>;
 
 export interface GraphNode {
   id: string;
@@ -172,7 +178,11 @@ export async function runInOrder(
     options.onNodeStart?.(nodeId);
     let result: NodeRunResult;
     try {
-      result = { nodeId, outcome: await runner() };
+      const report = await runner();
+      if (typeof report === "string") result = { nodeId, outcome: report };
+      else if (report.error)
+        result = { nodeId, outcome: report.outcome, error: report.error };
+      else result = { nodeId, outcome: report.outcome };
     } catch (err) {
       result = {
         nodeId,

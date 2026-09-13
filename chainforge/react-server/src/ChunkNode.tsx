@@ -9,6 +9,7 @@ import { Handle, Position } from "reactflow";
 import { Status } from "./StatusIndicatorComponent";
 import {
   runnerFromStatus,
+  useCapturedAlert,
   useNodeRunner,
   useTrackedStatus,
 } from "./useNodeRunner";
@@ -50,7 +51,10 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
   const setDataPropsForNode = useStore((s) => s.setDataPropsForNode);
   const pingOutputNodes = useStore((s) => s.pingOutputNodes);
 
-  const showAlert = useContext(AlertModalContext);
+  // Alerts from a run driven elsewhere, such as a chat, are reported there.
+  const [showAlert, alertsRef] = useCapturedAlert(
+    useContext(AlertModalContext),
+  );
 
   const [methodItems, setMethodItems] = useState<ChunkMethodSpec[]>(
     data.methods || [],
@@ -274,7 +278,7 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
 
   // Lets a driver, such as a chat box over this flow, run this node without a
   // click. See backend/runGraph.ts.
-  useNodeRunner(id, runnerFromStatus(runChunking, statusRef));
+  useNodeRunner(id, runnerFromStatus(runChunking, statusRef, alertsRef));
 
   // Open inspector
   const openInspector = () => {

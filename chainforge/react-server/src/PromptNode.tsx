@@ -77,6 +77,7 @@ import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import {
   runnerFromStatus,
+  useCapturedAlert,
   useNodeRunner,
   useTrackedStatus,
 } from "./useNodeRunner";
@@ -402,7 +403,10 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const [llmItemsCurrState, setLLMItemsCurrState] = useState<LLMSpec[]>([]);
 
   // For displaying error messages to user
-  const showAlert = useContext(AlertModalContext);
+  // Alerts from a run driven elsewhere, such as a chat, are reported there.
+  const [showAlert, alertsRef] = useCapturedAlert(
+    useContext(AlertModalContext),
+  );
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef<LLMResponseInspectorModalRef>(null);
@@ -1023,7 +1027,7 @@ Soft failing by replacing undefined with empty strings.`,
 
     // Check that there is at least one LLM selected:
     if (_llmItemsCurrState.length === 0) {
-      window.alert("Please select at least one LLM to prompt.");
+      triggerAlert("Please select at least one LLM to prompt.");
       return;
     }
 
@@ -1339,7 +1343,7 @@ Soft failing by replacing undefined with empty strings.`,
 
   // Lets a driver, such as a chat box over this flow, run this node without a
   // click. See backend/runGraph.ts.
-  useNodeRunner(id, runnerFromStatus(handleRunClick, statusRef));
+  useNodeRunner(id, runnerFromStatus(handleRunClick, statusRef, alertsRef));
 
   const hideStatusIndicator = () => {
     if (status !== Status.NONE) setStatus(Status.NONE);

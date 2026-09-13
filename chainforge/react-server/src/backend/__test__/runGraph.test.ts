@@ -228,6 +228,31 @@ describe("runInOrder", () => {
     ]);
   });
 
+  test("a runner can report why it failed", async () => {
+    const results = await runInOrder(["retrieval", "prompt"], (id) =>
+      id === "retrieval"
+        ? async () => ({
+            outcome: "failed" as RunOutcome,
+            error: "Input 'chunks' is missing or empty.",
+          })
+        : async () => "ok" as RunOutcome,
+    );
+    expect(results).toEqual([
+      {
+        nodeId: "retrieval",
+        outcome: "failed",
+        error: "Input 'chunks' is missing or empty.",
+      },
+    ]);
+  });
+
+  test("a runner reporting success without an error carries no error", async () => {
+    const results = await runInOrder(["a"], () => async () => ({
+      outcome: "ok" as RunOutcome,
+    }));
+    expect(results).toEqual([{ nodeId: "a", outcome: "ok" }]);
+  });
+
   test("nodes without a runner are skipped, not treated as failures", async () => {
     const log: string[] = [];
     const results = await runInOrder(["inspect", "b"], (id) =>

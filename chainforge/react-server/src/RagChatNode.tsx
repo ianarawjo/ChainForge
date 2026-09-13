@@ -332,7 +332,9 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
                       : ""
                   }`}
                 >
-                  <Text size="xs">{explainTurn(turn)}</Text>
+                  <Text size="xs" style={{ whiteSpace: "pre-wrap" }}>
+                    {explainTurn(turn)}
+                  </Text>
                 </div>
               )}
             </div>

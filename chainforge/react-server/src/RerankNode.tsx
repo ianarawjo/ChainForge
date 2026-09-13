@@ -10,6 +10,7 @@ import { Badge, Tooltip } from "@mantine/core";
 import { Status } from "./StatusIndicatorComponent";
 import {
   runnerFromStatus,
+  useCapturedAlert,
   useNodeRunner,
   useTrackedStatus,
 } from "./useNodeRunner";
@@ -79,7 +80,10 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
   const pingOutputNodes = useStore((s) => s.pingOutputNodes);
   const apiKeys = useStore((s) => s.apiKeys);
 
-  const showAlert = useContext(AlertModalContext);
+  // Alerts from a run driven elsewhere, such as a chat, are reported there.
+  const [showAlert, alertsRef] = useCapturedAlert(
+    useContext(AlertModalContext),
+  );
 
   const [methodItems, setMethodItems] = useState<RerankMethodSpec[]>(
     data.methods || [],
@@ -429,7 +433,7 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
 
   // Lets a driver, such as a chat box over this flow, run this node without a
   // click. See backend/runGraph.ts.
-  useNodeRunner(id, runnerFromStatus(runReranking, statusRef));
+  useNodeRunner(id, runnerFromStatus(runReranking, statusRef, alertsRef));
 
   // Open inspector
   const openInspector = () => {
