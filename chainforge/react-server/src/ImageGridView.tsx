@@ -13,13 +13,18 @@ import React, {
 import {
   ActionIcon,
   Box,
+  Button,
   Flex,
   Modal,
   NativeSelect,
   Slider,
   Text,
 } from "@mantine/core";
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
+import {
+  IconAdjustmentsHorizontal,
+  IconChevronLeft,
+  IconChevronRight,
+} from "@tabler/icons-react";
 import { Dict, LLMResponse } from "./backend/typing";
 import { llmResponseDataToString } from "./backend/utils";
 import {
@@ -234,6 +239,9 @@ const ImageGridView: React.FC<ImageGridViewProps> = ({
   const [userChoseAxes, setUserChoseAxes] = useState(false);
   const [filters, setFilters] = useState<Dict<string>>({});
   const [thumbSize, setThumbSize] = useState(wideFormat ? 140 : 72);
+  // In narrow inspectors (drawers, Inspect Nodes) the controls would take most
+  // of the height, so they start hidden behind a toggle.
+  const [showControls, setShowControls] = useState(Boolean(wideFormat));
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Follow the defaults as responses change, until the user picks axes; and
@@ -291,6 +299,25 @@ const ImageGridView: React.FC<ImageGridViewProps> = ({
     [grid],
   );
 
+  const countText =
+    grid.ordered.length === images.length
+      ? `${images.length} image${images.length === 1 ? "" : "s"}`
+      : `${grid.ordered.length} of ${images.length} images`;
+
+  // Shown beside the collapsed controls, so the layout is readable without
+  // opening them.
+  const numFilters = Object.values(filters).filter(Boolean).length;
+  const layoutSummary = [
+    [axes.rows, axes.cols]
+      .filter((a): a is string => Boolean(a))
+      .map(labelOf)
+      .join(" × ") || "No axes",
+    axes.split ? `split by ${labelOf(axes.split)}` : "",
+    numFilters ? `${numFilters} filter${numFilters === 1 ? "" : "s"}` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   const sz = wideFormat ? "sm" : "xs";
   const hasRows = Boolean(axes.rows);
   const hasCols = Boolean(axes.cols);
@@ -305,57 +332,81 @@ const ImageGridView: React.FC<ImageGridViewProps> = ({
 
   return (
     <div>
-      <Flex gap={sz} wrap="wrap" align="end" mb="sm">
-        {AXIS_KEYS.map((key) => (
-          <NativeSelect
-            key={key}
-            label={{ rows: "Rows", cols: "Columns", split: "Split by" }[key]}
-            value={axes[key] ?? ""}
-            onChange={(e) => setAxis(key, e.currentTarget.value)}
-            data={axisChoices}
-            size={sz}
-            w={wideFormat ? 180 : 110}
-          />
-        ))}
-        {filterAxes.map((axis) => (
-          <NativeSelect
-            key={"filter-" + axis}
-            label={labelOf(axis)}
-            value={filters[axis] ?? ""}
-            onChange={(e) => {
-              const value = e.currentTarget.value;
-              setFilters((prev) => ({ ...prev, [axis]: value }));
-            }}
-            data={[
-              { value: "", label: "All" },
-              ...axisValues(images, axis, accessors).map((v) => ({
-                value: v,
-                label: v,
-              })),
-            ]}
-            size={sz}
-            w={wideFormat ? 160 : 100}
-          />
-        ))}
-        <Box w={wideFormat ? 160 : 100} pb={6}>
-          <Text size={sz}>Size</Text>
-          <Slider
-            min={48}
-            max={320}
-            step={8}
-            value={thumbSize}
-            onChange={setThumbSize}
-            size="sm"
-            label={null}
-          />
-        </Box>
-      </Flex>
+      {!wideFormat && (
+        <Flex align="center" gap={6} mb={6} wrap="nowrap">
+          <Button
+            compact
+            size="xs"
+            variant={showControls ? "light" : "subtle"}
+            leftIcon={<IconAdjustmentsHorizontal size={12} />}
+            onClick={() => setShowControls((shown) => !shown)}
+            aria-expanded={showControls}
+          >
+            Layout
+          </Button>
+          <Text
+            size="xs"
+            color="dimmed"
+            truncate
+            title={`${layoutSummary} · ${countText}`}
+          >
+            {layoutSummary} · {countText}
+          </Text>
+        </Flex>
+      )}
+      {showControls && (
+        <Flex gap={sz} wrap="wrap" align="end" mb="sm">
+          {AXIS_KEYS.map((key) => (
+            <NativeSelect
+              key={key}
+              label={{ rows: "Rows", cols: "Columns", split: "Split by" }[key]}
+              value={axes[key] ?? ""}
+              onChange={(e) => setAxis(key, e.currentTarget.value)}
+              data={axisChoices}
+              size={sz}
+              w={wideFormat ? 180 : 110}
+            />
+          ))}
+          {filterAxes.map((axis) => (
+            <NativeSelect
+              key={"filter-" + axis}
+              label={labelOf(axis)}
+              value={filters[axis] ?? ""}
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                setFilters((prev) => ({ ...prev, [axis]: value }));
+              }}
+              data={[
+                { value: "", label: "All" },
+                ...axisValues(images, axis, accessors).map((v) => ({
+                  value: v,
+                  label: v,
+                })),
+              ]}
+              size={sz}
+              w={wideFormat ? 160 : 100}
+            />
+          ))}
+          <Box w={wideFormat ? 160 : 100} pb={6}>
+            <Text size={sz}>Size</Text>
+            <Slider
+              min={48}
+              max={320}
+              step={8}
+              value={thumbSize}
+              onChange={setThumbSize}
+              size="sm"
+              label={null}
+            />
+          </Box>
+        </Flex>
+      )}
 
-      <Text size="xs" color="dimmed" mb="xs">
-        {grid.ordered.length === images.length
-          ? `${images.length} image${images.length === 1 ? "" : "s"}`
-          : `${grid.ordered.length} of ${images.length} images`}
-      </Text>
+      {wideFormat && (
+        <Text size="xs" color="dimmed" mb="xs">
+          {countText}
+        </Text>
+      )}
 
       <div style={{ overflowX: "auto" }}>
         {grid.sections.map((section, s) => (
@@ -377,7 +428,16 @@ const ImageGridView: React.FC<ImageGridViewProps> = ({
                 <>
                   {hasRows && <div />}
                   {grid.colValues.map((col) => (
-                    <div key={"col-" + col} style={headerStyle} title={col}>
+                    <div
+                      key={"col-" + col}
+                      // Centered over the column, which can hold several images.
+                      style={{
+                        ...headerStyle,
+                        justifySelf: "center",
+                        textAlign: "center",
+                      }}
+                      title={col}
+                    >
                       {col}
                     </div>
                   ))}
