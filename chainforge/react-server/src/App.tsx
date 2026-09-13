@@ -96,6 +96,7 @@ import { shallow } from "zustand/shallow";
 import useStore, { StoreHandles } from "./store";
 import StorageCache, { MediaLookup, StringLookup } from "./backend/cache";
 import { FlowLoadSource, flowLoadReplacesMedia } from "./backend/flowLoading";
+import { claimActiveTab, isActiveTab } from "./backend/activeTab";
 import {
   APP_IS_RUNNING_LOCALLY,
   browserTabIsActive,
@@ -1638,19 +1639,36 @@ const App = () => {
   // writes are synchronous, so the browser-storage save completes even during
   // pagehide. Only armed once a flow has loaded and autosaving has started, so
   // a reload mid-load can't overwrite the autosave with an empty flow.
+  //
+  // Only the tab the user last used saves this way: closing an old ChainForge
+  // tab left open in the background would otherwise save its stale flow over
+  // newer work from another tab. See ./backend/activeTab.
+  const [tabId] = useState(() => uuid());
   useEffect(() => {
     if (autosavingInterval === undefined) return;
-    const saveNow = () => saveFlow(undefined, "__autosave", true);
+    const claim = () => claimActiveTab(tabId);
+    const saveNow = () => {
+      if (isActiveTab(tabId)) saveFlow(undefined, "__autosave", true);
+    };
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden") saveNow();
+      else claim();
     };
+    // A tab loaded in the background hasn't been used yet, so doesn't claim.
+    if (document.visibilityState === "visible") claim();
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("pagehide", saveNow);
+    window.addEventListener("focus", claim);
+    window.addEventListener("pointerdown", claim, true);
+    window.addEventListener("keydown", claim, true);
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("pagehide", saveNow);
+      window.removeEventListener("focus", claim);
+      window.removeEventListener("pointerdown", claim, true);
+      window.removeEventListener("keydown", claim, true);
     };
-  }, [autosavingInterval, saveFlow]);
+  }, [autosavingInterval, saveFlow, tabId]);
 
   // Recover the index of files persisted in IndexedDB by earlier sessions, so
   // the storage readout and export include them. Contents are loaded on demand
