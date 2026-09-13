@@ -130,6 +130,10 @@ import {
 import FlowSidebar from "./FlowSidebar";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 import { ragNodeAvailable } from "./backend/ragCapabilities";
+import {
+  serverStopsWhenIdle,
+  startServerHeartbeat,
+} from "./backend/serverHeartbeat";
 import RequestClarificationModal, {
   RequestClarificationModalProps,
 } from "./RequestClarificationModal";
@@ -1543,6 +1547,16 @@ const App = () => {
     return () => {
       clearInterval(autosavingInterval); // Clear the interval when the component is unmounted
     };
+  }, []);
+
+  // While this page is open, tell a server started with --idle-shutdown that
+  // it is in use, so it keeps running. Ordinary servers don't ask for this.
+  // See backend/serverHeartbeat.ts.
+  useEffect(() => {
+    if (!serverStopsWhenIdle()) return;
+    return startServerHeartbeat({
+      send: () => fetch(`${FLASK_BASE_URL}api/heartbeat`, { method: "POST" }),
+    });
   }, []);
 
   const reactFlowUI = useMemo(() => {

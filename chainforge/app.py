@@ -69,6 +69,15 @@ def main():
                                 server allowed to use this server, e.g. http://localhost:3000. Anything served
                                 from these origins can run code through ChainForge, so only list servers you run.
                                 Can also be set with the CHAINFORGE_DEV_ORIGINS environment variable."""))
+    serve_parser.add_argument('--idle-shutdown',
+                              dest='idle_shutdown',
+                              type=float,
+                              default=None,
+                              metavar='MINUTES',
+                              help=textwrap.dedent("""\
+                                Stop the server once no ChainForge page has been open for this many minutes.
+                                Open pages send a heartbeat every 5 minutes, so use 15 or more.
+                                Off by default."""))
 
     args = parser.parse_args()
 
@@ -82,6 +91,9 @@ def main():
     for origin in dev_origins:
         if normalize_origin(origin) is None:
             serve_parser.error(f"--dev-origins: '{origin}' is not an origin like http://localhost:3000")
+
+    if args.idle_shutdown is not None and args.idle_shutdown <= 0:
+        serve_parser.error("--idle-shutdown must be a positive number of minutes")
 
     port = args.port if args.port else 8000
     host = args.host if args.host else "localhost"
@@ -102,7 +114,8 @@ def main():
 
     print(f"Serving Flask server on {host} on port {port}...")
     run_server(host=host, port=port, flows_dir=args.dir, secure=args.secure,
-               allowed_hosts=parse_list(args.allowed_hosts), dev_origins=dev_origins)
+               allowed_hosts=parse_list(args.allowed_hosts), dev_origins=dev_origins,
+               idle_shutdown_minutes=args.idle_shutdown)
 
 if __name__ == "__main__":
     main()
