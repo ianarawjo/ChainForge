@@ -1954,3 +1954,34 @@ html[data-mantine-color-scheme="dark"] .ragchat-overlay {
 html[data-mantine-color-scheme="dark"] .ragchat-caution {
   color: #ffc078;
 }
+/* Other wordings inside a group formed by meaning, with differences marked. */
+.ragchat-variants {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(0, 0, 0, 0.12);
+}
+.ragchat-variant {
+  display: grid;
+  gap: 1px;
+}
+.ragchat-diff-added {
+  background: rgba(250, 176, 5, 0.3);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+.ragchat-diff-removed {
+  color: #868e96;
+  text-decoration: line-through;
+}
+html[data-mantine-color-scheme="dark"] .ragchat-variants {
+  border-top-color: rgba(255, 255, 255, 0.14);
+}
+html[data-mantine-color-scheme="dark"] .ragchat-diff-added {
+  background: rgba(250, 176, 5, 0.26);
+}
+html[data-mantine-color-scheme="dark"] .ragchat-diff-removed {
+  color: #909296;
+}

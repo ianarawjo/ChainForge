@@ -68,6 +68,9 @@ import {
   progressMessage,
   splitAnswerLabels,
   ungroupedAnswers,
+  diffWords,
+  isSmallEdit,
+  normalizeAnswer,
 } from "./backend/ragChat";
 
 /**
@@ -400,6 +403,26 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
     );
   };
 
+  // Another wording in a group, with a small edit marked up; a rewording is
+  // shown plainly (see isSmallEdit).
+  const renderWording = (lead: string, text: string) => {
+    const parts = diffWords(lead, text);
+    if (!isSmallEdit(parts)) return text;
+    return parts.map((part, k) =>
+      part.type === "added" ? (
+        <mark key={k} className="ragchat-diff-added">
+          {part.text}
+        </mark>
+      ) : part.type === "removed" ? (
+        <del key={k} className="ragchat-diff-removed">
+          {part.text}
+        </del>
+      ) : (
+        <span key={k}>{part.text}</span>
+      ),
+    );
+  };
+
   // A turn comparing configurations. What every answer shares is said once;
   // answers that agree are grouped, each group listing the configurations
   // that gave it, so which choices changed the answer shows at a glance.
@@ -449,6 +472,17 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
         {groups.map((members) => {
           const key = `${turn.id}:g${members[0]}`;
           const lead = turn.answers[members[0]];
+          // Other wordings in the group, each once, with the configurations
+          // that gave them. Shown with what differs marked, so a group that
+          // should not exist gives itself away.
+          const wordings = new Map<string, number[]>();
+          if (grouping === "meaning")
+            for (const i of members.slice(1)) {
+              const wording = normalizeAnswer(turn.answers[i].text);
+              if (wording === normalizeAnswer(lead.text)) continue;
+              wordings.set(wording, [...(wordings.get(wording) ?? []), i]);
+            }
+          const variants = [...wordings.values()];
           return (
             <div key={key} className="ragchat-bubble ragchat-bubble-answer">
               {anyAgree && (
@@ -500,6 +534,26 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
                   </Badge>
                 ))}
               </Group>
+              {variants.length > 0 && (
+                <div className="ragchat-variants">
+                  <Text size="xs" color="dimmed">
+                    Worded differently:
+                  </Text>
+                  {variants.map((variant) => (
+                    <div key={variant[0]} className="ragchat-variant">
+                      <Text size="xs" color="dimmed">
+                        {variant.map((i) => distinct[i]).join("; ")}
+                      </Text>
+                      <Text size="xs" style={{ whiteSpace: "pre-wrap" }}>
+                        {renderWording(
+                          lead.text,
+                          turn.answers[variant[0]].text,
+                        )}
+                      </Text>
+                    </div>
+                  ))}
+                </div>
+              )}
               <UnstyledButton
                 className="ragchat-context-toggle"
                 onClick={() => toggle(key)}

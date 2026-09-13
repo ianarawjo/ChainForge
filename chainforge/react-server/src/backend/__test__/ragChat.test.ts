@@ -8,6 +8,8 @@ import {
   answersConflict,
   answersMatchExactly,
   conflictReason,
+  diffWords,
+  isSmallEdit,
   answersFromPromptOutput,
   buildChatTurn,
   collectStageValues,
@@ -958,5 +960,95 @@ describe("explainMixedStage", () => {
       "Answers mix results from 2 chunkers (Markdown Headers, Fixed size (characters)). " +
         "To compare them, group the Join node by chunkMethod too.",
     );
+  });
+});
+
+describe("diffWords", () => {
+  /** Renders parts compactly: [-removed] and [+added]. */
+  const show = (from: string, to: string) =>
+    diffWords(from, to)
+      .map((p) =>
+        p.type === "same"
+          ? p.text
+          : `[${p.type === "added" ? "+" : "-"}${p.text.trim()}]`,
+      )
+      .join("");
+
+  test("the same wording is all the same, whatever the case or punctuation", () => {
+    expect(diffWords("Seven years.", "seven years")).toEqual([
+      { type: "same", text: "seven years" },
+    ]);
+  });
+
+  test("a swapped word shows what was removed and what was added", () => {
+    expect(
+      show("Slice it against the grain.", "Slice it with the grain."),
+    ).toBe("Slice it [-against][+with]the grain.");
+  });
+
+  test("an added or dropped negation is marked", () => {
+    expect(show("Staff may leave early.", "Staff may not leave early.")).toBe(
+      "Staff may [+not]leave early.",
+    );
+    expect(show("Staff may not leave early.", "Staff may leave early.")).toBe(
+      "Staff may [-not]leave early.",
+    );
+  });
+
+  test("the unchanged and added parts read as the second answer", () => {
+    const to = "Backups are retained in cold storage for 90 days.";
+    const parts = diffWords("Backups are kept for 90 days.", to);
+    expect(
+      parts
+        .filter((p) => p.type !== "removed")
+        .map((p) => p.text)
+        .join(""),
+    ).toBe(to);
+  });
+
+  test("a removed last word still leaves a space before what follows", () => {
+    expect(show("Pay now", "Pay")).toBe("Pay[-now]");
+    expect(diffWords("Pay now", "Pay")[1].text).toBe(" now ");
+  });
+
+  test("empty answers", () => {
+    expect(diffWords("", "a b")).toEqual([{ type: "added", text: "a b" }]);
+    expect(diffWords("", "")).toEqual([]);
+  });
+});
+
+describe("isSmallEdit", () => {
+  test("a word or two changed is a small edit", () => {
+    expect(
+      isSmallEdit(
+        diffWords(
+          "Rest the steak for five minutes before slicing it against the grain.",
+          "Rest the steak for five minutes before slicing it with the grain.",
+        ),
+      ),
+    ).toBe(true);
+    expect(
+      isSmallEdit(
+        diffWords(
+          "Backups are kept for 90 days.",
+          "Backups are retained for 90 days.",
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  test("a rebuilt sentence is a rewording, not a small edit", () => {
+    expect(
+      isSmallEdit(
+        diffWords(
+          "Rest the steak for five minutes before slicing it against the grain.",
+          "Before cutting the steak against the grain, leave it for five minutes.",
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  test("nothing to compare is not an edit", () => {
+    expect(isSmallEdit([])).toBe(false);
   });
 });

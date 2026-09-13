@@ -1168,3 +1168,93 @@ export function explainMixedStage(stage: MixedStage): string {
     `${stage.key} too.`
   );
 }
+
+/** A run of words in a word-by-word comparison of two answers. */
+export interface WordDiffPart {
+  type: "same" | "added" | "removed";
+  text: string;
+}
+
+/**
+ * Compares two answers word by word, to show how a grouped answer is worded
+ * differently from the one shown for its group.
+ *
+ * A group formed by meaning can still be wrong. Marking the words that
+ * differ lets a reader catch that at a glance: "slicing it against the
+ * grain" beside "slicing it with the grain" shows "with" highlighted.
+ *
+ * Reads as `to`: words it adds are "added", words of `from` it lacks are
+ * "removed", in place. Words match regardless of case and punctuation.
+ */
+export function diffWords(from: string, to: string): WordDiffPart[] {
+  const split = (text: string) => text.match(/\S+\s*/g) ?? [];
+  const key = (word: string) =>
+    word.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+  const a = split(from);
+  const b = split(to);
+  const ka = a.map(key);
+  const kb = b.map(key);
+
+  // lcs[i][j]: length of the longest common subsequence of a[i..] and b[j..].
+  const lcs = Array.from({ length: a.length + 1 }, () =>
+    new Array<number>(b.length + 1).fill(0),
+  );
+  for (let i = a.length - 1; i >= 0; i--)
+    for (let j = b.length - 1; j >= 0; j--)
+      lcs[i][j] =
+        ka[i] === kb[j]
+          ? lcs[i + 1][j + 1] + 1
+          : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+
+  const parts: WordDiffPart[] = [];
+  const push = (type: WordDiffPart["type"], text: string) => {
+    const last = parts[parts.length - 1];
+    // A removed run can follow a word with no space after it, such as the
+    // last word of `to`; keep the two apart.
+    if (type === "removed" && last && !/\s$/.test(last.text)) text = ` ${text}`;
+    if (last && last.type === type) last.text += text;
+    else parts.push({ type, text });
+  };
+  // A removed word from the end of `from` has no space after it.
+  const spaced = (word: string) => (/\s$/.test(word) ? word : `${word} `);
+
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    if (ka[i] === kb[j]) {
+      push("same", b[j]);
+      i++;
+      j++;
+    } else if (lcs[i + 1][j] >= lcs[i][j + 1]) {
+      push("removed", spaced(a[i]));
+      i++;
+    } else {
+      push("added", b[j]);
+      j++;
+    }
+  }
+  for (; i < a.length; i++) push("removed", spaced(a[i]));
+  for (; j < b.length; j++) push("added", b[j]);
+  return parts;
+}
+
+/**
+ * Whether a comparison is a small edit worth marking up, rather than a
+ * rewording.
+ *
+ * Marks help when a word or two changed: that is exactly how a wrongly
+ * grouped answer tends to differ ("against" / "with the grain"). A sentence
+ * rebuilt from scratch comes out almost entirely marked, which buries that
+ * signal in the next line, so rewordings are better shown plainly.
+ */
+export function isSmallEdit(parts: WordDiffPart[]): boolean {
+  const words = (text: string) => (text.match(/\S+/g) ?? []).length;
+  let changed = 0;
+  let total = 0;
+  for (const part of parts) {
+    const n = words(part.text);
+    if (part.type !== "same") changed += n;
+    if (part.type !== "removed") total += n;
+  }
+  return total > 0 && changed <= Math.max(2, total * 0.4);
+}
