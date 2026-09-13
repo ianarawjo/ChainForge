@@ -1158,14 +1158,10 @@ html[data-mantine-color-scheme="dark"] .comment-node textarea {
   overflow-y: scroll;
   max-height: 150px;
   margin: 6px 0px;
-  font-family: var(--monofont), monospace;
-  font-size: 10pt;
-  line-height: 1;
+  /* The same font and size as response cards and text fields. */
+  font-size: 12px;
+  line-height: 1.4;
   cursor: text;
-}
-th .content-editable-div {
-  font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
 }
 [contenteditable="true"]:empty:not(:focus):before {
   content: attr(placeholder);

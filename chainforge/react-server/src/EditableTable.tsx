@@ -18,11 +18,10 @@ import { TabularDataColType, TabularDataRowType } from "./backend/typing";
 const cellTextareaStyle = {
   input: {
     border: "0",
-    fontFamily: "monospace",
-    fontSize: "10pt",
+    fontSize: "12px",
     padding: "2px !important",
     minHeight: "10pt",
-    lineHeight: "1.2",
+    lineHeight: "1.4",
     whiteSpace: "pre-wrap",
     background: "transparent",
   },
