@@ -1956,10 +1956,8 @@ html[data-mantine-color-scheme="dark"] .ragchat-caution {
 }
 /* Other wordings inside a group formed by meaning, with differences marked. */
 .ragchat-variants {
-  display: grid;
-  gap: 6px;
-  margin-top: 8px;
-  padding-top: 6px;
+  margin-top: 6px;
+  padding-top: 2px;
   border-top: 1px dashed rgba(0, 0, 0, 0.12);
 }
 .ragchat-variant {
@@ -1984,4 +1982,9 @@ html[data-mantine-color-scheme="dark"] .ragchat-diff-added {
 }
 html[data-mantine-color-scheme="dark"] .ragchat-diff-removed {
   color: #909296;
+}
+.ragchat-variant-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
 }

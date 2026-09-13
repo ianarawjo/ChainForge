@@ -483,6 +483,11 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
               wordings.set(wording, [...(wordings.get(wording) ?? []), i]);
             }
           const variants = [...wordings.values()];
+          // How many differ by only a word or two, the likeliest sign of a group
+          // that should not exist; said even while the wordings are hidden.
+          const smallEdits = variants.filter((v) =>
+            isSmallEdit(diffWords(lead.text, turn.answers[v[0]].text)),
+          ).length;
           return (
             <div key={key} className="ragchat-bubble ragchat-bubble-answer">
               {anyAgree && (
@@ -536,22 +541,37 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
               </Group>
               {variants.length > 0 && (
                 <div className="ragchat-variants">
-                  <Text size="xs" color="dimmed">
-                    Worded differently:
-                  </Text>
-                  {variants.map((variant) => (
-                    <div key={variant[0]} className="ragchat-variant">
-                      <Text size="xs" color="dimmed">
-                        {variant.map((i) => distinct[i]).join("; ")}
-                      </Text>
-                      <Text size="xs" style={{ whiteSpace: "pre-wrap" }}>
-                        {renderWording(
-                          lead.text,
-                          turn.answers[variant[0]].text,
-                        )}
-                      </Text>
+                  <UnstyledButton
+                    className="ragchat-context-toggle"
+                    aria-expanded={Boolean(openContext[`${key}:wordings`])}
+                    onClick={() => toggle(`${key}:wordings`)}
+                  >
+                    <Text size="xs" color="dimmed">
+                      {openContext[`${key}:wordings`] ? "▾" : "▸"}{" "}
+                      {variants.length} other wording
+                      {variants.length === 1 ? "" : "s"}
+                      {smallEdits > 0
+                        ? `, ${smallEdits} with small changes`
+                        : ""}
+                    </Text>
+                  </UnstyledButton>
+                  <Collapse in={Boolean(openContext[`${key}:wordings`])}>
+                    <div className="ragchat-variant-list">
+                      {variants.map((variant) => (
+                        <div key={variant[0]} className="ragchat-variant">
+                          <Text size="xs" color="dimmed">
+                            {variant.map((i) => distinct[i]).join("; ")}
+                          </Text>
+                          <Text size="xs" style={{ whiteSpace: "pre-wrap" }}>
+                            {renderWording(
+                              lead.text,
+                              turn.answers[variant[0]].text,
+                            )}
+                          </Text>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </Collapse>
                 </div>
               )}
               <UnstyledButton
