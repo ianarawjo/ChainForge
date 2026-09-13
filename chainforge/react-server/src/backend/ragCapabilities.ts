@@ -32,7 +32,12 @@ export type RunsIn =
   | "both";
 
 /** The RAG node types that can be added to a flow. */
-export type RagNodeType = "upload" | "chunk" | "retrieval" | "rerank";
+export type RagNodeType =
+  | "upload"
+  | "chunk"
+  | "retrieval"
+  | "rerank"
+  | "ragchat";
 
 /**
  * Whether the Flask backend is present *and* has the RAG extra installed.
@@ -79,6 +84,10 @@ export function ragNodeAvailable(nodeType: RagNodeType): boolean {
       return anyBrowserRetriever();
     case "rerank":
       return anyBrowserReranker();
+    case "ragchat":
+      // A chat only does anything by driving a retrieval pipeline, so it is
+      // offered exactly when retrieval is.
+      return anyBrowserRetriever();
     default:
       return false;
   }

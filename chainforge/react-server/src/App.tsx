@@ -65,6 +65,7 @@ import SplitNode from "./SplitNode";
 import CommentNode from "./CommentNode";
 import MultiEvalNode from "./MultiEvalNode";
 import RerankNode from "./RerankNode";
+import RagChatNode from "./RagChatNode";
 import GlobalSettingsModal, {
   GlobalSettingsModalRef,
 } from "./GlobalSettingsModal";
@@ -219,6 +220,7 @@ const nodeTypes = {
   chunk: ChunkNode,
   retrieval: RetrievalNode,
   rerank: RerankNode,
+  ragchat: RagChatNode,
   media: MediaNode,
 };
 
@@ -242,6 +244,7 @@ const nodeEmojis = {
   chunk: "🧩",
   retrieval: "🎯",
   rerank: <IconSortAscending size={16} />,
+  ragchat: "💭",
   media: "📺",
 };
 
@@ -417,6 +420,15 @@ const App = () => {
         icon: nodeEmojis.rerank,
         tooltip: "Reranks retrieval outputs.",
         onClick: () => addNode("rerank"),
+      },
+      {
+        available: ragNodeAvailable("ragchat"),
+        key: "ragchat",
+        title: "RAG Chat Node",
+        icon: nodeEmojis.ragchat,
+        tooltip:
+          "Chat with a RAG pipeline. Connect its output to a Retrieval node's queries input: each message runs retrieval, reranking and your Prompt node, and shows the answers with the context behind them.",
+        onClick: () => addNode("ragchat"),
       },
       {
         key: "divider",
