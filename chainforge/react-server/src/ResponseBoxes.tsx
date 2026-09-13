@@ -5,25 +5,22 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useRef,
 } from "react";
 import { ActionIcon, Collapse, Flex, Stack, Tooltip } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import {
-  blobOrFileToDataURL,
-  deepcopy,
-  llmResponseDataToString,
-  truncStr,
-} from "./backend/utils";
+import { deepcopy, llmResponseDataToString, truncStr } from "./backend/utils";
 import {
   Dict,
   EvaluationScore,
   LLMResponse,
   LLMResponseData,
 } from "./backend/typing";
-import StorageCache, { MediaLookup } from "./backend/cache";
+import StorageCache from "./backend/cache";
 import { IconCheck, IconChecks, IconX } from "@tabler/icons-react";
 import { getRatingKeyForResponse } from "./ResponseRatingToolbar";
 import useStore from "./store";
+import { useMediaUrl } from "./useMediaUrl";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
@@ -460,26 +457,55 @@ interface MediaBoxProps {
   mediaUID: string;
 }
 
-// Buffers the MediaLookup data to display,
-// since fetching the data is async.
+// Height reserved for an image that hasn't loaded. It must be non-zero: an
+// empty box sits in the viewport as far as IntersectionObserver is concerned,
+// so every image in a long table would count as visible and load at once.
+const MEDIA_PLACEHOLDER_HEIGHT = 120;
+
+// Displays a stored image, loading it only once it nears the viewport.
 export const MediaBox: React.FC<MediaBoxProps> = ({ mediaUID }) => {
-  // Whenever the mediaUID changes, we need to re-fetch the image.
-  const [mediaStr, setMediaStr] = React.useState<string | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [nearViewport, setNearViewport] = useState(false);
+
   useEffect(() => {
-    MediaLookup.get(mediaUID).then((blob) => {
-      if (blob) {
-        blobOrFileToDataURL(blob).then(setMediaStr);
-      }
-    });
-  }, [mediaUID]);
+    if (nearViewport) return;
+    const box = boxRef.current;
+    if (!box || typeof IntersectionObserver === "undefined") {
+      setNearViewport(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          // Once loaded, stay loaded while mounted; scrolling back shouldn't refetch.
+          setNearViewport(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "300px" },
+    );
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [nearViewport]);
+
+  // An object URL points at the stored bytes; a data URL would copy them into
+  // a base64 string 4/3 their size, held in React state.
+  const { url, status } = useMediaUrl(mediaUID, nearViewport);
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <img
-        className="lazyload"
-        data-src={mediaStr ?? ""}
-        style={{ maxWidth: "100%", width: "auto" }}
-      />
-    </Suspense>
+    <div
+      ref={boxRef}
+      style={url ? undefined : { minHeight: MEDIA_PLACEHOLDER_HEIGHT }}
+    >
+      {url ? (
+        <img
+          src={url}
+          decoding="async"
+          style={{ maxWidth: "100%", width: "auto" }}
+        />
+      ) : status === "error" ? (
+        <span className="icl">Image unavailable</span>
+      ) : null}
+    </div>
   );
 };

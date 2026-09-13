@@ -439,17 +439,35 @@ export class MediaLookup {
       );
   }
 
-  // A rate limiter for uploads
+  // Concurrency caps for requests to the local Flask server. There is no
+  // minimum spacing between requests: a fixed gap put a floor on throughput
+  // (50ms per lookup meant ~25s to fill a 500-image table) without protecting
+  // the server any more than the concurrency cap already does.
   private static uploadLimiter = new Bottleneck({
-    maxConcurrent: 2, // Allow 3 concurrent uploads
-    minTime: 100, // Minimum 100ms between upload operations
+    maxConcurrent: 4,
   });
 
-  // A rate limiter for media lookups
+  // Browsers allow 6 concurrent HTTP/1.1 connections per host; more would queue anyway.
   private static lookupLimiter = new Bottleneck({
-    maxConcurrent: 5, // Allow 5 concurrent lookups
-    minTime: 50, // Minimum 50ms between lookup operations
+    maxConcurrent: 6,
   });
+
+  /**
+   * Object URLs handed out by acquireUrl, shared per uid and reference counted.
+   * An object URL keeps its Blob alive until revoked, so each must be revoked
+   * once nothing displays it.
+   */
+  private objectUrls: Map<string, { url: string; refs: number }> = new Map();
+
+  /** Incremented by clear(), so async work can tell a clear happened meanwhile. */
+  private clearCount = 0;
+
+  private revokeObjectUrl(uid: string): void {
+    const entry = this.objectUrls.get(uid);
+    if (!entry) return;
+    URL.revokeObjectURL(entry.url);
+    this.objectUrls.delete(uid);
+  }
 
   private constructor() {
     // Initialize the singleton instance
@@ -563,7 +581,14 @@ export class MediaLookup {
    */
   public static async hydrateFromIndexedDB(): Promise<number> {
     const mediaLookup = MediaLookup.getInstance();
+    const clearsBefore = mediaLookup.clearCount;
     const stored = await listMedia();
+
+    // A clear() while the listing was in flight (e.g. the starter
+    // flow replacing media at startup) makes the listing stale: applying it
+    // would re-register deleted files, whose sizes would then count against the
+    // budget with no bytes behind them.
+    if (mediaLookup.clearCount !== clearsBefore) return 0;
 
     for (const { uid, size } of stored) {
       mediaLookup.mediaUIDs.add(uid);
@@ -740,6 +765,44 @@ export class MediaLookup {
     const blob = dataURLToBlob(dataURL);
     const uid = await MediaLookup.upload(blob);
     return uid;
+  }
+
+  /**
+   * Uids of files held only in memory for this session, via keepForSession.
+   * They are not written to IndexedDB, so they are gone after a reload.
+   */
+  private sessionOnlyUIDs = new Set<string>();
+
+  /**
+   * Holds a file in memory for this session only, bypassing the storage
+   * budget and IndexedDB. For content that can't be recreated for free, like a
+   * generated image, when upload() refuses it because storage is full: losing
+   * it on reload is better than discarding it now, or inlining its bytes into
+   * the response cache, which would then no longer fit in localStorage and
+   * stop the whole flow from autosaving.
+   *
+   * Callers should tell the user; see sessionOnlyCount.
+   * @returns The uid of the file
+   */
+  public static keepForSession(file: File | Blob): string {
+    const mediaLookup = MediaLookup.getInstance();
+    const uid = `cache__${uuid()}__cache`;
+    mediaLookup.mediaUIDs.add(uid);
+    mediaLookup.cache[uid] = file;
+    mediaLookup.sizes.set(uid, file.size);
+    mediaLookup.sessionOnlyUIDs.add(uid);
+    mediaLookup.saveStateToStorageCache();
+    return uid;
+  }
+
+  /** keepForSession, for a file given as a data URL. */
+  public static keepDataURLForSession(dataURL: string): string {
+    return MediaLookup.keepForSession(dataURLToBlob(dataURL));
+  }
+
+  /** How many files are currently held for this session only. */
+  public static sessionOnlyCount(): number {
+    return MediaLookup.getInstance().sessionOnlyUIDs.size;
   }
 
   /**
@@ -920,8 +983,10 @@ export class MediaLookup {
   }
 
   /**
-   * Returns a usable object URL (e.g., for <img src=...>) for a given UID.
-   * Automatically revokes the previous URL for the same UID.
+   * Returns a new object URL (e.g., for <img src=...>) for a given UID.
+   * The caller owns the URL and must revoke it with URL.revokeObjectURL, or it
+   * keeps the file's bytes alive for the rest of the session. Components should
+   * prefer the `useMediaUrl` hook, which manages this through acquireUrl.
    * @param uid The UID of the file
    * @returns An object URL string
    */
@@ -935,6 +1000,48 @@ export class MediaLookup {
   }
 
   /**
+   * Returns an object URL for a UID, shared with every other holder of the same
+   * UID. Each call must be balanced by one releaseUrl(uid); the URL is revoked
+   * when the last holder releases it.
+   * @param uid The UID of the file
+   * @returns An object URL string, or undefined if the file is unavailable
+   */
+  public static async acquireUrl(uid: string): Promise<string | undefined> {
+    const mediaLookup = MediaLookup.getInstance();
+    const existing = mediaLookup.objectUrls.get(uid);
+    if (existing) {
+      existing.refs++;
+      return existing.url;
+    }
+
+    const blob = await MediaLookup.get(uid);
+    if (!blob) {
+      console.error(`Blob not found for UID ${uid}`);
+      return undefined;
+    }
+
+    // Another caller may have created one while the blob was loading.
+    const raced = mediaLookup.objectUrls.get(uid);
+    if (raced) {
+      raced.refs++;
+      return raced.url;
+    }
+
+    const url = URL.createObjectURL(blob);
+    mediaLookup.objectUrls.set(uid, { url, refs: 1 });
+    return url;
+  }
+
+  /** Releases one hold on a URL from acquireUrl, revoking it after the last. */
+  public static releaseUrl(uid: string): void {
+    const mediaLookup = MediaLookup.getInstance();
+    const entry = mediaLookup.objectUrls.get(uid);
+    if (!entry) return;
+    entry.refs--;
+    if (entry.refs <= 0) mediaLookup.revokeObjectUrl(uid);
+  }
+
+  /**
    * Clears the media lookup table and its cache entirely.
    */
   public static clear(): void {
@@ -943,6 +1050,10 @@ export class MediaLookup {
     mediaLookup.cache = {};
     mediaLookup.sizes.clear();
     clearMedia().catch(() => undefined);
+    mediaLookup.clearCount++;
+    mediaLookup.sessionOnlyUIDs.clear();
+    for (const uid of Array.from(mediaLookup.objectUrls.keys()))
+      mediaLookup.revokeObjectUrl(uid);
 
     // Clear the temp cache
     mediaLookup.tempCache.items.clear();
@@ -962,6 +1073,8 @@ export class MediaLookup {
     delete mediaLookup.cache[uid];
     mediaLookup.sizes.delete(uid);
     deleteMedia(uid).catch(() => undefined);
+    mediaLookup.sessionOnlyUIDs.delete(uid);
+    mediaLookup.revokeObjectUrl(uid);
 
     // Remove from temp cache if present
     if (mediaLookup.tempCache.items.has(uid)) {
@@ -1038,6 +1151,16 @@ export class MediaLookup {
     const serializedBlobs: Dict<string> = Object.fromEntries(
       serializedCacheEntries,
     );
+
+    // Files persisted by an earlier session are indexed in `sizes` but loaded
+    // into `cache` only on demand, so a file not viewed since the last reload
+    // has no bytes in memory. Read those from IndexedDB, or the export would
+    // carry their uids without their contents. They are not kept in memory.
+    for (const uid of Array.from(mediaLookup.sizes.keys())) {
+      if (uid in serializedBlobs) continue;
+      const blob = await getMedia(uid);
+      if (blob) serializedBlobs[uid] = await blobOrFileToDataURL(blob);
+    }
 
     return {
       uids: Array.from(mediaLookup.mediaUIDs),

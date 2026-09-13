@@ -1669,12 +1669,23 @@ export async function exportCache(ids: string[]): Promise<Dict<Dict>> {
  * Used for importing data from an exported flow, so that the flow is self-contained.
  *
  * @param files the name and contents of the cache file
+ * @param options.replaceMedia Clear all stored media files first, because the
+ *   imported flow replaces the current one. Otherwise the imported media are
+ *   added alongside what is already stored. See flowLoadReplacesMedia.
  * @returns Whether the import succeeded or not.
  */
-export async function importCache(files: {
-  [key: string]: Dict | Array<any>;
-}): Promise<void> {
+export async function importCache(
+  files: {
+    [key: string]: Dict | Array<any>;
+  },
+  options: { replaceMedia?: boolean } = {},
+): Promise<void> {
   try {
+    // Drop the previous flow's media, including from IndexedDB, so it doesn't
+    // accumulate against the storage budget. Done before StorageCache.clear(),
+    // since clearing media records its (now empty) uid list in the StorageCache.
+    if (options.replaceMedia) MediaLookup.clear();
+
     // First clear the storage cache and any saved state:
     StorageCache.clear();
     StorageCache.saveToLocalStorage("chainforge-state");

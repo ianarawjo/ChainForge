@@ -1031,7 +1031,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                 return <MediaBox mediaUID={val.d} />;
               } else {
                 // For now, we just display the doc ID...
-                <span className="icl">{val.d}</span>;
+                return <span className="icl">{val.d}</span>;
               }
             } else if ("type" in val && val.type === "eval") {
               return (

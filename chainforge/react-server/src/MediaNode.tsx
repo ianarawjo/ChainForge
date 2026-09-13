@@ -62,6 +62,7 @@ import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import { MediaLookup } from "./backend/cache";
 import { dataURLToBlob, DebounceRef, genDebounceFunc } from "./backend/utils";
 import { Status } from "./StatusIndicatorComponent";
+import { useMediaUrl } from "./useMediaUrl";
 
 // This function serves to convert the `tableData` and `tableColumns` into objects that
 // the `LLMResponseInspectorModal` and `LLMResponseInspectorDrawer` support.
@@ -162,9 +163,12 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
 
   const [hooksY, setHooksY] = useState(120);
 
-  // Will store the image the Caroussel View is currently focusing on.
-  // Purpose is to LAZY LOAD image data ON-THE-FLY only when user focuses it !!! see `fetchImageUrl` below
-  const [imageUrl, setImageUrl] = useState<string | undefined>();
+  // Only the image the carousel is focused on is loaded. Keyed on its uid, so
+  // edits to other fields of the row don't reload it.
+  const currentImageUid = tableData[currentRowIndex]?.image as
+    | string
+    | undefined;
+  const { url: imageUrl, status: imageStatus } = useMediaUrl(currentImageUid);
 
   const [renameColumnInitialVal, setRenameColumnInitialVal] = useState<
     TabularDataColType | string
@@ -221,7 +225,6 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
     setTableColumns([]);
     setMetadataRows({});
     setCurrentRowIndex(0);
-    setImageUrl(undefined);
   }, [id, setDataPropsForNode, pingOutputNodes]);
 
   // called on the change of a textarea field
@@ -377,25 +380,16 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
   };
 
   useEffect(() => {
-    const fetchImageUrl = async () => {
-      if (tableData[currentRowIndex]?.image) {
-        const url = await MediaLookup.getUrl(
-          tableData[currentRowIndex].image as string,
-        );
-        if (url === undefined) {
-          setStatus(Status.ERROR);
-          setStatusMessage(
-            "Server error: Could not fetch media from server. Please check the console log for more details.",
-          );
-        } else {
-          setImageUrl(url);
-          setStatus(Status.READY);
-          setStatusMessage("Media loaded and ready.");
-        }
-      }
-    };
-    fetchImageUrl();
-  }, [tableData, currentRowIndex]);
+    if (imageStatus === "error") {
+      setStatus(Status.ERROR);
+      setStatusMessage(
+        "Server error: Could not fetch media from server. Please check the console log for more details.",
+      );
+    } else if (imageStatus === "ready") {
+      setStatus(Status.READY);
+      setStatusMessage("Media loaded and ready.");
+    }
+  }, [imageStatus]);
 
   // Updates the internal data store whenever the table data changes
   useEffect(() => {
@@ -427,7 +421,7 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
   // Arg `jsonl` is the converted JSON object from the .tsv file
   // where JSON objects should be in row format, with keys as the header names.
   // The internal keys of the columns will use uids to be unique.
-  const importJSONList = (jsonl: Array<Dict>, source_file_data: Dict) => {
+  const importJSONList = async (jsonl: Array<Dict>, source_file_data: Dict) => {
     // I noticed for some .tsv files, sometimes the last row is empty ( may originates from Papa.parse(...) function)
     // so if the last element is empty `{index: "",}`  , remove it
     const lastRow = jsonl[jsonl.length - 1];
@@ -481,29 +475,33 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
       })
       .filter((col) => col !== undefined) as TabularDataColType[];
 
-    // Set the new rows
-    const new_rows = rows.map((row) => {
-      const image_data_row = row[imageColumnKey] as string;
-      const blob_object_to_upload = dataURLToBlob(
-        image_data_row.startsWith("data:image")
-          ? image_data_row
-          : `data:image/jpeg;base64,${image_data_row}`,
-      );
+    // Set the new rows. Uploads are awaited before any row reaches state:
+    // assigning the uid afterwards left rows briefly (or, on failure, forever)
+    // without an image, and mutated objects React already held.
+    const new_rows = await Promise.all(
+      rows.map(async (row) => {
+        const image_data_row = row[imageColumnKey] as string;
+        const blob_object_to_upload = dataURLToBlob(
+          image_data_row.startsWith("data:image")
+            ? image_data_row
+            : `data:image/jpeg;base64,${image_data_row}`,
+        );
 
-      const new_row: TabularDataRowType = {};
+        const new_row: TabularDataRowType = {};
 
-      new_columns.forEach((col) => {
-        new_row[col.key] = row[col.key];
-      });
+        new_columns.forEach((col) => {
+          new_row[col.key] = row[col.key];
+        });
 
-      MediaLookup.upload(blob_object_to_upload).then((uid) => {
-        new_row[IMAGE_COLUMN.key] = uid;
-      });
+        new_row[IMAGE_COLUMN.key] = await MediaLookup.upload(
+          blob_object_to_upload,
+        );
 
-      // Add a unique ID to each row
-      new_row.__uid = uuidv4();
-      return new_row;
-    });
+        // Add a unique ID to each row
+        new_row.__uid = uuidv4();
+        return new_row;
+      }),
+    );
 
     // Update metadata for imported rows
     const newMetadata: Dict<metadataRowType> = { ...metadataRows };
@@ -572,7 +570,10 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
             );
           }
 
-          importJSONList(papa_parsed.data as Dict<any>[], source_file_data);
+          importJSONList(
+            papa_parsed.data as Dict<any>[],
+            source_file_data,
+          ).catch(handleError);
         } catch (error) {
           handleError(error as Error);
         }
@@ -653,10 +654,27 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
       }
 
       //  ------- HANDLING NEW ROWS
+      // Upload concurrently (MediaLookup throttles requests to the server).
+      // One file failing, e.g. over the storage budget, shouldn't drop the rest.
+      const uploads = await Promise.allSettled(
+        image_data.map((file) => MediaLookup.upload(file)),
+      );
+      const failures = uploads.filter(
+        (u): u is PromiseRejectedResult => u.status === "rejected",
+      );
+      if (failures.length > 0)
+        handleError(
+          new Error(
+            `${failures.length} of ${image_data.length} image(s) could not be added: ${(failures[0].reason as Error)?.message ?? failures[0].reason}`,
+          ),
+        );
+
       const new_rows: TabularDataRowType[] = [];
       const new_metadata = { ...metadataRows };
-      for (const file of image_data) {
-        const uid_image = await MediaLookup.upload(file);
+      for (const [i, file] of image_data.entries()) {
+        const upload = uploads[i];
+        if (upload.status !== "fulfilled") continue;
+        const uid_image = upload.value;
 
         // Create new row with image UID and ensure it has a unique ID
         const rowWithImage: TabularDataRowType = {

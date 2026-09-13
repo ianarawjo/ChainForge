@@ -5,7 +5,7 @@ import React, {
   useState,
   useCallback,
   useContext,
-  useRef,
+  useMemo,
 } from "react";
 import {
   Modal,
@@ -34,26 +34,23 @@ import {
 } from "@tabler/icons-react";
 
 import { AlertModalContext } from "./AlertModal";
-import { blobOrFileToDataURL, FLASK_BASE_URL } from "./backend/utils";
+import { FLASK_BASE_URL } from "./backend/utils";
 import { FileWithContent } from "./backend/typing";
 
 // This constant serves as the maximum size of the Image file that can be uploaded
 const MAX_SIZE_MB = 50;
 
-// Read a file as text and pass the text to a cb (callback) function
-const read_file = (file: FileWithPath) => {
-  return new Promise((resolve, reject) => {
-    const reader = new window.FileReader();
-    reader.onload = function (event) {
-      const fileContent = event.target?.result;
-      resolve(fileContent ?? null);
-    };
-    reader.onerror = function (event) {
-      reject(new Error("Error reading file"));
-    };
-    reader.readAsDataURL(file);
-  });
-};
+// Image types the vision-capable providers accept.
+const ACCEPTED_IMAGE_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+];
+
+// Decoding a full-size preview for every file is costly with many files, so
+// only the first few are previewed.
+const MAX_PREVIEWS = 12;
 
 // ====================================== File Dropzone Modal ======================================
 
@@ -70,60 +67,32 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
   onDrop,
 }) => {
   const theme = useMantineTheme();
-  const [isLoading, setIsLoading] = useState(false);
 
+  // Files are passed on as-is. They used to be read into base64 data URLs
+  // here, which nothing consumed, and the combined size of a drop was capped
+  // at MAX_SIZE_MB even though the limit is described per file. The per-file
+  // limit is enforced by the Dropzone, and the total by MediaLookup's budget.
   const handleDrop = useCallback(
-    (files: FileWithPath[]) => {
-      setIsLoading(true);
-
-      // Check total size of all files is under the max size
-      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-      if (totalSize > MAX_SIZE_MB * 1024 ** 2) {
-        onError(
-          new Error(
-            `Total file size exceeds ${MAX_SIZE_MB} MB. Please select smaller files.`,
-          ),
-        );
-        return;
-      }
-
-      // Read each file and pass the content to the onDrop callback
-      const readFilePromises = files.map(async (file) => {
-        const content = await read_file(file);
-        if (typeof content !== "string") {
-          console.error("File unreadable: Contents are not text. Skipping...");
-          return null;
-        } else {
-          (file as FileWithContent).content = content;
-          return file as FileWithContent;
-        }
-      });
-
-      // Wait for all files to be read
-      Promise.all(readFilePromises)
-        .then((filesWithContent) => {
-          onDrop(
-            filesWithContent.filter(
-              (file) => file !== null,
-            ) as FileWithContent[],
-          );
-          setIsLoading(false);
-        })
-        .catch((error) => {
-          console.error("Error reading files:", error);
-          onError(error);
-        });
-    },
-    [onError, onDrop],
+    (files: FileWithPath[]) => onDrop(files as FileWithContent[]),
+    [onDrop],
   );
 
   return (
     <Dropzone
       mt="sm"
-      loading={isLoading}
-      accept={["image/png", "image/jpeg"]} // TODO support all image file types of : import IMAGE_MIME_TYPE from "@mantine/dropzone";
+      accept={ACCEPTED_IMAGE_TYPES}
       onDrop={handleDrop}
-      onReject={(files) => console.log("Rejected files:", files)}
+      onReject={(rejections) =>
+        onError(
+          `${rejections.length} file(s) could not be added: ` +
+            rejections
+              .map(
+                (r) =>
+                  `${r.file.name} (${r.errors.map((e) => e.message).join("; ")})`,
+              )
+              .join(", "),
+        )
+      }
       maxSize={MAX_SIZE_MB * 1024 ** 2}
     >
       <Flex style={{ minHeight: rem(80), pointerEvents: "none" }}>
@@ -183,16 +152,23 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
     const [filesLoaded, setFilesLoaded] = useState<FileWithContent[]>([]);
     const [isFetching, setIsFetching] = useState(false);
 
-    const previews = filesLoaded.map((file, index) => {
-      const imageUrl = URL.createObjectURL(file);
-      return (
-        <Image
-          key={index}
-          src={imageUrl}
-          onLoad={() => URL.revokeObjectURL(imageUrl)}
-        />
-      );
-    });
+    // Created once per set of files and revoked when it changes. Creating them
+    // during render made a new URL on every re-render, leaking any that were
+    // replaced before their image loaded.
+    const previewUrls = useMemo(
+      () =>
+        filesLoaded
+          .slice(0, MAX_PREVIEWS)
+          .map((file) => URL.createObjectURL(file)),
+      [filesLoaded],
+    );
+    useEffect(
+      () => () => previewUrls.forEach((url) => URL.revokeObjectURL(url)),
+      [previewUrls],
+    );
+    const previews = previewUrls.map((url, index) => (
+      <Image key={index} src={url} />
+    ));
 
     const form = useForm({
       initialValues: {
@@ -235,13 +211,8 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
         }
 
         const blob = await response.blob();
-        const b64_string = await blobOrFileToDataURL(blob);
-
         const file = new File([blob], url, { type: blob.type });
-        const fileWithContent = file as FileWithContent;
-        fileWithContent.content = b64_string;
-
-        setFilesLoaded([fileWithContent]);
+        setFilesLoaded([file as FileWithContent]);
       } catch (error) {
         setFetchError((error as Error).message);
       } finally {
@@ -259,12 +230,7 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
 
       if (imageItem) {
         const file = imageItem.getAsFile();
-        if (file)
-          blobOrFileToDataURL(file).then((b64_string) => {
-            const fileWithContent = file as FileWithContent;
-            fileWithContent.content = b64_string;
-            setFilesLoaded([fileWithContent]);
-          });
+        if (file) setFilesLoaded([file as FileWithContent]);
       }
     };
 

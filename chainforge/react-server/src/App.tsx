@@ -70,6 +70,7 @@ import GlobalSettingsModal, {
   GlobalSettingsModalRef,
 } from "./GlobalSettingsModal";
 import ExampleFlowsModal, { ExampleFlowsModalRef } from "./ExampleFlowsModal";
+import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
 import SimpleEvalNode from "./SimpleEvalNode";
 import UploadNode from "./UploadNode";
@@ -90,14 +91,11 @@ import MediaNode from "./MediaNode";
 import "reactflow/dist/style.css"; // reactflow
 import "./styles.css"; // ChainForge CSS styling
 
-// Lazy loading images
-import "lazysizes";
-import "lazysizes/plugins/attrchange/ls.attrchange";
-
 // State management (from https://reactflow.dev/docs/guides/state-management/)
 import { shallow } from "zustand/shallow";
 import useStore, { StoreHandles } from "./store";
 import StorageCache, { MediaLookup, StringLookup } from "./backend/cache";
+import { FlowLoadSource, flowLoadReplacesMedia } from "./backend/flowLoading";
 import {
   APP_IS_RUNNING_LOCALLY,
   browserTabIsActive,
@@ -277,6 +275,17 @@ const getSharedFlowURLParam = () => {
   return undefined;
 };
 
+// Fetches a shared flow (flow + cache data) by its uid from the hosted database.
+const fetchSharedFlow = async (uid: string): Promise<Dict> => {
+  const response = await fetch("/db/get_sharedflow.php", {
+    method: "POST",
+    body: uid,
+  }).then((r) => r.text());
+  if (!response || response.startsWith("Error"))
+    throw new Error(response || "Unknown error");
+  return JSON.parse(LZString.decompressFromUTF16(response));
+};
+
 const getWindowSize = () => ({
   width: window.innerWidth,
   height: window.innerHeight,
@@ -345,6 +354,11 @@ const App = () => {
 
   // For modal popup of example flows
   const examplesModal = useRef<ExampleFlowsModalRef>(null);
+
+  // A flow from a shared link, fetched but waiting for the user to confirm it
+  // may replace the flow they already have.
+  const sharedFlowConfirmModal = useRef<AreYouSureModalRef>(null);
+  const [pendingSharedFlow, setPendingSharedFlow] = useState<Dict | null>(null);
 
   // For an info pop-up that welcomes new users
   // const [welcomeModalOpened, { open: openWelcomeModal, close: closeWelcomeModal }] = useDisclosure(false);
@@ -1064,16 +1078,23 @@ const App = () => {
 
   // Import data to the cache stored on the local filesystem (in backend)
   const handleImportCache = useCallback(
-    (cache_data: Dict<Dict>) =>
-      importCache(cache_data)
+    (cache_data: Dict<Dict>, replaceMedia: boolean) =>
+      importCache(cache_data, { replaceMedia })
         .then(importGlobalStateFromCache)
         .catch(handleError),
     [handleError, importGlobalStateFromCache],
   );
 
+  // `source` decides whether the previous flow's stored media are cleared;
+  // see flowLoadReplacesMedia.
   const importFlowFromJSON = useCallback(
-    (flowJSON: Dict, rf_inst?: ReactFlowInstance | null) => {
+    (
+      flowJSON: Dict,
+      source: FlowLoadSource,
+      rf_inst?: ReactFlowInstance | null,
+    ) => {
       const rf = rf_inst ?? rfInstance;
+      const replaceMedia = flowLoadReplacesMedia(source);
 
       setIsLoading(true);
 
@@ -1085,7 +1106,8 @@ const App = () => {
           // Support for loading old flows w/o cache data:
           loadFlow(flowJSON, rf);
           StringLookup.restoreFrom([]); // manually clear the string lookup table
-          MediaLookup.clear(); // manually clear the media lookup table
+          // Not for a bundle, whose media were just imported, or the autosave.
+          if (replaceMedia) MediaLookup.clear();
           return;
         }
 
@@ -1095,7 +1117,7 @@ const App = () => {
 
         // We need to send the cache data to the backend first,
         // before we can load the flow itself...
-        handleImportCache(cache)
+        handleImportCache(cache, replaceMedia)
           .then(() => {
             // We load the ReactFlow instance last
             loadFlow(flow, rf);
@@ -1146,7 +1168,7 @@ const App = () => {
               // imported to the backend, or are in the MediaLookup cache.
 
               // Import the flow JSON data to the front-end
-              importFlowFromJSON(flow);
+              importFlowFromJSON(flow, "bundle");
 
               // Set the name to the filename, for consistent saving
               safeSetFlowFileName(flowName);
@@ -1176,7 +1198,7 @@ const App = () => {
               const flow_and_cache = JSON.parse(reader.result);
 
               // Import it to React Flow and import cache data on the backend
-              importFlowFromJSON(flow_and_cache);
+              importFlowFromJSON(flow_and_cache, "file");
 
               // Set the name to the filename, for consistent saving
               safeSetFlowFileName(fileName);
@@ -1199,7 +1221,9 @@ const App = () => {
   const importFlowFromOpenAIEval = (evalname: string) => {
     setIsLoading(true);
 
-    fetchOpenAIEval(evalname).then(importFlowFromJSON).catch(handleError);
+    fetchOpenAIEval(evalname)
+      .then((flow) => importFlowFromJSON(flow, "openai-eval"))
+      .catch(handleError);
   };
 
   const loadFlowFromAutosave = useCallback(
@@ -1224,7 +1248,7 @@ const App = () => {
 
         // Attempt to load flow into the UI
         try {
-          importFlowFromJSON(response.data, rf_inst);
+          importFlowFromJSON(response.data, "autosave", rf_inst);
           console.log("Loaded flow from autosave on local machine.");
         } catch (error) {
           handleError(error as Error);
@@ -1267,7 +1291,7 @@ const App = () => {
       const file = new File([blob], fileName, { type: "application/zip" });
 
       const { flow, flowName } = await importFlowBundle(file);
-      importFlowFromJSON(flow);
+      importFlowFromJSON(flow, "bundle");
       await safeSetFlowFileName(flowName);
     },
     [importFlowFromJSON, safeSetFlowFileName],
@@ -1289,7 +1313,7 @@ const App = () => {
       // treat everything else as .cforge JSON
       const baseName = name.replace(/\.cforge$/i, "");
       const flowJSON = await fetchExampleFlow(baseName);
-      importFlowFromJSON(flowJSON);
+      importFlowFromJSON(flowJSON, "example");
       setFlowFileNameAndCache(`flow-${Date.now()}`);
     } catch (err) {
       handleError(err as Error);
@@ -1482,35 +1506,27 @@ const App = () => {
         // If so, we need to look it up in the database and attempt to load it:
         const shared_flow_uid = getSharedFlowURLParam();
         if (shared_flow_uid !== undefined) {
-          try {
-            // The format passed a basic smell test;
-            // now let's query the server for a flow with that UID:
-            fetch("/db/get_sharedflow.php", {
-              method: "POST",
-              body: shared_flow_uid,
-            })
-              .then((r) => r.text())
-              .then((response) => {
-                if (!response || response.startsWith("Error")) {
-                  // Error encountered during the query; alert the user
-                  // with the error message:
-                  throw new Error(response || "Unknown error");
+          // A shared link can be opened by accident, so it must not silently
+          // replace the user's work. If there is an autosaved flow, load it as
+          // usual and ask before replacing it; nothing is overwritten (the
+          // autosave included) unless they confirm. Cancelling leaves the
+          // link in the URL, so they can export first and reload to open it.
+          // With no autosave there is nothing to lose, so just open it.
+          autosavedFlowExists().then(({ exists }) => {
+            if (exists) loadFlowFromAutosave(rf_inst, false);
+            fetchSharedFlow(shared_flow_uid)
+              .then((cforge_json) => {
+                if (exists) {
+                  setPendingSharedFlow(cforge_json);
+                  sharedFlowConfirmModal.current?.trigger();
+                } else {
+                  importFlowFromJSON(cforge_json, "shared-link", rf_inst);
                 }
-
-                // Attempt to parse the response as a compressed flow + import it:
-                const cforge_json = JSON.parse(
-                  LZString.decompressFromUTF16(response),
-                );
-                importFlowFromJSON(cforge_json, rf_inst);
               })
               .catch(handleError);
-          } catch (err) {
-            // Soft fail
-            setIsLoading(false);
-            console.error(err);
-          }
+          });
 
-          // Since we tried to load from the shared flow ID, don't try to load from autosave
+          setIsLoading(false);
           return;
         }
       }
@@ -1519,7 +1535,7 @@ const App = () => {
       autosavedFlowExists().then(({ exists, location }) => {
         if (!exists) {
           // Load an interesting default starting flow for new users
-          importFlowFromJSON(EXAMPLEFLOW_1, rf_inst);
+          importFlowFromJSON(EXAMPLEFLOW_1, "starter", rf_inst);
 
           // Open a welcome pop-up
           // openWelcomeModal();
@@ -1614,6 +1630,28 @@ const App = () => {
     hideContextMenu,
   ]);
 
+  // Save when the tab is hidden or the page is unloaded. The minute-long
+  // autosave interval skips hidden tabs, so work done shortly before switching
+  // away -- e.g. adding images to a Media Node -- was lost if the browser then
+  // closed or the page reloaded. (The uploaded files themselves are already in
+  // IndexedDB; what was lost was the flow referencing them.) localStorage
+  // writes are synchronous, so the browser-storage save completes even during
+  // pagehide. Only armed once a flow has loaded and autosaving has started, so
+  // a reload mid-load can't overwrite the autosave with an empty flow.
+  useEffect(() => {
+    if (autosavingInterval === undefined) return;
+    const saveNow = () => saveFlow(undefined, "__autosave", true);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") saveNow();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", saveNow);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", saveNow);
+    };
+  }, [autosavingInterval, saveFlow]);
+
   // Recover the index of files persisted in IndexedDB by earlier sessions, so
   // the storage readout and export include them. Contents are loaded on demand
   // by MediaLookup.get, so this stays cheap.
@@ -1649,7 +1687,7 @@ const App = () => {
           }
           if (flowData !== undefined) {
             try {
-              importFlowFromJSON(flowData);
+              importFlowFromJSON(flowData, "saved-flow");
             } catch (error) {
               console.error(error);
               setIsLoading(false);
@@ -1708,6 +1746,20 @@ const App = () => {
         <GlobalSettingsModal ref={settingsModal} />
         <LoadingOverlay visible={isLoading} overlayBlur={1} />
         {requestClarificationModal}
+        <AreYouSureModal
+          ref={sharedFlowConfirmModal}
+          title="Open shared flow?"
+          message={
+            "This link opens a flow someone shared. Opening it will replace the flow you're " +
+            "working on. To keep your current work, click Cancel, export your flow to a file " +
+            "(Export), then reload this page to open the shared flow."
+          }
+          onConfirm={() => {
+            if (pendingSharedFlow)
+              importFlowFromJSON(pendingSharedFlow, "shared-link");
+            setPendingSharedFlow(null);
+          }}
+        />
         <ExampleFlowsModal
           ref={examplesModal}
           handleOnSelect={onSelectExampleFlow}

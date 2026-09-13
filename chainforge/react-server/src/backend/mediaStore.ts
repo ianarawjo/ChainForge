@@ -14,13 +14,27 @@
  */
 
 const DB_NAME = "chainforge";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "media";
+
+/**
+ * uid -> size only, kept alongside STORE.
+ *
+ * Reading a record out of STORE deserializes its Blob, so listing sizes from
+ * there loads every stored file. This store lets startup learn what exists
+ * without touching any file contents. Added in version 2.
+ */
+const META_STORE = "mediaMeta";
 
 /** One stored file. The Blob is kept as-is; IndexedDB clones it structurally. */
 interface MediaRecord {
   uid: string;
   blob: Blob;
+  size: number;
+}
+
+interface MediaMetaRecord {
+  uid: string;
   size: number;
 }
 
@@ -45,7 +59,7 @@ export function indexedDBAvailable(): boolean {
   }
 }
 
-/** Opens (and if needed creates) the database. Resolves undefined on failure. */
+/** Opens (and if needed creates or upgrades) the database. Resolves undefined on failure. */
 function openDB(): Promise<IDBDatabase | undefined> {
   if (!indexedDBAvailable()) {
     warnUnavailableOnce("IndexedDB is not available in this browser context");
@@ -62,10 +76,31 @@ function openDB(): Promise<IDBDatabase | undefined> {
       return;
     }
 
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result;
+      const tx = request.transaction;
       if (!db.objectStoreNames.contains(STORE))
         db.createObjectStore(STORE, { keyPath: "uid" });
+
+      if (!db.objectStoreNames.contains(META_STORE)) {
+        const meta = db.createObjectStore(META_STORE, { keyPath: "uid" });
+        // A version 1 database holds files but no size index. Build it once,
+        // here; that reads each file record a single time, which is the cost
+        // the index exists to avoid on every later page load.
+        if (event.oldVersion >= 1 && tx) {
+          const cursorReq = tx.objectStore(STORE).openCursor();
+          cursorReq.onsuccess = () => {
+            const cursor = cursorReq.result;
+            if (!cursor) return;
+            const record = cursor.value as MediaRecord;
+            meta.put({
+              uid: record.uid,
+              size: record.size ?? record.blob?.size ?? 0,
+            } as MediaMetaRecord);
+            cursor.continue();
+          };
+        }
+      }
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => {
@@ -82,37 +117,69 @@ function openDB(): Promise<IDBDatabase | undefined> {
   });
 }
 
-/** Runs `work` inside a transaction, resolving undefined on any failure. */
-async function withStore<T>(
+/**
+ * One shared connection. Opening IndexedDB is comparatively slow, and adding
+ * a hundred images would otherwise open (and close) it hundreds of times.
+ */
+let dbPromise: Promise<IDBDatabase | undefined> | undefined;
+
+function getDB(): Promise<IDBDatabase | undefined> {
+  if (!dbPromise) {
+    dbPromise = openDB().then((db) => {
+      if (!db) {
+        // Don't cache a failure: a blocking tab may since have closed.
+        dbPromise = undefined;
+      } else {
+        // Step aside if another tab needs to upgrade; reopen on next use.
+        db.onversionchange = () => {
+          db.close();
+          dbPromise = undefined;
+        };
+        db.onclose = () => {
+          dbPromise = undefined;
+        };
+      }
+      return db;
+    });
+  }
+  return dbPromise;
+}
+
+/**
+ * Runs `work` inside a transaction over `stores`, resolving with the result of
+ * the request it returns once the transaction commits, or undefined on any
+ * failure. Resolving on commit rather than on the request matters for writes:
+ * the data is only durable then, and QuotaExceededError surfaces as an abort.
+ */
+async function withTransaction<T>(
   mode: IDBTransactionMode,
-  work: (store: IDBObjectStore) => IDBRequest,
+  stores: string[],
+  work: (tx: IDBTransaction) => IDBRequest,
 ): Promise<T | undefined> {
-  const db = await openDB();
+  const db = await getDB();
   if (!db) return undefined;
 
   return new Promise<T | undefined>((resolve) => {
+    let tx: IDBTransaction;
     let request: IDBRequest;
     try {
-      const tx = db.transaction(STORE, mode);
-      request = work(tx.objectStore(STORE));
+      tx = db.transaction(stores, mode);
+      request = work(tx);
     } catch (err) {
+      // e.g. the connection closed underneath us; reopen next time.
       console.warn(`IndexedDB transaction failed: ${String(err)}`);
-      db.close();
+      dbPromise = undefined;
       resolve(undefined);
       return;
     }
 
-    request.onsuccess = () => {
-      resolve(request.result as T);
-      db.close();
-    };
-    request.onerror = () => {
-      // QuotaExceededError lands here; the caller keeps its memory copy.
+    tx.oncomplete = () => resolve(request.result as T);
+    tx.onabort = () => {
+      // The caller keeps its memory copy.
       console.warn(
-        `IndexedDB write/read failed: ${request.error?.message ?? "unknown error"}`,
+        `IndexedDB write/read failed: ${tx.error?.message ?? request.error?.message ?? "unknown error"}`,
       );
       resolve(undefined);
-      db.close();
     };
   });
 }
@@ -120,28 +187,43 @@ async function withStore<T>(
 /** Stores a file. Returns whether it was durably written. */
 export async function putMedia(uid: string, blob: Blob): Promise<boolean> {
   const record: MediaRecord = { uid, blob, size: blob.size };
-  const result = await withStore<IDBValidKey>("readwrite", (store) =>
-    store.put(record),
+  const result = await withTransaction<IDBValidKey>(
+    "readwrite",
+    [STORE, META_STORE],
+    (tx) => {
+      tx.objectStore(STORE).put(record);
+      return tx
+        .objectStore(META_STORE)
+        .put({ uid, size: blob.size } as MediaMetaRecord);
+    },
   );
   return result !== undefined;
 }
 
 /** Reads a file back, or undefined if absent or unreadable. */
 export async function getMedia(uid: string): Promise<Blob | undefined> {
-  const record = await withStore<MediaRecord | undefined>("readonly", (store) =>
-    store.get(uid),
+  const record = await withTransaction<MediaRecord | undefined>(
+    "readonly",
+    [STORE],
+    (tx) => tx.objectStore(STORE).get(uid),
   );
   return record?.blob;
 }
 
 /** Forgets a file. */
 export async function deleteMedia(uid: string): Promise<void> {
-  await withStore("readwrite", (store) => store.delete(uid));
+  await withTransaction("readwrite", [STORE, META_STORE], (tx) => {
+    tx.objectStore(STORE).delete(uid);
+    return tx.objectStore(META_STORE).delete(uid);
+  });
 }
 
 /** Forgets every stored file. */
 export async function clearMedia(): Promise<void> {
-  await withStore("readwrite", (store) => store.clear());
+  await withTransaction("readwrite", [STORE, META_STORE], (tx) => {
+    tx.objectStore(STORE).clear();
+    return tx.objectStore(META_STORE).clear();
+  });
 }
 
 /**
@@ -151,8 +233,10 @@ export async function clearMedia(): Promise<void> {
  * exist, without pulling every Blob into memory.
  */
 export async function listMedia(): Promise<{ uid: string; size: number }[]> {
-  const records = await withStore<MediaRecord[]>("readonly", (store) =>
-    store.getAll(),
+  const records = await withTransaction<MediaMetaRecord[]>(
+    "readonly",
+    [META_STORE],
+    (tx) => tx.objectStore(META_STORE).getAll(),
   );
   if (!records) return [];
   return records.map((r) => ({ uid: r.uid, size: r.size ?? 0 }));
