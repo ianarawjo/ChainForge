@@ -320,3 +320,202 @@ export function formatScore(value: boolean | number | string): string {
   if (typeof value === "boolean") return String(value);
   return value.length > 14 ? value.slice(0, 13) + "…" : value;
 }
+
+// ---------------------------------------------------------------------------
+// Layout, so that only what's on screen needs rendering
+
+/** Sizes, in px, that determine where everything in the grid goes. */
+export interface LayoutOptions {
+  /** Every item occupies a slot of this size. */
+  slotWidth: number;
+  slotHeight: number;
+  /** Space between items within a cell. */
+  itemGap: number;
+  /** Space between cells, and around headers. */
+  cellGap: number;
+  /** Width of the row header column; 0 when there is no row axis. */
+  rowHeaderWidth: number;
+  /** Height of the column header row; 0 when there is no column axis. */
+  headerHeight: number;
+  /** Height of each section's title; 0 when not splitting. */
+  titleHeight: number;
+  /** Space between sections. */
+  sectionGap: number;
+  /**
+   * True when there are no row or column axes: all items then share one cell
+   * and wrap into lines of `wrapWidth`. Otherwise a cell's items sit side by
+   * side on one line.
+   */
+  wrap: boolean;
+  wrapWidth: number;
+}
+
+export interface CellLayout {
+  row: number;
+  col: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Items per line within the cell. */
+  perRow: number;
+  count: number;
+}
+
+export interface SectionLayout {
+  /** Top of the section title, when splitting. */
+  titleY?: number;
+  headerY: number;
+  colX: number[];
+  colWidth: number[];
+  rowY: number[];
+  rowHeight: number[];
+  cells: CellLayout[];
+}
+
+export interface GridLayout {
+  width: number;
+  height: number;
+  sections: SectionLayout[];
+}
+
+/** A region of the grid, in the grid's own px coordinates. */
+export interface Rect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * Computes where every header, cell and item goes. Because every item has
+ * the same slot size, this needs no measuring, so a renderer can place just
+ * the parts that overlap the visible region.
+ */
+export function layoutGrid(grid: Grid, options: LayoutOptions): GridLayout {
+  const o = options;
+  const pitchX = o.slotWidth + o.itemGap;
+  const pitchY = o.slotHeight + o.itemGap;
+  const wrapPerRow = Math.max(
+    1,
+    Math.floor((o.wrapWidth + o.itemGap) / pitchX),
+  );
+
+  const cellSize = (count: number) => {
+    const perRow = o.wrap ? wrapPerRow : Math.max(1, count);
+    const across = Math.max(1, Math.min(perRow, count));
+    const lines = Math.max(1, Math.ceil(count / perRow));
+    return {
+      perRow,
+      width: across * pitchX - o.itemGap,
+      height: lines * pitchY - o.itemGap,
+    };
+  };
+  const firstColX = o.rowHeaderWidth > 0 ? o.rowHeaderWidth + o.cellGap : 0;
+
+  let y = 0;
+  let width = 0;
+  const sections = grid.sections.map((section, s): SectionLayout => {
+    if (s > 0) y += o.sectionGap;
+    const titleY = o.titleHeight > 0 ? y : undefined;
+    y += o.titleHeight;
+    const headerY = y;
+    if (o.headerHeight > 0) y += o.headerHeight + o.cellGap;
+
+    const sizes = section.cells.map((row) =>
+      row.map((cell) => cellSize(cell.length)),
+    );
+    const colWidth = grid.colValues.map((_, c) =>
+      sizes.reduce((w, row) => Math.max(w, row[c].width), o.slotWidth),
+    );
+    const rowHeight = grid.rowValues.map((_, r) =>
+      sizes[r].reduce((h, size) => Math.max(h, size.height), o.slotHeight),
+    );
+
+    const colX: number[] = [];
+    let x = firstColX;
+    for (const w of colWidth) {
+      colX.push(x);
+      x += w + o.cellGap;
+    }
+    width = Math.max(width, x - o.cellGap);
+
+    const rowY: number[] = [];
+    for (const h of rowHeight) {
+      rowY.push(y);
+      y += h + o.cellGap;
+    }
+    if (rowHeight.length > 0) y -= o.cellGap;
+
+    const cells: CellLayout[] = [];
+    section.cells.forEach((row, r) =>
+      row.forEach((items, c) =>
+        cells.push({
+          row: r,
+          col: c,
+          x: colX[c],
+          y: rowY[r],
+          width: sizes[r][c].width,
+          height: sizes[r][c].height,
+          perRow: sizes[r][c].perRow,
+          count: items.length,
+        }),
+      ),
+    );
+
+    return { titleY, headerY, colX, colWidth, rowY, rowHeight, cells };
+  });
+
+  return { width, height: y, sections };
+}
+
+/** Whether a box overlaps a region. */
+export function intersects(
+  rect: Rect,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): boolean {
+  return (
+    x < rect.right &&
+    rect.left < x + width &&
+    y < rect.bottom &&
+    rect.top < y + height
+  );
+}
+
+/** Indices of a cell's items whose slots overlap a region, in order. */
+export function visibleItemIndices(
+  cell: CellLayout,
+  options: LayoutOptions,
+  rect: Rect,
+): number[] {
+  if (
+    cell.count === 0 ||
+    !intersects(rect, cell.x, cell.y, cell.width, cell.height)
+  )
+    return [];
+
+  const pitchX = options.slotWidth + options.itemGap;
+  const pitchY = options.slotHeight + options.itemGap;
+  const lines = Math.ceil(cell.count / cell.perRow);
+  const firstCol = Math.max(0, Math.floor((rect.left - cell.x) / pitchX));
+  const lastCol = Math.min(
+    cell.perRow - 1,
+    Math.floor((rect.right - cell.x) / pitchX),
+  );
+  const firstLine = Math.max(0, Math.floor((rect.top - cell.y) / pitchY));
+  const lastLine = Math.min(
+    lines - 1,
+    Math.floor((rect.bottom - cell.y) / pitchY),
+  );
+
+  const indices: number[] = [];
+  for (let line = firstLine; line <= lastLine; line++)
+    for (let col = firstCol; col <= lastCol; col++) {
+      const i = line * cell.perRow + col;
+      if (i < cell.count) indices.push(i);
+    }
+  return indices;
+}

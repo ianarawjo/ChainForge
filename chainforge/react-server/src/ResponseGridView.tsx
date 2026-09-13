@@ -4,13 +4,7 @@
  * value of a third "split by" axis, with the remaining variables as filters.
  * Scored responses show a badge, and can be tinted by a metric like a heatmap.
  */
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActionIcon,
   Box,
@@ -20,6 +14,7 @@ import {
   NativeSelect,
   Slider,
   Text,
+  useMantineTheme,
 } from "@mantine/core";
 import {
   IconAdjustmentsHorizontal,
@@ -41,14 +36,26 @@ import {
   HeatScale,
   heatLevel,
   heatScaleFor,
+  LayoutOptions,
   metricValue,
   MODEL_AXIS,
   scoreMetrics,
 } from "./backend/responseGrid";
-import { useMediaUrl, useNearViewport, useThumbnailUrl } from "./useMediaUrl";
+import { useMediaUrl, useThumbnailUrl } from "./useMediaUrl";
+import VirtualResponseGrid from "./VirtualResponseGrid";
 
 const AXIS_KEYS = ["rows", "cols", "split"] as const;
 type AxisKey = (typeof AXIS_KEYS)[number];
+
+// Layout sizes, in px. Text cards have a fixed height (set by the Lines
+// slider), so every item fills an identical slot and the grid's layout can be
+// computed without measuring anything.
+const ITEM_GAP = 4;
+const CELL_GAP = 8;
+const SECTION_GAP = 16;
+const TEXT_LINE_HEIGHT = 17;
+const TEXT_CARD_PADDING = 6;
+const BADGE_SPACE = 14;
 
 /**
  * Tint for a heat level. Numeric scores shade from pale to strong blue (one
@@ -99,12 +106,11 @@ interface CellItemProps {
 const GridThumbnail: React.FC<
   CellItemProps & { item: Extract<GridItem, { kind: "image" }> }
 > = ({ item, size, badge, tint, onOpen }) => {
-  const ref = useRef<HTMLButtonElement>(null);
-  const near = useNearViewport(ref);
-  const { url, status } = useThumbnailUrl(item.uid, near);
+  // Only mounted while near the visible region (VirtualResponseGrid), so the
+  // thumbnail can load straight away, and is released when scrolled far off.
+  const { url, status } = useThumbnailUrl(item.uid);
   return (
     <button
-      ref={ref}
       type="button"
       onClick={onOpen}
       title="Open larger view"
@@ -141,32 +147,40 @@ const GridThumbnail: React.FC<
 };
 
 const TextCard: React.FC<
-  CellItemProps & { item: Extract<GridItem, { kind: "text" }>; lines: number }
-> = ({ item, size, lines, badge, tint, onOpen }) => (
+  CellItemProps & {
+    item: Extract<GridItem, { kind: "text" }>;
+    lines: number;
+    height: number;
+  }
+> = ({ item, size, lines, height, badge, tint, onOpen }) => (
   <button
     type="button"
     onClick={onOpen}
     title="Open full response"
     style={{
       position: "relative",
+      boxSizing: "border-box",
       // Text needs more width than an image thumbnail to be readable.
       width: Math.round(size * 1.6),
-      padding: "6px 8px",
+      // Fixed, so every card fills the same slot, even for short text.
+      height,
+      padding: `${TEXT_CARD_PADDING}px 8px`,
       border: "1px solid rgba(128, 128, 128, 0.25)",
       borderRadius: 4,
       background: tint ?? "rgba(128, 128, 128, 0.06)",
       color: "inherit",
       font: "inherit",
       textAlign: "left",
+      verticalAlign: "top",
       cursor: "pointer",
-      flexShrink: 0,
+      overflow: "hidden",
     }}
   >
     <div
       style={{
-        marginTop: badge ? 14 : 0,
+        marginTop: badge ? BADGE_SPACE : 0,
         fontSize: 12,
-        lineHeight: 1.4,
+        lineHeight: `${TEXT_LINE_HEIGHT}px`,
         whiteSpace: "pre-wrap",
         overflowWrap: "anywhere",
         display: "-webkit-box",
@@ -387,6 +401,7 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
   modelLabel,
   wideFormat,
 }) => {
+  const theme = useMantineTheme();
   const accessors: GridAccessors = useMemo(
     () => ({
       modelOf,
@@ -531,11 +546,48 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
   const headerStyle: React.CSSProperties = {
     fontSize: wideFormat ? 13 : 11,
     fontWeight: 500,
-    maxWidth: 180,
+    maxWidth: "100%",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   };
+
+  // Every item fills the same slot, so VirtualResponseGrid can compute where
+  // everything goes and render only what's near the visible region.
+  const cardWidth = Math.round(itemSize * 1.6);
+  const cardHeight =
+    2 * TEXT_CARD_PADDING +
+    2 + // border
+    (metrics.length > 0 ? BADGE_SPACE : 0) +
+    lines * TEXT_LINE_HEIGHT;
+  const layoutOptions: Omit<LayoutOptions, "wrapWidth"> = useMemo(
+    () => ({
+      slotWidth: hasText
+        ? Math.max(cardWidth, hasImages ? itemSize : 0)
+        : itemSize,
+      slotHeight: hasText
+        ? Math.max(cardHeight, hasImages ? itemSize : 0)
+        : itemSize,
+      itemGap: ITEM_GAP,
+      cellGap: CELL_GAP,
+      rowHeaderWidth: hasRows ? (wideFormat ? 140 : 80) : 0,
+      headerHeight: hasCols ? (wideFormat ? 22 : 18) : 0,
+      titleHeight: axes.split ? (wideFormat ? 28 : 22) : 0,
+      sectionGap: SECTION_GAP,
+      wrap: !hasRows && !hasCols,
+    }),
+    [
+      hasText,
+      hasImages,
+      cardWidth,
+      cardHeight,
+      itemSize,
+      hasRows,
+      hasCols,
+      wideFormat,
+      axes.split,
+    ],
+  );
 
   return (
     <div>
@@ -648,94 +700,56 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
         {scale && colorBy && <HeatLegend metric={colorBy} scale={scale} />}
       </Flex>
 
-      <div style={{ overflowX: "auto" }}>
-        {grid.sections.map((section, s) => (
-          <div key={"section-" + s} style={{ marginBottom: 16 }}>
-            {axes.split && (
-              <Text size={sz} weight={500} mb={4}>
-                {labelOf(axes.split)} = {section.value}
-              </Text>
-            )}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: `${hasRows ? "max-content " : ""}repeat(${grid.colValues.length}, max-content)`,
-                gap: 6,
-                alignItems: "start",
-              }}
-            >
-              {hasCols && (
-                <>
-                  {hasRows && <div />}
-                  {grid.colValues.map((col) => (
-                    <div
-                      key={"col-" + col}
-                      // Centered over the column, which can hold several responses.
-                      style={{
-                        ...headerStyle,
-                        justifySelf: "center",
-                        textAlign: "center",
-                      }}
-                      title={col}
-                    >
-                      {col}
-                    </div>
-                  ))}
-                </>
-              )}
-              {grid.rowValues.map((row, r) => (
-                <React.Fragment key={"row-" + r}>
-                  {hasRows && (
-                    <div
-                      style={{ ...headerStyle, alignSelf: "center" }}
-                      title={row}
-                    >
-                      {row}
-                    </div>
-                  )}
-                  {grid.colValues.map((col, c) => (
-                    <div
-                      key={"cell-" + r + "-" + c}
-                      style={{
-                        display: "flex",
-                        gap: 4,
-                        alignItems: "flex-start",
-                        flexWrap: hasRows || hasCols ? "nowrap" : "wrap",
-                        minWidth: itemSize,
-                        minHeight: hasImages ? itemSize : undefined,
-                      }}
-                    >
-                      {section.cells[r][c].map((item) => {
-                        const i = indexOf.get(item) ?? 0;
-                        const open = () => setLightboxIndex(i);
-                        const key = `${item.response.uid}-${item.index}-${i}`;
-                        return item.kind === "image" ? (
-                          <GridThumbnail
-                            key={key}
-                            item={item}
-                            size={itemSize}
-                            onOpen={open}
-                            {...decorate(item)}
-                          />
-                        ) : (
-                          <TextCard
-                            key={key}
-                            item={item}
-                            size={itemSize}
-                            lines={lines}
-                            onOpen={open}
-                            {...decorate(item)}
-                          />
-                        );
-                      })}
-                    </div>
-                  ))}
-                </React.Fragment>
-              ))}
+      {items.length === 0 ? (
+        <Text size="xs" color="dimmed">
+          No responses to show.
+        </Text>
+      ) : (
+        <VirtualResponseGrid
+          grid={grid}
+          options={layoutOptions}
+          pinnedBackground={
+            theme.colorScheme === "dark" ? theme.colors.dark[7] : theme.white
+          }
+          renderTitle={(section) => (
+            <Text size={sz} weight={500}>
+              {axes.split ? labelOf(axes.split) : ""} = {section.value}
+            </Text>
+          )}
+          // Centered over the column, which can hold several responses.
+          renderColumnHeader={(value) => (
+            <div style={{ ...headerStyle, textAlign: "center" }} title={value}>
+              {value}
             </div>
-          </div>
-        ))}
-      </div>
+          )}
+          renderRowHeader={(value) => (
+            <div style={headerStyle} title={value}>
+              {value}
+            </div>
+          )}
+          renderItem={(item) => {
+            const i = indexOf.get(item) ?? 0;
+            const open = () => setLightboxIndex(i);
+            return item.kind === "image" ? (
+              <GridThumbnail
+                item={item}
+                size={itemSize}
+                onOpen={open}
+                {...decorate(item)}
+              />
+            ) : (
+              <TextCard
+                item={item}
+                size={itemSize}
+                height={cardHeight}
+                lines={lines}
+                onOpen={open}
+                {...decorate(item)}
+              />
+            );
+          }}
+        />
+      )}
 
       <ResponseLightbox
         items={grid.ordered}

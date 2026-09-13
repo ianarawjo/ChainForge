@@ -4,17 +4,22 @@ import {
   collectGridItems,
   defaultGridAxes,
   formatScore,
+  Grid,
   GridAccessors,
   gridAxisOptions,
   GridItem,
   heatLevel,
   heatScaleFor,
+  intersects,
+  LayoutOptions,
+  layoutGrid,
   metricValue,
   MODEL_AXIS,
   passFail,
   SCORE_METRIC,
   scoreMetrics,
   UNSPECIFIED,
+  visibleItemIndices,
 } from "../responseGrid";
 import { EvaluationScore, LLMResponse } from "../typing";
 
@@ -331,5 +336,137 @@ describe("evaluation scores", () => {
     expect(formatScore(0.5)).toBe("0.5");
     expect(formatScore(false)).toBe("false");
     expect(formatScore("a very long category name")).toBe("a very long c…");
+  });
+});
+
+describe("layout for rendering only what's on screen", () => {
+  const options = (overrides: Partial<LayoutOptions> = {}): LayoutOptions => ({
+    slotWidth: 100,
+    slotHeight: 50,
+    itemGap: 4,
+    cellGap: 8,
+    rowHeaderWidth: 60,
+    headerHeight: 20,
+    titleHeight: 0,
+    sectionGap: 16,
+    wrap: false,
+    wrapWidth: 1000,
+    ...overrides,
+  });
+
+  /** A grid whose cells hold the given numbers of (placeholder) items. */
+  const gridOf = (counts: number[][][]): Grid => {
+    const placeholder = items(response("gpt", {}, [text("x")]))[0];
+    return {
+      rowValues: counts[0].map((_, r) => `r${r}`),
+      colValues: counts[0][0].map((_, c) => `c${c}`),
+      sections: counts.map((rows, s) => ({
+        value: `s${s}`,
+        cells: rows.map((row) => row.map((n) => Array(n).fill(placeholder))),
+      })),
+      ordered: [],
+    };
+  };
+
+  test("columns fit their widest cell; rows sit below the header", () => {
+    const layout = layoutGrid(
+      gridOf([
+        [
+          [2, 1],
+          [0, 3],
+        ],
+      ]),
+      options(),
+    );
+    const [section] = layout.sections;
+    // Column 0: two items side by side = 2 * 104 - 4. Column 1: three = 308.
+    expect(section.colWidth).toEqual([204, 308]);
+    // After the 60px row header and an 8px gap.
+    expect(section.colX).toEqual([68, 280]);
+    // Below the 20px header and an 8px gap; rows are one slot tall.
+    expect(section.rowY).toEqual([28, 86]);
+    expect(layout.width).toBe(588);
+    expect(layout.height).toBe(136);
+    expect(section.cells.find((c) => c.row === 1 && c.col === 1)).toMatchObject(
+      { x: 280, y: 86, width: 308, height: 50, perRow: 3, count: 3 },
+    );
+  });
+
+  test("sections stack with a title and a gap", () => {
+    const layout = layoutGrid(
+      gridOf([[[1]], [[1]]]),
+      options({ titleHeight: 24, headerHeight: 0, rowHeaderWidth: 0 }),
+    );
+    const [first, second] = layout.sections;
+    expect(first.titleY).toBe(0);
+    expect(first.rowY).toEqual([24]);
+    // First section ends at 74; then the 16px gap, the title, and the row.
+    expect(second.titleY).toBe(90);
+    expect(second.rowY).toEqual([114]);
+    expect(layout.height).toBe(164);
+  });
+
+  test("without axes, items wrap into lines that fit the width", () => {
+    const layout = layoutGrid(
+      gridOf([[[10]]]),
+      options({
+        wrap: true,
+        wrapWidth: 330,
+        rowHeaderWidth: 0,
+        headerHeight: 0,
+      }),
+    );
+    const [cell] = layout.sections[0].cells;
+    // 330px fits three 100px slots with 4px gaps; ten items need four lines.
+    expect(cell).toMatchObject({ perRow: 3, width: 308, height: 212 });
+  });
+
+  test("only items overlapping the region are returned, across a wide cell", () => {
+    const layout = layoutGrid(
+      gridOf([[[50]]]),
+      options({ rowHeaderWidth: 0, headerHeight: 0 }),
+    );
+    const [cell] = layout.sections[0].cells;
+    const visible = visibleItemIndices(cell, options(), {
+      left: 1000,
+      right: 1300,
+      top: 0,
+      bottom: 50,
+    });
+    expect(visible).toEqual([9, 10, 11, 12]);
+  });
+
+  test("in a wrapped cell, only the lines in view are returned", () => {
+    const opts = options({
+      wrap: true,
+      wrapWidth: 330,
+      rowHeaderWidth: 0,
+      headerHeight: 0,
+    });
+    const [cell] = layoutGrid(gridOf([[[10]]]), opts).sections[0].cells;
+    // Lines start at 0, 54, 108, 162: the region covers lines 1 and 2.
+    expect(
+      visibleItemIndices(cell, opts, {
+        left: 0,
+        right: 330,
+        top: 60,
+        bottom: 150,
+      }),
+    ).toEqual([3, 4, 5, 6, 7, 8]);
+  });
+
+  test("a cell outside the region returns nothing", () => {
+    const [cell] = layoutGrid(gridOf([[[5]]]), options()).sections[0].cells;
+    expect(
+      visibleItemIndices(cell, options(), {
+        left: 5000,
+        right: 6000,
+        top: 0,
+        bottom: 1000,
+      }),
+    ).toEqual([]);
+    expect(
+      intersects({ left: 0, top: 0, right: 10, bottom: 10 }, 10, 0, 5, 5),
+    ).toBe(false);
   });
 });
