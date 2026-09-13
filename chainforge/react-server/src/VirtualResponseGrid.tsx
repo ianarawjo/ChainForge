@@ -7,10 +7,12 @@
  * front (see layoutGrid); nothing needs measuring, and the scroll position
  * never jumps as items come and go.
  *
- * Headers stay readable while scrolling a large grid: section titles and row
- * headers stick to the visible left edge, column headers to the visible top of
- * their section, and each header's label centers on the visible part of its
- * row or column.
+ * The grid scrolls in both directions inside its own box, which fills the
+ * space left in its scrolling container (the inspector modal or node). That
+ * lets headers use CSS sticky positioning: section titles and row headers
+ * stick to the left edge, column headers to the top, and the browser moves
+ * them in step with scrolling. (Moving them from JS lags behind, since the
+ * browser scrolls on another thread.)
  */
 import React, {
   RefObject,
@@ -38,6 +40,9 @@ const REGION_STEP = 256;
 /** Before the first measurement, render this much, so something shows at once. */
 const INITIAL_REGION: Rect = { left: 0, top: 0, right: 2048, bottom: 2048 };
 
+/** The grid's box is never shorter than this, even in a small container. */
+const MIN_HEIGHT = 240;
+
 const sameRect = (a: Rect, b: Rect) =>
   a.left === b.left &&
   a.top === b.top &&
@@ -60,49 +65,10 @@ function scrollingAncestors(el: HTMLElement): HTMLElement[] {
 }
 
 /**
- * The part of an element that's actually on screen, in the element's own
- * (unzoomed) px coordinates: the viewport clipped by every scrolling or
- * clipping ancestor (the inspector modal, the grid's horizontal scroller, a
- * React Flow node). Undefined when nothing of it is visible.
- */
-function visibleArea(
-  el: HTMLElement,
-  clippers: HTMLElement[],
-): Rect | undefined {
-  let left = 0;
-  let top = 0;
-  let right = window.innerWidth;
-  let bottom = window.innerHeight;
-  for (const clipper of clippers) {
-    const r = clipper.getBoundingClientRect();
-    left = Math.max(left, r.left);
-    top = Math.max(top, r.top);
-    right = Math.min(right, r.right);
-    bottom = Math.min(bottom, r.bottom);
-  }
-  if (right <= left || bottom <= top) return undefined;
-
-  const box = el.getBoundingClientRect();
-  // A zoomed React Flow canvas draws the grid at a different size than its layout.
-  const scale =
-    el.offsetWidth > 0 && box.width > 0 ? box.width / el.offsetWidth : 1;
-  return {
-    left: (left - box.left) / scale,
-    top: (top - box.top) / scale,
-    right: (right - box.left) / scale,
-    bottom: (bottom - box.top) / scale,
-  };
-}
-
-/** Clamps a label's center so the label stays within its row or column. */
-const clampCenter = (center: number, halfLabel: number, span: number) =>
-  halfLabel * 2 >= span
-    ? span / 2
-    : Math.min(Math.max(center, halfLabel), span - halfLabel);
-
-/**
  * The visible part of an element plus about a screen's worth of margin on
  * each side, stepped (see REGION_STEP), in the element's own px coordinates.
+ * Visible means within the viewport and every scrolling or clipping ancestor,
+ * corrected for a zoomed React Flow canvas.
  */
 function useVisibleRegion(ref: RefObject<HTMLElement>): Rect {
   const [region, setRegion] = useState<Rect>(INITIAL_REGION);
@@ -115,18 +81,32 @@ function useVisibleRegion(ref: RefObject<HTMLElement>): Rect {
     let frame = 0;
     const update = () => {
       frame = 0;
-      const area = visibleArea(el, clippers);
+      let left = 0;
+      let top = 0;
+      let right = window.innerWidth;
+      let bottom = window.innerHeight;
+      for (const clipper of clippers) {
+        const r = clipper.getBoundingClientRect();
+        left = Math.max(left, r.left);
+        top = Math.max(top, r.top);
+        right = Math.min(right, r.right);
+        bottom = Math.min(bottom, r.bottom);
+      }
       // Collapsed or hidden (e.g. a closed drawer): keep what's rendered.
-      if (!area) return;
-      const marginX = Math.max(400, area.right - area.left);
-      const marginY = Math.max(400, area.bottom - area.top);
+      if (right <= left || bottom <= top) return;
+
+      const box = el.getBoundingClientRect();
+      const scale =
+        el.offsetWidth > 0 && box.width > 0 ? box.width / el.offsetWidth : 1;
+      const marginX = Math.max(400, (right - left) / scale);
+      const marginY = Math.max(400, (bottom - top) / scale);
       const step = (v: number, round: (n: number) => number) =>
         round(v / REGION_STEP) * REGION_STEP;
       const next: Rect = {
-        left: step(area.left - marginX, Math.floor),
-        top: step(area.top - marginY, Math.floor),
-        right: step(area.right + marginX, Math.ceil),
-        bottom: step(area.bottom + marginY, Math.ceil),
+        left: step((left - box.left) / scale - marginX, Math.floor),
+        top: step((top - box.top) / scale - marginY, Math.floor),
+        right: step((right - box.left) / scale + marginX, Math.ceil),
+        bottom: step((bottom - box.top) / scale + marginY, Math.ceil),
       };
       setRegion((prev) => (sameRect(prev, next) ? prev : next));
     };
@@ -171,93 +151,82 @@ function useWidth(ref: RefObject<HTMLElement>): number {
   return width;
 }
 
+/** The nearest ancestor that scrolls vertically within a bounded height. */
+function boundedScrollParent(el: HTMLElement): HTMLElement | undefined {
+  for (
+    let p = el.parentElement;
+    p && p !== document.body;
+    p = p.parentElement
+  ) {
+    const style = getComputedStyle(p);
+    if (
+      /auto|scroll/.test(style.overflowY) &&
+      (style.maxHeight !== "none" || p.scrollHeight > p.clientHeight + 1)
+    )
+      return p;
+  }
+  return undefined;
+}
+
 /**
- * Keeps the placed headers of `contentRef` in view while scrolling: see the
- * data-pin attributes set in VirtualResponseGrid. Moves them with direct
- * style changes, once per frame, so scrolling doesn't re-render the grid.
+ * The tallest an element can be while its bottom stays within its scrolling
+ * container's visible height (with the container scrolled to the top), so
+ * the container doesn't need scrolling to reach the element's own scrollbar.
  */
-function usePinnedHeaders(contentRef: RefObject<HTMLElement>, width: number) {
-  const pinRef = useRef<() => void>(() => undefined);
+function useFitHeight(ref: RefObject<HTMLElement>): number | undefined {
+  const [height, setHeight] = useState<number>();
+  const measureRef = useRef<() => void>(() => undefined);
 
-  pinRef.current = () => {
-    const content = contentRef.current;
-    if (!content) return;
-    const area = visibleArea(content, scrollingAncestors(content));
-    if (!area) return;
-
-    content.querySelectorAll<HTMLElement>("[data-pin]").forEach((box) => {
-      const d = box.dataset;
-      const x = Number(d.x);
-      const y = Number(d.y);
-      const w = Number(d.w);
-      const h = Number(d.h);
-      const label = box.firstElementChild as HTMLElement | null;
-      const sectionBottom = Number(d.bottom);
-      // Where a header pinned to the left edge starts, and one pinned to the
-      // top of a section (starting at `top`, `height` tall) starts.
-      const pinnedX = (w: number) =>
-        Math.max(0, Math.min(area.left, width - w));
-      const pinnedY = (top: number, height: number) =>
-        top +
-        Math.max(0, Math.min(area.top - top, sectionBottom - top - height));
-
-      if (d.pin === "title") {
-        box.style.transform = `translateX(${pinnedX(box.offsetWidth)}px)`;
-      } else if (d.pin === "column") {
-        box.style.transform = `translateY(${pinnedY(y, h) - y}px)`;
-        // Center the label on the part of the column that's visible and not
-        // covered by the pinned row headers.
-        const rowHeaderWidth = Number(d.cover);
-        const from = Math.max(
-          x,
-          area.left,
-          rowHeaderWidth > 0
-            ? pinnedX(rowHeaderWidth) + rowHeaderWidth
-            : -Infinity,
-        );
-        const to = Math.min(x + w, area.right);
-        if (label && to > from)
-          label.style.left = `${clampCenter((from + to) / 2 - x, label.offsetWidth / 2, w)}px`;
-      } else if (d.pin === "row") {
-        box.style.transform = `translateX(${pinnedX(w) - x}px)`;
-        // Center the label on the part of the row that's visible and not
-        // covered by the pinned column headers.
-        const headerY = Number(d.headerY);
-        const headerHeight = Number(d.headerHeight);
-        const from = Math.max(
-          y,
-          area.top,
-          headerHeight > 0
-            ? pinnedY(headerY, headerHeight) + headerHeight
-            : -Infinity,
-        );
-        const to = Math.min(y + h, area.bottom);
-        if (label && to > from)
-          label.style.top = `${clampCenter((from + to) / 2 - y, label.offsetHeight / 2, h)}px`;
-      }
-    });
+  measureRef.current = () => {
+    const el = ref.current;
+    if (!el) return;
+    const outer = boundedScrollParent(el);
+    if (!outer) return;
+    const outerBox = outer.getBoundingClientRect();
+    // Hidden (e.g. a closed drawer).
+    if (outerBox.height === 0 || outer.offsetHeight === 0) return;
+    const scale = outerBox.height / outer.offsetHeight;
+    // Where the element starts within the container's scrolled content.
+    const top =
+      (el.getBoundingClientRect().top - outerBox.top) / scale +
+      outer.scrollTop -
+      outer.clientTop;
+    // Space taken below the element by the bottom padding, borders and
+    // horizontal scrollbars of the boxes around it.
+    let below = 0;
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      below += parseFloat(getComputedStyle(p).paddingBottom) || 0;
+      if (p === outer) break;
+      if (p.clientHeight > 0)
+        below += p.offsetHeight - p.clientHeight - p.clientTop;
+    }
+    const next = Math.max(
+      MIN_HEIGHT,
+      Math.floor(outer.clientHeight - top - below),
+    );
+    setHeight((prev) => (prev === next ? prev : next));
   };
 
-  // After every render, since headers may have been placed or moved.
-  useLayoutEffect(() => pinRef.current());
+  // After every render, since controls above may have grown or shrunk.
+  useLayoutEffect(() => measureRef.current());
 
   useEffect(() => {
-    let frame = 0;
-    const schedule = () => {
-      if (!frame)
-        frame = requestAnimationFrame(() => {
-          frame = 0;
-          pinRef.current();
-        });
-    };
-    window.addEventListener("scroll", schedule, true);
-    window.addEventListener("resize", schedule);
+    const el = ref.current;
+    const outer = el && boundedScrollParent(el);
+    const measure = () => measureRef.current();
+    window.addEventListener("resize", measure);
+    const resizes =
+      outer && typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(measure)
+        : undefined;
+    if (outer) resizes?.observe(outer);
     return () => {
-      if (frame) cancelAnimationFrame(frame);
-      window.removeEventListener("scroll", schedule, true);
-      window.removeEventListener("resize", schedule);
+      window.removeEventListener("resize", measure);
+      resizes?.disconnect();
     };
-  }, []);
+  }, [ref]);
+
+  return height;
 }
 
 export interface VirtualResponseGridProps {
@@ -268,7 +237,7 @@ export interface VirtualResponseGridProps {
   renderTitle: (section: GridSection) => React.ReactNode;
   renderColumnHeader: (value: string) => React.ReactNode;
   renderRowHeader: (value: string) => React.ReactNode;
-  /** Background behind pinned headers, so cards scrolling under them don't show through. */
+  /** Background behind sticky headers, so cards scrolling under them don't show through. */
   pinnedBackground?: string;
 }
 
@@ -284,6 +253,7 @@ const VirtualResponseGrid: React.FC<VirtualResponseGridProps> = ({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollerWidth = useWidth(scrollerRef);
+  const maxHeight = useFitHeight(scrollerRef);
   const region = useVisibleRegion(contentRef);
 
   const layoutOptions: LayoutOptions = useMemo(
@@ -297,12 +267,28 @@ const VirtualResponseGrid: React.FC<VirtualResponseGridProps> = ({
     () => layoutGrid(grid, layoutOptions),
     [grid, layoutOptions],
   );
-  usePinnedHeaders(contentRef, layout.width);
 
   const placed: React.ReactNode[] = [];
   const pitchX = layoutOptions.slotWidth + layoutOptions.itemGap;
   const pitchY = layoutOptions.slotHeight + layoutOptions.itemGap;
   const { headerHeight, rowHeaderWidth, titleHeight } = layoutOptions;
+
+  // Sticky headers sit in tracks spanning the whole grid width (or a whole
+  // section's height), which bound how far they can stick. Tracks let clicks
+  // through to the cards beneath; only the headers themselves take them.
+  const track = (
+    top: number,
+    height: number,
+    zIndex: number,
+  ): React.CSSProperties => ({
+    position: "absolute",
+    left: 0,
+    top,
+    width: layout.width,
+    height,
+    zIndex,
+    pointerEvents: "none",
+  });
 
   layout.sections.forEach((sec, s) => {
     const section = grid.sections[s];
@@ -312,76 +298,106 @@ const VirtualResponseGrid: React.FC<VirtualResponseGridProps> = ({
         ? sec.rowY[lastRow] + sec.rowHeight[lastRow]
         : sec.headerY + headerHeight;
 
-    // Pinned headers are placed by their rows' vertical position or their
-    // columns' horizontal one alone, since pinning moves them along the other
-    // axis to wherever the user has scrolled.
     if (
       sec.titleY !== undefined &&
       intersects(region, region.left, sec.titleY, 1, titleHeight)
     )
       placed.push(
-        <div
-          key={`title-${s}`}
-          data-pin="title"
-          style={{
-            position: "absolute",
-            left: 0,
-            top: sec.titleY,
-            height: titleHeight,
-            display: "flex",
-            alignItems: "center",
-            whiteSpace: "nowrap",
-            paddingRight: 8,
-            background: pinnedBackground,
-            zIndex: 3,
-          }}
-        >
-          {renderTitle(section)}
+        <div key={`title-${s}`} style={track(sec.titleY, titleHeight, 3)}>
+          <div
+            style={{
+              position: "sticky",
+              left: 0,
+              width: "max-content",
+              height: titleHeight,
+              display: "flex",
+              alignItems: "center",
+              whiteSpace: "nowrap",
+              paddingRight: 8,
+              background: pinnedBackground,
+              pointerEvents: "auto",
+            }}
+          >
+            {renderTitle(section)}
+          </div>
         </div>,
       );
 
-    if (headerHeight > 0)
-      grid.colValues.forEach((value, c) => {
-        const x = sec.colX[c];
-        const w = sec.colWidth[c];
-        if (!intersects(region, x, sec.headerY, w, sectionBottom - sec.headerY))
-          return;
-        placed.push(
+    // Above the row headers, which slide under it.
+    if (
+      headerHeight > 0 &&
+      intersects(
+        region,
+        region.left,
+        sec.headerY,
+        1,
+        sectionBottom - sec.headerY,
+      )
+    )
+      placed.push(
+        <div
+          key={`cols-${s}`}
+          style={track(sec.headerY, sectionBottom - sec.headerY, 3)}
+        >
           <div
-            key={`col-${s}-${c}`}
-            data-pin="column"
-            data-x={x}
-            data-y={sec.headerY}
-            data-w={w}
-            data-h={headerHeight}
-            data-bottom={sectionBottom}
-            data-cover={rowHeaderWidth}
             style={{
-              position: "absolute",
-              left: x,
-              top: sec.headerY,
-              width: w,
+              position: "sticky",
+              top: 0,
               height: headerHeight,
-              overflow: "hidden",
               background: pinnedBackground,
-              zIndex: 1,
+              pointerEvents: "auto",
             }}
           >
-            <div
-              style={{
-                position: "absolute",
-                bottom: 2,
-                left: w / 2,
-                transform: "translateX(-50%)",
-                maxWidth: w,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {renderColumnHeader(value)}
-            </div>
-          </div>,
-        );
-      });
+            {rowHeaderWidth > 0 && (
+              // Covers column headers where they pass under the row headers.
+              <div
+                style={{
+                  position: "sticky",
+                  left: 0,
+                  width: rowHeaderWidth,
+                  height: headerHeight,
+                  background: pinnedBackground,
+                  zIndex: 1,
+                }}
+              />
+            )}
+            {grid.colValues.map((value, c) => {
+              const x = sec.colX[c];
+              const w = sec.colWidth[c];
+              if (!intersects(region, x, region.top, w, 1)) return null;
+              return (
+                <div
+                  key={c}
+                  style={{
+                    position: "absolute",
+                    left: x,
+                    top: 0,
+                    width: w,
+                    height: headerHeight,
+                    display: "flex",
+                    alignItems: "flex-end",
+                    justifyContent: "center",
+                  }}
+                >
+                  {/* Centered over the column, but kept in view while any of it is. */}
+                  <div
+                    style={{
+                      position: "sticky",
+                      left: rowHeaderWidth,
+                      right: 0,
+                      maxWidth: w,
+                      paddingBottom: 2,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {renderColumnHeader(value)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>,
+      );
 
     if (rowHeaderWidth > 0)
       grid.rowValues.forEach((value, r) => {
@@ -389,38 +405,32 @@ const VirtualResponseGrid: React.FC<VirtualResponseGridProps> = ({
         const h = sec.rowHeight[r];
         if (!intersects(region, region.left, y, 1, h)) return;
         placed.push(
-          <div
-            key={`row-${s}-${r}`}
-            data-pin="row"
-            data-x={0}
-            data-y={y}
-            data-w={rowHeaderWidth}
-            data-h={h}
-            data-bottom={sectionBottom}
-            data-header-y={sec.headerY}
-            data-header-height={headerHeight}
-            style={{
-              position: "absolute",
-              left: 0,
-              top: y,
-              width: rowHeaderWidth,
-              height: h,
-              overflow: "hidden",
-              background: pinnedBackground,
-              // Above the column headers, which slide under them.
-              zIndex: 2,
-            }}
-          >
+          <div key={`row-${s}-${r}`} style={track(y, h, 2)}>
             <div
               style={{
-                position: "absolute",
+                position: "sticky",
                 left: 0,
-                top: h / 2,
-                transform: "translateY(-50%)",
-                width: rowHeaderWidth - 6,
+                width: rowHeaderWidth,
+                height: h,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "center",
+                background: pinnedBackground,
+                pointerEvents: "auto",
               }}
             >
-              {renderRowHeader(value)}
+              {/* Centered in the row, but kept in view (below the column
+                  headers) while any of the row is. */}
+              <div
+                style={{
+                  position: "sticky",
+                  top: headerHeight,
+                  bottom: 0,
+                  width: rowHeaderWidth - 6,
+                }}
+              >
+                {renderRowHeader(value)}
+              </div>
             </div>
           </div>,
         );
@@ -447,7 +457,7 @@ const VirtualResponseGrid: React.FC<VirtualResponseGridProps> = ({
   });
 
   return (
-    <div ref={scrollerRef} style={{ overflowX: "auto" }}>
+    <div ref={scrollerRef} style={{ overflow: "auto", maxHeight }}>
       <div
         ref={contentRef}
         style={{

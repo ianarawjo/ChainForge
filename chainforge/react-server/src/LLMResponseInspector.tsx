@@ -1449,7 +1449,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         </Tabs.Panel>
       </Tabs>
 
-      <div className="nowheel nodrag" style={{ minHeight: "800px" }}>
+      <div
+        className="nowheel nodrag"
+        // The grid scrolls within the space available, so needs no minimum.
+        style={{ minHeight: viewFormat === "grid" ? undefined : "800px" }}
+      >
         {/* To get the overlay to operate just inside the div, use style={{position: "relative"}}. However it won't show the spinner in the right place. */}
         <LoadingOverlay
           visible={showLoadingSpinner || (isOpen && !isOpenDelayed)}
