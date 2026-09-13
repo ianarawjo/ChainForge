@@ -202,6 +202,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
   const [pastInputs, setPastInputs] = useState<JSONCompatible>([]);
   const pullInputData = useStore((state) => state.pullInputData);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const pingOutputNodes = useStore((state) => state.pingOutputNodes);
 
   // Global lookup for what color to use per LLM
   const getColorForLLMAndSetIfNotFound = useStore(
@@ -420,6 +421,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
             );
           setJoinedTexts(joined_texts);
           setDataPropsForNode(id, { fields: joined_texts });
+          pingOutputNodes(id);
         } else {
           // Join across LLMs (join irrespective of LLM):
           if (
@@ -432,6 +434,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
             );
             setJoinedTexts(joined_texts);
             setDataPropsForNode(id, { fields: joined_texts });
+            pingOutputNodes(id);
           } else {
             let joined_texts: string | TemplateVarInfo = joinTexts(
               resp_objs.map(
@@ -454,6 +457,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
 
             setJoinedTexts([joined_texts]);
             setDataPropsForNode(id, { fields: [joined_texts] });
+            pingOutputNodes(id);
           }
         }
         return true;
