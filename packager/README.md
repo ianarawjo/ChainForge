@@ -12,7 +12,7 @@ only run ChainForge while someone is using it.
   minutes (a notification says so). This also covers the launcher being
   force-quit. Sleep doesn't count: the timer starts again when the Mac wakes.
 - Double-clicking again while it runs just opens another ChainForge tab.
-- **What counts as "in use":** any request to the server. So an open
+- **What counts as "in use":** any request the server accepts (requests from other sites are refused and don't count). So an open
   ChainForge tab keeps it running, even in the background, and so does a
   script or monitoring tool that polls `http://127.0.0.1:8000/`. Close the tabs
   (or choose *Quit ChainForge*) when you are done.

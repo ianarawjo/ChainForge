@@ -40,7 +40,16 @@ def free_port():
 
 
 FAKE_SERVER = textwrap.dedent("""\
-    import argparse, http.server, os, subprocess, sys, time
+    import argparse, http.server, os, socketserver, subprocess, sys, time
+
+    class Server(http.server.HTTPServer):
+        # HTTPServer.server_bind looks up the host's name (socket.getfqdn)
+        # before listening, which can take longer than the test waits on CI
+        # macOS runners. The name is never used here.
+        def server_bind(self):
+            socketserver.TCPServer.server_bind(self)
+            self.server_name, self.server_port = self.server_address[:2]
+
     parser = argparse.ArgumentParser()
     parser.add_argument("command")
     parser.add_argument("--host")
@@ -57,7 +66,7 @@ FAKE_SERVER = textwrap.dedent("""\
         f.write(str(child.pid))
     time.sleep(float(os.environ.get("FAKE_START_DELAY", "0")))
     print(f"serving on {args.host}:{args.port} idle={args.idle_shutdown}", flush=True)
-    http.server.HTTPServer((args.host, args.port), http.server.SimpleHTTPRequestHandler).serve_forever()
+    Server((args.host, args.port), http.server.SimpleHTTPRequestHandler).serve_forever()
 """)
 
 
@@ -157,7 +166,11 @@ class TestServerLifecycle:
         log = tmp_path / "logs" / "chainforge.log"
         process = core.start_server(config, log)
         try:
-            assert core.wait_until_ready(config.url, process, timeout=20) is True
+            ready = core.wait_until_ready(config.url, process, timeout=20)
+            assert ready is True, (
+                f"the stand-in server did not answer (returncode {process.poll()}); its log:\n"
+                + (log.read_text(encoding="utf-8", errors="replace") if log.exists() else "(no log)")
+            )
             child = int((tmp_path / "child.pid").read_text(encoding="utf-8"))
             assert alive(child)
         finally:
