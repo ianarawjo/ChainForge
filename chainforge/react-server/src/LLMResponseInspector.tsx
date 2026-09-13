@@ -1180,11 +1180,14 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               );
           },
           Header: ({ column }) => (
+            // Aligned to the top, not centered: a centered label taller than
+            // the box would overflow above it too, where scrolling can't
+            // reach, cutting off its first words.
             <div
               key={column.columnDef.id}
               style={{
                 display: "flex",
-                alignItems: "center",
+                alignItems: "flex-start",
                 lineHeight: 1.2,
                 maxHeight: 64,
                 overflowY: "auto",
@@ -1194,7 +1197,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               {modelColors[i] && (
                 <span
                   className="cf-model-dot"
-                  style={{ backgroundColor: modelColors[i] }}
+                  style={{
+                    backgroundColor: modelColors[i],
+                    // Centered on the first line (1.2em tall).
+                    marginTop: "calc((1.2em - 8px) / 2)",
+                  }}
                 />
               )}
               {column.columnDef.header}
