@@ -34,6 +34,7 @@ import {
   UnstyledButton,
 } from "@mantine/core";
 import { v4 as uuid } from "uuid";
+import { IconAlertTriangle } from "@tabler/icons-react";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import useStore from "./store";
@@ -442,8 +443,7 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
         )}
         {grouping === "meaning" && anyAgree && (
           <Text size="xs" color="dimmed" mb={4}>
-            Grouping by meaning is experimental and can put different answers
-            together. Open a group to check each answer.
+            Experimental, English only. Open a group to check each answer.
           </Text>
         )}
         {groups.map((members) => {
@@ -676,7 +676,7 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
             <Tooltip
               label={
                 "How answers from different configurations are grouped. " +
-                "Exact: the same text. Meaning (experimental): the same meaning, judged by " +
+                "Exact: the same text. Meaning (experimental, English only): the same meaning, judged by " +
                 "an in-browser model (a one-time download of about " +
                 `${BROWSER_NLI_MODEL.sizeMB}MB); answers with different ` +
                 "numbers or negations are never grouped. Off: every answer " +
@@ -702,6 +702,20 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
                 />
               </Group>
             </Tooltip>
+            {grouping === "meaning" && (
+              <Tooltip
+                label="Experimental: may group answers that differ. English only."
+                withinPortal
+              >
+                <span
+                  className="ragchat-caution"
+                  role="img"
+                  aria-label="Experimental: may group answers that differ. English only."
+                >
+                  <IconAlertTriangle size={15} />
+                </span>
+              </Tooltip>
+            )}
           </Group>
           {running ? (
             <Button size="xs" color="red" variant="light" onClick={stop}>

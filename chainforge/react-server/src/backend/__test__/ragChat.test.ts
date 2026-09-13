@@ -7,6 +7,7 @@ import {
   answeringNodeIds,
   answersConflict,
   answersMatchExactly,
+  conflictReason,
   answersFromPromptOutput,
   buildChatTurn,
   collectStageValues,
@@ -529,6 +530,175 @@ describe("answersConflict", () => {
         "Customer data is retained for seven years after the account is closed.",
       ),
     ).toBe(false);
+  });
+});
+
+describe("conflictReason", () => {
+  const conflict = (a: string, b: string) => conflictReason(a, b);
+
+  test("a and one are the same, as are twice and two times", () => {
+    expect(
+      conflict("Renew it after a month.", "Renew it after one month."),
+    ).toBeUndefined();
+    expect(
+      conflict("Take it twice a day.", "Take it two times a day."),
+    ).toBeUndefined();
+  });
+
+  test("noon is 12", () => {
+    expect(
+      conflict("It is due at noon.", "It is due by 12 pm."),
+    ).toBeUndefined();
+  });
+
+  test("a rate with every is not a quantity", () => {
+    expect(
+      conflict("Prices rose 2% per year.", "Prices rose 2% every year."),
+    ).toBeUndefined();
+  });
+
+  test("a deadline is something due", () => {
+    expect(
+      conflict(
+        "The form is due on Monday.",
+        "The deadline for the form is Monday.",
+      ),
+    ).toBeUndefined();
+  });
+
+  test("giving and getting the same thing are one event", () => {
+    expect(
+      conflict(
+        "The manager issues a warning.",
+        "The employee gets a warning from the manager.",
+      ),
+    ).toBeUndefined();
+  });
+
+  test("-free reads as without", () => {
+    expect(
+      conflict("Entry is visa-free.", "Entry is without a visa."),
+    ).toBeUndefined();
+  });
+
+  test("obligation words conflict across classes, not within them", () => {
+    expect(
+      conflict("Staff must wear badges.", "Staff should wear badges."),
+    ).toBe("obligation");
+    expect(conflict("Staff may wear badges.", "Staff must wear badges.")).toBe(
+      "obligation",
+    );
+    expect(
+      conflict("Staff must wear badges.", "Staff have to wear badges."),
+    ).toBeUndefined();
+    expect(
+      conflict("Guests may park here.", "Guests can park here."),
+    ).toBeUndefined();
+  });
+
+  test("cause and association conflict", () => {
+    expect(
+      conflict(
+        "Exercise causes better mood.",
+        "Exercise is associated with better mood.",
+      ),
+    ).toBe("cause");
+    expect(
+      conflict(
+        "Sales fell because prices rose.",
+        "Sales fell due to rising prices.",
+      ),
+    ).toBeUndefined();
+  });
+
+  test("quantities conflict across classes", () => {
+    expect(conflict("Most users opted in.", "Some users opted in.")).toBe(
+      "quantity",
+    );
+    expect(
+      conflict("It spreads mainly by air.", "It spreads mostly by air."),
+    ).toBeUndefined();
+  });
+
+  test("opposites conflict", () => {
+    expect(conflict("Call us before noon.", "Call us after noon.")).toBe(
+      "opposites",
+    );
+    expect(
+      conflict("Tenants pay the deposit.", "Tenants receive the deposit."),
+    ).toBe("opposites");
+    expect(
+      conflict(
+        "The rule blocks inbound mail.",
+        "The rule blocks outbound mail.",
+      ),
+    ).toBe("opposites");
+  });
+
+  test("a reversed cause and effect conflicts", () => {
+    expect(
+      conflict("Poor diet causes fatigue.", "Fatigue causes poor diet."),
+    ).toBe("cause and effect");
+    expect(
+      conflict(
+        "Rents rose because demand grew.",
+        "Demand grew because rents rose.",
+      ),
+    ).toBe("cause and effect");
+  });
+
+  test("the same cause and effect in other words does not", () => {
+    expect(
+      conflict("Poor diet causes fatigue.", "Fatigue is caused by poor diet."),
+    ).toBeUndefined();
+    expect(
+      conflict(
+        "If it rains, the match is cancelled.",
+        "The match is cancelled if it rains.",
+      ),
+    ).toBeUndefined();
+  });
+
+  test("steps in a different order conflict", () => {
+    expect(
+      conflict(
+        "Wash the rice, then soak it, then boil it.",
+        "Boil the rice, then soak it, then wash it.",
+      ),
+    ).toBe("step order");
+  });
+
+  test("the same steps in one sentence and in two do not", () => {
+    expect(
+      conflict(
+        "Wash the rice, then soak it for an hour.",
+        "Soak the rice for an hour once you have washed it.",
+      ),
+    ).toBeUndefined();
+  });
+
+  test("steps named out of order on purpose are read in order", () => {
+    expect(
+      conflict(
+        "Rest the steak, then slice it.",
+        "Before slicing the steak, rest it.",
+      ),
+    ).toBeUndefined();
+    expect(
+      conflict(
+        "Melt the butter until golden, then add the flour.",
+        "Add the flour, then melt the butter until golden.",
+      ),
+    ).toBe("step order");
+  });
+
+  test("an ordinary paraphrase has no conflict", () => {
+    expect(
+      conflict(
+        "The library opens at 9 on weekdays.",
+        "On weekdays, the library opens at 9.",
+      ),
+    ).toBeUndefined();
   });
 });
 

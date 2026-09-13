@@ -1946,3 +1946,11 @@ html[data-mantine-color-scheme="dark"] .ragchat-chip {
 html[data-mantine-color-scheme="dark"] .ragchat-overlay {
   background: rgba(26, 27, 30, 0.94);
 }
+/* Beside the grouping control while "Meaning", which is experimental, is on. */
+.ragchat-caution {
+  display: inline-flex;
+  color: #e67700;
+}
+html[data-mantine-color-scheme="dark"] .ragchat-caution {
+  color: #ffc078;
+}
