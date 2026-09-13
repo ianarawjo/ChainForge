@@ -1273,7 +1273,20 @@ export async function executepy(
       process_type,
       script_paths,
     }).catch((err) => {
-      throw new Error(err.message);
+      const msg = err?.message ?? String(err);
+      if (
+        msg.includes("Failed to fetch") ||
+        msg.includes("NetworkError") ||
+        msg.includes("ERR_CONNECTION_REFUSED")
+      ) {
+        throw new Error(
+          "Could not connect to the ChainForge Flask backend. " +
+            "Please ensure the ChainForge server is running locally " +
+            "(e.g., via `chainforge start`). The Python evaluator requires " +
+            "the local Flask server to execute Python code.",
+        );
+      }
+      throw new Error(msg);
     });
 
     if (!exec_response || exec_response.error !== undefined)
