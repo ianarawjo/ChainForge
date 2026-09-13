@@ -20,7 +20,7 @@ import StorageCache from "./backend/cache";
 import { IconCheck, IconChecks, IconX } from "@tabler/icons-react";
 import { getRatingKeyForResponse } from "./ResponseRatingToolbar";
 import useStore from "./store";
-import { useMediaUrl } from "./useMediaUrl";
+import { useMediaUrl, useNearViewport } from "./useMediaUrl";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
@@ -465,28 +465,7 @@ const MEDIA_PLACEHOLDER_HEIGHT = 120;
 // Displays a stored image, loading it only once it nears the viewport.
 export const MediaBox: React.FC<MediaBoxProps> = ({ mediaUID }) => {
   const boxRef = useRef<HTMLDivElement>(null);
-  const [nearViewport, setNearViewport] = useState(false);
-
-  useEffect(() => {
-    if (nearViewport) return;
-    const box = boxRef.current;
-    if (!box || typeof IntersectionObserver === "undefined") {
-      setNearViewport(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          // Once loaded, stay loaded while mounted; scrolling back shouldn't refetch.
-          setNearViewport(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "300px" },
-    );
-    observer.observe(box);
-    return () => observer.disconnect();
-  }, [nearViewport]);
+  const nearViewport = useNearViewport(boxRef);
 
   // An object URL points at the stored bytes; a data URL would copy them into
   // a base64 string 4/3 their size, held in React state.
