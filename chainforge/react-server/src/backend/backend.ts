@@ -56,7 +56,6 @@ import { baseModelToProvider } from "../ModelSettingSchemas";
 // """
 const DEFAULT_JSON_HEADERS = {
   "Content-Type": "application/json",
-  "Access-Control-Allow-Origin": "*",
 };
 
 enum MetricType {

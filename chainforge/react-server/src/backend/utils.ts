@@ -75,10 +75,7 @@ export async function call_flask_backend(
 ): Promise<Dict> {
   return fetch(`${FLASK_BASE_URL}app/${route}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
   }).then(function (res) {
     return res.json();

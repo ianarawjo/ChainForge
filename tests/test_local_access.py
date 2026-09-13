@@ -258,6 +258,35 @@ class TestDevOrigins:
         assert server.post("/app/fetchEnvironAPIKeys", headers={**dev, **TOKEN}).status_code == 200
         assert server.post("/app/fetchEnvironAPIKeys", headers=dev).status_code == 403
 
+    def test_an_allowed_dev_origin_passes_the_browsers_cors_checks(self, server, monkeypatch):
+        monkeypatch.setattr(flask_app, "DEV_ORIGINS", {"http://localhost:3000"})
+        requested = "content-type,x-chainforge-token"
+        preflight = server.options("/app/fetchEnvironAPIKeys", headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": requested,
+        })
+        assert preflight.status_code == 200
+        assert preflight.headers["Access-Control-Allow-Origin"] == "http://localhost:3000"
+        assert "POST" in preflight.headers["Access-Control-Allow-Methods"]
+        assert preflight.headers["Access-Control-Allow-Headers"] == requested
+
+        resp = server.post("/app/fetchEnvironAPIKeys", headers={"Origin": "http://localhost:3000", **TOKEN})
+        assert resp.headers["Access-Control-Allow-Origin"] == "http://localhost:3000"
+        # A refusal is readable too, so the dev server can show why.
+        refused = server.post("/app/fetchEnvironAPIKeys", headers={"Origin": "http://localhost:3000"})
+        assert refused.status_code == 403
+        assert refused.headers["Access-Control-Allow-Origin"] == "http://localhost:3000"
+
+    def test_other_origins_get_no_cors_headers_even_with_dev_origins_allowed(self, server, monkeypatch):
+        monkeypatch.setattr(flask_app, "DEV_ORIGINS", {"http://localhost:3000"})
+        for origin in ("http://localhost:3001", "https://evil.example"):
+            resp = server.options("/app/fetchEnvironAPIKeys", headers={
+                "Origin": origin, "Access-Control-Request-Method": "POST",
+            })
+            assert resp.status_code == 403
+            assert "Access-Control-Allow-Origin" not in resp.headers
+
 
 class TestServeCommand:
 

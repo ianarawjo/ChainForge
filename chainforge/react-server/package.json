@@ -114,6 +114,7 @@
   },
   "scripts": {
     "start": "npx prettier -w . && npx eslint . && craco start",
+    "dev": "node scripts/dev.js",
     "build": "npx prettier -w . && npx eslint . && craco build",
     "test": "npx prettier -w . && npx eslint . && craco test",
     "eject": "react-scripts eject",

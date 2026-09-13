@@ -5,7 +5,6 @@ from typing import Iterable, List, Literal
 from statistics import mean, median, stdev
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, after_this_request
-from flask_cors import CORS
 from chainforge.providers import ProviderRegistry
 from chainforge.security.password_utils import ensure_password
 from chainforge.security.secure_save import load_json_file, save_json_file
@@ -88,7 +87,7 @@ STATIC_DIR = os.path.join(BUILD_DIR, 'static')
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
 
 # No CORS by default: only ChainForge's own pages may use this server. A
-# separate front-end dev server is allowed only via --dev-origins (run_server).
+# separate front-end dev server is allowed only via --dev-origins (allow_dev_origins).
 
 # Requests that need no session token: the page itself (which carries the
 # token), its static files, and the bundled example flows.
@@ -114,6 +113,23 @@ def guard_local_access():
     if not token_valid(request.headers.get(TOKEN_HEADER), SESSION_TOKEN):
         return _forbidden("Missing or invalid ChainForge session token. Reload the ChainForge page.")
     return None
+
+@app.after_request
+def allow_dev_origins(response):
+    """CORS headers for a front-end dev server allowed with --dev-origins, and no one else."""
+    origin = normalize_origin(request.headers.get("Origin"))
+    if origin is None or origin not in DEV_ORIGINS:
+        return response
+    response.headers["Access-Control-Allow-Origin"] = origin
+    response.headers.add("Vary", "Origin")
+    if request.method == "OPTIONS":
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        # The origin is trusted, so whatever headers the dev server's requests carry are fine.
+        requested_headers = request.headers.get("Access-Control-Request-Headers")
+        if requested_headers:
+            response.headers["Access-Control-Allow-Headers"] = requested_headers
+        response.headers["Access-Control-Max-Age"] = "600"
+    return response
 
 @app.route('/api/sessionToken', methods=['GET'])
 def session_token():
@@ -2133,7 +2149,6 @@ def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "setti
     ALLOWED_HOSTNAMES = allowed_hostnames(host, allowed_hosts)
     DEV_ORIGINS = {normalize_origin(o) for o in dev_origins if normalize_origin(o)}
     if DEV_ORIGINS:
-        CORS(app, origins=sorted(DEV_ORIGINS), allow_headers=["Content-Type", TOKEN_HEADER])
         print(f"⚠️  Allowing these development origins to use the server: {', '.join(sorted(DEV_ORIGINS))}. "
               "Anything served from them can run code through ChainForge.")
     print(f"Accepting requests addressed to: {', '.join(sorted(ALLOWED_HOSTNAMES))}")

@@ -193,6 +193,16 @@ Unlike these projects, we are focusing on supporting evaluation across prompts, 
 
 We welcome open-source collaborators. If you want to report a bug or request a feature, open an [Issue](https://github.com/ianarawjo/ChainForge/issues). We also encourage users to implement the requested feature / bug fix and submit a Pull Request.
 
+To work on ChainForge from a clone of this repository, install its Python dependencies (for example `pip install -e ".[rag]"`), then:
+
+```bash
+cd chainforge/react-server
+npm install --legacy-peer-deps
+npm run dev
+```
+
+`npm run dev` starts the Python server from your checkout and the React dev server together, at http://localhost:3000, with hot reloading. Ctrl+C stops both.
+
 ---
 
 # Cite Us
