@@ -346,9 +346,16 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
                     size="xs"
                     radius="sm"
                     variant="light"
-                    color="blue"
+                    // Grey, so configurations read as detail about the
+                    // answer; blue is for the user's messages and links.
+                    color="gray"
+                    className="ragchat-chip"
                     styles={{
-                      root: { textTransform: "none", maxWidth: "100%" },
+                      root: {
+                        textTransform: "none",
+                        maxWidth: "100%",
+                        fontWeight: 500,
+                      },
                     }}
                   >
                     {distinct[i]}

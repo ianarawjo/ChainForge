@@ -1916,3 +1916,14 @@ html[data-mantine-color-scheme="dark"] .ragchat-bubble-warning {
   background: rgba(255, 146, 43, 0.12);
   color: #ffc078;
 }
+/* Configuration chips. Mantine's light grey all but vanishes on an answer
+   bubble, so the fill is set against the bubble instead: visible as a chip,
+   quieter than the answer. */
+.ragchat-chip {
+  background: rgba(0, 0, 0, 0.07);
+  color: #495057;
+}
+html[data-mantine-color-scheme="dark"] .ragchat-chip {
+  background: rgba(255, 255, 255, 0.08);
+  color: #a6a7ab;
+}
