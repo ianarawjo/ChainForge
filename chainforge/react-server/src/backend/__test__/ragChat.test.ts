@@ -1,13 +1,17 @@
 import { describe, expect, test } from "@jest/globals";
 import {
+  ChatAnswer,
   ChatTurn,
   PromptOutputLike,
   answerLabel,
   answeringNodeIds,
+  answersAgree,
   answersFromPromptOutput,
   buildChatTurn,
   explainTurn,
+  groupAgreeingAnswers,
   progressMessage,
+  splitAnswerLabels,
 } from "../ragChat";
 import { NodeRunResult } from "../runGraph";
 
@@ -375,5 +379,194 @@ describe("progressMessage", () => {
   test("has a fallback for anything else", () => {
     expect(progressMessage(undefined)).toBe("Running…");
     expect(progressMessage("vis")).toBe("Running…");
+  });
+});
+
+function answer(
+  text: string,
+  config: Record<string, string>,
+  llm = "Qwen2.5 0.5B",
+): ChatAnswer {
+  return { promptNodeId: "p", llm, text, config, inputs: {} };
+}
+
+describe("splitAnswerLabels", () => {
+  test("says the shared stages once and keeps what differs per answer", () => {
+    const rerank = "Cross-encoder (in-browser)";
+    const labels = splitAnswerLabels([
+      answer("a", {
+        chunkMethod: "Markdown",
+        retrievalMethod: "BM25",
+        rerankMethod: rerank,
+      }),
+      answer("b", {
+        chunkMethod: "Markdown",
+        retrievalMethod: "Semantic",
+        rerankMethod: rerank,
+      }),
+      answer("c", {
+        chunkMethod: "Sentences",
+        retrievalMethod: "BM25",
+        rerankMethod: rerank,
+      }),
+    ]);
+    expect(labels.shared).toBe("Cross-encoder (in-browser) · Qwen2.5 0.5B");
+    expect(labels.distinct).toEqual([
+      "Markdown · BM25",
+      "Markdown · Semantic",
+      "Sentences · BM25",
+    ]);
+  });
+
+  test("treats the model as a stage like any other", () => {
+    const labels = splitAnswerLabels([
+      answer("a", { retrievalMethod: "BM25" }, "Qwen2.5 0.5B"),
+      answer("b", { retrievalMethod: "BM25" }, "gpt-oss:20b"),
+    ]);
+    expect(labels.shared).toBe("BM25");
+    expect(labels.distinct).toEqual(["Qwen2.5 0.5B", "gpt-oss:20b"]);
+  });
+
+  test("a stage only some answers have is not shared", () => {
+    const labels = splitAnswerLabels([
+      answer("a", { retrievalMethod: "BM25", rerankMethod: "Cohere" }),
+      answer("b", { retrievalMethod: "BM25" }),
+    ]);
+    expect(labels.shared).toBe("BM25 · Qwen2.5 0.5B");
+    expect(labels.distinct).toEqual(["Cohere", "Response 1"]);
+  });
+
+  test("numbers answers from the same configuration", () => {
+    const labels = splitAnswerLabels([
+      answer("a", { retrievalMethod: "BM25" }, "Qwen2.5 0.5B"),
+      answer("b", { retrievalMethod: "BM25" }, "Qwen2.5 0.5B"),
+      answer("c", { retrievalMethod: "BM25" }, "gpt-oss:20b"),
+      answer("d", { retrievalMethod: "BM25" }, "gpt-oss:20b"),
+    ]);
+    expect(labels.distinct).toEqual([
+      "Qwen2.5 0.5B #1",
+      "Qwen2.5 0.5B #2",
+      "gpt-oss:20b #1",
+      "gpt-oss:20b #2",
+    ]);
+  });
+
+  test("a lone answer shares everything", () => {
+    const labels = splitAnswerLabels([
+      answer("a", { retrievalMethod: "BM25" }),
+    ]);
+    expect(labels.shared).toBe("BM25 · Qwen2.5 0.5B");
+    expect(labels.distinct).toEqual(["Response 1"]);
+  });
+
+  test("no answers, no labels", () => {
+    expect(splitAnswerLabels([])).toEqual({ shared: "", distinct: [] });
+  });
+});
+
+describe("answersAgree", () => {
+  test("the same words agree, whatever the case and punctuation", () => {
+    expect(answersAgree("Seven years.", "seven years")).toBe(true);
+  });
+
+  test("a close paraphrase agrees", () => {
+    // Real answers from two retrievers in the comparison flow.
+    expect(
+      answersAgree(
+        "Customer data is kept for 7 years after an account is closed.",
+        "Customer data is retained for seven years after the account is closed.",
+      ),
+    ).toBe(true);
+  });
+
+  test("different numbers never agree, however similar the wording", () => {
+    expect(
+      answersAgree(
+        "Customer data is kept for 7 years after an account is closed.",
+        "Customer data is kept for 30 years after an account is closed.",
+      ),
+    ).toBe(false);
+  });
+
+  test("a negation never agrees with its opposite", () => {
+    expect(
+      answersAgree(
+        "Employees may work remotely on Fridays.",
+        "Employees may not work remotely on Fridays.",
+      ),
+    ).toBe(false);
+    expect(
+      answersAgree(
+        "The handbook says how long data is kept.",
+        "The handbook doesn't say how long data is kept.",
+      ),
+    ).toBe(false);
+  });
+
+  test("yes and no disagree", () => {
+    expect(answersAgree("Yes, you can.", "No, you can.")).toBe(false);
+  });
+
+  test("unrelated answers disagree", () => {
+    expect(
+      answersAgree(
+        "Customer data is kept for 7 years.",
+        "The handbook does not mention data retention for closed accounts.",
+      ),
+    ).toBe(false);
+  });
+
+  test("a loose paraphrase is left apart rather than risk hiding a difference", () => {
+    expect(
+      answersAgree(
+        "Full-time employees accrue 18 days of paid leave per calendar year.",
+        "You get 18 days off every year if you work full time.",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("groupAgreeingAnswers", () => {
+  const texts = (ts: string[]) => ts.map((t) => answer(t, {}));
+
+  test("groups agreeing answers, largest group first", () => {
+    const groups = groupAgreeingAnswers(
+      texts([
+        "The handbook doesn't say.",
+        "Customer data is kept for 7 years.",
+        "Customer data is kept for seven years.",
+        "customer data is kept for 7 years",
+      ]),
+    );
+    expect(groups).toEqual([[1, 2, 3], [0]]);
+  });
+
+  test("an answer must agree with every member, not just one", () => {
+    // b agrees with both a and c, but a and c disagree: c may not join a's group.
+    const agree = (x: string, y: string) =>
+      x === y ||
+      [x, y].sort().join() === "a,b" ||
+      [x, y].sort().join() === "b,c";
+    expect(groupAgreeingAnswers(texts(["a", "b", "c"]), agree)).toEqual([
+      [0, 1],
+      [2],
+    ]);
+  });
+
+  test("when nothing agrees, every answer stands alone in arrival order", () => {
+    expect(
+      groupAgreeingAnswers(texts(["7 years.", "30 days.", "Not stated."])),
+    ).toEqual([[0], [1], [2]]);
+  });
+
+  test("equal-sized groups keep arrival order", () => {
+    expect(
+      groupAgreeingAnswers(
+        texts(["30 days.", "7 years.", "30 days", "7 years"]),
+      ),
+    ).toEqual([
+      [0, 2],
+      [1, 3],
+    ]);
   });
 });

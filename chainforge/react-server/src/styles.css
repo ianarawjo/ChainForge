@@ -1894,3 +1894,12 @@ html[data-mantine-color-scheme="dark"] .ragchat-context {
 html[data-mantine-color-scheme="dark"] .ragchat-bubble-error {
   color: #ff8787;
 }
+/* Each configuration's own answer and context, inside a group's details. */
+.ragchat-member + .ragchat-member {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  margin-top: 6px;
+  padding-top: 6px;
+}
+html[data-mantine-color-scheme="dark"] .ragchat-member + .ragchat-member {
+  border-top-color: rgba(255, 255, 255, 0.12);
+}

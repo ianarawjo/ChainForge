@@ -47,7 +47,9 @@ import {
   answeringNodeIds,
   buildChatTurn,
   explainTurn,
+  groupAgreeingAnswers,
   progressMessage,
+  splitAnswerLabels,
 } from "./backend/ragChat";
 
 /**
@@ -230,38 +232,37 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
     }
   };
 
-  const renderAnswer = (turn: ChatTurn, answer: ChatAnswer, idx: number) => {
-    const key = `${turn.id}:${idx}`;
-    const inputs = Object.entries(answer.inputs);
-    const showLabel = turn.answers.length > 1;
+  const toggle = (key: string) =>
+    setOpenContext((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const renderInputs = (inputs: Record<string, string>) =>
+    Object.entries(inputs).map(([name, value]) => (
+      <div key={name}>
+        <Text size="xs" weight={600}>
+          {name}
+        </Text>
+        <Text size="xs" style={{ whiteSpace: "pre-wrap" }}>
+          {value}
+        </Text>
+      </div>
+    ));
+
+  // A turn with a single answer reads like an ordinary chat.
+  const renderAnswer = (turn: ChatTurn, answer: ChatAnswer) => {
+    const key = `${turn.id}:0`;
     return (
       <div key={key} className="ragchat-bubble ragchat-bubble-answer">
-        {showLabel && (
-          <Badge
-            size="xs"
-            radius="sm"
-            variant="light"
-            mb={4}
-            styles={{ root: { textTransform: "none", maxWidth: "100%" } }}
-          >
-            {answerLabel(answer)}
-          </Badge>
-        )}
         <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
           {answer.text}
         </Text>
-        {!showLabel && (
-          <Text size="xs" color="dimmed" mt={4}>
-            {answerLabel(answer)}
-          </Text>
-        )}
-        {inputs.length > 0 && (
+        <Text size="xs" color="dimmed" mt={4}>
+          {answerLabel(answer)}
+        </Text>
+        {Object.keys(answer.inputs).length > 0 && (
           <>
             <UnstyledButton
               className="ragchat-context-toggle"
-              onClick={() =>
-                setOpenContext((prev) => ({ ...prev, [key]: !prev[key] }))
-              }
+              onClick={() => toggle(key)}
             >
               <Text size="xs" color="blue">
                 {openContext[key] ? "Hide context" : "Show context"}
@@ -269,21 +270,116 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
             </UnstyledButton>
             <Collapse in={Boolean(openContext[key])}>
               <div className="ragchat-context nowheel">
-                {inputs.map(([name, value]) => (
-                  <div key={name}>
-                    <Text size="xs" weight={600}>
-                      {name}
-                    </Text>
-                    <Text size="xs" style={{ whiteSpace: "pre-wrap" }}>
-                      {value}
-                    </Text>
-                  </div>
-                ))}
+                {renderInputs(answer.inputs)}
               </div>
             </Collapse>
           </>
         )}
       </div>
+    );
+  };
+
+  // A turn comparing configurations. What every answer shares is said once;
+  // answers that agree are grouped, each group listing the configurations
+  // that gave it, so which choices changed the answer shows at a glance.
+  // Nothing is collapsed away: every configuration stays visible as a chip.
+  //
+  // An answer on its own is labelled only by its count, never as "different":
+  // agreement is judged strictly, so a lone answer may just be worded
+  // differently from a group, and calling it a disagreement would be a claim
+  // the check cannot back.
+  const renderComparison = (turn: ChatTurn) => {
+    const { shared, distinct } = splitAnswerLabels(turn.answers);
+    const groups = groupAgreeingAnswers(turn.answers);
+    const total = turn.answers.length;
+    const anyAgree = groups.some((g) => g.length > 1);
+
+    return (
+      <>
+        <Text size="xs" color="dimmed">
+          {total} answers from different configurations
+        </Text>
+        {shared && (
+          <Text size="xs" color="dimmed" mb={4}>
+            Same for all: {shared}
+          </Text>
+        )}
+        {groups.map((members) => {
+          const key = `${turn.id}:g${members[0]}`;
+          const lead = turn.answers[members[0]];
+          return (
+            <div key={key} className="ragchat-bubble ragchat-bubble-answer">
+              {anyAgree && (
+                <Text
+                  size="xs"
+                  weight={600}
+                  color={members.length > 1 ? "teal" : "dimmed"}
+                  mb={2}
+                >
+                  {members.length > 1
+                    ? `${members.length} of ${total} agree`
+                    : `1 of ${total}`}
+                </Text>
+              )}
+              <Text size="sm" style={{ whiteSpace: "pre-wrap" }}>
+                {lead.text}
+              </Text>
+              <Group spacing={4} mt={6}>
+                {members.map((i) => (
+                  <Badge
+                    key={i}
+                    size="xs"
+                    radius="sm"
+                    variant="light"
+                    color="blue"
+                    styles={{
+                      root: { textTransform: "none", maxWidth: "100%" },
+                    }}
+                  >
+                    {distinct[i]}
+                  </Badge>
+                ))}
+              </Group>
+              <UnstyledButton
+                className="ragchat-context-toggle"
+                onClick={() => toggle(key)}
+              >
+                <Text size="xs" color="blue">
+                  {openContext[key]
+                    ? "Hide details"
+                    : members.length > 1
+                      ? "Show each answer and its context"
+                      : "Show context"}
+                </Text>
+              </UnstyledButton>
+              <Collapse in={Boolean(openContext[key])}>
+                <div className="ragchat-context nowheel">
+                  {members.map((i) => (
+                    <div key={i} className="ragchat-member">
+                      {members.length > 1 && (
+                        <>
+                          <Text size="xs" weight={600}>
+                            {distinct[i]}
+                          </Text>
+                          <Text
+                            size="xs"
+                            italic
+                            mb={4}
+                            style={{ whiteSpace: "pre-wrap" }}
+                          >
+                            {turn.answers[i].text}
+                          </Text>
+                        </>
+                      )}
+                      {renderInputs(turn.answers[i].inputs)}
+                    </div>
+                  ))}
+                </div>
+              </Collapse>
+            </div>
+          );
+        })}
+      </>
     );
   };
 
@@ -318,12 +414,9 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
                   {turn.query}
                 </Text>
               </div>
-              {turn.answers.length > 1 && (
-                <Text size="xs" color="dimmed" mb={2}>
-                  {turn.answers.length} answers from different configurations
-                </Text>
-              )}
-              {turn.answers.map((a, i) => renderAnswer(turn, a, i))}
+              {turn.answers.length > 1
+                ? renderComparison(turn)
+                : turn.answers.map((a) => renderAnswer(turn, a))}
               {explainTurn(turn) && (
                 <div
                   className={`ragchat-bubble ragchat-bubble-system ${
