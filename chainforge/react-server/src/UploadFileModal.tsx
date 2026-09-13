@@ -121,7 +121,7 @@ const ImageFileDropzone: React.FC<ImageFileDropzoneProps> = ({
     <Dropzone
       mt="sm"
       loading={isLoading}
-      accept={["image/png", "image/jpeg"]} // TODO support all image file types of : import IMAGE_MIME_TYPE from "@mantine/dropzone";
+      accept={["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml", "image/bmp", "image/tiff"]}
       onDrop={handleDrop}
       onReject={(files) => console.log("Rejected files:", files)}
       maxSize={MAX_SIZE_MB * 1024 ** 2}
