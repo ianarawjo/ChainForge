@@ -1768,13 +1768,14 @@ async function call_custom_provider(
   // The model to call is in format:
   // __custom/<provider_name>/<submodel name>
   // It may also exclude the final tag.
-  // We extract the provider name (this is the name used in the Python backend's `ProviderRegistry`) and optionally, the submodel name
+  // We extract the provider name (this is the name used in the Python backend's `ProviderRegistry`) and optionally, the submodel name.
+  // Note: submodel names may contain slashes (e.g. "allenai/tulu2-1"), so we use indexOf to split at the FIRST slash only.
   const provider_path = model.substring(9);
-  const provider_name = provider_path.substring(0, provider_path.indexOf("/"));
+  const first_slash_idx = provider_path.indexOf("/");
+  const provider_name =
+    first_slash_idx === -1 ? provider_path : provider_path.substring(0, first_slash_idx);
   const submodel_name =
-    provider_path.length === provider_name.length - 1
-      ? undefined
-      : provider_path.substring(provider_path.lastIndexOf("/") + 1);
+    first_slash_idx === -1 ? undefined : provider_path.substring(first_slash_idx + 1);
 
   const responses: Dict[] = [];
   const query = { prompt, model, temperature, ...params };
