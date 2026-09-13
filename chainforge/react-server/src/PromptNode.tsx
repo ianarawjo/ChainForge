@@ -76,6 +76,11 @@ import {
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import {
+  runnerFromStatus,
+  useNodeRunner,
+  useTrackedStatus,
+} from "./useNodeRunner";
+import {
   clearCachedResponses,
   countQueries,
   generatePrompts,
@@ -386,7 +391,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState<
     string | string[] | null
   >(null);
-  const [status, setStatus] = useState(Status.NONE);
+  const [status, setStatus, statusRef] = useTrackedStatus();
   const [numGenerations, setNumGenerations] = useState<number>(data.n ?? 1);
   const [numGenerationsLastRun, setNumGenerationsLastRun] = useState<number>(
     data.n ?? 1,
@@ -1268,8 +1273,9 @@ Soft failing by replacing undefined with empty strings.`,
       });
     };
 
-    // Now put it all together!
-    fetch_resp_count()
+    // Now put it all together! Returned so a driver can await the whole run;
+    // the run button ignores the value.
+    return fetch_resp_count()
       .then(open_progress_listener)
       .then(query_llms)
       .catch(rejected);
@@ -1330,6 +1336,10 @@ Soft failing by replacing undefined with empty strings.`,
     },
     [numGenerationsLastRun, status],
   );
+
+  // Lets a driver, such as a chat box over this flow, run this node without a
+  // click. See backend/runGraph.ts.
+  useNodeRunner(id, runnerFromStatus(handleRunClick, statusRef));
 
   const hideStatusIndicator = () => {
     if (status !== Status.NONE) setStatus(Status.NONE);
