@@ -16,6 +16,7 @@ import {
   metricValue,
   MODEL_AXIS,
   passFail,
+  resolveGridAxes,
   SCORE_METRIC,
   scoreMetrics,
   UNSPECIFIED,
@@ -95,6 +96,36 @@ describe("default axes", () => {
       rows: undefined,
       cols: MODEL_AXIS,
     });
+  });
+});
+
+describe("resolving chosen axes", () => {
+  const vars = ["style", "subject"];
+
+  test("defaults until the user chooses axes", () => {
+    expect(resolveGridAxes(undefined, vars, 2)).toEqual(
+      defaultGridAxes(vars, 2),
+    );
+  });
+
+  test("chosen axes are kept, including choosing none", () => {
+    expect(resolveGridAxes({ rows: "subject" }, vars, 2)).toEqual({
+      rows: "subject",
+    });
+    expect(resolveGridAxes({}, vars, 2)).toEqual({});
+  });
+
+  test("a missing variable is left out, then shown again when it returns", () => {
+    const chosen = { rows: "place", cols: MODEL_AXIS };
+    // Mid-run, the node's previous responses are briefly cleared.
+    expect(resolveGridAxes(chosen, [], 2)).toEqual({ cols: MODEL_AXIS });
+    expect(resolveGridAxes(chosen, ["place"], 2)).toEqual(chosen);
+  });
+
+  test("defaults when none of the chosen axes exist", () => {
+    expect(resolveGridAxes({ rows: "place" }, vars, 1)).toEqual(
+      defaultGridAxes(vars, 1),
+    );
   });
 });
 

@@ -4,7 +4,14 @@
  * value of a third "split by" axis, with the remaining variables as filters.
  * Scored responses show a badge, and can be tinted by a metric like a heatmap.
  */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useNodeId } from "reactflow";
 import {
   ActionIcon,
   Box,
@@ -27,7 +34,6 @@ import {
   axisValues,
   buildGrid,
   collectGridItems,
-  defaultGridAxes,
   formatScore,
   GridAccessors,
   GridAxes,
@@ -39,10 +45,12 @@ import {
   LayoutOptions,
   metricValue,
   MODEL_AXIS,
+  resolveGridAxes,
   scoreMetrics,
 } from "./backend/responseGrid";
 import { useMediaUrl, useThumbnailUrl } from "./useMediaUrl";
 import VirtualResponseGrid from "./VirtualResponseGrid";
+import useStore from "./store";
 
 const AXIS_KEYS = ["rows", "cols", "split"] as const;
 type AxisKey = (typeof AXIS_KEYS)[number];
@@ -408,6 +416,35 @@ export interface ResponseGridViewProps {
   wideFormat?: boolean;
 }
 
+interface FormatSettings {
+  itemSize?: number;
+  lines?: number;
+  showControls?: boolean;
+}
+
+/** Grid View settings, saved in the node's data as `grid_settings`. */
+interface GridSettings {
+  /** Axes the user chose; unset to follow the defaults. */
+  axes?: GridAxes;
+  filters?: Dict<string>;
+  /** "" for no coloring; unset to color by the first metric. */
+  colorBy?: string;
+  // Sizes differ between the wide inspector modal and narrow drawers and nodes.
+  wide?: FormatSettings;
+  narrow?: FormatSettings;
+}
+
+/** A little shorter than Mantine's smallest ("xs", 30px) select. */
+const COMPACT_SELECT_STYLES = {
+  input: {
+    height: 26,
+    minHeight: 26,
+    lineHeight: "24px",
+    fontSize: 12,
+    paddingLeft: 8,
+  },
+};
+
 const ResponseGridView: React.FC<ResponseGridViewProps> = ({
   responses,
   modelOf,
@@ -439,44 +476,99 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
   const hasText = items.some((item) => item.kind === "text");
   const hasImages = items.some((item) => item.kind === "image");
 
-  const [axes, setAxes] = useState<GridAxes>(() =>
-    defaultGridAxes(vars, models.length),
+  // Settings are saved in the node's data, so they survive closing the
+  // inspector, switching tabs, re-running the node and reloading the flow.
+  // They're read once, when the grid appears.
+  const nodeId = useNodeId();
+  const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const readSaved = (): GridSettings =>
+    (nodeId
+      ? (useStore.getState().getNode(nodeId)?.data?.grid_settings as
+          | GridSettings
+          | undefined)
+      : undefined) ?? {};
+  const formatKey = wideFormat ? "wide" : "narrow";
+  const [saved] = useState(readSaved);
+  const savedFormat = saved[formatKey] ?? {};
+
+  // What the user chose is kept even while a variable or metric is missing,
+  // e.g. mid-run, when the previous responses are briefly cleared.
+  const [chosenAxes, setChosenAxes] = useState<GridAxes | undefined>(
+    saved.axes,
   );
-  const [userChoseAxes, setUserChoseAxes] = useState(false);
-  const [filters, setFilters] = useState<Dict<string>>({});
-  const [itemSize, setItemSize] = useState(wideFormat ? 140 : 72);
-  const [lines, setLines] = useState(wideFormat ? 4 : 3);
-  const [colorBy, setColorBy] = useState(metrics[0] ?? "");
-  const [userChoseColor, setUserChoseColor] = useState(false);
+  const [chosenFilters, setFilters] = useState<Dict<string>>(
+    saved.filters ?? {},
+  );
+  const [chosenColor, setChosenColor] = useState<string | undefined>(
+    saved.colorBy,
+  );
+  const [itemSize, setItemSize] = useState(
+    savedFormat.itemSize ?? (wideFormat ? 140 : 72),
+  );
+  const [lines, setLines] = useState(savedFormat.lines ?? (wideFormat ? 4 : 3));
   // In narrow inspectors (drawers, Inspect Nodes) the controls would take most
   // of the height, so they start hidden behind a toggle.
-  const [showControls, setShowControls] = useState(Boolean(wideFormat));
+  const [showControls, setShowControls] = useState(
+    savedFormat.showControls ?? Boolean(wideFormat),
+  );
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
-  // Follow the defaults as responses change, until the user picks axes; and
-  // drop any axis or filter whose variable is no longer present.
+  // The defaults until the user picks axes, then the chosen axes whose
+  // variables are present (see resolveGridAxes).
   const available = useMemo(() => new Set([...vars, MODEL_AXIS]), [vars]);
-  useEffect(() => {
-    const stale = AXIS_KEYS.some((k) => {
-      const axis = axes[k];
-      return axis !== undefined && !available.has(axis);
-    });
-    if (!userChoseAxes || stale) setAxes(defaultGridAxes(vars, models.length));
-    setFilters((prev) => {
-      const kept = Object.entries(prev).filter(([axis]) => available.has(axis));
-      return kept.length === Object.keys(prev).length
-        ? prev
-        : Object.fromEntries(kept);
-    });
-  }, [vars, models.length, available]);
+  const axes = useMemo(
+    () => resolveGridAxes(chosenAxes, vars, models.length),
+    [chosenAxes, vars, models.length],
+  );
+  const filters = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(chosenFilters).filter(([axis]) => available.has(axis)),
+      ),
+    [chosenFilters, available],
+  );
+  // Color by the first metric unless the user chose one, or none ("").
+  const colorBy =
+    chosenColor === "" ||
+    (chosenColor !== undefined && metrics.includes(chosenColor))
+      ? chosenColor
+      : metrics[0] ?? "";
 
-  // Color by the first metric once scores appear, unless the user chose
-  // otherwise; and let go of a metric that's no longer present.
+  // Save changes once they settle, since sliders change many times a second;
+  // or straight away if the grid closes first.
+  const settingsKey = JSON.stringify([
+    chosenAxes,
+    chosenFilters,
+    chosenColor,
+    itemSize,
+    lines,
+    showControls,
+  ]);
+  const savedKey = useRef(settingsKey);
+  const pendingSave = useRef<(() => void) | null>(null);
   useEffect(() => {
-    if (colorBy && !metrics.includes(colorBy)) setColorBy(metrics[0] ?? "");
-    else if (!colorBy && !userChoseColor && metrics.length > 0)
-      setColorBy(metrics[0]);
-  }, [metrics]);
+    if (!nodeId || settingsKey === savedKey.current) return;
+    const save = () => {
+      pendingSave.current = null;
+      savedKey.current = settingsKey;
+      const current = readSaved();
+      const next: GridSettings = {
+        ...current,
+        axes: chosenAxes,
+        filters: chosenFilters,
+        colorBy: chosenColor,
+        [formatKey]: { ...current[formatKey], itemSize, lines, showControls },
+      };
+      // Round-trip through JSON to drop unset fields.
+      setDataPropsForNode(nodeId, {
+        grid_settings: JSON.parse(JSON.stringify(next)),
+      });
+    };
+    pendingSave.current = save;
+    const timer = setTimeout(save, 400);
+    return () => clearTimeout(timer);
+  }, [settingsKey]);
+  useEffect(() => () => pendingSave.current?.(), []);
 
   const setAxis = (key: AxisKey, value: string) => {
     const next: GridAxes = { ...axes, [key]: value || undefined };
@@ -484,8 +576,7 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
     for (const other of AXIS_KEYS)
       if (other !== key && value && next[other] === value)
         next[other] = undefined;
-    setAxes(next);
-    setUserChoseAxes(true);
+    setChosenAxes(next);
     // A variable on an axis can't also be a filter.
     if (value)
       setFilters((prev) =>
@@ -651,7 +742,8 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
                   onChange={(e) => setAxis(key, e.currentTarget.value)}
                   data={axisChoices}
                   size="xs"
-                  w={wideFormat ? 130 : 100}
+                  styles={COMPACT_SELECT_STYLES}
+                  w={wideFormat ? 120 : 100}
                 />
               </InlineField>
             ))}
@@ -672,6 +764,7 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
                     })),
                   ]}
                   size="xs"
+                  styles={COMPACT_SELECT_STYLES}
                   w={wideFormat ? 120 : 90}
                 />
               </InlineField>
@@ -681,15 +774,13 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
                 <NativeSelect
                   aria-label="Color by"
                   value={colorBy}
-                  onChange={(e) => {
-                    setColorBy(e.currentTarget.value);
-                    setUserChoseColor(true);
-                  }}
+                  onChange={(e) => setChosenColor(e.currentTarget.value)}
                   data={[
                     { value: "", label: "None" },
                     ...metrics.map((m) => ({ value: m, label: m })),
                   ]}
                   size="xs"
+                  styles={COMPACT_SELECT_STYLES}
                   w={wideFormat ? 120 : 90}
                 />
               </InlineField>

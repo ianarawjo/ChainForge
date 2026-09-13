@@ -137,6 +137,32 @@ export function defaultGridAxes(vars: string[], numModels: number): GridAxes {
   };
 }
 
+/**
+ * The axes to show: the defaults until the user chooses axes, then the chosen
+ * axes whose variables are present. A chosen axis that's missing (e.g. while a
+ * node re-runs and its responses are briefly cleared) is left out rather than
+ * forgotten. If none of the chosen axes exist (e.g. the variables were
+ * renamed), the defaults are shown instead.
+ */
+export function resolveGridAxes(
+  chosen: GridAxes | undefined,
+  vars: string[],
+  numModels: number,
+): GridAxes {
+  const defaults = defaultGridAxes(vars, numModels);
+  if (!chosen) return defaults;
+  const available = new Set([...vars, MODEL_AXIS]);
+  const keys = ["rows", "cols", "split"] as const;
+  const kept: GridAxes = {};
+  for (const key of keys) {
+    const axis = chosen[key];
+    if (axis !== undefined && available.has(axis)) kept[key] = axis;
+  }
+  const choseAny = keys.some((key) => chosen[key] !== undefined);
+  const keptAny = keys.some((key) => kept[key] !== undefined);
+  return choseAny && !keptAny && vars.length > 0 ? defaults : kept;
+}
+
 /** An item's value on an axis. */
 export function axisValue(
   item: GridItem,
