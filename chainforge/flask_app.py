@@ -1,14 +1,17 @@
 import json, os, sys, asyncio, time, shutil, uuid, hashlib, tempfile, zipfile, threading
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Literal
+from typing import Iterable, List, Literal
 from statistics import mean, median, stdev
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, after_this_request
-from flask_cors import CORS
 from chainforge.providers import ProviderRegistry
 from chainforge.security.password_utils import ensure_password
 from chainforge.security.secure_save import load_json_file, save_json_file
+from chainforge.local_access import (
+    TOKEN_HEADER, allowed_hostnames, hostname_of, new_session_token,
+    normalize_origin, origin_allowed, token_valid,
+)
 import requests as py_requests
 from platformdirs import user_data_dir
 import copy
@@ -74,13 +77,69 @@ def IS_RAG_AVAILABLE() -> bool:
 # Setup Flask app to serve static version of React front-end
 HOSTNAME = "localhost"
 PORT = 8000
-# SESSION_TOKEN = secrets.token_hex(32)
+# Access control; see chainforge/local_access.py. run_server replaces these
+# with the values for the host it binds to and its --allowed-hosts/--dev-origins.
+SESSION_TOKEN = new_session_token()
+ALLOWED_HOSTNAMES = allowed_hostnames(HOSTNAME)
+DEV_ORIGINS: set = set()
 BUILD_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'react-server', 'build')
 STATIC_DIR = os.path.join(BUILD_DIR, 'static')
 app = Flask(__name__, static_folder=STATIC_DIR, template_folder=BUILD_DIR)
 
-# Set up CORS for specific routes
-cors = CORS(app, resources={r"/*": {"origins": "*"}})
+# No CORS by default: only ChainForge's own pages may use this server. A
+# separate front-end dev server is allowed only via --dev-origins (allow_dev_origins).
+
+# Requests that need no session token: the page itself (which carries the
+# token), its static files, and the bundled example flows.
+PUBLIC_ENDPOINTS = {"index", "static", "serve_cfzip", "session_token"}
+
+def _forbidden(message: str):
+    return jsonify({"error": message}), 403
+
+@app.before_request
+def guard_local_access():
+    """Refuses requests that don't come from ChainForge's own page. See chainforge/local_access.py."""
+    hostname = hostname_of(request.host)
+    if hostname not in ALLOWED_HOSTNAMES:
+        return _forbidden(
+            f"ChainForge refused a request addressed to '{hostname}'. If you reach ChainForge "
+            f"by that name, start it with --allowed-hosts {hostname}."
+        )
+    if not origin_allowed(request.headers.get("Origin"), request.scheme, request.host, DEV_ORIGINS):
+        return _forbidden("ChainForge only accepts requests from its own pages.")
+    if request.method == "OPTIONS" or request.endpoint in PUBLIC_ENDPOINTS:
+        # OPTIONS is a CORS preflight from an allowed dev origin; it carries no data.
+        return None
+    if not token_valid(request.headers.get(TOKEN_HEADER), SESSION_TOKEN):
+        return _forbidden("Missing or invalid ChainForge session token. Reload the ChainForge page.")
+    return None
+
+@app.after_request
+def allow_dev_origins(response):
+    """CORS headers for a front-end dev server allowed with --dev-origins, and no one else."""
+    origin = normalize_origin(request.headers.get("Origin"))
+    if origin is None or origin not in DEV_ORIGINS:
+        return response
+    response.headers["Access-Control-Allow-Origin"] = origin
+    response.headers.add("Vary", "Origin")
+    if request.method == "OPTIONS":
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        # The origin is trusted, so whatever headers the dev server's requests carry are fine.
+        requested_headers = request.headers.get("Access-Control-Request-Headers")
+        if requested_headers:
+            response.headers["Access-Control-Allow-Headers"] = requested_headers
+        response.headers["Access-Control-Max-Age"] = "600"
+    return response
+
+@app.route('/api/sessionToken', methods=['GET'])
+def session_token():
+    """The session token, for a front-end dev server allowed with --dev-origins.
+
+    ChainForge's own page gets the token written into it and never calls this.
+    """
+    if normalize_origin(request.headers.get("Origin")) not in DEV_ORIGINS:
+        return _forbidden("The session token is only given to origins allowed with --dev-origins.")
+    return jsonify({"token": SESSION_TOKEN})
 
 # The cache and examples files base directories
 FLOWS_DIR = user_data_dir("chainforge")  # platform-agnostic local storage that persists outside the package install location
@@ -347,7 +406,7 @@ def index():
     rag_av = "true" if RAG_AVAILABLE else "false"
     
     # Inject global JS variables like __CF_HOSTNAME and __CF_PORT at the top so that the application knows that it's running from a Flask server, and what the hostname and port of that server is:
-    html_str = html_str[:60] + f'<script>window.__CF_HOSTNAME="{HOSTNAME}"; window.__CF_PORT={PORT}; window.__RAG_AVAILABLE={rag_av};</script>' + html_str[60:]
+    html_str = html_str[:60] + f'<script>window.__CF_HOSTNAME="{HOSTNAME}"; window.__CF_PORT={PORT}; window.__RAG_AVAILABLE={rag_av}; window.__CF_SESSION_TOKEN="{SESSION_TOKEN}";</script>' + html_str[60:]
 
     return html_str
 
@@ -431,7 +490,6 @@ def executepy():
         return jsonify({'error': f'Error encountered while trying to run "evaluate" method:\n{str(e)}', 'logs': logs})
 
     ret = jsonify({'responses': evald_responses, 'logs': logs})
-    ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
 
@@ -471,12 +529,10 @@ def fetchExampleFlow():
         return jsonify({'error': f"Error parsing example flow at {filepath}: {str(e)}"})
     
     ret = jsonify({'data': filedata})
-    ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
 @app.get("/examples/<path:filename>")
 def serve_cfzip(filename: str):
-    # CORS is already applied app-wide, so no @cross_origin() is needed here.
     # send_from_directory() safe-joins the path, so traversal attempts 404.
     if not filename.lower().endswith((".cfzip", ".zip")):
         return jsonify({"error": "Only .cfzip flow bundles are served here."}), 404
@@ -520,7 +576,6 @@ def fetchOpenAIEval():
             except Exception as e:
                 return jsonify({'error': f"Error parsing OpenAI evals flow at {filepath}: {str(e)}"})
             ret = jsonify({'data': filedata})
-            ret.headers.add('Access-Control-Allow-Origin', '*')
             return ret
         # File was not downloaded
     else:
@@ -547,7 +602,6 @@ def fetchOpenAIEval():
         return jsonify({'error': f"Error downloading OpenAI evals flow from {_url}: status code {response.status_code}"})
 
     ret = jsonify({'data': filedata})
-    ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
 
@@ -572,7 +626,6 @@ def fetchEnvironAPIKeys():
     }
     d = { alias: os.environ.get(key) for key, alias in keymap.items() }
     ret = jsonify(d)
-    ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
 
@@ -583,7 +636,6 @@ def checkRagAvailable():
     Returns True if all required RAG packages are installed, False otherwise.
     """
     ret = jsonify({"rag_available": IS_RAG_AVAILABLE()})
-    ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
 
@@ -613,7 +665,6 @@ def makeFetchCall():
 
     if response.status_code == 200:
         ret = jsonify({'response': response.json()})
-        ret.headers.add('Access-Control-Allow-Origin', '*')
         return ret
     else:
         err_msg = "API request failed"
@@ -2068,8 +2119,9 @@ def proxy_image():
 """ 
     SPIN UP SERVER
 """
-def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "settings", "all"] = "off"):
-    global HOSTNAME, PORT, FLOWS_DIR, MEDIA_DIR, SECURE_MODE, FLOWS_DIR_PWD
+def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "settings", "all"] = "off",
+               allowed_hosts: Iterable[str] = (), dev_origins: Iterable[str] = ()):
+    global HOSTNAME, PORT, FLOWS_DIR, MEDIA_DIR, SECURE_MODE, FLOWS_DIR_PWD, ALLOWED_HOSTNAMES, DEV_ORIGINS
     HOSTNAME = host
     PORT = port
     SECURE_MODE = secure
@@ -2093,6 +2145,16 @@ def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "setti
             print("❌ Password cannot be empty. Please provide a password.")
             exit(1)
         FLOWS_DIR_PWD = password
+
+    ALLOWED_HOSTNAMES = allowed_hostnames(host, allowed_hosts)
+    DEV_ORIGINS = {normalize_origin(o) for o in dev_origins if normalize_origin(o)}
+    if DEV_ORIGINS:
+        print(f"⚠️  Allowing these development origins to use the server: {', '.join(sorted(DEV_ORIGINS))}. "
+              "Anything served from them can run code through ChainForge.")
+    print(f"Accepting requests addressed to: {', '.join(sorted(ALLOWED_HOSTNAMES))}")
+    if host.strip() in ("", "0.0.0.0", "::"):
+        print("Listening on all network interfaces. To reach ChainForge from another machine, "
+              "add the name or IP address you use with --allowed-hosts.")
 
     app.run(host=host, port=port, debug=False)
 

@@ -46,6 +46,8 @@ chainforge serve
 
 Open [localhost:8000](http://localhost:8000/) in a Google Chrome, Firefox, Microsoft Edge, or Brave browser.
 
+> **Security:** ChainForge can run Python code on your computer, so its server only accepts requests from ChainForge's own page. It refuses requests from other websites, and requests addressed to any name other than `localhost` or `127.0.0.1`. If you reach ChainForge by another name or address (on a server, say, or from another machine), add it: `chainforge serve --host 0.0.0.0 --allowed-hosts your.server.name`.
+
 ## Retrieval-augmented generation (RAG)
 
 ChainForge's RAG nodes -- Upload, Chunk, Retrieval and Rerank -- work in the
@@ -87,6 +89,8 @@ You can set your API keys by clicking the Settings icon in the top-right corner.
 docker compose up -d
 ```
 Access ChainForge at http://localhost:8000
+
+To open it from another machine, tell ChainForge the name or IP address you use, e.g. `-e CHAINFORGE_ALLOWED_HOSTS=your.server.name`. Requests addressed to other names are refused.
 
 For detailed Docker documentation including architecture support, environment variables, and CI/CD setup, see [docker/README.md](docker/README.md).
 
@@ -188,6 +192,16 @@ Unlike these projects, we are focusing on supporting evaluation across prompts, 
 ## How to collaborate?
 
 We welcome open-source collaborators. If you want to report a bug or request a feature, open an [Issue](https://github.com/ianarawjo/ChainForge/issues). We also encourage users to implement the requested feature / bug fix and submit a Pull Request.
+
+To work on ChainForge from a clone of this repository, install its Python dependencies (for example `pip install -e ".[rag]"`), then:
+
+```bash
+cd chainforge/react-server
+npm install --legacy-peer-deps
+npm run dev
+```
+
+`npm run dev` starts the Python server from your checkout and the React dev server together, at http://localhost:3000, with hot reloading. Ctrl+C stops both.
 
 ---
 

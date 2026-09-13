@@ -6,10 +6,20 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 
 In the project directory, you can run:
 
+### `npm run dev`
+
+Starts ChainForge for development from this checkout, in one command: the Python server (`python -m chainforge serve`, run from the repository root) and the React dev server at [http://localhost:3000](http://localhost:3000). Ctrl+C stops both.
+
+The dev server is a different origin from the Python server, which refuses other origins unless they are allowed; `npm run dev` allows it. Set `PYTHON` to choose the Python (for example a virtual environment's), and pass server options after `--`, e.g. `npm run dev -- --dir /tmp/flows`.
+
+To start them separately instead: `CHAINFORGE_DEV_ORIGINS=http://localhost:3000 python -m chainforge serve` from the repository root, then `npm start`.
+
 ### `npm start`
 
 Runs the app in the development mode.\
 Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+
+This needs ChainForge's Python server running and allowing the dev server's origin. `npm run dev` does both for you.
 
 The page will reload when you make changes.\
 You may also see any lint errors in the console.

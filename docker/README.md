@@ -74,6 +74,14 @@ docker run -d \
 
 Access ChainForge at: http://localhost:8000
 
+To open it from another machine, pass the name or IP address you use, since ChainForge refuses requests addressed to other names (this protects against DNS rebinding attacks):
+
+```bash
+docker run -p 8000:8000 -e CHAINFORGE_ALLOWED_HOSTS=your.server.name gauransh/chainforge:latest
+```
+
+In a compose file, set `CHAINFORGE_ALLOWED_HOSTS` under `environment:`.
+
 ## Image Variants
 
 ### CPU (latest)

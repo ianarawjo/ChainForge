@@ -160,8 +160,11 @@ def sample_queries():
 @pytest.fixture
 def client():
     """Flask test client for the RAG endpoints."""
-    from chainforge.flask_app import app
+    from chainforge.flask_app import app, SESSION_TOKEN
+    from chainforge.local_access import TOKEN_HEADER
 
     app.config.update(TESTING=True)
     with app.test_client() as c:
+        # Like ChainForge's own page, send the session token (see local_access.py).
+        c.environ_base["HTTP_" + TOKEN_HEADER.upper().replace("-", "_")] = SESSION_TOKEN
         yield c
