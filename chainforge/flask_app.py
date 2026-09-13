@@ -1,7 +1,7 @@
 import json, os, sys, asyncio, time, shutil, uuid, hashlib, tempfile, zipfile, threading
 from dataclasses import dataclass
 from enum import Enum
-from typing import Iterable, List, Literal
+from typing import Iterable, List, Literal, Optional
 from statistics import mean, median, stdev
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, after_this_request
@@ -12,6 +12,7 @@ from chainforge.local_access import (
     TOKEN_HEADER, allowed_hostnames, hostname_of, new_session_token,
     normalize_origin, origin_allowed, token_valid,
 )
+from chainforge.idle_shutdown import IdleWatchdog, idle_shutdown_message, stop_this_server
 import requests as py_requests
 from platformdirs import user_data_dir
 import copy
@@ -140,6 +141,15 @@ def session_token():
     if normalize_origin(request.headers.get("Origin")) not in DEV_ORIGINS:
         return _forbidden("The session token is only given to origins allowed with --dev-origins.")
     return jsonify({"token": SESSION_TOKEN})
+
+# Set by run_server when started with --idle-shutdown; see chainforge/idle_shutdown.py.
+IDLE_WATCHDOG: Optional[IdleWatchdog] = None
+
+@app.before_request
+def count_request_as_activity():
+    """Any request means someone is using ChainForge, for --idle-shutdown."""
+    if IDLE_WATCHDOG is not None:
+        IDLE_WATCHDOG.touch()
 
 # The cache and examples files base directories
 FLOWS_DIR = user_data_dir("chainforge")  # platform-agnostic local storage that persists outside the package install location
@@ -396,17 +406,39 @@ def exclude_key(d, key_to_exclude):
     ===================
 """
 
+@app.route('/api/heartbeat', methods=['POST'])
+def heartbeat():
+    """Sent every few minutes by each open ChainForge page.
+
+    The request itself is what keeps a server started with --idle-shutdown
+    running (see count_request_as_activity); the response only reports the
+    setting.
+    """
+    minutes = IDLE_WATCHDOG.timeout_seconds / 60 if IDLE_WATCHDOG is not None else None
+    return jsonify({"ok": True, "idleShutdownMinutes": minutes})
+
+def page_globals_script() -> str:
+    """The <script> injected into index.html, telling the page about this server.
+
+    __CF_IDLE_SHUTDOWN_MINUTES is only set when started with --idle-shutdown:
+    it is what makes the page send heartbeats (react-server/src/backend/
+    serverHeartbeat.ts), so pages from an ordinary server send none.
+    """
+    rag_av = "true" if RAG_AVAILABLE else "false"
+    script = (f'window.__CF_HOSTNAME="{HOSTNAME}"; window.__CF_PORT={PORT}; window.__RAG_AVAILABLE={rag_av};'
+              f' window.__CF_SESSION_TOKEN="{SESSION_TOKEN}";')
+    if IDLE_WATCHDOG is not None:
+        script += f' window.__CF_IDLE_SHUTDOWN_MINUTES={IDLE_WATCHDOG.timeout_seconds / 60:g};'
+    return f"<script>{script}</script>"
+
 # Serve React app (static; no hot reloading)
 @app.route("/")
 def index():
     # Get the index.html HTML code
     html_str = render_template("index.html")
 
-    # RAG available flag
-    rag_av = "true" if RAG_AVAILABLE else "false"
-    
     # Inject global JS variables like __CF_HOSTNAME and __CF_PORT at the top so that the application knows that it's running from a Flask server, and what the hostname and port of that server is:
-    html_str = html_str[:60] + f'<script>window.__CF_HOSTNAME="{HOSTNAME}"; window.__CF_PORT={PORT}; window.__RAG_AVAILABLE={rag_av}; window.__CF_SESSION_TOKEN="{SESSION_TOKEN}";</script>' + html_str[60:]
+    html_str = html_str[:60] + page_globals_script() + html_str[60:]
 
     return html_str
 
@@ -2120,8 +2152,9 @@ def proxy_image():
     SPIN UP SERVER
 """
 def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "settings", "all"] = "off",
-               allowed_hosts: Iterable[str] = (), dev_origins: Iterable[str] = ()):
-    global HOSTNAME, PORT, FLOWS_DIR, MEDIA_DIR, SECURE_MODE, FLOWS_DIR_PWD, ALLOWED_HOSTNAMES, DEV_ORIGINS
+               allowed_hosts: Iterable[str] = (), dev_origins: Iterable[str] = (),
+               idle_shutdown_minutes: Optional[float] = None):
+    global HOSTNAME, PORT, FLOWS_DIR, MEDIA_DIR, SECURE_MODE, FLOWS_DIR_PWD, ALLOWED_HOSTNAMES, DEV_ORIGINS, IDLE_WATCHDOG
     HOSTNAME = host
     PORT = port
     SECURE_MODE = secure
@@ -2155,6 +2188,14 @@ def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "setti
     if host.strip() in ("", "0.0.0.0", "::"):
         print("Listening on all network interfaces. To reach ChainForge from another machine, "
               "add the name or IP address you use with --allowed-hosts.")
+    if idle_shutdown_minutes:
+        IDLE_WATCHDOG = IdleWatchdog(
+            idle_shutdown_minutes * 60,
+            on_idle=lambda: stop_this_server(idle_shutdown_message(idle_shutdown_minutes)),
+        )
+        IDLE_WATCHDOG.start()
+        print(f"Idle shutdown is on: the server stops after {idle_shutdown_minutes:g} "
+              "minutes with no ChainForge page open.")
 
     app.run(host=host, port=port, debug=False)
 
