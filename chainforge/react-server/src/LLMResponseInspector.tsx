@@ -20,9 +20,9 @@ import {
   ActionIcon,
   Tooltip,
   TextInput,
-  Stack,
   LoadingOverlay,
   Box,
+  Text,
   useMantineColorScheme,
 } from "@mantine/core";
 import { useToggle } from "@mantine/hooks";
@@ -34,12 +34,21 @@ import {
   IconChartBar,
   IconLayoutGrid,
 } from "@tabler/icons-react";
-import ResponseGridView from "./ResponseGridView";
+import ResponseGridView, {
+  COMPACT_SELECT_STYLES,
+  ResponseLightbox,
+} from "./ResponseGridView";
+import { ScoreChips, TableResponseCell } from "./TableResponseCell";
+import {
+  collectGridItems,
+  GridAccessors,
+  GridItem,
+  scoreMetrics,
+} from "./backend/responseGrid";
 import {
   MantineReactTable,
   useMantineReactTable,
   type MRT_ColumnDef,
-  type MRT_Cell,
   MRT_ShowHideColumnsButton,
   MRT_ToggleFiltersButton,
   MRT_ToggleDensePaddingButton,
@@ -59,7 +68,6 @@ import {
   blobToBase64,
 } from "./backend/utils";
 import {
-  EvalResultDisplay,
   MediaBox,
   ResponseBox,
   ResponseGroup,
@@ -428,18 +436,38 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   // Table view data
   const [tableColumns, setTableColumns] = useState<MRT_ColumnDef<any>[]>([]);
   const [tableRows, setTableRows] = useState<any[]>([]);
+  // The variable columns stay on the left while scrolling sideways. Only in
+  // the wide inspector: in a narrow one they would take all the room.
+  const [tableColumnPinning, setTableColumnPinning] = useState<{
+    left?: string[];
+    right?: string[];
+  }>({ left: [], right: [] });
   const table = useMantineReactTable({
     columns: tableColumns,
     data: tableRows,
+    // Columns grow to share the available width; their sizes are minimums.
+    layoutMode: "grid",
     enableColumnResizing: true,
     columnResizeMode: "onEnd",
     enableStickyHeader: true,
-    initialState: { density: "md", pagination: { pageSize: 30, pageIndex: 0 } },
-    mantineTableHeadCellProps: () => ({
+    enablePinning: wideFormat,
+    state: { columnPinning: tableColumnPinning },
+    onColumnPinningChange: setTableColumnPinning,
+    initialState: {
+      density: "md",
+      pagination: { pageSize: wideFormat ? 50 : 20, pageIndex: 0 },
+    },
+    // The last column's resize handle pokes past the edge, which would make
+    // the table scroll sideways a little. Clip (not hidden) keeps it from
+    // becoming a scroll container, so pinned header cells still stick.
+    mantineTableHeadRowProps: { style: { overflowX: "clip" } },
+    mantineTableHeadCellProps: {
       style: {
-        paddingTop: "0px",
+        fontSize: wideFormat ? 13 : 12,
+        padding: "6px 8px",
+        alignItems: "end",
       },
-    }),
+    },
     renderToolbarInternalActions: ({ table }) => (
       <>
         {/* built-in buttons (must pass in table prop for them to work!) */}
@@ -449,22 +477,49 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
       </>
     ),
     renderTopToolbarCustomActions: () => (
-      <Flex gap={sz} align="end" mb="sm" w="80%">
-        <NativeSelect
-          value={tableColVar}
-          onChange={(event) => {
-            setTableColVar(event.currentTarget.value);
-            setUserSelectedTableCol(true);
-          }}
-          data={multiSelectVars}
-          label="Select main column variable:"
-          size={sz}
-          w={wideFormat ? "50%" : "100%"}
-        />
-        {searchBar}
+      <Flex gap="sm" align="center" wrap="wrap">
+        <Flex align="center" gap={6} wrap="nowrap">
+          <Text size="xs" color="dimmed">
+            Columns
+          </Text>
+          <NativeSelect
+            aria-label="Columns"
+            value={tableColVar}
+            onChange={(event) => {
+              setTableColVar(event.currentTarget.value);
+              setUserSelectedTableCol(true);
+            }}
+            data={multiSelectVars}
+            size="xs"
+            styles={COMPACT_SELECT_STYLES}
+            w={wideFormat ? 160 : 110}
+          />
+        </Flex>
+        {tableSearchBar}
       </Flex>
     ),
   });
+
+  // A larger view of a table response, opened by clicking it.
+  const tableLightboxAccessors: GridAccessors = useMemo(
+    () => ({
+      modelOf: getLLMName,
+      valueOf: (r, name) =>
+        r.vars && name in r.vars
+          ? llmResponseDataToString(r.vars[name])
+          : undefined,
+      textOf: llmResponseDataToString,
+    }),
+    [],
+  );
+  const [tableLightbox, setTableLightbox] = useState<{
+    items: GridItem[];
+    index: number;
+  } | null>(null);
+  const tableLightboxMetrics = useMemo(
+    () => scoreMetrics(tableLightbox?.items ?? []),
+    [tableLightbox?.items],
+  );
 
   // The var name to use for columns in the table view
   const [tableColVar, setTableColVar] = useState(defaultTableColVar ?? "$LLM");
@@ -576,7 +631,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         viewFormat === "table" &&
         !ignoreAndHideEvalResField
       )
-        msvars.push({ value: "$EVAL_RES", label: "Eval results" });
+        msvars.push({ value: "$EVAL_RES", label: "Scores" });
 
       setMultiSelectVars(msvars);
 
@@ -992,6 +1047,46 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           });
         });
 
+        // How table responses are shown, searched and opened in full.
+        const tableLines = wideFormat ? 6 : 4;
+        const highlightText = searchValue
+          ? (txt: string) =>
+              genSpansForHighlightedValue(txt, searchValue, caseSensitive)
+          : undefined;
+        const showText =
+          searchValue.length > 0 && filterBySearchValue
+            ? (txt: string) => search_regex.test(txt)
+            : undefined;
+        const tableItems = collectGridItems(responses, tableLightboxAccessors);
+        const openResponse = (response: LLMResponse, index: number) => {
+          const at = tableItems.findIndex(
+            (item) => item.response === response && item.index === index,
+          );
+          if (at >= 0) setTableLightbox({ items: tableItems, index: at });
+        };
+        const cellPadding = (density: string) =>
+          density === "xs" ? "3px 4px" : density === "xl" ? "12px" : "6px 8px";
+        const numVarCols = var_cols.length + metavar_cols.length;
+        // Each response is colored by its model, as everywhere in ChainForge.
+        // Looked up here, not while rendering, since a new model gets a color
+        // assigned in the store.
+        const llmColors: Dict<string> = {};
+        (found_llms as string[]).forEach((llm) => {
+          llmColors[llm] = getColorForLLMAndSetIfNotFound(llm);
+        });
+        const modelColorFor = disableBackgroundColor
+          ? undefined
+          : (r: LLMResponse) => llmColors[getLLMName(r)];
+        // Model columns are marked with the model's color, in place of coloring
+        // every response in them.
+        const modelColors = colnames.map((c, i) =>
+          effectiveTableColVar === "$LLM" &&
+          i >= numVarCols &&
+          !disableBackgroundColor
+            ? getColorForLLMAndSetIfNotFound(c)
+            : undefined,
+        );
+
         const columns = colnames.map((c, i) => ({
           accessorKey: `c${i}`,
           accessorFn: (row) => {
@@ -1017,15 +1112,34 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                 .join("");
           },
           header: c,
-          // minSize: Math.min(Math.max(70, Math.ceil(colAvgNumChars[`c${i}`] ?? 50)), 300),
-          size: Math.min(
-            Math.max(70, Math.ceil(colAvgNumChars[`c${i}`] ?? 50)),
-            300,
-          ),
-          Cell: ({ cell, row }: { cell: MRT_Cell; row: any }) => {
+          // In the grid layout, a column's size is its minimum width; columns
+          // grow from there to fill the table.
+          size: colHasLLMResponses.has(`c${i}`)
+            ? c === "Response" && eval_res_cols !== undefined
+              ? wideFormat
+                ? 280
+                : 180
+              : 150
+            : i < numVarCols
+              ? wideFormat
+                ? Math.min(
+                    Math.max(110, Math.ceil(colAvgNumChars[`c${i}`] ?? 50) * 2),
+                    150,
+                  )
+                : 90
+              : 80,
+          Cell: ({ row }: { row: any }) => {
             const val = row.original[`c${i}`];
             if (typeof val === "string" || typeof val === "number") {
-              return <span className="icl">{StringLookup.get(val) ?? ""}</span>;
+              const text = StringLookup.get(val) ?? "";
+              return (
+                <div
+                  className="cf-table-var"
+                  title={text.length > 120 ? text : undefined}
+                >
+                  {text}
+                </div>
+              );
             } else if (typeof val === "object" && "t" in val) {
               if (isImageResponseData(val)) {
                 // Display the image
@@ -1036,8 +1150,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                 return <span className="icl">{val.d}</span>;
               }
             } else if ("type" in val && val.type === "eval") {
+              // One score per line, for n > 1 responses per prompt.
               return (
-                <Stack spacing={0}>
+                <div className="cf-table-cell">
                   {(
                     val.data as [
                       string | JSX.Element,
@@ -1045,57 +1160,72 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                       string,
                       EvaluationScore | undefined,
                     ][]
-                  ).map((e, i) => (
-                    <EvalResultDisplay
-                      uid={e[2]}
-                      evalRes={e[3]}
-                      evalResIdx={i}
-                      evalResultDivOrStr={e[0]}
-                      key={i}
-                    />
+                  ).map((e, j) => (
+                    <div key={j}>
+                      {e[3] !== undefined ? (
+                        <ScoreChips score={e[3]} />
+                      ) : (
+                        <span className="icl">{e[1]}</span>
+                      )}
+                    </div>
                   ))}
-                </Stack>
+                </div>
               );
             } else
               return (
-                <Stack spacing={0} lh={1.2}>
-                  {generateResponseBoxes(
-                    val as LLMResponse[],
-                    var_cols.concat([tableColVar]),
-                    100,
-                    eval_res_cols !== undefined,
-                  )}
-                </Stack>
+                <TableResponseCell
+                  responses={val as LLMResponse[]}
+                  lines={tableLines}
+                  hideScores={eval_res_cols !== undefined}
+                  onlyShowScores={contains_eval_res && onlyShowScores}
+                  showText={showText}
+                  renderText={highlightText}
+                  onOpen={openResponse}
+                  modelColorFor={modelColorFor}
+                />
               );
           },
           Header: ({ column }) => (
             <div
               key={column.columnDef.id}
-              style={{ lineHeight: 1.0, overflowY: "auto", maxHeight: 100 }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                lineHeight: 1.2,
+                maxHeight: 64,
+                overflowY: "auto",
+                overflowWrap: "anywhere",
+              }}
             >
+              {modelColors[i] && (
+                <span
+                  className="cf-model-dot"
+                  style={{ backgroundColor: modelColors[i] }}
+                />
+              )}
               {column.columnDef.header}
             </div>
           ),
-          mantineTableBodyCellProps: (() => {
-            const fz = wideFormat ? {} : { fontSize: 12 }; // text font size when in drawer should be smaller
-            if (colHasLLMResponses.has(`c${i}`))
-              return {
-                style: { padding: "4px 2px 0px 2px", verticalAlign: "top" }, // Adjusts overall padding & spacing
-              };
-            else
-              return {
-                style: {
-                  lineHeight: 1.2,
-                  verticalAlign: "top",
-                  textAlign: "left",
-                  ...fz,
-                },
-              };
-          })(),
+          mantineTableBodyCellProps: ({ table }) => ({
+            style: {
+              padding: cellPadding(table.getState().density),
+              alignItems: "flex-start",
+              textAlign: "left",
+              fontSize: wideFormat ? 13 : 12,
+              lineHeight: 1.4,
+              "--cf-lines": tableLines,
+            } as React.CSSProperties,
+          }),
         })) as MRT_ColumnDef<any>[];
 
         setTableRows(rows);
         setTableColumns(columns);
+        setTableColumnPinning({
+          left: wideFormat
+            ? colnames.slice(0, Math.min(2, numVarCols)).map((_, j) => `c${j}`)
+            : [],
+          right: [],
+        });
 
         // setResponseDivs([
         //   <Table
@@ -1369,6 +1499,48 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     ],
   );
 
+  // A compact search bar, for the table's toolbar.
+  const tableSearchBar = (
+    <Flex gap={4} align="center" wrap="nowrap">
+      <TextInput
+        aria-label="Search responses"
+        autoComplete="off"
+        size="xs"
+        styles={COMPACT_SELECT_STYLES}
+        placeholder="Search responses"
+        w={wideFormat ? 220 : 120}
+        value={searchValue}
+        onChange={handleSearchValueChange}
+      />
+      <Tooltip
+        label={`Case sensitivity (${caseSensitive ? "on" : "off"})`}
+        withArrow
+      >
+        <ActionIcon
+          variant={caseSensitive ? "filled" : "light"}
+          size="sm"
+          // @ts-expect-error Mantine's toggle works here but the types don't match
+          onClick={toggleCaseSensitivity}
+        >
+          <IconLetterCaseToggle size={14} />
+        </ActionIcon>
+      </Tooltip>
+      <Tooltip
+        label={`Filter responses by term (${filterBySearchValue ? "on" : "off"})`}
+        withArrow
+      >
+        <ActionIcon
+          variant={filterBySearchValue ? "filled" : "light"}
+          size="sm"
+          // @ts-expect-error Mantine's toggle works here but the types don't match
+          onClick={toggleFilterBySearchValue}
+        >
+          <IconFilter size={14} />
+        </ActionIcon>
+      </Tooltip>
+    </Flex>
+  );
+
   return (
     <div style={{ height: "100%", margin: "0", padding: "0" }}>
       <Tabs
@@ -1461,7 +1633,21 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         />
         {isOpenDelayed ? (
           viewFormat === "table" ? (
-            <MantineReactTable table={table} />
+            <>
+              <MantineReactTable table={table} />
+              <ResponseLightbox
+                items={tableLightbox?.items ?? []}
+                index={tableLightbox?.index ?? null}
+                onIndexChange={(index) =>
+                  setTableLightbox((prev) =>
+                    index === null || prev === null ? null : { ...prev, index },
+                  )
+                }
+                accessors={tableLightboxAccessors}
+                modelLabel={customLLMFieldName || "LLM"}
+                metrics={tableLightboxMetrics}
+              />
+            </>
           ) : viewFormat === "grid" ? (
             <Box pt="xs">
               <ResponseGridView

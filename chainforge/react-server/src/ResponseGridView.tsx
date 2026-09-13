@@ -203,7 +203,7 @@ const TextCard: React.FC<
   </button>
 );
 
-interface ResponseLightboxProps {
+export interface ResponseLightboxProps {
   items: GridItem[];
   index: number | null;
   onIndexChange: (index: number | null) => void;
@@ -212,7 +212,8 @@ interface ResponseLightboxProps {
   metrics: string[];
 }
 
-const ResponseLightbox: React.FC<ResponseLightboxProps> = ({
+/** A larger view of one response, with its scores, model, variables and prompt. */
+export const ResponseLightbox: React.FC<ResponseLightboxProps> = ({
   items,
   index,
   onIndexChange,
@@ -435,7 +436,7 @@ interface GridSettings {
 }
 
 /** A little shorter than Mantine's smallest ("xs", 30px) select. */
-const COMPACT_SELECT_STYLES = {
+export const COMPACT_SELECT_STYLES = {
   input: {
     height: 26,
     minHeight: 26,

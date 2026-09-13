@@ -77,6 +77,7 @@ const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
               : "gray"
         }
         bg={theme === "dark" && selected ? "#0009" : "transparent"}
+        data-selected={selected ? "true" : "false"}
         onClick={onClick}
         variant="subtle"
         compact
@@ -92,6 +93,14 @@ export interface ResponseRatingToolbarProps {
   wideFormat?: boolean;
   innerIdxs: number[];
   responseData?: string;
+  /**
+   * Show only the buttons that are set (a grade or a note) until the response
+   * is hovered, so the toolbar doesn't crowd compact views like the table.
+   * See .rating-toolbar-reveal in styles.css.
+   */
+  revealOnHover?: boolean;
+  /** Leave out the copy button, e.g. where the view has its own. */
+  hideCopy?: boolean;
 }
 
 const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
@@ -99,6 +108,8 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
   wideFormat,
   innerIdxs,
   responseData,
+  revealOnHover,
+  hideCopy,
 }) => {
   // Color theme
   const { colorScheme } = useMantineColorScheme();
@@ -186,7 +197,13 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
   }, [noteText, onAnnotate]);
 
   return (
-    <Flex justify="right" gap="0px">
+    <Flex
+      justify="right"
+      gap="0px"
+      className={revealOnHover ? "rating-toolbar-reveal" : undefined}
+      // Keeps every button visible while the note is being edited.
+      data-open={notePopoverOpened ? "true" : undefined}
+    >
       <ToolbarButton
         selected={grade === true}
         theme={colorScheme}
@@ -209,34 +226,36 @@ const ResponseRatingToolbar: React.FC<ResponseRatingToolbarProps> = ({
       >
         <IconThumbDown size={size} />
       </ToolbarButton>
-      <Tooltip
-        label={copied ? "Copied!" : "Copy"}
-        withArrow
-        arrowPosition="center"
-      >
-        <ToolbarButton
-          selected={copied}
-          theme={colorScheme}
-          onClick={() => {
-            if (responseData) {
-              navigator.clipboard
-                .writeText(responseData)
-                .then(() => {
-                  console.log("Text copied to clipboard");
-                  setCopied(() => true);
-                  setTimeout(() => {
-                    setCopied(() => false);
-                  }, 1000);
-                })
-                .catch((err) => {
-                  console.error("Failed to copy text: ", err);
-                });
-            }
-          }}
+      {!hideCopy && (
+        <Tooltip
+          label={copied ? "Copied!" : "Copy"}
+          withArrow
+          arrowPosition="center"
         >
-          <IconCopy size={size} />
-        </ToolbarButton>
-      </Tooltip>
+          <ToolbarButton
+            selected={copied}
+            theme={colorScheme}
+            onClick={() => {
+              if (responseData) {
+                navigator.clipboard
+                  .writeText(responseData)
+                  .then(() => {
+                    console.log("Text copied to clipboard");
+                    setCopied(() => true);
+                    setTimeout(() => {
+                      setCopied(() => false);
+                    }, 1000);
+                  })
+                  .catch((err) => {
+                    console.error("Failed to copy text: ", err);
+                  });
+              }
+            }}
+          >
+            <IconCopy size={size} />
+          </ToolbarButton>
+        </Tooltip>
+      )}
       <Popover
         opened={notePopoverOpened}
         onChange={setNotePopoverOpened}

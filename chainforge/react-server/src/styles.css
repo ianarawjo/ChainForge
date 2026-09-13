@@ -582,6 +582,174 @@ html[data-mantine-color-scheme="dark"] .settings-var-inline {
   padding-left: 0px !important;
   padding-right: 0px !important;
 }
+
+/* Table View cells (TableResponseCell.tsx) */
+.cf-table-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+.cf-table-var {
+  width: 100%;
+}
+/* A pale box of the model's color (gray when there is none), with a strip of
+   the stronger color along the top holding the badges and rating buttons. */
+.cf-table-resp {
+  --cf-model-color: rgb(134, 142, 150);
+  border-radius: 5px;
+  overflow: hidden;
+  background-color: color-mix(in srgb, var(--cf-model-color) 18%, transparent);
+}
+html[data-mantine-color-scheme="dark"] .cf-table-resp {
+  background-color: color-mix(in srgb, var(--cf-model-color) 28%, transparent);
+}
+.cf-table-resp-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+  padding: 1px 4px 1px 6px;
+  color: #fff;
+  background-color: color-mix(in srgb, var(--cf-model-color) 75%, transparent);
+}
+.cf-table-resp-text,
+.cf-table-var {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--cf-lines, 6);
+  overflow: hidden;
+}
+.cf-table-resp-text {
+  cursor: pointer;
+  padding: 4px 7px;
+}
+/* Copy button in a response's bottom-right corner, shown on hover. */
+.cf-table-resp {
+  position: relative;
+}
+.cf-table-resp .cf-table-copy {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  opacity: 0;
+  pointer-events: none;
+  background-color: rgba(255, 255, 255, 0.9);
+}
+html[data-mantine-color-scheme="dark"] .cf-table-resp .cf-table-copy {
+  background-color: rgba(37, 38, 43, 0.9);
+}
+.cf-table-resp:hover .cf-table-copy {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cf-table-resp-image {
+  display: flex;
+  justify-content: center;
+  padding: 4px;
+  cursor: zoom-in;
+}
+.cf-table-resp-image img {
+  display: block;
+  max-height: 240px;
+  object-fit: contain;
+}
+.cf-table-count {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 15px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background-color: rgba(128, 128, 128, 0.2);
+}
+.cf-table-resp-band .cf-table-count {
+  padding: 0 2px;
+  background-color: transparent;
+}
+.cf-score-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 15px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0 5px;
+  border-radius: 3px;
+  background-color: rgba(128, 128, 128, 0.18);
+}
+.cf-score-chip-label {
+  opacity: 0.7;
+}
+.cf-score-pass {
+  background-color: rgba(47, 158, 68, 0.25);
+}
+.cf-score-fail {
+  background-color: rgba(224, 49, 49, 0.25);
+}
+/* In a response's color strip: white text on solid chips. */
+.cf-table-resp-band .cf-score-chip {
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.25);
+}
+.cf-table-resp-band .cf-score-pass {
+  background-color: rgba(43, 138, 62, 0.9);
+}
+.cf-table-resp-band .cf-score-fail {
+  background-color: rgba(201, 42, 42, 0.9);
+}
+.cf-model-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+/* Rating buttons at the right end of a response's color strip: only the set
+   ones (a grade or a note) show until the response is hovered, or while its
+   note is being edited. */
+.cf-table-resp-band {
+  position: relative;
+}
+/* Floats over the strip's right end, so hidden buttons take no room there
+   (which would wrap the badges onto a second line in narrow columns). */
+.cf-table-resp-toolbar {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  border-radius: 4px;
+}
+.cf-table-resp:hover .cf-table-resp-toolbar,
+.cf-table-resp-toolbar:has(.rating-toolbar-reveal[data-open="true"]) {
+  background-color: var(--cf-model-color);
+}
+.cf-table-resp-band .rating-toolbar-reveal button {
+  height: 18px;
+  min-height: 18px;
+  color: #fff;
+  background-color: transparent;
+}
+.cf-table-resp-band .rating-toolbar-reveal button[data-selected="true"] {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+.rating-toolbar-reveal [data-selected="false"] {
+  opacity: 0;
+  pointer-events: none;
+}
+.cf-table-resp:hover .rating-toolbar-reveal [data-selected="false"],
+.rating-toolbar-reveal[data-open="true"] [data-selected="false"] {
+  opacity: 1;
+  pointer-events: auto;
+}
 .inspect-responses-drawer {
   position: absolute;
   left: 100%;
