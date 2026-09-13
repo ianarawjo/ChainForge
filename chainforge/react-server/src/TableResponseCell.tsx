@@ -193,7 +193,11 @@ export const TableResponseCell: React.FC<TableResponseCellProps> = ({
           return (
             <div
               key={`${response.uid}-${indices[0]}`}
-              className="cf-table-resp"
+              className={
+                modelColor
+                  ? "cf-table-resp"
+                  : "cf-table-resp cf-table-resp-neutral"
+              }
               style={
                 modelColor
                   ? ({
@@ -305,7 +309,9 @@ export const TextResponseCard: React.FC<TextResponseCardProps> = ({
       }
     >
       <div
-        className="cf-table-resp"
+        className={
+          modelColor ? "cf-table-resp" : "cf-table-resp cf-table-resp-neutral"
+        }
         style={
           modelColor
             ? ({

@@ -633,6 +633,16 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp {
 .cf-table-resp-text.cf-table-resp-static {
   cursor: text;
 }
+/* Cards without a model color (e.g. prompt previews): in dark mode, a gray
+   tint as strong as a model's washes out the text, so use a faint one. */
+html[data-mantine-color-scheme="dark"] .cf-table-resp.cf-table-resp-neutral {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+html[data-mantine-color-scheme="dark"]
+  .cf-table-resp-neutral
+  .cf-table-resp-text {
+  color: #f1f3f5;
+}
 /* Model name in the strip, where the view doesn't show it elsewhere. */
 .cf-table-resp-model {
   font-size: 11px;
