@@ -634,14 +634,17 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp {
   cursor: text;
 }
 /* Cards without a model color (e.g. prompt previews): in dark mode, a gray
-   tint as strong as a model's washes out the text, so use a faint one. */
+   tint washes out the text, especially on the mid-gray prompt list. A dark
+   panel with a faint outline (as .small-response was) keeps it readable on
+   any dark background. */
 html[data-mantine-color-scheme="dark"] .cf-table-resp.cf-table-resp-neutral {
-  background-color: rgba(255, 255, 255, 0.06);
+  background-color: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 html[data-mantine-color-scheme="dark"]
   .cf-table-resp-neutral
   .cf-table-resp-text {
-  color: #f1f3f5;
+  color: #fff;
 }
 /* Model name in the strip, where the view doesn't show it elsewhere. */
 .cf-table-resp-model {

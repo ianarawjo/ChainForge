@@ -163,6 +163,7 @@ const displayPromptInfos = (
         modelName={info.label ?? (isTemplate ? "Template" : undefined)}
         vars={info.settings}
         varMaxLength={wideFormat ? 512 : 72}
+        fontSize={wideFormat ? 13 : 12}
       />
     </div>
   ));

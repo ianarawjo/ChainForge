@@ -274,6 +274,8 @@ export interface TextResponseCardProps {
   vars?: Dict<unknown>;
   /** Longest a variable's value is shown before being cut short. */
   varMaxLength?: number;
+  /** Text size in px; larger where there's room, e.g. a full-screen list. */
+  fontSize?: number;
 }
 
 /**
@@ -286,6 +288,7 @@ export const TextResponseCard: React.FC<TextResponseCardProps> = ({
   modelColor,
   vars,
   varMaxLength = 72,
+  fontSize = 12,
 }) => {
   const varEntries = Object.entries(vars ?? {}).map(
     ([name, value]) =>
@@ -303,7 +306,7 @@ export const TextResponseCard: React.FC<TextResponseCardProps> = ({
       style={
         {
           "--cf-lines": "none",
-          fontSize: 12,
+          fontSize,
           lineHeight: 1.4,
         } as React.CSSProperties
       }
