@@ -24,6 +24,11 @@
  * claim.
  */
 
+import {
+  EmbeddingWorkerClient,
+  EmbeddingWorkerFailed,
+} from "./embeddingWorkerClient";
+
 /** How a model wants its inputs prepared. Getting these wrong degrades
  * ranking quality quietly, so they live with the model rather than at the
  * call site. */
@@ -212,13 +217,67 @@ export function cosineSimilarity(a: Float32Array, b: Float32Array): number {
   return sum;
 }
 
+/** The embedding worker, once started. See embeddingWorker(). */
+let workerStarting: Promise<EmbeddingWorkerClient | undefined> | undefined;
+/** Set once the worker could not start or stopped working. */
+let workerUnavailable = false;
+
+/**
+ * The embedding worker, started on first use, or undefined where there is
+ * none: under Jest, in browsers without Workers, and inside the worker itself,
+ * which must not start another.
+ */
+function embeddingWorker(): Promise<EmbeddingWorkerClient | undefined> {
+  if (
+    workerUnavailable ||
+    typeof window === "undefined" ||
+    typeof Worker === "undefined"
+  )
+    return Promise.resolve(undefined);
+  workerStarting ??= import("./embeddingWorker")
+    .then(({ startEmbeddingWorker }) => startEmbeddingWorker())
+    .catch((err) => {
+      workerUnavailable = true;
+      console.warn("Could not start the embedding worker:", err);
+      return undefined;
+    });
+  return workerStarting;
+}
+
 /**
  * Embeds texts with a browser model.
  *
  * `isQuery` selects whether the model's instruction prefix is applied; the
  * asymmetric models above want it on queries only.
+ *
+ * The work runs in a worker (browserEmbeddings.worker.ts), because on the
+ * page's main thread a corpus of chunks freezes the tab until it is done.
  */
 export async function embedTexts(
+  modelId: string,
+  texts: string[],
+  opts: { isQuery?: boolean; onProgress?: ProgressFn } = {},
+): Promise<Float32Array[]> {
+  if (texts.length === 0) return [];
+  const worker = await embeddingWorker();
+  if (worker) {
+    try {
+      return await worker.embed(browserEmbeddingModel(modelId).id, texts, opts);
+    } catch (err) {
+      // A model error, like a failed download, would fail on the page too.
+      if (!(err instanceof EmbeddingWorkerFailed)) throw err;
+      workerUnavailable = true;
+      console.warn("The embedding worker failed; embedding on the page:", err);
+    }
+  }
+  return embedTextsInThisThread(modelId, texts, opts);
+}
+
+/**
+ * Embeds texts on the calling thread: the worker's job, or the page's where
+ * there is no worker.
+ */
+export async function embedTextsInThisThread(
   modelId: string,
   texts: string[],
   opts: { isQuery?: boolean; onProgress?: ProgressFn } = {},
@@ -227,6 +286,10 @@ export async function embedTexts(
   const model = browserEmbeddingModel(modelId);
   const extract = await loadEmbedder(model.id, opts.onProgress);
   const prefix = opts.isQuery ? model.queryPrefix : "";
+  // Each model call returns without giving the browser a chance to paint or
+  // handle input, so on the page, hand control back every so often.
+  const onPage = typeof window !== "undefined";
+  let lastYield = Date.now();
 
   const out: Float32Array[] = [];
   // One at a time, reporting as we go: a workshop corpus can be hundreds of
@@ -242,6 +305,10 @@ export async function embedTexts(
       percent: ((i + 1) / texts.length) * 100,
       detail: `Embedding ${i + 1} of ${texts.length}`,
     });
+    if (onPage && Date.now() - lastYield > 50) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      lastYield = Date.now();
+    }
   }
   return out;
 }
