@@ -3,9 +3,11 @@ FROM node:20-slim AS frontend-builder
 
 WORKDIR /app
 
-# Copy package files and install dependencies (including dev for build)
+# Copy package files and install dependencies (including dev for build).
+# Retry dropped downloads (ECONNRESET), which happen in slow emulated builds.
 COPY chainforge/react-server/package*.json ./
-RUN npm ci --legacy-peer-deps --prefer-offline
+RUN npm ci --legacy-peer-deps --prefer-offline \
+    --fetch-retries=5 --fetch-retry-maxtimeout=120000
 
 # Copy source files and build
 COPY chainforge/react-server/ ./

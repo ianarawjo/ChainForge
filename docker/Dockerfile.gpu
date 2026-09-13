@@ -3,9 +3,11 @@ FROM node:20-slim AS frontend-builder
 
 WORKDIR /app
 
-# Copy everything and build in one layer to minimize size
+# Copy everything and build in one layer to minimize size.
+# Retry dropped downloads (ECONNRESET) rather than failing the build.
 COPY chainforge/react-server/ ./
-RUN npm ci --legacy-peer-deps --prefer-offline --production=false && \
+RUN npm ci --legacy-peer-deps --prefer-offline --production=false \
+    --fetch-retries=5 --fetch-retry-maxtimeout=120000 && \
     npm run build && \
     rm -rf node_modules && \
     npm cache clean --force
