@@ -119,6 +119,18 @@ export function methodsNeedingBackend(methods: RetrieveMethodSpec[]): string[] {
     .map((m) => m.methodName || m.baseMethod);
 }
 
+/**
+ * Where a request's methods run: all in the browser, all on the local server,
+ * or split between the two (see retrieveAcrossBrowserAndServer).
+ */
+export function retrievalLocation(
+  methods: RetrieveMethodSpec[],
+): "browser" | "server" | "both" {
+  const inBrowser = methods.filter(supportsMethod).length;
+  if (inBrowser === 0) return "server";
+  return inBrowser === methods.length ? "browser" : "both";
+}
+
 /** One staged hit, kept so a fusion group can re-rank across methods. */
 interface StagedHit {
   doc_id: string;
@@ -254,9 +266,6 @@ export async function retrieveRequestInBrowser(
   const normalizedQueries = queries.map((q) =>
     typeof q === "string" ? { text: q } : (q as Dict<any>),
   );
-  const methodNameById: Dict<string> = {};
-  for (const m of methods) methodNameById[m.id] = m.methodName;
-
   // Group chunks by the chunking method that produced them, as the endpoint
   // does, so each chunking strategy is retrieved over independently.
   const chunksByMethod: Dict<RetrievalChunk[]> = {};
@@ -272,18 +281,6 @@ export async function retrieveRequestInBrowser(
     });
   }
 
-  const fusionEnabled = Boolean(request.fusion_enabled);
-  const linkedGroups = fusionEnabled ? request.linked_groups ?? [] : [];
-  const groupByMethodId: Dict<string> = {};
-  const groupConfig: Dict<FusionGroup> = {};
-  for (const group of linkedGroups) {
-    if (!group.id) continue;
-    groupConfig[group.id] = group;
-    for (const mid of group.methodKeys ?? []) groupByMethodId[mid] = group.id;
-  }
-
-  // (queryText, chunkMethod) -> methodId -> staged hits
-  const staging: Dict<Dict<StagedHit[]>> = {};
   const rows: RetrieveResponseRow[] = [];
   const errors: string[] = [];
 
@@ -304,7 +301,7 @@ export async function retrieveRequestInBrowser(
           const queryText = String(queryObject.text ?? "");
 
           result.retrieved_chunks.forEach((hit: RetrievalHit, i: number) => {
-            const row: RetrieveResponseRow = {
+            rows.push({
               text: hit.text,
               prompt: queryText,
               eval_res: {
@@ -331,19 +328,7 @@ export async function retrieveRequestInBrowser(
                 chunkLibrary: (hit as Dict<any>).chunkLibrary ?? "",
               },
               llm: (hit as Dict<any>).llm ?? "(none)",
-            };
-
-            if (fusionEnabled) {
-              const key = `${queryText}${KEY_SEP}${chunkMethod}`;
-              ((staging[key] ??= {})[method.id] ??= []).push({
-                doc_id: hit.chunkId ?? "",
-                rank: i + 1,
-                score: Number(hit.similarity ?? 0),
-                obj: row,
-              });
-            }
-
-            rows.push(row);
+            });
           });
         }
       } catch (err) {
@@ -358,57 +343,160 @@ export async function retrieveRequestInBrowser(
     }
   }
 
-  // Fusion, over the staged per-method rankings.
-  if (fusionEnabled && linkedGroups.length > 0) {
-    for (const [key, perMethod] of Object.entries(staging)) {
-      const chunkMethod = key.split(KEY_SEP)[1];
-      const groups: Dict<Dict<StagedHit[]>> = {};
-      for (const [mid, items] of Object.entries(perMethod)) {
-        const gid = groupByMethodId[mid];
-        if (gid) (groups[gid] ??= {})[mid] = items;
-      }
-
-      for (const [gid, methodLists] of Object.entries(groups)) {
-        const config = groupConfig[gid] ?? { id: gid };
-        const weights = weightsFor(config);
-        let fused: [string, number, RetrieveResponseRow][];
-        let signature: string;
-
-        if (config.fusionMethod === "reciprocal_rank_fusion") {
-          const settings = config.fusionSettings ?? {};
-          const k = Math.trunc(Number(settings.k ?? settings.K ?? 60));
-          fused = rrfFuse(methodLists, k, weights);
-          signature = "fusion:rrf";
-        } else {
-          fused = weightedAvgFuse(methodLists, weights);
-          signature = "fusion:weighted_average";
-        }
-
-        const groupMethodIds = (config.methodKeys ?? []).filter(
-          (mid) => mid in methodLists,
-        );
-        const label = `Fused (${groupMethodIds
-          .map((mid) => methodNameById[mid])
-          .join(" + ")})`;
-
-        fused.forEach(([, fusedScore, baseRow], index) => {
-          const row: RetrieveResponseRow = JSON.parse(JSON.stringify(baseRow));
-          row.eval_res.items = [{ similarity: fusedScore, rank: index + 1 }];
-          row.vars.retrievalMethod = label;
-          row.metavars = {
-            ...row.metavars,
-            methodId: `group:${gid}`,
-            retrievalMethodSignature: signature,
-            signature: `${chunkMethod}-FUSED-${gid}`,
-          };
-          rows.push(row);
-        });
-      }
-    }
-  }
-
   if (rows.length === 0 && errors.length > 0)
     throw new Error(`No retrieval method succeeded.\n${errors.join("\n")}`);
 
-  return rows;
+  return [...rows, ...fusedRows(rows, request)];
+}
+
+/**
+ * The fused rows for a request's linked method groups, from its per-method
+ * rows.
+ *
+ * Mirrors the endpoint's fusion step. Hits are staged per (query, chunking
+ * method) in the order the rows were produced, which is the order the
+ * endpoint stages them in, so ties break the same way.
+ */
+export function fusedRows(
+  rows: RetrieveResponseRow[],
+  request: RetrieveRequest,
+): RetrieveResponseRow[] {
+  const linkedGroups = request.fusion_enabled
+    ? request.linked_groups ?? []
+    : [];
+  if (linkedGroups.length === 0) return [];
+
+  const methodNameById: Dict<string> = {};
+  for (const m of request.methods) methodNameById[m.id] = m.methodName;
+
+  const groupByMethodId: Dict<string> = {};
+  const groupConfig: Dict<FusionGroup> = {};
+  for (const group of linkedGroups) {
+    if (!group.id) continue;
+    groupConfig[group.id] = group;
+    for (const mid of group.methodKeys ?? []) groupByMethodId[mid] = group.id;
+  }
+
+  // (queryText, chunkMethod) -> methodId -> staged hits
+  const staging: Dict<Dict<StagedHit[]>> = {};
+  for (const row of rows) {
+    const key = `${row.prompt}${KEY_SEP}${row.vars.chunkMethod}`;
+    const item = row.eval_res.items[0];
+    ((staging[key] ??= {})[row.metavars.methodId] ??= []).push({
+      doc_id: row.metavars.chunkId ?? "",
+      rank: item.rank,
+      score: Number(item.similarity ?? 0),
+      obj: row,
+    });
+  }
+
+  const fused: RetrieveResponseRow[] = [];
+  for (const [key, perMethod] of Object.entries(staging)) {
+    const chunkMethod = key.split(KEY_SEP)[1];
+    const groups: Dict<Dict<StagedHit[]>> = {};
+    for (const [mid, items] of Object.entries(perMethod)) {
+      const gid = groupByMethodId[mid];
+      if (gid) (groups[gid] ??= {})[mid] = items;
+    }
+
+    for (const [gid, methodLists] of Object.entries(groups)) {
+      const config = groupConfig[gid] ?? { id: gid };
+      const weights = weightsFor(config);
+      let ranking: [string, number, RetrieveResponseRow][];
+      let signature: string;
+
+      if (config.fusionMethod === "reciprocal_rank_fusion") {
+        const settings = config.fusionSettings ?? {};
+        const k = Math.trunc(Number(settings.k ?? settings.K ?? 60));
+        ranking = rrfFuse(methodLists, k, weights);
+        signature = "fusion:rrf";
+      } else {
+        ranking = weightedAvgFuse(methodLists, weights);
+        signature = "fusion:weighted_average";
+      }
+
+      const groupMethodIds = (config.methodKeys ?? []).filter(
+        (mid) => mid in methodLists,
+      );
+      const label = `Fused (${groupMethodIds
+        .map((mid) => methodNameById[mid])
+        .join(" + ")})`;
+
+      ranking.forEach(([, fusedScore, baseRow], index) => {
+        const row: RetrieveResponseRow = JSON.parse(JSON.stringify(baseRow));
+        row.eval_res.items = [{ similarity: fusedScore, rank: index + 1 }];
+        row.vars.retrievalMethod = label;
+        row.metavars = {
+          ...row.metavars,
+          methodId: `group:${gid}`,
+          retrievalMethodSignature: signature,
+          signature: `${chunkMethod}-FUSED-${gid}`,
+        };
+        fused.push(row);
+      });
+    }
+  }
+  return fused;
+}
+
+/**
+ * Runs a /retrieve request whose methods may be split between the browser and
+ * the local server.
+ *
+ * Some methods exist only in the browser (Semantic Search (in-browser)) and
+ * some only on the server (TF-IDF, the server's embedding methods), so a
+ * request that mixes them is split: each side retrieves with its own methods,
+ * the rows are merged in the order a single endpoint would have returned them,
+ * and linked groups are fused here, since a group can span both sides.
+ *
+ * @param runOnServer Sends a request to the server's /retrieve endpoint.
+ * @param runsOnServer Which methods go to the server. By default, those with
+ *   no browser implementation.
+ */
+export async function retrieveAcrossBrowserAndServer(
+  request: RetrieveRequest,
+  runOnServer: (request: RetrieveRequest) => Promise<RetrieveResponseRow[]>,
+  onProgress?: ProgressFn,
+  runsOnServer: (method: RetrieveMethodSpec) => boolean = (m) =>
+    !supportsMethod(m),
+): Promise<RetrieveResponseRow[]> {
+  const methods = request.methods ?? [];
+  const serverMethods = methods.filter(runsOnServer);
+  const browserMethods = methods.filter((m) => !runsOnServer(m));
+  if (serverMethods.length === 0)
+    return retrieveRequestInBrowser(request, onProgress);
+  if (browserMethods.length === 0) return runOnServer(request);
+
+  // Each side retrieves without fusing; fusion happens below, over both.
+  const part = (partMethods: RetrieveMethodSpec[]): RetrieveRequest => ({
+    ...request,
+    methods: partMethods,
+    fusion_enabled: false,
+    linked_groups: [],
+  });
+  const [browserRows, serverRows] = await Promise.all([
+    retrieveRequestInBrowser(part(browserMethods), onProgress),
+    runOnServer(part(serverMethods)),
+  ]);
+
+  // The endpoint returns one chunking method's rows before the next one's,
+  // and within those, one retrieval method's before the next.
+  const chunkMethodOrder = new Map<string, number>();
+  for (const chunk of request.chunks) {
+    const chunkMethod =
+      (chunk.fill_history?.chunkMethod as string) ?? "unknown";
+    if (!chunkMethodOrder.has(chunkMethod))
+      chunkMethodOrder.set(chunkMethod, chunkMethodOrder.size);
+  }
+  const methodOrder = new Map(methods.map((m, i) => [m.id, i]));
+  const position = (row: RetrieveResponseRow): [number, number] => [
+    chunkMethodOrder.get(row.vars.chunkMethod) ?? chunkMethodOrder.size,
+    methodOrder.get(row.metavars.methodId) ?? methods.length,
+  ];
+  const rows = [...browserRows, ...serverRows]
+    .map((row, index) => ({ row, index, at: position(row) }))
+    .sort((a, b) => a.at[0] - b.at[0] || a.at[1] - b.at[1] || a.index - b.index)
+    .map(({ row }) => row);
+
+  return [...rows, ...fusedRows(rows, request)];
 }

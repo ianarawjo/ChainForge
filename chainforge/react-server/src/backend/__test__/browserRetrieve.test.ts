@@ -1,10 +1,22 @@
-import { describe, expect, test } from "@jest/globals";
+import { describe, expect, jest, test } from "@jest/globals";
 import {
   BROWSER_SEMANTIC_METHOD,
   canRetrieveRequestInBrowser,
   methodsNeedingBackend,
+  retrievalLocation,
+  retrieveAcrossBrowserAndServer,
   retrieveRequestInBrowser,
 } from "../browserRetrieve";
+
+// For the in-browser semantic method: a vector per text from which words it
+// contains, so similarity follows shared words.
+jest.mock("@huggingface/transformers", () => ({
+  env: {},
+  pipeline: async () => async (text: string) => ({
+    data: [text.includes("cat") ? 1 : 0, text.includes("mat") ? 1 : 0, 0.1],
+    dims: [1, 3],
+  }),
+}));
 
 // Reference responses captured from the real Flask /retrieve endpoint. This
 // pins far more than ranking: chunk grouping, the response row shape, vars and
@@ -190,4 +202,153 @@ describe("input validation mirrors the endpoint", () => {
       }),
     ).rejects.toThrow(/TF-IDF/);
   });
+});
+
+describe("mixing browser and server methods", () => {
+  const bm25 = { id: "bm25", baseMethod: "bm25", methodName: "BM25" };
+  const tfidf = { id: "tfidf", baseMethod: "tfidf", methodName: "TF-IDF" };
+  const semantic = {
+    id: "sem",
+    baseMethod: BROWSER_SEMANTIC_METHOD,
+    methodName: "Semantic Search (in-browser)",
+  };
+
+  const chunks = [
+    ["A", "a1", "the cat sat"],
+    ["A", "a2", "a mat by the door"],
+    ["B", "b1", "a cat on a mat"],
+  ].map(([chunkMethod, chunkId, text]) => ({
+    text,
+    fill_history: { chunkMethod },
+    metavars: { chunkId, docTitle: "doc" },
+  }));
+
+  /** A row as the endpoint returns it. */
+  const serverRow = (
+    method: typeof tfidf,
+    chunkMethod: string,
+    chunkId: string,
+    rank: number,
+    similarity: number,
+  ) => ({
+    text: chunks.find((c) => c.metavars.chunkId === chunkId)?.text ?? "",
+    prompt: "cat mat",
+    eval_res: { items: [{ similarity, rank }], dtype: "KeyValue_Mixed" },
+    vars: {
+      query: "cat mat",
+      retrievalMethod: method.methodName,
+      chunkMethod,
+    },
+    metavars: {
+      methodId: method.id,
+      retrievalMethodSignature: method.baseMethod,
+      signature: `${chunkMethod}-${method.methodName}`,
+      docTitle: "doc",
+      chunkId,
+      chunkLibrary: "",
+      latency_ms: "1.00ms",
+    },
+    llm: "(none)",
+  });
+
+  test("where the methods run", () => {
+    expect(retrievalLocation([bm25, semantic])).toBe("browser");
+    expect(retrievalLocation([tfidf])).toBe("server");
+    expect(retrievalLocation([semantic, tfidf])).toBe("both");
+    expect(retrievalLocation([])).toBe("server");
+  });
+
+  test("in-browser semantic search stays here while TF-IDF goes to the server", async () => {
+    const sent: any[] = [];
+    const rows = await retrieveAcrossBrowserAndServer(
+      {
+        methods: [tfidf, semantic],
+        chunks,
+        queries: [{ text: "cat mat" }],
+        fusion_enabled: true,
+        linked_groups: [
+          {
+            id: "g",
+            methodKeys: ["tfidf", "sem"],
+            fusionMethod: "reciprocal_rank_fusion",
+          },
+        ],
+      },
+      async (request) => {
+        sent.push(request);
+        return [
+          serverRow(tfidf, "A", "a1", 1, 0.5),
+          serverRow(tfidf, "A", "a2", 2, 0.2),
+          serverRow(tfidf, "B", "b1", 1, 0.9),
+        ] as any;
+      },
+    );
+
+    // The server is sent only what it can run, and does no fusing, since the
+    // group spans both sides.
+    expect(sent).toHaveLength(1);
+    expect(sent[0].methods).toEqual([tfidf]);
+    expect(sent[0].fusion_enabled).toBe(false);
+    expect(sent[0].linked_groups).toEqual([]);
+
+    // Rows in endpoint order: by chunking method, then by retrieval method.
+    expect(
+      rows
+        .filter((r) => !r.metavars.methodId.startsWith("group:"))
+        .map((r) => `${r.vars.chunkMethod}:${r.metavars.methodId}`),
+    ).toEqual(["A:tfidf", "A:tfidf", "A:sem", "A:sem", "B:tfidf", "B:sem"]);
+
+    // Fused across the two sides, per chunking method.
+    const fused = rows.filter((r) => r.metavars.methodId === "group:g");
+    expect(fused.map((r) => r.vars.chunkMethod)).toEqual(["A", "A", "B"]);
+    expect(fused[0].vars.retrievalMethod).toBe(
+      "Fused (TF-IDF + Semantic Search (in-browser))",
+    );
+    expect(fused.map((r) => r.eval_res.items[0].rank)).toEqual([1, 2, 1]);
+  });
+
+  test("a failing server fails the run rather than returning half the results", async () => {
+    await expect(
+      retrieveAcrossBrowserAndServer(
+        { methods: [bm25, tfidf], chunks, queries: [{ text: "cat" }] },
+        async () => {
+          throw new Error("the server did not respond");
+        },
+      ),
+    ).rejects.toThrow("the server did not respond");
+  });
+
+  test("with nothing for the server, nothing is sent to it", async () => {
+    const runOnServer = jest.fn(async () => []);
+    const rows = await retrieveAcrossBrowserAndServer(
+      { methods: [bm25], chunks, queries: [{ text: "cat" }] },
+      runOnServer,
+    );
+    expect(runOnServer).not.toHaveBeenCalled();
+    expect(rows.length).toBeGreaterThan(0);
+  });
+
+  // The strongest check: any fixture request, split so that one method runs
+  // "on the server", must still match what the endpoint returned. The browser
+  // implementation stands in for the server, which the fixture shows it
+  // matches.
+  const splittable = fixture.cases.filter((c) => c.request.methods.length > 1);
+
+  test("the fixture has requests with several methods to split", () => {
+    expect(splittable.length).toBeGreaterThan(0);
+  });
+
+  test.each(splittable)(
+    "split across both sides, $name still matches the endpoint",
+    async ({ request, response }) => {
+      const first = request.methods[0].id;
+      const actual = await retrieveAcrossBrowserAndServer(
+        request,
+        (part) => retrieveRequestInBrowser(part),
+        undefined,
+        (m) => m.id === first,
+      );
+      expect(normalize(actual)).toEqual(normalize(response));
+    },
+  );
 });
