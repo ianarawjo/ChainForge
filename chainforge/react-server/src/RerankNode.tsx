@@ -36,6 +36,7 @@ import {
   rerankInBrowser,
 } from "./backend/browserRerankers";
 import { FLASK_BASE_URL } from "./backend/utils";
+import { groupDocumentsForRerank } from "./backend/rerankGroups";
 import { v4 as uuid } from "uuid";
 
 // Constants for handle positioning and styling
@@ -194,32 +195,29 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
      * -- mixes documents retrieved for one question into the ranking for
      * another.
      *
-     * A query wired in explicitly overrides that, which is what makes the
-     * node still usable on raw chunks straight from a ChunkNode, where there
-     * is no retrieval step to have recorded anything.
+     * They are also grouped by the configuration that produced them (chunker,
+     * retriever), and top_k applies to each group. Pooled, the best few
+     * documents could all come from one configuration, and a flow comparing
+     * configurations would lose the others without a word.
+     *
+     * A query wired in explicitly overrides the recorded one, which is what
+     * makes the node still usable on raw chunks straight from a ChunkNode,
+     * where there is no retrieval step to have recorded anything.
      */
     const wiredQueries = queryArr
       .map((q) => (q?.text ? StringLookup.get(q.text) || "" : ""))
       .filter((q) => q.length > 0);
 
-    let rerankGroups: { query: string; documents: TemplateVarInfo[] }[];
-    if (wiredQueries.length > 0) {
-      rerankGroups = wiredQueries.map((query) => ({
-        query,
-        documents: validDocuments,
-      }));
-    } else {
-      const byQuery = new Map<string, TemplateVarInfo[]>();
-      for (const doc of validDocuments) {
-        const q = queryOfDocument(doc);
-        if (!byQuery.has(q)) byQuery.set(q, []);
-        (byQuery.get(q) as TemplateVarInfo[]).push(doc);
-      }
-      rerankGroups = [...byQuery.entries()].map(([query, documents]) => ({
-        query,
-        documents,
-      }));
-    }
+    const rerankGroups = groupDocumentsForRerank(validDocuments, {
+      wiredQueries,
+      queryOf: queryOfDocument,
+      varOf: (doc, name) => {
+        const value = doc.fill_history?.[name];
+        return value === undefined
+          ? undefined
+          : StringLookup.get(value as any) || "";
+      },
+    });
 
     setStatus(Status.LOADING);
     setJSONResponses([]);
@@ -374,6 +372,9 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
                 prompt: `Query: ${query || "N/A"} | Rank: ${index + 1} | Score: ${score.toFixed(3)}`,
                 vars: {
                   query: query || "N/A",
+                  // Which configuration this ranking belongs to, now that
+                  // each is ranked separately.
+                  ...group.config,
                   rank: String(index + 1),
                   score: String(score.toFixed(3)),
                 },
