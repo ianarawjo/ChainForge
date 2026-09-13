@@ -160,9 +160,16 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         temp: 1.0,
       },
       {
-        name: "GPT Image 1",
+        name: "GPT Image 2.5 Flare",
         emoji: "🖼",
-        model: "gpt-image-1",
+        model: "gpt-image-2.5-flare",
+        base_model: "gpt-image-1", // key of the GPT Image settings form
+        temp: 0.0,
+      },
+      {
+        name: "GPT Image 2.5 Sunburst",
+        emoji: "🖼",
+        model: "gpt-image-2.5-sunburst",
         base_model: "gpt-image-1",
         temp: 0.0,
       },
@@ -201,13 +208,6 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         base_model: "gpt-3.5-turbo",
         temp: 1.0,
       }, // The base_model designates what settings form will be used, and must be unique.
-      {
-        name: "Dall-E",
-        emoji: "🖼",
-        model: "dall-e-2",
-        base_model: "dall-e",
-        temp: 0.0,
-      },
     ],
   },
   {
@@ -275,6 +275,20 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         model: "gemini-2.0-flash",
         base_model: "gemini-2.5",
         temp: 0.7,
+      },
+      {
+        name: "Gemini 3.1 Flash Image",
+        emoji: "🍌",
+        model: "gemini-3.1-flash-image",
+        base_model: "gemini-image",
+        temp: 1.0,
+      },
+      {
+        name: "Gemini 3 Pro Image",
+        emoji: "🍌",
+        model: "gemini-3-pro-image",
+        base_model: "gemini-image",
+        temp: 1.0,
       },
     ],
   },

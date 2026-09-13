@@ -81,6 +81,10 @@ const LLMResponseInspectorModal = forwardRef<
         </div>
       }
       styles={{
+        // A fixed height, the modal's maximum, rather than fitting the
+        // content: the Grid View fills the space it's given, so it can't also
+        // set the height.
+        content: { height: "calc(100dvh - (5dvh * 2))" },
         title: {
           justifyContent: "space-between",
           width: "100%",

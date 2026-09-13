@@ -4,7 +4,14 @@
 
 // from chainforge.promptengine.models import LLM
 import React from "react";
-import { LLM, LLMProvider, NativeLLM, getProvider } from "./models";
+import {
+  LLM,
+  LLMProvider,
+  NativeLLM,
+  getProvider,
+  isGeminiImageModel,
+  isOpenAIImageModel,
+} from "./models";
 import {
   Dict,
   LLMAPICall,
@@ -37,7 +44,6 @@ import { StringTemplate } from "./template";
 import {
   Configuration as OpenAIConfig,
   OpenAIApi,
-  CreateImageRequest,
   ImagesResponseDataInner,
 } from "openai";
 import {
@@ -666,9 +672,60 @@ export async function call_minimax(
   );
 }
 
+/** The most images OpenAI's Images API returns for one request. */
+const OPENAI_MAX_IMAGES_PER_REQUEST = 10;
+
+/** POSTs to an OpenAI Images API endpoint, turning API errors into readable Errors. */
+async function openai_images_request(
+  endpoint: "generations" | "edits",
+  body: FormData | Dict,
+): Promise<Dict> {
+  const base = (OPENAI_BASE_URL || "https://api.openai.com/v1").replace(
+    /\/+$/,
+    "",
+  );
+  const isForm = body instanceof FormData;
+  const res = await fetch(`${base}/images/${endpoint}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      // A multipart body sets its own Content-Type, with the boundary.
+      ...(isForm ? {} : { "Content-Type": "application/json" }),
+    },
+    body: isForm ? body : JSON.stringify(body),
+  });
+
+  let payload: Dict | undefined;
+  try {
+    payload = await res.json();
+  } catch {
+    payload = undefined;
+  }
+
+  if (!res.ok) {
+    const error = payload?.error;
+    const categories = error?.moderation_details?.categories;
+    const moderation =
+      error?.code === "moderation_blocked" && categories
+        ? ` (blocked by moderation: ${[categories].flat().join(", ")})`
+        : "";
+    throw new Error(
+      (error?.message ?? `OpenAI image request failed (HTTP ${res.status}).`) +
+        moderation,
+    );
+  }
+  return payload ?? {};
+}
+
 /**
- * Calls OpenAI Image models via OpenAI's API.
-   @returns raw query and response JSON dicts.
+ * Calls OpenAI image models (GPT Image) through the Images API. Uses the
+ * generations endpoint, or the edits endpoint when input images are given
+ * (e.g. from a Media Node), passing them as reference images.
+ *
+ * Calls fetch directly: the installed openai SDK (v3) predates GPT Image and
+ * can't send several input images to the edits endpoint.
+ *
+ * @returns raw query and a list of image objects ({ b64_json, ... }).
  */
 export async function call_openai_image_gen(
   prompt: string,
@@ -677,69 +734,93 @@ export async function call_openai_image_gen(
   temperature: number,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!OPENAI_API_KEY)
     throw new Error(
       "Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.",
     );
 
-  const configuration = new OpenAIConfig({
-    apiKey: OPENAI_API_KEY,
-  });
-  // Since we are running client-side, we need to remove the user-agent header:
-  delete configuration.baseOptions.headers["User-Agent"];
-  const openai = new OpenAIApi(configuration);
-
   const modelname = model.toString();
-  console.log(
-    `Querying OpenAI image model '${model}' with prompt '${prompt}'...`,
-  );
+  if (modelname.startsWith("dall-e"))
+    throw new Error(
+      `OpenAI shut down ${modelname} on May 12, 2026. Switch to a GPT Image model, such as gpt-image-2.5-flare.`,
+    );
 
-  const query: Dict = {
-    prompt,
-    model: modelname,
-    size: params?.size ?? "auto",
-  };
+  // Settings, minus empty values. "auto" is a valid value for most of them.
+  const settings: Dict = {};
+  for (const [key, value] of Object.entries(params ?? {}))
+    if (value !== undefined && value !== null && value !== "")
+      settings[key] = value;
 
-  if (modelname.includes("gpt-image") && params) {
-    // Pass in GPT-Image-1 specific settings
-    Object.entries(params).forEach(([key, value]) => {
-      query[key] = value;
-    });
-  }
-  if (modelname.includes("dall-e-3")) {
-    // Pass in DALLE-3 specific settings
-    if (params?.quality) query.quality = params.quality;
-    if (params?.style) query.style = params.style;
-  }
-  if (modelname.startsWith("dall-e")) {
-    query.response_format = "b64_json"; // request image in base-64 encoded string
-  }
+  // Only meaningful for lossy formats.
+  if (!["jpeg", "webp"].includes(settings.output_format))
+    delete settings.output_compression;
 
-  // Try to call OpenAI
-  // Since n doesn't work for DALLE3, we must repeat call n times if n > 1, waiting for each response to come in:
-  const responses: Array<Dict> = [];
-  while (responses.length < n) {
-    // Abort if canceled
-    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+  const editing = images !== undefined && images.length > 0;
+  // input_fidelity only applies to edits; "auto" means leave it to the model,
+  // and gpt-image-2 always uses high fidelity and doesn't take the parameter.
+  if (
+    !editing ||
+    settings.input_fidelity === "auto" ||
+    /^gpt-image-2(-\d{4}-\d{2}-\d{2})?$/.test(modelname)
+  )
+    delete settings.input_fidelity;
 
-    let response: Dict = {};
-    try {
-      const completion = await openai.createImage(query as CreateImageRequest);
-      response = completion.data.data[0];
-      responses.push(response);
-    } catch (error: any) {
-      if (error?.response) {
-        throw new Error(error.response.data?.error?.message);
-        // throw new Error(error.response.status);
-      } else {
-        console.log(error?.message || error);
-        throw new Error(error?.message || error);
-      }
+  const query: Dict = { model: modelname, prompt, ...settings };
+
+  // Load input images once, for every batch.
+  const inputBlobs: Blob[] = [];
+  if (editing) {
+    for (const uid of images) {
+      const blob = await MediaLookup.get(uid);
+      if (!blob) throw new Error(`Input image ${uid} is not available.`);
+      inputBlobs.push(blob);
     }
   }
 
-  return [query, responses];
+  console.log(
+    `Querying OpenAI image model '${modelname}' (${editing ? `editing ${inputBlobs.length} image(s)` : "generating"}, n=${n})...`,
+  );
+
+  const results: Dict[] = [];
+  while (results.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+    const batch = Math.min(OPENAI_MAX_IMAGES_PER_REQUEST, n - results.length);
+
+    let payload: Dict;
+    if (editing) {
+      const form = new FormData();
+      Object.entries({ ...query, n: batch }).forEach(([key, value]) =>
+        form.append(key, String(value)),
+      );
+      inputBlobs.forEach((blob, i) =>
+        form.append(
+          "image[]",
+          blob,
+          `image_${i}.${(blob.type.split("/")[1] || "png").replace("jpeg", "jpg")}`,
+        ),
+      );
+      payload = await openai_images_request("edits", form);
+    } else {
+      payload = await openai_images_request("generations", {
+        ...query,
+        n: batch,
+      });
+    }
+
+    const data: Dict[] = Array.isArray(payload?.data) ? payload.data : [];
+    if (data.length === 0)
+      throw new Error("OpenAI returned no images for this request.");
+    results.push(...data);
+  }
+
+  // The returned query is kept with cached responses, so it records how many
+  // input images there were rather than their bytes.
+  return [
+    editing ? { ...query, input_images: inputBlobs.length } : query,
+    results.slice(0, n),
+  ];
 }
 
 /**
@@ -1050,6 +1131,17 @@ export async function call_google_ai(
       "Could not find an API key for Google Gemini models. Double-check that your API key is set in Settings or in your local environment.",
     );
 
+  if (isGeminiImageModel(model))
+    return call_gemini_image_gen(
+      prompt,
+      model,
+      n,
+      temperature,
+      params,
+      should_cancel,
+      images,
+    );
+
   const max_output_tokens = params?.max_output_tokens || 1000;
   const chat_history: ChatHistory = params?.chat_history;
   const system_msg = params?.system_msg;
@@ -1184,6 +1276,119 @@ export async function call_google_ai(
     });
   }
 
+  return [query, responses];
+}
+
+/**
+ * Calls Gemini image models (e.g. gemini-3.1-flash-image) via the REST
+ * generateContent endpoint. Input images (e.g. from a Media Node) are sent as
+ * inline parts, for editing or as references.
+ *
+ * Calls fetch directly: the installed @google/genai version predates
+ * `imageConfig`, which its request conversion would drop.
+ *
+ * @returns raw query and the list of raw generateContent responses.
+ */
+export async function call_gemini_image_gen(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature?: number,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  if (!GOOGLE_PALM_API_KEY)
+    throw new Error(
+      "Could not find an API key for Google Gemini models. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  const modelname = model.toString().replace(/^models\//, "");
+
+  const imageConfig: Dict = {};
+  if (params?.aspect_ratio && params.aspect_ratio !== "auto")
+    imageConfig.aspectRatio = params.aspect_ratio;
+  if (params?.image_size && params.image_size !== "auto")
+    imageConfig.imageSize = params.image_size;
+
+  const generationConfig: Dict = {
+    // The model must support exactly this combination.
+    responseModalities:
+      params?.response_modalities === "TEXT_AND_IMAGE"
+        ? ["TEXT", "IMAGE"]
+        : ["IMAGE"],
+  };
+  if (typeof temperature === "number")
+    generationConfig.temperature = temperature;
+  if (Object.keys(imageConfig).length > 0)
+    generationConfig.imageConfig = imageConfig;
+
+  const parts: Dict[] = [{ text: prompt }];
+  if (images && images.length > 0)
+    for (const dataURL of await imagesToBase64(images))
+      parts.push({
+        inlineData: {
+          mimeType: getMimeTypeFromDataURL(dataURL) ?? "image/png",
+          data: getBase64DataFromDataURL(dataURL) ?? "",
+        },
+      });
+
+  const body: Dict = { contents: [{ role: "user", parts }], generationConfig };
+  if (params?.system_msg)
+    body.systemInstruction = { parts: [{ text: params.system_msg }] };
+
+  console.log(
+    `Calling Gemini image model '${modelname}' (n=${n}, input images=${images?.length ?? 0})...`,
+  );
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelname)}:generateContent`;
+  const responses: Dict[] = [];
+  while (responses.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": GOOGLE_PALM_API_KEY,
+      },
+      body: JSON.stringify(body),
+    });
+    let payload: Dict | undefined;
+    try {
+      payload = await res.json();
+    } catch {
+      payload = undefined;
+    }
+    if (!res.ok)
+      throw new Error(
+        payload?.error?.message ??
+          `Gemini image request failed (HTTP ${res.status}).`,
+      );
+
+    // Fail this response (not the whole run) when nothing usable came back,
+    // e.g. a safety block, saying why.
+    const candidate = payload?.candidates?.[0];
+    const outParts: Dict[] = candidate?.content?.parts ?? [];
+    const hasOutput = outParts.some((p) => p?.inlineData?.data || p?.text);
+    if (!hasOutput) {
+      const reason =
+        candidate?.finishReason ?? payload?.promptFeedback?.blockReason;
+      throw new Error(
+        `Gemini returned no image${reason ? ` (reason: ${reason})` : ""}.`,
+      );
+    }
+    responses.push(payload as Dict);
+  }
+
+  // Kept with cached responses: record the input image count, not the bytes.
+  const query: Dict = {
+    model: modelname,
+    prompt,
+    generationConfig,
+    system_msg: params?.system_msg,
+    input_images: images?.length ?? 0,
+  };
   return [query, responses];
 }
 
@@ -1891,8 +2096,7 @@ export async function call_llm(
 
   const llm_name = llm.toString().toLowerCase();
   if (llm_provider === LLMProvider.OpenAI) {
-    if (llm_name.startsWith("dall-e") || llm_name.startsWith("gpt-image"))
-      call_api = call_openai_image_gen;
+    if (isOpenAIImageModel(llm_name)) call_api = call_openai_image_gen;
     else call_api = call_chatgpt;
   } else if (llm_provider === LLMProvider.WebLLM) call_api = call_webllm;
   else if (llm_provider === LLMProvider.Azure_OpenAI)
@@ -1998,8 +2202,40 @@ function _extract_openai_responses(response: Dict): Array<string> {
 function _extract_google_ai_responses(
   response: Dict,
   llm: LLM | string,
-): Array<string> {
+): Array<LLMResponseData> {
+  if (isGeminiImageModel(llm))
+    return _extract_gemini_image_responses(response as Array<Dict>);
   return _extract_gemini_responses(response as Array<Dict>);
+}
+
+/**
+ * Extracts images from Gemini image model responses, as base64. A response
+ * that carries only text (e.g. the model declining) yields that text instead,
+ * so the reason is visible.
+ */
+function _extract_gemini_image_responses(
+  completions: Array<Dict>,
+): Array<LLMResponseData> {
+  const out: LLMResponseData[] = [];
+  for (const completion of completions) {
+    const parts: Dict[] = completion?.candidates?.[0]?.content?.parts ?? [];
+    const images = parts.filter(
+      (p) =>
+        p?.inlineData?.data &&
+        String(p.inlineData.mimeType ?? "image/").startsWith("image/"),
+    );
+    if (images.length > 0)
+      images.forEach((p) => out.push({ t: "img", d: p.inlineData.data }));
+    else {
+      const text = parts
+        .map((p) => p?.text)
+        .filter(Boolean)
+        .join("\n")
+        .trim();
+      if (text) out.push(text);
+    }
+  }
+  return out;
 }
 
 /**
@@ -2086,7 +2322,7 @@ export function extract_responses(
   const llm_name = llm.toString().toLowerCase();
   switch (llm_provider) {
     case LLMProvider.OpenAI:
-      if (llm_name.startsWith("dall-e") || llm_name.startsWith("gpt-image"))
+      if (isOpenAIImageModel(llm_name))
         return _extract_openai_image_responses(
           response as Array<ImagesResponseDataInner>,
         );

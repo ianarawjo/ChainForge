@@ -88,7 +88,7 @@ import {
   grabResponses,
   queryLLM,
 } from "./backend/backend";
-import { StringLookup } from "./backend/cache";
+import { MediaLookup, StringLookup } from "./backend/cache";
 import { union } from "./backend/setUtils";
 import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 
@@ -1037,6 +1037,10 @@ Soft failing by replacing undefined with empty strings.`,
     setJSONResponses([]);
     setProgressAnimated(true);
 
+    // To tell whether this run had to keep generated images in memory only,
+    // because browser storage was full.
+    const sessionOnlyMediaBefore = MediaLookup.sessionOnlyCount();
+
     const rejected = (err: Error | string) => {
       if (
         err instanceof UserForcedPrematureExit ||
@@ -1221,6 +1225,17 @@ Soft failing by replacing undefined with empty strings.`,
           });
         }
 
+        // Warn if generated images couldn't be stored durably. They still
+        // display now, but will be gone after a reload unless exported.
+        const newSessionOnlyMedia =
+          MediaLookup.sessionOnlyCount() - sessionOnlyMediaBefore;
+        const storageWarning =
+          newSessionOnlyMedia > 0
+            ? `Browser storage for files is full (${Math.round(MediaLookup.storageUsage().limitBytes / 1024 / 1024)} MB), ` +
+              `so ${newSessionOnlyMedia} generated image(s) from this run are kept only until this page is reloaded or closed. ` +
+              `Export the flow to keep them, or remove files you no longer need (e.g. from Media or Upload nodes) before generating more.`
+            : undefined;
+
         // If there was at least one error collecting a response...
         const llms_w_errors = json?.errors ? Object.keys(json.errors) : [];
         if (llms_w_errors.length > 0) {
@@ -1251,7 +1266,8 @@ Soft failing by replacing undefined with empty strings.`,
           if (showAlert)
             showAlert(
               "Errors collecting responses. Re-run prompt node to retry.\n\n" +
-                combined_err_msg,
+                combined_err_msg +
+                (storageWarning ? `\n${storageWarning}` : ""),
             );
 
           return;
@@ -1271,6 +1287,7 @@ Soft failing by replacing undefined with empty strings.`,
 
         // All responses collected! Change status to 'ready':
         setStatus(Status.READY);
+        if (storageWarning && showAlert) showAlert(storageWarning);
 
         // Ping any inspect nodes attached to this node to refresh their contents:
         pingOutputNodes(id);

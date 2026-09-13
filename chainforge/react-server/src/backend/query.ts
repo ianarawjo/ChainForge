@@ -39,6 +39,18 @@ interface _IntermediateLLMResponseType {
 // From trincot @ SO: https://stackoverflow.com/a/76477994/1911342
 // Functions equivalently to Python's asyncio 'as_completed' method,
 // performing a Promise.race() but where all promises are yielded as they complete
+/**
+ * Guesses an image's MIME type from the start of its base64 encoding, i.e. its
+ * magic bytes. Providers can return JPEG or WebP, and compression may produce
+ * JPEG, so labelling everything PNG mislabels the stored file.
+ */
+function imageMimeFromBase64(b64: string): string {
+  if (b64.startsWith("/9j/")) return "image/jpeg";
+  if (b64.startsWith("UklGR")) return "image/webp";
+  if (b64.startsWith("R0lGOD")) return "image/gif";
+  return "image/png";
+}
+
 async function* yield_as_completed(promises: Array<Promise<any>>) {
   // Don't mutate original array, and have Promise.race work with the
   // chained promises, so that if there is a rejection, the caller's
@@ -127,15 +139,31 @@ export class PromptPipeline {
           }
 
           // Intern the image to the MediaLookup table
-          const uid = await MediaLookup.uploadDataURL(
-            `data:image/png;base64,${img_data}`,
-          );
+          const dataURL = `data:${imageMimeFromBase64(img_data)};base64,${img_data}`;
+          let uid: string | undefined;
+          try {
+            uid = await MediaLookup.uploadDataURL(dataURL);
+          } catch (err) {
+            // Most likely the browser storage budget is full. Letting this
+            // throw would reject the task and abort the whole run, discarding
+            // responses that were already paid for. Keep the image in memory
+            // for this session instead; the PromptNode warns the user that it
+            // won't survive a reload unless exported.
+            console.warn(
+              `Could not store generated image durably; keeping it for this session only. ${(err as Error).message}`,
+            );
+            try {
+              uid = MediaLookup.keepDataURLForSession(dataURL);
+            } catch (e) {
+              console.error("Could not keep generated image in memory:", e);
+            }
+          }
           if (uid) {
             r.d = uid; // Update the image data to the media UID, rather than the raw data.
           } else {
-            console.warn("Failed to upload image to MediaLookup table.");
-            // Backup plan... may lead to unexpected behavior.
-            r.d = `data:image/png;base64,${r.d}`;
+            // Last resort: keep the bytes inline in the response. They still
+            // display and export, but enlarge the saved response cache.
+            r.d = dataURL;
           }
         }
       }

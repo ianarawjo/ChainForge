@@ -32,7 +32,9 @@ import {
   IconLetterCaseToggle,
   IconFilter,
   IconChartBar,
+  IconLayoutGrid,
 } from "@tabler/icons-react";
+import ResponseGridView from "./ResponseGridView";
 import {
   MantineReactTable,
   useMantineReactTable,
@@ -1031,7 +1033,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                 return <MediaBox mediaUID={val.d} />;
               } else {
                 // For now, we just display the doc ID...
-                <span className="icl">{val.d}</span>;
+                return <span className="icl">{val.d}</span>;
               }
             } else if ("type" in val && val.type === "eval") {
               return (
@@ -1394,6 +1396,13 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             />
             {wideFormat ? " Table View" : ""}
           </Tabs.Tab>
+          <Tabs.Tab value="grid">
+            <IconLayoutGrid
+              size="10pt"
+              style={{ marginBottom: wideFormat ? "0px" : "-4px" }}
+            />
+            {wideFormat ? " Grid View" : ""}
+          </Tabs.Tab>
           {showEvalScoreOptions && wideFormat ? (
             <Tabs.Tab value="vis">
               <IconChartBar
@@ -1440,7 +1449,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         </Tabs.Panel>
       </Tabs>
 
-      <div className="nowheel nodrag" style={{ minHeight: "800px" }}>
+      <div
+        className="nowheel nodrag"
+        // The grid scrolls within the space available, so needs no minimum.
+        style={{ minHeight: viewFormat === "grid" ? undefined : "800px" }}
+      >
         {/* To get the overlay to operate just inside the div, use style={{position: "relative"}}. However it won't show the spinner in the right place. */}
         <LoadingOverlay
           visible={showLoadingSpinner || (isOpen && !isOpenDelayed)}
@@ -1449,6 +1462,15 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         {isOpenDelayed ? (
           viewFormat === "table" ? (
             <MantineReactTable table={table} />
+          ) : viewFormat === "grid" ? (
+            <Box pt="xs">
+              <ResponseGridView
+                responses={batchedResponses}
+                modelOf={getLLMName}
+                modelLabel={customLLMFieldName || "LLM"}
+                wideFormat={wideFormat}
+              />
+            </Box>
           ) : (
             responseDivs
           )
