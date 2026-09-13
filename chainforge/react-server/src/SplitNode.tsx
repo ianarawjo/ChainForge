@@ -29,7 +29,7 @@ import {
 
 import { fromMarkdown } from "mdast-util-from-markdown";
 import StorageCache, { StringLookup } from "./backend/cache";
-import { ResponseBox } from "./ResponseBoxes";
+import { TextResponseCard } from "./TableResponseCell";
 import { Root, RootContent } from "mdast";
 import { Dict, TemplateVarInfo } from "./backend/typing";
 import { generatePrompts } from "./backend/backend";
@@ -116,54 +116,22 @@ const displaySplitTexts = (
   textInfos: (TemplateVarInfo | string)[],
   getColorForLLM: (llm_name: string) => string,
 ) => {
-  const color_for_llm = (llm_name: string) => getColorForLLM(llm_name) + "99";
   return textInfos.map((info, idx) => {
-    const text = typeof info === "string" ? info : info.text;
-    const ps = <pre className="small-response">{text}</pre>;
-    if (typeof info === "string") {
-      return (
-        <ResponseBox
-          key={"r" + idx}
-          boxColor="#ddd"
-          width="100%"
-          vars={{}}
-          truncLenForVars={72}
-          llmName=""
-        >
-          {ps}
-        </ResponseBox>
-      );
-    } else {
-      const llm_color =
-        typeof info.llm === "object" && "name" in info.llm
-          ? color_for_llm(
-              StringLookup.get(info.llm?.name) ?? "(string lookup failed)",
-            )
-          : "#ddd";
-      const llm_name =
-        typeof info.llm === "object" && "name" in info.llm
-          ? StringLookup.get(info.llm?.name)
-          : "";
-      return (
-        <ResponseBox
-          key={"r" + idx}
-          boxColor={llm_color}
-          width="100%"
-          vars={info.fill_history ?? {}}
-          truncLenForVars={72}
-          llmName={llm_name}
-        >
-          {llm_name !== undefined ? (
-            <div>
-              <h1>{llm_name}</h1>
-              {ps}
-            </div>
-          ) : (
-            ps
-          )}
-        </ResponseBox>
-      );
-    }
+    if (typeof info === "string")
+      return <TextResponseCard key={"r" + idx} text={info} />;
+    const llm_name =
+      typeof info.llm === "object" && "name" in info.llm
+        ? StringLookup.get(info.llm?.name)
+        : undefined;
+    return (
+      <TextResponseCard
+        key={"r" + idx}
+        text={StringLookup.get(info.text) ?? ""}
+        modelName={llm_name}
+        modelColor={llm_name ? getColorForLLM(llm_name) : undefined}
+        vars={info.fill_history}
+      />
+    );
   });
 };
 

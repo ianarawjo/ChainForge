@@ -266,9 +266,6 @@ html[data-mantine-color-scheme="dark"] button.remove-edge-btn:active {
   align-items: center;
   margin-bottom: 5px;
 }
-.input-field textarea {
-  font-family: var(--monofont), monospace;
-}
 
 .remove-text-field-btn {
   margin-left: 3px;
@@ -581,6 +578,240 @@ html[data-mantine-color-scheme="dark"] .settings-var-inline {
   border-right: 1px solid #eee;
   padding-left: 0px !important;
   padding-right: 0px !important;
+}
+
+/* Table View cells (TableResponseCell.tsx) */
+.cf-table-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+.cf-table-var {
+  width: 100%;
+}
+/* A pale box of the model's color (gray when there is none), with a strip of
+   the stronger color along the top holding the badges and rating buttons. */
+.cf-table-resp {
+  --cf-model-color: rgb(134, 142, 150);
+  border-radius: 5px;
+  overflow: hidden;
+  background-color: color-mix(in srgb, var(--cf-model-color) 18%, transparent);
+}
+html[data-mantine-color-scheme="dark"] .cf-table-resp {
+  background-color: color-mix(in srgb, var(--cf-model-color) 28%, transparent);
+}
+.cf-table-resp-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 20px;
+  padding: 1px 4px 1px 6px;
+  /* Dark on light model colors (e.g. amber), white otherwise. */
+  color: var(--cf-band-text, #fff);
+  background-color: color-mix(in srgb, var(--cf-model-color) 75%, transparent);
+}
+.cf-table-resp-text,
+.cf-table-var {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--cf-lines, 6);
+  overflow: hidden;
+}
+.cf-table-resp-text {
+  cursor: pointer;
+  padding: 4px 7px;
+}
+/* Text in a card that doesn't open in full (e.g. Split and Join previews). */
+.cf-table-resp-text.cf-table-resp-static {
+  cursor: text;
+}
+/* Cards without a model color (e.g. prompt previews): in dark mode, a gray
+   tint washes out the text, especially on the mid-gray prompt list. A dark
+   panel with a faint outline (as .small-response was) keeps it readable on
+   any dark background. */
+html[data-mantine-color-scheme="dark"] .cf-table-resp.cf-table-resp-neutral {
+  background-color: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+html[data-mantine-color-scheme="dark"]
+  .cf-table-resp-neutral
+  .cf-table-resp-text {
+  color: #fff;
+}
+/* Model name in the strip, where the view doesn't show it elsewhere. */
+.cf-table-resp-model {
+  font-size: 11px;
+  font-weight: 600;
+  margin-right: 2px;
+}
+/* Prompt variables under the strip (e.g. in the Grouped List). */
+.cf-table-resp-vars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  padding: 3px 7px 0;
+  font-size: 11px;
+  opacity: 0.75;
+}
+html[data-mantine-color-scheme="dark"] .cf-table-resp-text {
+  color: #e9ecef;
+}
+/* Copy button in a response's bottom-right corner, shown on hover. */
+.cf-table-resp {
+  position: relative;
+}
+.cf-table-resp .cf-table-copy {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  opacity: 0;
+  pointer-events: none;
+  background-color: rgba(255, 255, 255, 0.9);
+}
+html[data-mantine-color-scheme="dark"] .cf-table-resp .cf-table-copy {
+  background-color: rgba(37, 38, 43, 0.9);
+}
+.cf-table-resp:hover .cf-table-copy {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cf-table-resp-image {
+  display: flex;
+  justify-content: center;
+  padding: 4px;
+  cursor: zoom-in;
+}
+.cf-table-resp-image img {
+  display: block;
+  max-height: 240px;
+  object-fit: contain;
+}
+.cf-table-count {
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 15px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background-color: rgba(128, 128, 128, 0.2);
+}
+.cf-table-resp .cf-table-resp-band .cf-table-count {
+  padding: 0 2px;
+  color: inherit;
+  background-color: transparent;
+}
+.cf-score-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 15px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 0 5px;
+  border-radius: 3px;
+  background-color: rgba(128, 128, 128, 0.18);
+}
+.cf-score-chip-label {
+  opacity: 0.7;
+}
+.cf-score-pass {
+  background-color: rgba(47, 158, 68, 0.25);
+}
+.cf-score-fail {
+  background-color: rgba(224, 49, 49, 0.25);
+}
+html[data-mantine-color-scheme="dark"] .cf-score-chip,
+html[data-mantine-color-scheme="dark"] .cf-table-count {
+  color: #e9ecef;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+html[data-mantine-color-scheme="dark"] .cf-score-pass {
+  color: #b2f2bb;
+  background-color: rgba(47, 158, 68, 0.35);
+}
+html[data-mantine-color-scheme="dark"] .cf-score-fail {
+  color: #ffc9c9;
+  background-color: rgba(224, 49, 49, 0.35);
+}
+/* In a response's color strip: white text on solid chips, in either theme
+   (so more specific than the dark theme's chip colors above). */
+.cf-table-resp .cf-table-resp-band .cf-score-chip {
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0.25);
+}
+.cf-table-resp .cf-table-resp-band .cf-score-pass {
+  background-color: rgba(43, 138, 62, 0.9);
+}
+.cf-table-resp .cf-table-resp-band .cf-score-fail {
+  background-color: rgba(201, 42, 42, 0.9);
+}
+.cf-model-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+/* Grid View text cards colored by model (ResponseGridView.tsx): a pale box
+   of the model's color with a solid edge along the top, as in the table. */
+.cf-grid-card-model {
+  border: 1px solid rgba(128, 128, 128, 0.25);
+  border-top: 3px solid var(--cf-model-color);
+  background-color: color-mix(in srgb, var(--cf-model-color) 18%, transparent);
+}
+html[data-mantine-color-scheme="dark"] .cf-grid-card-model {
+  background-color: color-mix(in srgb, var(--cf-model-color) 28%, transparent);
+}
+/* The card's text; the card itself inherits its text color inline. */
+html[data-mantine-color-scheme="dark"] .cf-grid-card-model > div {
+  color: #e9ecef;
+}
+
+/* Rating buttons at the right end of a response's color strip: only the set
+   ones (a grade or a note) show until the response is hovered, or while its
+   note is being edited. */
+.cf-table-resp-band {
+  position: relative;
+}
+/* Floats over the strip's right end, so hidden buttons take no room there
+   (which would wrap the badges onto a second line in narrow columns). */
+.cf-table-resp-toolbar {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  border-radius: 4px;
+}
+.cf-table-resp:hover .cf-table-resp-toolbar,
+.cf-table-resp-toolbar:has(.rating-toolbar-reveal[data-open="true"]) {
+  background-color: var(--cf-model-color);
+}
+.cf-table-resp-band .rating-toolbar-reveal button {
+  height: 18px;
+  min-height: 18px;
+  color: var(--cf-band-text, #fff);
+  background-color: transparent;
+}
+.cf-table-resp-band .rating-toolbar-reveal button[data-selected="true"] {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+.rating-toolbar-reveal [data-selected="false"] {
+  opacity: 0;
+  pointer-events: none;
+}
+.cf-table-resp:hover .rating-toolbar-reveal [data-selected="false"],
+.rating-toolbar-reveal[data-open="true"] [data-selected="false"] {
+  opacity: 1;
+  pointer-events: auto;
 }
 .inspect-responses-drawer {
   position: absolute;
@@ -927,14 +1158,10 @@ html[data-mantine-color-scheme="dark"] .comment-node textarea {
   overflow-y: scroll;
   max-height: 150px;
   margin: 6px 0px;
-  font-family: var(--monofont), monospace;
-  font-size: 10pt;
-  line-height: 1;
+  /* The same font and size as response cards and text fields. */
+  font-size: 12px;
+  line-height: 1.4;
   cursor: text;
-}
-th .content-editable-div {
-  font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
 }
 [contenteditable="true"]:empty:not(:focus):before {
   content: attr(placeholder);
@@ -1015,24 +1242,23 @@ html[data-mantine-color-scheme="dark"] .code-mirror-field-header {
   color: #666;
 }
 
-/* Allows resizing the Mantine Textarea component */
+/* Allows resizing the Mantine Textarea component. Text is in the same font
+   and size as response cards (the theme's sans-serif, not monospace). */
 .text-field-fixed .mantine-Textarea-wrapper textarea {
   resize: vertical;
   overflow-y: auto;
   width: 260px;
   padding: calc(0.5rem / 3);
-  font-size: 10pt;
-  font-family: var(--monofont), monospace;
-  line-height: 1.2;
+  font-size: 12px;
+  line-height: 1.4;
   border-color: #999;
 }
 .prompt-field-fixed .mantine-Textarea-wrapper textarea {
   resize: vertical;
   overflow-y: auto;
   padding: calc(0.5rem / 3);
-  font-size: 10pt;
-  font-family: var(--monofont), monospace;
-  line-height: 1.2;
+  font-size: 12px;
+  line-height: 1.4;
   border-color: #999;
 }
 

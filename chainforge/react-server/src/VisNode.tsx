@@ -16,6 +16,10 @@ import {
 } from "@mantine/core";
 import useStore, { colorPalettes } from "./store";
 import Plot from "react-plotly.js";
+// The Plotly bundle react-plotly.js renders with (importing "plotly.js" would
+// add a second copy), for resizing plots ourselves. It has no type declarations.
+// @ts-expect-error No declaration file for plotly.js/dist/plotly
+import Plotly from "plotly.js/dist/plotly";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import ResizeHandle from "./ResizeHandle";
@@ -276,6 +280,19 @@ interface VisNodeData {
 }
 
 /**
+ * Graph types to choose between, for data that can be shown either way.
+ * Defined once, so a graph type keeps its identity across renders.
+ */
+const GRAPH_OPTIONS = [
+  { key: "bar", label: "Bar Chart", icon: <IconChartBar size={18} /> },
+  {
+    key: "box",
+    label: "Box & Whiskers",
+    icon: <IconChartHistogram size={18} />,
+  },
+];
+
+/**
  * VIS VIEW COMPONENT
  * The inner part of the Vis Node.
  */
@@ -315,19 +332,17 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const [isPlotRerenderPending, startTransition] = useTransition();
 
     // For some data types, there are multiple graph options available...
-    const graphOptions = [
-      { key: "bar", label: "Bar Chart", icon: <IconChartBar size={18} /> },
-      {
-        key: "box",
-        label: "Box & Whiskers",
-        icon: <IconChartHistogram size={18} />,
-      },
-    ];
-    const [graphType, setGraphType] = useState(graphOptions[0]);
+    const [graphType, setGraphType] = useState(GRAPH_OPTIONS[0]);
+    // Called while replotting, to force the graph type some data needs. The
+    // replot runs again when the graph type changes, so this must leave state
+    // alone when that type is already selected; otherwise the plot redraws in
+    // an endless loop (hundreds of times a second).
     const setForcedGraphType = (key: string) => {
       const nextGraphType =
-        graphOptions.find((o) => o.key === key) ?? graphOptions[0];
-      setGraphType(nextGraphType);
+        GRAPH_OPTIONS.find((o) => o.key === key) ?? GRAPH_OPTIONS[0];
+      setGraphType((prev) =>
+        prev.key === nextGraphType.key ? prev : nextGraphType,
+      );
       return nextGraphType;
     };
     const [disableGraphTypeOption, setDisableGraphTypeOption] = useState(false);
@@ -1286,37 +1301,47 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       responses,
       selectedLegendItems,
       plotDivRef,
-      graphType,
+      // By key, so only a real change of graph type replots.
+      graphType.key,
       colorScheme,
     ]);
 
-    // Resizing the plot when div is resized:
-    const setPlotDivRef = useCallback(
-      (elem: HTMLDivElement) => {
-        // To listen for resize events of the textarea, we need to use a ResizeObserver.
-        // We initialize the ResizeObserver only once, when the 'ref' is first set, and only on the div wrapping the Plotly vis.
-        if (!plotDivRef.current && window.ResizeObserver) {
-          const observer = new window.ResizeObserver(() => {
-            if (
-              !plotlyRef ||
-              !plotlyRef.current ||
-              // @ts-expect-error resizeHandler is a private property we access to force a redraw.
-              !plotlyRef.current.resizeHandler ||
-              !plotlySpec ||
-              plotlySpec.length === 0
-            )
-              return;
-            // The below calls Plotly.Plots.resize() on the specific element
-            // @ts-expect-error resizeHandler is a private property we access to force a redraw.
-            plotlyRef.current.resizeHandler();
-          });
+    // Resize the plot when the div around it is resized (e.g. with the resize
+    // handle). One observer for the div's lifetime, which resizes the plot only
+    // when the div's size actually changed, and never while the plot is empty
+    // or hidden (Plotly throws "Resize must be passed a displayed plot div").
+    // Previously a new observer was added on every replot and never removed.
+    const plotlySpecRef = useRef(plotlySpec);
+    plotlySpecRef.current = plotlySpec;
+    const resizeObserverRef = useRef<ResizeObserver | null>(null);
+    const setPlotDivRef = useCallback((elem: HTMLDivElement | null) => {
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
+      plotDivRef.current = elem;
+      if (!elem || !window.ResizeObserver) return;
 
-          observer.observe(elem);
-        }
-        plotDivRef.current = elem;
-      },
-      [plotDivRef, plotlySpec],
-    );
+      let lastSize = "";
+      const observer = new window.ResizeObserver((entries) => {
+        const { width, height } = entries[0].contentRect;
+        const size = `${Math.round(width)}x${Math.round(height)}`;
+        if (size === lastSize) return;
+        lastSize = size;
+        // The plot's div (react-plotly's `el`), resized only while displayed.
+        const gd = (plotlyRef.current as unknown as { el?: HTMLElement } | null)
+          ?.el;
+        if (
+          !gd ||
+          plotlySpecRef.current.length === 0 ||
+          elem.offsetWidth === 0 ||
+          gd.offsetParent === null
+        )
+          return;
+        Promise.resolve(Plotly.Plots.resize(gd)).catch(() => undefined);
+      });
+      observer.observe(elem);
+      resizeObserverRef.current = observer;
+    }, []);
+    useEffect(() => () => resizeObserverRef.current?.disconnect(), []);
 
     return (
       <>
@@ -1409,7 +1434,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               </Menu.Target>
 
               <Menu.Dropdown>
-                {graphOptions.map((option) => (
+                {GRAPH_OPTIONS.map((option) => (
                   <Menu.Item
                     key={option.key}
                     icon={option.icon}
@@ -1437,7 +1462,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             ref={plotlyRef}
             data={plotlySpec}
             layout={plotlyLayout}
-            useResizeHandler={true}
+            // Not react-plotly's window resize handler: it resizes plots even
+            // while hidden (e.g. in a closed inspector), which Plotly rejects.
+            // The ResizeObserver above resizes the plot instead.
+            useResizeHandler={false}
             className="plotly-vis"
             style={{
               display: plotlySpec && plotlySpec.length > 0 ? "block" : "none",
