@@ -23,8 +23,10 @@ import RetrievalMethodListContainer, {
 import { LLMResponse, TemplateVarInfo } from "./backend/typing";
 import { FLASK_BASE_URL } from "./backend/utils";
 import {
-  canRetrieveRequestInBrowser,
-  retrieveRequestInBrowser,
+  RetrieveRequest,
+  RetrieveResponseRow,
+  retrievalLocation,
+  retrieveAcrossBrowserAndServer,
 } from "./backend/browserRetrieve";
 import type { LinkedMethodGroup } from "./RetrievalMethodListComponent";
 import { Status } from "./StatusIndicatorComponent";
@@ -207,12 +209,13 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
       settings: method.settings || {},
     }));
 
-    // Only poll the backend for progress when the backend is doing the work.
-    // Browser-side retrieval is synchronous, and the endpoint would not exist.
-    const runsHere = canRetrieveRequestInBrowser(formattedMethods as any);
+    // Methods with a browser implementation run here and the rest on the
+    // local server, and one request can mix the two.
+    const location = retrievalLocation(formattedMethods as any);
 
-    // Start Polling the "Faked" Endpoint
-    if (!runsHere)
+    // Only poll the backend for progress when the backend is doing all the
+    // work. Browser-side retrieval reports its own progress.
+    if (location === "server")
       pollIntervalRef.current = window.setInterval(async () => {
         try {
           const resp = await fetch(`${FLASK_BASE_URL}getRetrieveProgress`);
@@ -262,36 +265,24 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         linked_groups: linkedGroups.length > 0 ? linkedGroups : [],
       };
 
-      let retrievalResults: any;
-
-      if (runsHere) {
-        // Every requested method has a client-side implementation, so run it
-        // here: the same rows the endpoint would return (a fixture pins that),
-        // minus a round trip -- and it works with no local server at all.
-        // Semantic retrieval fetches a model on first use, so drive the same
-        // progress bar the backend poll would: a silent 30MB download reads
-        // as a hang.
-        retrievalResults = await retrieveRequestInBrowser(
-          retrieveRequest as any,
-          (p) => {
-            if (currentRunId !== runIdRef.current) return;
-            setProgressAnimated(true);
-            if (p.phase === "download")
-              setProgress(Math.min(50, 5 + (p.percent ?? 0) * 0.45));
-            else setProgress(Math.min(95, 50 + (p.percent ?? 0) * 0.45));
-          },
-        );
-        if (currentRunId !== runIdRef.current) return;
-      } else {
-        const response = await fetch(`${FLASK_BASE_URL}retrieve`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...retrieveRequest, api_keys: apiKeys }),
-        });
-
-        if (currentRunId !== runIdRef.current) {
-          console.log("Retrieval result ignored (stopped by user).");
-          return;
+      const retrieveOnServer = async (
+        request: RetrieveRequest,
+      ): Promise<RetrieveResponseRow[]> => {
+        let response: Response;
+        try {
+          response = await fetch(`${FLASK_BASE_URL}retrieve`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...request, api_keys: apiKeys }),
+          });
+        } catch {
+          // Nothing answered, as when ChainForge is not running locally.
+          throw new Error(
+            `These retrieval methods need the local ChainForge server, ` +
+              `which did not respond: ${request.methods
+                .map((m) => m.methodName)
+                .join(", ")}.`,
+          );
         }
 
         if (!response.ok) {
@@ -305,8 +296,36 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         }
 
         // The response is a flat array of objects
-        retrievalResults = await response.json();
-        if (currentRunId !== runIdRef.current) return;
+        return response.json();
+      };
+
+      let retrievalResults: any;
+
+      if (location === "server") {
+        retrievalResults = await retrieveOnServer(retrieveRequest as any);
+      } else {
+        // Methods with a client-side implementation run here: the same rows
+        // the endpoint would return (a fixture pins that), minus a round trip
+        // -- and with no local server at all, if none of the methods needs
+        // one. Semantic retrieval fetches a model on first use, so drive the
+        // same progress bar the backend poll would: a silent 30MB download
+        // reads as a hang.
+        retrievalResults = await retrieveAcrossBrowserAndServer(
+          retrieveRequest as any,
+          retrieveOnServer,
+          (p) => {
+            if (currentRunId !== runIdRef.current) return;
+            setProgressAnimated(true);
+            if (p.phase === "download")
+              setProgress(Math.min(50, 5 + (p.percent ?? 0) * 0.45));
+            else setProgress(Math.min(95, 50 + (p.percent ?? 0) * 0.45));
+          },
+        );
+      }
+
+      if (currentRunId !== runIdRef.current) {
+        console.log("Retrieval result ignored (stopped by user).");
+        return;
       }
 
       // --- Hide individual members of fused groups; keep only the fused column ---

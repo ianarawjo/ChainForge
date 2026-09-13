@@ -14,6 +14,13 @@
  */
 
 import type { EntailmentJudge } from "./ragChat";
+import {
+  InferenceWorkerClient,
+  InferenceWorkerFailed,
+  inferenceWorker,
+  inferenceWorkerFailed,
+  inWorkerOrOnPage,
+} from "./inferenceWorkerClient";
 
 export const BROWSER_NLI_MODEL = {
   id: "Xenova/nli-deberta-v3-xsmall",
@@ -101,6 +108,11 @@ export function downloadProgress(
   };
 }
 
+interface LoadNliOptions {
+  signal?: AbortSignal;
+  onProgress?: (p: NliDownloadProgress) => void;
+}
+
 let loading: Promise<EntailmentJudge> | undefined;
 let loaded = false;
 
@@ -108,9 +120,13 @@ let loaded = false;
 let activeSignal: AbortSignal | undefined;
 let fetchWrapped = false;
 
+/** The load running in the inference worker, and whether it finished. */
+let workerLoading: Promise<EntailmentJudge> | undefined;
+let workerLoaded = false;
+
 /** Whether the model is loaded and ready in this tab. */
 export function isNliLoaded(): boolean {
-  return loaded;
+  return loaded || workerLoaded;
 }
 
 /**
@@ -119,12 +135,80 @@ export function isNliLoaded(): boolean {
  *
  * Aborting `signal` cancels the download and rejects with DownloadCancelled.
  * Only the first caller's signal governs a load in flight.
+ *
+ * The model runs in the inference worker (see inferenceWorkerClient.ts): a
+ * turn's answers are judged pair by pair, and on the page's main thread that
+ * freezes the tab while they are.
  */
-export function loadNli(
-  opts: {
-    signal?: AbortSignal;
-    onProgress?: (p: NliDownloadProgress) => void;
-  } = {},
+export async function loadNli(
+  opts: LoadNliOptions = {},
+): Promise<EntailmentJudge> {
+  const worker = await inferenceWorker();
+  if (worker) {
+    try {
+      return await loadNliInWorker(worker, opts);
+    } catch (err) {
+      if (!(err instanceof InferenceWorkerFailed)) throw err;
+      inferenceWorkerFailed(err);
+    }
+  }
+  return loadNliInThisThread(opts);
+}
+
+function loadNliInWorker(
+  worker: InferenceWorkerClient,
+  { signal, onProgress }: LoadNliOptions,
+): Promise<EntailmentJudge> {
+  if (workerLoading) return workerLoading;
+  if (signal?.aborted) return Promise.reject(new DownloadCancelled());
+
+  const judge: EntailmentJudge = (premise, hypothesis) =>
+    inWorkerOrOnPage<boolean>(
+      { kind: "entails", premise, hypothesis },
+      async () => (await loadNliInThisThread())(premise, hypothesis),
+    );
+
+  const load = worker
+    .request<null, NliDownloadProgress>({ kind: "loadNli" }, onProgress)
+    .then(() => judge);
+  // Once cancelled, nobody awaits this; its rejection is expected.
+  load.catch(() => undefined);
+
+  // The worker cannot see this page's signal, so a cancel is passed on as a
+  // message. The wait ends here at once rather than when the worker replies.
+  const cancelled = new Promise<never>((_resolve, reject) => {
+    signal?.addEventListener(
+      "abort",
+      () => {
+        worker.request({ kind: "cancelNliDownload" }).catch(() => undefined);
+        reject(new DownloadCancelled());
+      },
+      { once: true },
+    );
+  });
+
+  const current: Promise<EntailmentJudge> = Promise.race([load, cancelled])
+    .then((entails) => {
+      workerLoaded = true;
+      return entails;
+    })
+    .catch((err) => {
+      // A failed or cancelled load must not be cached, or it can never retry.
+      if (workerLoading === current) workerLoading = undefined;
+      if (signal?.aborted || (err as Error)?.name === "DownloadCancelled")
+        throw new DownloadCancelled();
+      throw err;
+    });
+  workerLoading = current;
+  return current;
+}
+
+/**
+ * Loads the NLI model on the calling thread: the inference worker's job, or
+ * the page's where there is no worker. Otherwise as loadNli.
+ */
+export function loadNliInThisThread(
+  opts: LoadNliOptions = {},
 ): Promise<EntailmentJudge> {
   if (loading) return loading;
 

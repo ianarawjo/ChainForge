@@ -21,7 +21,8 @@
  */
 
 import { Dict } from "./typing";
-import { ProgressFn } from "./browserEmbeddings";
+import { EmbeddingLoadProgress, ProgressFn } from "./browserEmbeddings";
+import { inWorkerOrOnPage } from "./inferenceWorkerClient";
 
 /** A cross-encoder that can run client-side. */
 export interface BrowserRerankModel {
@@ -199,6 +200,29 @@ export function loadReranker(
   return loading;
 }
 
+/**
+ * Loads a reranker and scores documents against a query, on the calling
+ * thread: the inference worker's job, or the page's where there is no worker.
+ * Scores are in the documents' input order.
+ */
+export async function scoreInThisThread(
+  modelId: string,
+  query: string,
+  documents: string[],
+  onProgress?: ProgressFn,
+): Promise<number[]> {
+  const reranker = await loadReranker(modelId, onProgress);
+  onProgress?.({
+    phase: "embed",
+    percent: 0,
+    detail: `Scoring ${documents.length} documents`,
+  });
+
+  const scores = await reranker.score(query, documents);
+  onProgress?.({ phase: "embed", percent: 100 });
+  return scores;
+}
+
 function num(settings: Dict<any>, key: string, fallback: number): number {
   const raw = settings?.[key];
   if (raw === undefined || raw === null || raw === "") return fallback;
@@ -242,15 +266,14 @@ export async function rerankInBrowser(
     num(settings, "top_k", Math.min(5, documents.length)),
   );
 
-  const reranker = await loadReranker(modelId, onProgress);
-  onProgress?.({
-    phase: "embed",
-    percent: 0,
-    detail: `Scoring ${documents.length} documents`,
-  });
-
-  const scores = await reranker.score(query, documents);
-  onProgress?.({ phase: "embed", percent: 100 });
+  // Scored in the inference worker: a cross-encoder reads every
+  // query-document pair, and on the page's main thread a long list of
+  // documents freezes the tab until it is done.
+  const scores = await inWorkerOrOnPage<number[], EmbeddingLoadProgress>(
+    { kind: "rerank", modelId, query, documents },
+    () => scoreInThisThread(modelId, query, documents, onProgress),
+    onProgress,
+  );
 
   return documents
     .map((document, index) => ({ document, score: scores[index] ?? 0, index }))
