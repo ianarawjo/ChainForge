@@ -17,7 +17,7 @@ import {
   LLMResponseData,
   isImageResponseData,
 } from "./backend/typing";
-import { llmResponseDataToString } from "./backend/utils";
+import { llmResponseDataToString, truncStr } from "./backend/utils";
 import { formatScore, passFail } from "./backend/responseGrid";
 import { MediaBox } from "./ResponseBoxes";
 
@@ -257,3 +257,80 @@ export const TableResponseCell: React.FC<TableResponseCellProps> = ({
     })}
   </div>
 );
+
+export interface TextResponseCardProps {
+  text: string;
+  /**
+   * Shown in the strip along the top: a model's name (in its color, when
+   * `modelColor` is given) or another label, such as a prompt variant's.
+   */
+  modelName?: string;
+  modelColor?: string;
+  /** Prompt variables that produced the text, listed under the strip. */
+  vars?: Dict<unknown>;
+  /** Longest a variable's value is shown before being cut short. */
+  varMaxLength?: number;
+}
+
+/**
+ * The same card as a response's, for text that isn't a stored response, such
+ * as Split and Join node previews: no ratings, copying, or opening in full.
+ */
+export const TextResponseCard: React.FC<TextResponseCardProps> = ({
+  text,
+  modelName,
+  modelColor,
+  vars,
+  varMaxLength = 72,
+}) => {
+  const varEntries = Object.entries(vars ?? {}).map(
+    ([name, value]) =>
+      [
+        name,
+        truncStr(
+          llmResponseDataToString(value as LLMResponseData).trim(),
+          varMaxLength,
+        ) ?? "",
+      ] as const,
+  );
+  return (
+    <div
+      className="cf-table-cell"
+      style={
+        {
+          "--cf-lines": "none",
+          fontSize: 12,
+          lineHeight: 1.4,
+        } as React.CSSProperties
+      }
+    >
+      <div
+        className="cf-table-resp"
+        style={
+          modelColor
+            ? ({
+                "--cf-model-color": modelColor,
+                "--cf-band-text": readableTextOn(modelColor),
+              } as React.CSSProperties)
+            : undefined
+        }
+      >
+        {modelName && (
+          <div className="cf-table-resp-band">
+            <span className="cf-table-resp-model">{modelName}</span>
+          </div>
+        )}
+        {varEntries.length > 0 && (
+          <div className="cf-table-resp-vars">
+            {varEntries.map(([name, value]) => (
+              <span key={name}>
+                <b>{name}</b> = {value}
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="cf-table-resp-text cf-table-resp-static">{text}</div>
+      </div>
+    </div>
+  );
+};

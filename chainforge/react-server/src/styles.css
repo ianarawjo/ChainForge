@@ -629,6 +629,10 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp {
   cursor: pointer;
   padding: 4px 7px;
 }
+/* Text in a card that doesn't open in full (e.g. Split and Join previews). */
+.cf-table-resp-text.cf-table-resp-static {
+  cursor: text;
+}
 /* Model name in the strip, where the view doesn't show it elsewhere. */
 .cf-table-resp-model {
   font-size: 11px;

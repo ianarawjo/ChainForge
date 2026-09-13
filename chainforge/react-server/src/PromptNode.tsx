@@ -40,6 +40,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import useStore from "./store";
+import { TextResponseCard } from "./TableResponseCell";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import TemplateHooks, {
@@ -57,7 +58,6 @@ import {
   setsAreEqual,
   getLLMsInPulledInputData,
   extractSettingsVars,
-  truncStr,
   genDebounceFunc,
   ensureUniqueName,
 } from "./backend/utils";
@@ -154,32 +154,16 @@ const displayPromptInfos = (
   wideFormat: boolean,
   isTemplate?: boolean,
 ) =>
+  // The same cards as responses elsewhere (see TableResponseCell.tsx), with a
+  // prompt variant's label in the strip and the filled-in variables under it.
   promptInfos.map((info, idx) => (
-    <div key={idx}>
-      <div
-        className={
-          "prompt-preview" + (isTemplate ? " prompt-preview-template" : "")
-        }
-      >
-        {info.label && (
-          <Text size="xs" fw="bold" mb={0}>
-            {info.label}
-            <hr />
-          </Text>
-        )}
-        {info.image ? "Image UID: " + info.image.toString() : info.prompt}
-      </div>
-      {info.settings &&
-        Object.entries(info.settings).map(([key, val]) => {
-          return (
-            <div key={key} className="settings-var-inline response-var-inline">
-              <span className="response-var-name">{key}&nbsp;=&nbsp;</span>
-              <span className="response-var-value wrap-line">
-                {truncStr(val.toString(), wideFormat ? 512 : 72)}
-              </span>
-            </div>
-          );
-        })}
+    <div key={idx} style={{ marginBottom: 6 }}>
+      <TextResponseCard
+        text={info.image ? "Image UID: " + info.image.toString() : info.prompt}
+        modelName={info.label ?? (isTemplate ? "Template" : undefined)}
+        vars={info.settings}
+        varMaxLength={wideFormat ? 512 : 72}
+      />
     </div>
   ));
 

@@ -31,7 +31,7 @@ import {
   llmResponseDataToString,
 } from "./backend/utils";
 import StorageCache, { StringLookup } from "./backend/cache";
-import { ResponseBox } from "./ResponseBoxes";
+import { TextResponseCard } from "./TableResponseCell";
 import {
   Dict,
   JSONCompatible,
@@ -77,41 +77,22 @@ const displayJoinedTexts = (
   textInfos: (TemplateVarInfo | string)[],
   getColorForLLM: (llm_name: string) => string,
 ) => {
-  const color_for_llm = (llm_name: string) => getColorForLLM(llm_name) + "99";
   return textInfos.map((info, idx) => {
-    const llm_name =
-      typeof info !== "string"
-        ? typeof info.llm === "string" || typeof info.llm === "number"
-          ? StringLookup.get(info.llm)
-          : StringLookup.get(info.llm?.name)
-        : "";
-    const ps = (
-      <pre className="small-response">
-        {typeof info === "string" ? info : info.text}
-      </pre>
-    );
+    if (typeof info === "string")
+      return <TextResponseCard key={"r" + idx} text={info} />;
+    const llm_name = info.llm
+      ? typeof info.llm === "string" || typeof info.llm === "number"
+        ? StringLookup.get(info.llm)
+        : StringLookup.get(info.llm?.name)
+      : undefined;
     return (
-      <ResponseBox
+      <TextResponseCard
         key={"r" + idx}
-        boxColor={
-          typeof info !== "string" && info.llm && llm_name
-            ? color_for_llm(llm_name)
-            : "#ddd"
-        }
-        width="100%"
-        vars={typeof info === "string" ? {} : info.fill_history ?? {}}
-        truncLenForVars={72}
-        llmName={llm_name ?? ""}
-      >
-        {llm_name !== undefined ? (
-          <div>
-            <h1>{llm_name}</h1>
-            {ps}
-          </div>
-        ) : (
-          ps
-        )}
-      </ResponseBox>
+        text={StringLookup.get(info.text) ?? ""}
+        modelName={llm_name}
+        modelColor={llm_name ? getColorForLLM(llm_name) : undefined}
+        vars={info.fill_history}
+      />
     );
   });
 };

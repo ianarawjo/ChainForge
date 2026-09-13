@@ -787,6 +787,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                 width: `${fixed_width}%`,
                 padding: "0 2px 4px",
                 boxSizing: "border-box",
+                // The same text size as the Table View's cards.
+                fontSize: wideFormat ? 13 : 12,
+                lineHeight: 1.4,
               }}
             >
               <TableResponseCell
