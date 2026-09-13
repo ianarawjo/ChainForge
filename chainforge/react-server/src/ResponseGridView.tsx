@@ -675,7 +675,8 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
         : itemSize,
       itemGap: ITEM_GAP,
       cellGap: CELL_GAP,
-      rowHeaderWidth: hasRows ? (wideFormat ? 140 : 80) : 0,
+      // Row labels are often long (e.g. queries), so they get room to wrap.
+      rowHeaderWidth: hasRows ? (wideFormat ? 220 : 110) : 0,
       headerHeight: hasCols ? (wideFormat ? 22 : 18) : 0,
       titleHeight: axes.split ? (wideFormat ? 28 : 22) : 0,
       sectionGap: SECTION_GAP,
@@ -846,8 +847,22 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
               {value}
             </div>
           )}
-          renderRowHeader={(value) => (
-            <div style={headerStyle} title={value}>
+          // Wraps onto as many lines as the row has room for, and scrolls for
+          // the rest, so long values (e.g. queries) can be read and compared.
+          renderRowHeader={(value, maxHeight) => (
+            <div
+              className="nowheel"
+              title={value}
+              style={{
+                fontSize: wideFormat ? 13 : 11,
+                fontWeight: 500,
+                lineHeight: 1.35,
+                whiteSpace: "pre-wrap",
+                overflowWrap: "anywhere",
+                maxHeight,
+                overflowY: "auto",
+              }}
+            >
               {value}
             </div>
           )}

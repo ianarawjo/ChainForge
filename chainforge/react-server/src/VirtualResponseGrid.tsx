@@ -236,7 +236,11 @@ export interface VirtualResponseGridProps {
   renderItem: (item: GridItem) => React.ReactNode;
   renderTitle: (section: GridSection) => React.ReactNode;
   renderColumnHeader: (value: string) => React.ReactNode;
-  renderRowHeader: (value: string) => React.ReactNode;
+  /**
+   * A row's label. `maxHeight` is the room the row gives it, so a long label
+   * (e.g. a query) can show several lines and scroll for the rest.
+   */
+  renderRowHeader: (value: string, maxHeight: number) => React.ReactNode;
   /** Background behind sticky headers, so cards scrolling under them don't show through. */
   pinnedBackground?: string;
 }
@@ -429,7 +433,7 @@ const VirtualResponseGrid: React.FC<VirtualResponseGridProps> = ({
                   width: rowHeaderWidth - 6,
                 }}
               >
-                {renderRowHeader(value)}
+                {renderRowHeader(value, Math.max(20, h - 8))}
               </div>
             </div>
           </div>,
