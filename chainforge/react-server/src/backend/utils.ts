@@ -1166,11 +1166,20 @@ export async function call_google_ai(
     const chat_response = await chat.sendMessage({ message: prompt_parts });
 
     // NOTE: Sometimes, Google's API returns empty responses.
-    // I'm not sure why this happens. In this case, we just retry until we get a non-empty response.
-    if (!chat_response?.text) {
+    // This can happen with Gemini 2.5 Pro thinking models where the text
+    // response may be in the candidates rather than the .text accessor.
+    // We retry up to max_retries times, checking both .text and candidates.
+    const extractedText =
+      chat_response?.text ??
+      chat_response?.candidates?.[0]?.content?.parts
+        ?.filter((p: any) => p.text && !p.thought)
+        .map((p: any) => p.text)
+        .join("") ??
+      "";
+    if (!extractedText) {
       if (num_retries >= max_retries) {
         throw new Error(
-          "Maximum retries reached: Google Gemini is returning empty text responses. This happens occasionally due to ongoing issues with Google's API and the fix is unknown.",
+          "Maximum retries reached: Google Gemini is returning empty text responses. This can happen with thinking-enabled models (like Gemini 2.5 Pro) where the response contains only reasoning. Try a non-thinking model or check your prompt.",
         );
       }
       num_retries += 1;
@@ -1181,7 +1190,7 @@ export async function call_google_ai(
     }
 
     responses.push({
-      text: chat_response.text,
+      text: extractedText || chat_response.text,
       candidates: chat_response.candidates,
       promptFeedback: chat_response.promptFeedback,
     });
