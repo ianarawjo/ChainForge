@@ -25,9 +25,12 @@ import {
   Collapse,
   Group,
   Loader,
+  Progress,
   ScrollArea,
+  SegmentedControl,
   Text,
   Textarea,
+  Tooltip,
   UnstyledButton,
 } from "@mantine/core";
 import { v4 as uuid } from "uuid";
@@ -40,8 +43,17 @@ import { llmResponseDataToString } from "./backend/utils";
 import { escapeBraces } from "./backend/template";
 import { NodeRunResult } from "./backend/runGraph";
 import {
+  BROWSER_NLI_MODEL,
+  DownloadCancelled,
+  NliDownloadProgress,
+  isNliLoaded,
+  loadNli,
+} from "./backend/browserNli";
+import {
+  AnswerGrouping,
   ChatAnswer,
   ChatTurn,
+  EntailmentJudge,
   PromptOutputLike,
   answerLabel,
   answeringNodeIds,
@@ -49,9 +61,12 @@ import {
   collectStageValues,
   explainMixedStage,
   explainTurn,
-  groupAgreeingAnswers,
+  DEFAULT_ANSWER_GROUPING,
+  groupAnswersByMeaning,
+  groupAnswersExactly,
   progressMessage,
   splitAnswerLabels,
+  ungroupedAnswers,
 } from "./backend/ragChat";
 
 /**
@@ -77,9 +92,16 @@ export interface RagChatNodeProps {
     title?: string;
     query?: string;
     history?: ChatTurn[];
+    grouping?: AnswerGrouping;
   };
   id: string;
 }
+
+/** A turn's grouping by meaning, which takes a moment to compute. */
+type MeaningGrouping =
+  | { groups: number[][] }
+  | { pending: true }
+  | { error: string };
 
 const resolveText = (value: unknown): string | undefined =>
   value === undefined || value === null
@@ -99,6 +121,16 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
   const [pendingQuery, setPendingQuery] = useState("");
   const [status, setStatus] = useState<Status>(Status.NONE);
   const [openContext, setOpenContext] = useState<Record<string, boolean>>({});
+  const [grouping, setGrouping] = useState<AnswerGrouping>(
+    data.grouping ?? DEFAULT_ANSWER_GROUPING,
+  );
+  const [meaningGroups, setMeaningGroups] = useState<
+    Record<string, MeaningGrouping>
+  >({});
+  // Set only while the model for grouping by meaning is downloading.
+  const [modelDownload, setModelDownload] =
+    useState<NliDownloadProgress | null>(null);
+  const downloadAbortRef = useRef<AbortController | null>(null);
 
   // Refs, because send() finishes long after the render that started it.
   const historyRef = useRef(history);
@@ -106,6 +138,79 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const isConnected = edges.some((e) => e.source === id);
+
+  // Grouping by meaning runs in the background: the model may need
+  // downloading, and every pair of answers is judged. Until it finishes, a
+  // turn shows its answers ungrouped.
+  useEffect(() => {
+    if (grouping !== "meaning") return;
+    const todo = history.filter(
+      (t) => t.answers.length > 1 && !(t.id in meaningGroups),
+    );
+    if (todo.length === 0) return;
+    setMeaningGroups((prev) => {
+      const next = { ...prev };
+      for (const t of todo) next[t.id] = { pending: true };
+      return next;
+    });
+    (async () => {
+      let entails: EntailmentJudge;
+      try {
+        if (!isNliLoaded() && !downloadAbortRef.current)
+          downloadAbortRef.current = new AbortController();
+        entails = await loadNli({
+          signal: downloadAbortRef.current?.signal,
+          // Shown only while bytes are arriving, so a model the browser
+          // already has does not flash the overlay.
+          onProgress: (p) => setModelDownload(p.percent < 100 ? p : null),
+        });
+      } catch (err) {
+        setModelDownload(null);
+        downloadAbortRef.current = null;
+        if (err instanceof DownloadCancelled) {
+          // Back to exact grouping. The pending turns are forgotten, so
+          // choosing Meaning again starts over.
+          setMeaningGroups((prev) => {
+            const next = { ...prev };
+            for (const t of todo) delete next[t.id];
+            return next;
+          });
+          setGrouping("exact");
+          setDataPropsForNode(id, { grouping: "exact" as any });
+        } else {
+          const error = err instanceof Error ? err.message : String(err);
+          setMeaningGroups((prev) => {
+            const next = { ...prev };
+            for (const t of todo) next[t.id] = { error };
+            return next;
+          });
+        }
+        return;
+      }
+      setModelDownload(null);
+      downloadAbortRef.current = null;
+
+      for (const turn of todo) {
+        let result: MeaningGrouping;
+        try {
+          result = {
+            groups: await groupAnswersByMeaning(turn.answers, entails),
+          };
+        } catch (err) {
+          result = { error: err instanceof Error ? err.message : String(err) };
+        }
+        setMeaningGroups((prev) => ({ ...prev, [turn.id]: result }));
+      }
+    })();
+  }, [grouping, history, meaningGroups, id, setDataPropsForNode]);
+
+  const cancelModelDownload = () => downloadAbortRef.current?.abort();
+
+  const changeGrouping = (value: string) => {
+    const next = value as AnswerGrouping;
+    setGrouping(next);
+    setDataPropsForNode(id, { grouping: next as any });
+  };
 
   // Keep the newest turn in view.
   useEffect(() => {
@@ -305,7 +410,13 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
   // the check cannot back.
   const renderComparison = (turn: ChatTurn) => {
     const { shared, distinct } = splitAnswerLabels(turn.answers);
-    const groups = groupAgreeingAnswers(turn.answers);
+    const meaning = grouping === "meaning" ? meaningGroups[turn.id] : undefined;
+    const groups =
+      grouping === "exact"
+        ? groupAnswersExactly(turn.answers)
+        : meaning && "groups" in meaning
+          ? meaning.groups
+          : ungroupedAnswers(turn.answers);
     const total = turn.answers.length;
     const anyAgree = groups.some((g) => g.length > 1);
 
@@ -317,6 +428,16 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
         {shared && (
           <Text size="xs" color="dimmed" mb={4}>
             Same for all: {shared}
+          </Text>
+        )}
+        {meaning && "pending" in meaning && (
+          <Text size="xs" color="dimmed" mb={4}>
+            Grouping by meaning…
+          </Text>
+        )}
+        {meaning && "error" in meaning && (
+          <Text size="xs" color="red" mb={4}>
+            Could not group by meaning: {meaning.error}
           </Text>
         )}
         {groups.map((members) => {
@@ -332,7 +453,11 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
                   mb={2}
                 >
                   {members.length > 1
-                    ? `${members.length} of ${total} agree`
+                    ? `${members.length} of ${total} ${
+                        grouping === "meaning"
+                          ? "say the same thing"
+                          : "identical"
+                      }`
                     : `1 of ${total}`}
                 </Text>
               )}
@@ -422,6 +547,35 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
       />
 
       <div className="ragchat-body nodrag">
+        {modelDownload && (
+          <div className="ragchat-overlay">
+            <Text size="sm" weight={600}>
+              Downloading the model for grouping by meaning
+            </Text>
+            <Text size="xs" color="dimmed" mt={4}>
+              A one-time download of about {BROWSER_NLI_MODEL.sizeMB}MB, kept by
+              your browser for next time.
+            </Text>
+            <Progress
+              value={modelDownload.percent}
+              size="sm"
+              mt="md"
+              style={{ width: "80%" }}
+            />
+            <Text size="xs" color="dimmed" mt={6}>
+              {Math.round(modelDownload.loadedMB)} of{" "}
+              {Math.round(modelDownload.totalMB)} MB
+            </Text>
+            <Button
+              size="xs"
+              variant="default"
+              mt="md"
+              onClick={cancelModelDownload}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
         <ScrollArea
           h={340}
           viewportRef={scrollRef}
@@ -502,16 +656,47 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
           mt="xs"
           disabled={running}
         />
-        <Group position="apart" mt={6}>
-          <Button
-            size="xs"
-            variant="subtle"
-            color="gray"
-            onClick={clear}
-            disabled={running || history.length === 0}
-          >
-            Clear
-          </Button>
+        <Group position="apart" mt={6} noWrap>
+          <Group spacing={8} noWrap>
+            <Button
+              size="xs"
+              variant="subtle"
+              color="gray"
+              onClick={clear}
+              disabled={running || history.length === 0}
+            >
+              Clear
+            </Button>
+            <Tooltip
+              label={
+                "How answers from different configurations are grouped. " +
+                "Exact: the same text. Meaning: the same meaning, judged by " +
+                "an in-browser model (a one-time download of about " +
+                `${BROWSER_NLI_MODEL.sizeMB}MB); answers with different ` +
+                "numbers or negations are never grouped. Off: every answer " +
+                "on its own."
+              }
+              multiline
+              width={260}
+              withinPortal
+            >
+              <Group spacing={4} noWrap>
+                <Text size="xs" color="dimmed">
+                  Group:
+                </Text>
+                <SegmentedControl
+                  size="xs"
+                  value={grouping}
+                  onChange={changeGrouping}
+                  data={[
+                    { label: "Exact", value: "exact" },
+                    { label: "Meaning", value: "meaning" },
+                    { label: "Off", value: "off" },
+                  ]}
+                />
+              </Group>
+            </Tooltip>
+          </Group>
           {running ? (
             <Button size="xs" color="red" variant="light" onClick={stop}>
               Stop

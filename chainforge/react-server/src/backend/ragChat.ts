@@ -346,18 +346,37 @@ export function explainTurn(turn: ChatTurn): string | undefined {
 }
 
 /*
- * Whether answers agree.
+ * Grouping answers that say the same thing.
  *
- * Grouping answers that say the same thing shows at a glance which choices
- * changed the answer. But grouping two answers that actually differ hides the
- * very disagreement the comparison exists to show, which is far worse than
- * leaving two paraphrases apart. So the test is deliberately strict: answers
- * agree only if they mention the same numbers, match on yes/no and negation,
- * and share nearly all their content words.
+ * Grouping shows at a glance which choices changed the answer. But grouping
+ * two answers that actually differ hides the very difference the comparison
+ * exists to show, which is far worse than leaving two paraphrases apart. So
+ * every way of grouping errs towards leaving answers apart.
  */
 
-/** Share of content words two answers must have in common to agree. */
-export const AGREEMENT_THRESHOLD = 0.7;
+/** How the chat groups one turn's answers. */
+export type AnswerGrouping =
+  /** Identical text, ignoring case, punctuation and spacing. */
+  | "exact"
+  /** Similar meaning by embedding, unless the answers visibly conflict. */
+  | "meaning"
+  /** Every answer on its own. */
+  | "off";
+
+export const DEFAULT_ANSWER_GROUPING: AnswerGrouping = "exact";
+
+/** An answer as exact grouping compares it. */
+export function normalizeAnswer(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+/** Whether two answers have the same text, ignoring case and punctuation. */
+export function answersMatchExactly(a: string, b: string): boolean {
+  return normalizeAnswer(a) === normalizeAnswer(b);
+}
 
 const NUMBER_WORDS: Record<string, string> = {
   zero: "0",
@@ -396,64 +415,10 @@ const POLARITY_WORDS = new Set([
   "without",
 ]);
 
-const STOPWORDS = new Set([
-  "a",
-  "an",
-  "the",
-  "is",
-  "are",
-  "was",
-  "were",
-  "be",
-  "been",
-  "being",
-  "am",
-  "of",
-  "for",
-  "to",
-  "in",
-  "on",
-  "at",
-  "by",
-  "with",
-  "and",
-  "or",
-  "that",
-  "this",
-  "these",
-  "those",
-  "it",
-  "its",
-  "as",
-  "from",
-  "after",
-  "per",
-  "each",
-  "their",
-  "your",
-  "you",
-  "they",
-  "there",
-  "which",
-  "who",
-  "so",
-  "do",
-  "does",
-  "did",
-  "has",
-  "have",
-  "had",
-  "will",
-  "would",
-  "can",
-  "could",
-  "should",
-]);
-
 function answerTokens(text: string): string[] {
   const normalized = text
     .toLowerCase()
-    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[‘’]/g, "'")
     .replace(/n't\b/g, " not")
     .replace(/\bcannot\b/g, "can not")
     .replace(/(\d),(\d{3})\b/g, "$1$2");
@@ -467,45 +432,127 @@ function sameSet(a: Iterable<string>, b: Iterable<string>): boolean {
   return sa.size === sb.size && [...sa].every((x) => sb.has(x));
 }
 
-/** Whether two answers say the same thing. Strict; see above. */
-export function answersAgree(a: string, b: string): boolean {
+/**
+ * Whether two answers visibly conflict: they mention different numbers, or
+ * differ on yes/no or negation.
+ *
+ * Meaning never overrides this. Embeddings place "kept for 7 years" and
+ * "kept for 30 days" almost on top of each other, because the sentences are
+ * alike in everything but the fact that matters.
+ */
+export function answersConflict(a: string, b: string): boolean {
   const ta = answerTokens(a);
   const tb = answerTokens(b);
-  if (ta.join(" ") === tb.join(" ")) return true;
-
   const isNumber = (t: string) => /^\d/.test(t);
-  if (!sameSet(ta.filter(isNumber), tb.filter(isNumber))) return false;
-
   const isPolar = (t: string) => POLARITY_WORDS.has(t);
-  if (!sameSet(ta.filter(isPolar), tb.filter(isPolar))) return false;
-
-  const ca = new Set(ta.filter((t) => !STOPWORDS.has(t)));
-  const cb = new Set(tb.filter((t) => !STOPWORDS.has(t)));
-  if (ca.size === 0 || cb.size === 0) return false;
-  const shared = [...ca].filter((t) => cb.has(t)).length;
-  return shared / (ca.size + cb.size - shared) >= AGREEMENT_THRESHOLD;
+  return (
+    !sameSet(ta.filter(isNumber), tb.filter(isNumber)) ||
+    !sameSet(ta.filter(isPolar), tb.filter(isPolar))
+  );
 }
 
 /**
- * Groups one turn's answers by agreement, as lists of indices into `answers`.
+ * Groups one turn's answers, as lists of indices into `answers`.
  *
  * An answer joins a group only if it agrees with every answer already in it,
  * so a chain of near-paraphrases cannot pull two different answers together.
  * Larger groups come first; otherwise groups keep the order answers arrived in.
  */
-export function groupAgreeingAnswers(
+export function groupAnswers(
   answers: ChatAnswer[],
-  agree: (a: string, b: string) => boolean = answersAgree,
+  agree: (i: number, j: number) => boolean,
 ): number[][] {
   const groups: number[][] = [];
-  answers.forEach((answer, i) => {
-    const home = groups.find((g) =>
-      g.every((j) => agree(answers[j].text, answer.text)),
-    );
+  answers.forEach((_, i) => {
+    const home = groups.find((g) => g.every((j) => agree(j, i)));
     if (home) home.push(i);
     else groups.push([i]);
   });
   // Array.prototype.sort is stable, so equal-sized groups keep their order.
+  return groups.sort((x, y) => y.length - x.length);
+}
+
+/** Every answer on its own. */
+export function ungroupedAnswers(answers: ChatAnswer[]): number[][] {
+  return answers.map((_, i) => [i]);
+}
+
+/** Groups answers with the same text, ignoring case and punctuation. */
+export function groupAnswersExactly(answers: ChatAnswer[]): number[][] {
+  return groupAnswers(answers, (i, j) =>
+    answersMatchExactly(answers[i].text, answers[j].text),
+  );
+}
+
+/**
+ * Judges whether one text entails another: whether, if the premise is true,
+ * the hypothesis must be too.
+ */
+export type EntailmentJudge = (
+  premise: string,
+  hypothesis: string,
+) => Promise<boolean>;
+
+/**
+ * Groups answers that say the same thing.
+ *
+ * Two answers agree if their text matches exactly, or if they do not visibly
+ * conflict (see answersConflict) and each entails the other. Entailment both
+ * ways is the test because it is what "the same meaning" is: an answer that
+ * adds a condition ("only with manager approval") entails the plain one, but
+ * not the reverse, so they stay apart.
+ *
+ * Embedding similarity was tried first and could not be made safe. On
+ * labelled answer pairs, near-misses embedded closer than most paraphrases:
+ * "deleted automatically" / "manually" scored 0.983 and "90 days" /
+ * "90 months" 0.975, against paraphrases from 0.87. A small NLI model grouped
+ * every paraphrase and none of the near-misses.
+ *
+ * Each ordered pair of distinct texts is judged at most once.
+ */
+export async function groupAnswersByMeaning(
+  answers: ChatAnswer[],
+  entails: EntailmentJudge,
+): Promise<number[][]> {
+  if (answers.length < 2) return ungroupedAnswers(answers);
+
+  const judged = new Map<string, Promise<boolean>>();
+  const judge = (premise: string, hypothesis: string) => {
+    const key = JSON.stringify([premise, hypothesis]);
+    let verdict = judged.get(key);
+    if (!verdict) {
+      verdict = entails(premise, hypothesis);
+      judged.set(key, verdict);
+    }
+    return verdict;
+  };
+
+  const agree = async (a: string, b: string) => {
+    if (answersMatchExactly(a, b)) return true;
+    if (answersConflict(a, b)) return false;
+    return (await judge(a, b)) && (await judge(b, a));
+  };
+
+  // groupAnswers, but awaiting each judgement. An answer joins the first
+  // group whose every member it agrees with.
+  const groups: number[][] = [];
+  for (let i = 0; i < answers.length; i++) {
+    let home: number[] | undefined;
+    for (const group of groups) {
+      let fits = true;
+      for (const j of group)
+        if (!(await agree(answers[j].text, answers[i].text))) {
+          fits = false;
+          break;
+        }
+      if (fits) {
+        home = group;
+        break;
+      }
+    }
+    if (home) home.push(i);
+    else groups.push([i]);
+  }
   return groups.sort((x, y) => y.length - x.length);
 }
 

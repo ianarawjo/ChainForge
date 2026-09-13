@@ -5,16 +5,20 @@ import {
   PromptOutputLike,
   answerLabel,
   answeringNodeIds,
-  answersAgree,
+  answersConflict,
+  answersMatchExactly,
   answersFromPromptOutput,
   buildChatTurn,
   collectStageValues,
   explainMixedStage,
   explainTurn,
-  groupAgreeingAnswers,
+  groupAnswers,
+  groupAnswersByMeaning,
+  groupAnswersExactly,
   mixedStages,
   progressMessage,
   splitAnswerLabels,
+  ungroupedAnswers,
 } from "../ragChat";
 import { NodeRunResult } from "../runGraph";
 
@@ -467,110 +471,175 @@ describe("splitAnswerLabels", () => {
   });
 });
 
-describe("answersAgree", () => {
-  test("the same words agree, whatever the case and punctuation", () => {
-    expect(answersAgree("Seven years.", "seven years")).toBe(true);
+describe("answersMatchExactly", () => {
+  test("ignores case, punctuation and spacing", () => {
+    expect(answersMatchExactly("Seven years.", "  seven   YEARS")).toBe(true);
   });
 
-  test("a close paraphrase agrees", () => {
-    // Real answers from two retrievers in the comparison flow.
+  test("different wording does not match, however close", () => {
+    expect(answersMatchExactly("Seven years.", "7 years.")).toBe(false);
     expect(
-      answersAgree(
-        "Customer data is kept for 7 years after an account is closed.",
-        "Customer data is retained for seven years after the account is closed.",
+      answersMatchExactly("Backups are kept.", "Backups are retained."),
+    ).toBe(false);
+  });
+});
+
+describe("answersConflict", () => {
+  test("different numbers conflict", () => {
+    expect(answersConflict("Kept for 7 years.", "Kept for 30 years.")).toBe(
+      true,
+    );
+  });
+
+  test("a number written out is the same number", () => {
+    expect(answersConflict("Kept for seven years.", "Kept for 7 years.")).toBe(
+      false,
+    );
+  });
+
+  test("a negation conflicts with its opposite", () => {
+    expect(
+      answersConflict(
+        "Employees may work remotely.",
+        "Employees may not work remotely.",
       ),
+    ).toBe(true);
+    expect(
+      answersConflict("The handbook says.", "The handbook doesn't say."),
     ).toBe(true);
   });
 
-  test("different numbers never agree, however similar the wording", () => {
+  test("yes and no conflict", () => {
+    expect(answersConflict("Yes, you can.", "No, you can.")).toBe(true);
+  });
+
+  test("paraphrases do not conflict", () => {
     expect(
-      answersAgree(
+      answersConflict(
         "Customer data is kept for 7 years after an account is closed.",
-        "Customer data is kept for 30 years after an account is closed.",
-      ),
-    ).toBe(false);
-  });
-
-  test("a negation never agrees with its opposite", () => {
-    expect(
-      answersAgree(
-        "Employees may work remotely on Fridays.",
-        "Employees may not work remotely on Fridays.",
-      ),
-    ).toBe(false);
-    expect(
-      answersAgree(
-        "The handbook says how long data is kept.",
-        "The handbook doesn't say how long data is kept.",
-      ),
-    ).toBe(false);
-  });
-
-  test("yes and no disagree", () => {
-    expect(answersAgree("Yes, you can.", "No, you can.")).toBe(false);
-  });
-
-  test("unrelated answers disagree", () => {
-    expect(
-      answersAgree(
-        "Customer data is kept for 7 years.",
-        "The handbook does not mention data retention for closed accounts.",
-      ),
-    ).toBe(false);
-  });
-
-  test("a loose paraphrase is left apart rather than risk hiding a difference", () => {
-    expect(
-      answersAgree(
-        "Full-time employees accrue 18 days of paid leave per calendar year.",
-        "You get 18 days off every year if you work full time.",
+        "Customer data is retained for seven years after the account is closed.",
       ),
     ).toBe(false);
   });
 });
 
-describe("groupAgreeingAnswers", () => {
+describe("groupAnswers", () => {
   const texts = (ts: string[]) => ts.map((t) => answer(t, {}));
 
-  test("groups agreeing answers, largest group first", () => {
-    const groups = groupAgreeingAnswers(
-      texts([
-        "The handbook doesn't say.",
-        "Customer data is kept for 7 years.",
-        "Customer data is kept for seven years.",
-        "customer data is kept for 7 years",
-      ]),
-    );
-    expect(groups).toEqual([[1, 2, 3], [0]]);
-  });
-
   test("an answer must agree with every member, not just one", () => {
-    // b agrees with both a and c, but a and c disagree: c may not join a's group.
-    const agree = (x: string, y: string) =>
-      x === y ||
-      [x, y].sort().join() === "a,b" ||
-      [x, y].sort().join() === "b,c";
-    expect(groupAgreeingAnswers(texts(["a", "b", "c"]), agree)).toEqual([
-      [0, 1],
-      [2],
-    ]);
+    // 1 agrees with 0 and 2, but 0 and 2 disagree: 2 may not join 0's group.
+    const pairs = new Set(["0,1", "1,2"]);
+    const agree = (i: number, j: number) => pairs.has([i, j].sort().join(","));
+    expect(groupAnswers(texts(["a", "b", "c"]), agree)).toEqual([[0, 1], [2]]);
   });
 
-  test("when nothing agrees, every answer stands alone in arrival order", () => {
-    expect(
-      groupAgreeingAnswers(texts(["7 years.", "30 days.", "Not stated."])),
-    ).toEqual([[0], [1], [2]]);
-  });
-
-  test("equal-sized groups keep arrival order", () => {
-    expect(
-      groupAgreeingAnswers(
-        texts(["30 days.", "7 years.", "30 days", "7 years"]),
-      ),
-    ).toEqual([
-      [0, 2],
+  test("largest group first; equal-sized groups keep arrival order", () => {
+    const same = (i: number, j: number) =>
+      i % 2 === j % 2 || i === 4 || j === 4 ? i % 2 === j % 2 : false;
+    expect(groupAnswers(texts(["a", "b", "c", "d", "e"]), same)).toEqual([
+      [0, 2, 4],
       [1, 3],
     ]);
+  });
+});
+
+describe("groupAnswersExactly", () => {
+  test("groups matching text, leaving paraphrases apart", () => {
+    const answers = [
+      "Backups are kept for 90 days.",
+      "Backups are retained for 90 days.",
+      "backups are kept for 90 days",
+    ].map((t) => answer(t, {}));
+    expect(groupAnswersExactly(answers)).toEqual([[0, 2], [1]]);
+  });
+});
+
+describe("ungroupedAnswers", () => {
+  test("puts every answer on its own", () => {
+    expect(ungroupedAnswers([answer("a", {}), answer("a", {})])).toEqual([
+      [0],
+      [1],
+    ]);
+  });
+});
+
+describe("groupAnswersByMeaning", () => {
+  /** A fake NLI model: entails only the ordered pairs listed. */
+  function judge(pairs: [string, string][]) {
+    const calls: string[] = [];
+    const entails = async (premise: string, hypothesis: string) => {
+      calls.push(`${premise} => ${hypothesis}`);
+      return pairs.some(([p, h]) => p === premise && h === hypothesis);
+    };
+    return { entails, calls };
+  }
+  const answers = (ts: string[]) => ts.map((t) => answer(t, {}));
+  const both = (a: string, b: string): [string, string][] => [
+    [a, b],
+    [b, a],
+  ];
+
+  test("groups answers that entail each other", async () => {
+    const kept = "Backups are kept for 90 days.";
+    const retained = "Backups are retained for 90 days.";
+    const { entails } = judge(both(kept, retained));
+    expect(
+      await groupAnswersByMeaning(
+        answers([kept, "Chat history is kept for 18 months.", retained]),
+        entails,
+      ),
+    ).toEqual([[0, 2], [1]]);
+  });
+
+  test("entailment one way only is not the same meaning", async () => {
+    // The conditional answer entails the plain one, but not the reverse.
+    const plain = "Employees may work remotely.";
+    const conditional = "Employees may work remotely with manager approval.";
+    const { entails } = judge([[conditional, plain]]);
+    expect(
+      await groupAnswersByMeaning(answers([plain, conditional]), entails),
+    ).toEqual([[0], [1]]);
+  });
+
+  test("answers that conflict are never judged, let alone grouped", async () => {
+    const { entails, calls } = judge(
+      both("Kept for 7 years.", "Kept for 30 years."),
+    );
+    expect(
+      await groupAnswersByMeaning(
+        answers(["Kept for 7 years.", "Kept for 30 years."]),
+        entails,
+      ),
+    ).toEqual([[0], [1]]);
+    expect(calls).toEqual([]);
+  });
+
+  test("exact matches group without asking the model", async () => {
+    const { entails, calls } = judge([]);
+    expect(
+      await groupAnswersByMeaning(answers(["Yes.", "yes"]), entails),
+    ).toEqual([[0, 1]]);
+    expect(calls).toEqual([]);
+  });
+
+  test("an answer must agree with every member of a group", async () => {
+    // b agrees with a and with c, but a and c do not agree.
+    const { entails } = judge([...both("a", "b"), ...both("b", "c")]);
+    expect(
+      await groupAnswersByMeaning(answers(["a", "b", "c"]), entails),
+    ).toEqual([[0, 1], [2]]);
+  });
+
+  test("judges each ordered pair of distinct texts once", async () => {
+    const { entails, calls } = judge(both("a", "b"));
+    await groupAnswersByMeaning(answers(["a", "c", "b", "b"]), entails);
+    expect(calls.length).toBe(new Set(calls).size);
+  });
+
+  test("a single answer needs no judgement", async () => {
+    const { entails, calls } = judge([]);
+    expect(await groupAnswersByMeaning(answers(["a"]), entails)).toEqual([[0]]);
+    expect(calls).toEqual([]);
   });
 });
 
