@@ -402,9 +402,14 @@ const NUMBER_WORDS: Record<string, string> = {
   hundred: "100",
 };
 
-/** Words that flip or settle an answer; "may" and "may not" must not agree. */
+/**
+ * Words that flip an answer; "may" and "may not" must not agree.
+ *
+ * "yes" is deliberately absent. "Yes, dogs are allowed" says the same as
+ * "Dogs are permitted", and counting it split them; "no" and the negations
+ * are what turn an answer around.
+ */
 const POLARITY_WORDS = new Set([
-  "yes",
   "no",
   "not",
   "never",

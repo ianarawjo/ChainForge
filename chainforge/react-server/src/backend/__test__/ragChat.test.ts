@@ -509,6 +509,15 @@ describe("answersConflict", () => {
     ).toBe(true);
   });
 
+  test("a leading yes does not conflict with a plain affirmative", () => {
+    expect(
+      answersConflict(
+        "Yes, dogs are allowed on the train.",
+        "Dogs are permitted on board the train.",
+      ),
+    ).toBe(false);
+  });
+
   test("yes and no conflict", () => {
     expect(answersConflict("Yes, you can.", "No, you can.")).toBe(true);
   });

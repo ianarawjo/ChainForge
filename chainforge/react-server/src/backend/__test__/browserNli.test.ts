@@ -1,29 +1,56 @@
 import { afterEach, describe, expect, jest, test } from "@jest/globals";
-import { downloadProgress, isEntailment } from "../browserNli";
+import {
+  ENTAILMENT_THRESHOLD,
+  downloadProgress,
+  entailmentProbability,
+  isEntailment,
+} from "../browserNli";
+
+describe("entailmentProbability", () => {
+  const labels = { 0: "contradiction", 1: "entailment", 2: "neutral" };
+
+  test("is the softmax probability of the entailment label", () => {
+    expect(entailmentProbability([0, 0, 0], labels)).toBeCloseTo(1 / 3);
+    expect(entailmentProbability([-2, 3, 0.5], labels)).toBeCloseTo(0.918, 3);
+  });
+
+  test("finds the label in whatever order and case the model uses", () => {
+    // mobilebert-mnli orders its labels differently from DeBERTa.
+    expect(
+      entailmentProbability([5, 0, 0], {
+        0: "ENTAILMENT",
+        1: "neutral",
+        2: "contradiction",
+      }),
+    ).toBeGreaterThan(0.98);
+  });
+
+  test("accepts label maps keyed by string", () => {
+    expect(
+      entailmentProbability([0, 5], { "0": "neutral", "1": "entailment" }),
+    ).toBeGreaterThan(0.99);
+  });
+
+  test("no entailment label, no entailment", () => {
+    expect(entailmentProbability([1, 2], { 0: "a", 1: "b" })).toBe(0);
+  });
+});
 
 describe("isEntailment", () => {
   const labels = { 0: "contradiction", 1: "entailment", 2: "neutral" };
 
-  test("true when entailment scores highest", () => {
-    expect(isEntailment([-2, 3, 0.5], labels)).toBe(true);
+  test("requires the threshold, not merely the top label", () => {
+    // Entailment is the top label here at about 0.92: not sure enough.
+    expect(isEntailment([-2, 3, 0.5], labels)).toBe(false);
+    expect(isEntailment([-2, 6, 0.5], labels)).toBe(true);
   });
 
-  test("false when neutral or contradiction scores highest", () => {
-    expect(isEntailment([-2, 0.4, 0.5], labels)).toBe(false);
-    expect(isEntailment([4, 3, 0.5], labels)).toBe(false);
+  test("uses ENTAILMENT_THRESHOLD by default", () => {
+    expect(ENTAILMENT_THRESHOLD).toBe(0.95);
   });
 
-  test("reads labels in whatever order and case the model uses", () => {
-    // mobilebert-mnli orders its labels differently from DeBERTa.
-    expect(
-      isEntailment([2, 0, 1], { 0: "ENTAILMENT", 1: "neutral", 2: "contra" }),
-    ).toBe(true);
-  });
-
-  test("accepts label maps keyed by string", () => {
-    expect(isEntailment([0, 1], { "0": "neutral", "1": "entailment" })).toBe(
-      true,
-    );
+  test("accepts another threshold", () => {
+    expect(isEntailment([-2, 3, 0.5], labels, 0.9)).toBe(true);
   });
 });
 

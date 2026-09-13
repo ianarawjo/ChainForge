@@ -440,6 +440,12 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
             Could not group by meaning: {meaning.error}
           </Text>
         )}
+        {grouping === "meaning" && anyAgree && (
+          <Text size="xs" color="dimmed" mb={4}>
+            Grouping by meaning is experimental and can put different answers
+            together. Open a group to check each answer.
+          </Text>
+        )}
         {groups.map((members) => {
           const key = `${turn.id}:g${members[0]}`;
           const lead = turn.answers[members[0]];
@@ -670,7 +676,7 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
             <Tooltip
               label={
                 "How answers from different configurations are grouped. " +
-                "Exact: the same text. Meaning: the same meaning, judged by " +
+                "Exact: the same text. Meaning (experimental): the same meaning, judged by " +
                 "an in-browser model (a one-time download of about " +
                 `${BROWSER_NLI_MODEL.sizeMB}MB); answers with different ` +
                 "numbers or negations are never grouped. Off: every answer " +

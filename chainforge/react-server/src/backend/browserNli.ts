@@ -36,16 +36,42 @@ export class DownloadCancelled extends Error {
   }
 }
 
-/** Whether these logits put entailment above neutral and contradiction. */
+/**
+ * How sure the model must be that one answer entails the other.
+ *
+ * Taking "entailment" whenever it was the model's top label merged answers
+ * that differ in ways the conflict check cannot see: reversed cause and
+ * effect ("stress causes poor sleep" / "poor sleep causes stress", at 0.89
+ * and 0.98) and small technical differences ("a list" / "a set" of IDs,
+ * "len(my_list)" / "my_list.length"). Requiring 0.95 both ways removed those
+ * merges on the answer sets they were found in.
+ */
+export const ENTAILMENT_THRESHOLD = 0.95;
+
+/** The model's probability that the premise entails the hypothesis. */
+export function entailmentProbability(
+  logits: ArrayLike<number>,
+  id2label: Record<string | number, string>,
+): number {
+  const values = Array.from(logits);
+  const max = Math.max(...values);
+  const exps = values.map((v) => Math.exp(v - max));
+  const total = exps.reduce((a, b) => a + b, 0);
+  const index = values.findIndex((_, i) =>
+    (id2label[i] ?? id2label[String(i)] ?? "")
+      .toLowerCase()
+      .startsWith("entail"),
+  );
+  return index < 0 || total === 0 ? 0 : exps[index] / total;
+}
+
+/** Whether the model is sure enough that the premise entails the hypothesis. */
 export function isEntailment(
   logits: ArrayLike<number>,
   id2label: Record<string | number, string>,
+  threshold: number = ENTAILMENT_THRESHOLD,
 ): boolean {
-  let best = 0;
-  for (let i = 1; i < logits.length; i++)
-    if (logits[i] > logits[best]) best = i;
-  const label = id2label[best] ?? id2label[String(best)] ?? "";
-  return label.toLowerCase().startsWith("entail");
+  return entailmentProbability(logits, id2label) >= threshold;
 }
 
 /**
