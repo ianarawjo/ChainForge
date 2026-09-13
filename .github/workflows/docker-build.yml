@@ -14,14 +14,24 @@ on:
     tags:
       - 'v*'
 
-# Concurrency: cancel in-progress runs when new one starts
+# A newer commit cancels a pull request's in-progress run: only the latest
+# commit needs checking. Runs on main and tags are not cancelled, because they
+# publish the images, and the ARM64 build alone takes nearly two hours. With
+# several merges a day, cancelling them meant most runs on main never published
+# anything. They queue instead, and GitHub keeps only the newest waiting run.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   REGISTRY: docker.io
   IMAGE_NAME: ${{ secrets.DOCKER_USERNAME }}/chainforge
+
+# Setting up Buildx pulls the BuildKit image from Docker Hub, and that pull
+# sometimes fails seconds into a job ("connection reset by peer" fetching the
+# auth token), failing the whole run. So every job below logs in first, where
+# it can, making the pull authenticated, and tries the setup a second time
+# after a pause if the first attempt fails.
 
 jobs:
   build-cpu-amd64:
@@ -37,15 +47,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Log in to Docker Hub
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        continue-on-error: true
+        uses: docker/setup-buildx-action@v3
+
+      - name: Wait before retrying Buildx setup
+        if: steps.buildx.outcome == 'failure'
+        run: sleep 30
+
+      - name: Set up Docker Buildx (retry)
+        if: steps.buildx.outcome == 'failure'
+        uses: docker/setup-buildx-action@v3
 
       - name: Build CPU AMD64 image
         uses: docker/build-push-action@v5
@@ -91,15 +111,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Log in to Docker Hub
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        continue-on-error: true
+        uses: docker/setup-buildx-action@v3
+
+      - name: Wait before retrying Buildx setup
+        if: steps.buildx.outcome == 'failure'
+        run: sleep 30
+
+      - name: Set up Docker Buildx (retry)
+        if: steps.buildx.outcome == 'failure'
+        uses: docker/setup-buildx-action@v3
 
       - name: Build CPU ARM64 image
         uses: docker/build-push-action@v5
@@ -175,15 +205,25 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Log in to Docker Hub
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        continue-on-error: true
+        uses: docker/setup-buildx-action@v3
+
+      - name: Wait before retrying Buildx setup
+        if: steps.buildx.outcome == 'failure'
+        run: sleep 30
+
+      - name: Set up Docker Buildx (retry)
+        if: steps.buildx.outcome == 'failure'
+        uses: docker/setup-buildx-action@v3
 
       - name: Build GPU AMD64 image
         uses: docker/build-push-action@v5
@@ -231,14 +271,24 @@ jobs:
           pattern: digests-cpu-*
           merge-multiple: true
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        continue-on-error: true
+        uses: docker/setup-buildx-action@v3
+
+      - name: Wait before retrying Buildx setup
+        if: steps.buildx.outcome == 'failure'
+        run: sleep 30
+
+      - name: Set up Docker Buildx (retry)
+        if: steps.buildx.outcome == 'failure'
+        uses: docker/setup-buildx-action@v3
 
       - name: Extract metadata
         id: meta
@@ -277,14 +327,24 @@ jobs:
           pattern: digests-gpu-*
           merge-multiple: true
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        continue-on-error: true
+        uses: docker/setup-buildx-action@v3
+
+      - name: Wait before retrying Buildx setup
+        if: steps.buildx.outcome == 'failure'
+        run: sleep 30
+
+      - name: Set up Docker Buildx (retry)
+        if: steps.buildx.outcome == 'failure'
+        uses: docker/setup-buildx-action@v3
 
       - name: Extract metadata
         id: meta
