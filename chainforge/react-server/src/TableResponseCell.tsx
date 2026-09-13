@@ -31,6 +31,20 @@ const scoreText = (value: unknown): string =>
       ? formatScore(value)
       : JSON.stringify(value);
 
+/**
+ * A text color that reads on a strip of `color` (e.g. "#f1b933"): dark on
+ * light colors like amber, white on darker ones. White for colors it can't
+ * parse.
+ */
+export function readableTextOn(color: string): string {
+  const hex = color.trim().match(/^#([0-9a-f]{6})/i)?.[1];
+  if (!hex) return "#fff";
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  // Perceived brightness (ITU-R BT.601), 0-255.
+  const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+  return brightness > 170 ? "#1a1b1e" : "#fff";
+}
+
 /** A score as a small chip: green for pass, red for fail, gray otherwise. */
 export const ScoreChip: React.FC<{ label?: string; value: unknown }> = ({
   label,
@@ -173,7 +187,10 @@ export const TableResponseCell: React.FC<TableResponseCellProps> = ({
               className="cf-table-resp"
               style={
                 modelColor
-                  ? ({ "--cf-model-color": modelColor } as React.CSSProperties)
+                  ? ({
+                      "--cf-model-color": modelColor,
+                      "--cf-band-text": readableTextOn(modelColor),
+                    } as React.CSSProperties)
                   : undefined
               }
             >

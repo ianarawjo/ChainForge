@@ -24,6 +24,7 @@ import {
   Box,
   Text,
   useMantineColorScheme,
+  type MantineTheme,
 } from "@mantine/core";
 import { useToggle } from "@mantine/hooks";
 import {
@@ -1206,7 +1207,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               {column.columnDef.header}
             </div>
           ),
-          mantineTableBodyCellProps: ({ table }) => ({
+          mantineTableBodyCellProps: ({ table, column }) => ({
             style: {
               padding: cellPadding(table.getState().density),
               alignItems: "flex-start",
@@ -1215,6 +1216,20 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               lineHeight: 1.4,
               "--cf-lines": tableLines,
             } as React.CSSProperties,
+            // Pinned cells get a background of their own, which in dark mode
+            // is darker than the other cells', two-toning the table. Match the
+            // other cells' (dark[7] lightened 2%, white in light mode); hovered
+            // rows still highlight.
+            sx: column.getIsPinned()
+              ? (theme: MantineTheme) => ({
+                  backgroundColor: theme.fn.lighten(
+                    theme.colorScheme === "dark"
+                      ? theme.colors.dark[7]
+                      : theme.white,
+                    0.02,
+                  ),
+                })
+              : undefined,
           }),
         })) as MRT_ColumnDef<any>[];
 

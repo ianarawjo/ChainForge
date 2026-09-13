@@ -612,7 +612,8 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp {
   gap: 4px;
   min-height: 20px;
   padding: 1px 4px 1px 6px;
-  color: #fff;
+  /* Dark on light model colors (e.g. amber), white otherwise. */
+  color: var(--cf-band-text, #fff);
   background-color: color-mix(in srgb, var(--cf-model-color) 75%, transparent);
 }
 .cf-table-resp-text,
@@ -627,6 +628,9 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp {
 .cf-table-resp-text {
   cursor: pointer;
   padding: 4px 7px;
+}
+html[data-mantine-color-scheme="dark"] .cf-table-resp-text {
+  color: #e9ecef;
 }
 /* Copy button in a response's bottom-right corner, shown on hover. */
 .cf-table-resp {
@@ -666,8 +670,9 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp .cf-table-copy {
   border-radius: 3px;
   background-color: rgba(128, 128, 128, 0.2);
 }
-.cf-table-resp-band .cf-table-count {
+.cf-table-resp .cf-table-resp-band .cf-table-count {
   padding: 0 2px;
+  color: inherit;
   background-color: transparent;
 }
 .cf-score-chip {
@@ -694,15 +699,29 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp .cf-table-copy {
 .cf-score-fail {
   background-color: rgba(224, 49, 49, 0.25);
 }
-/* In a response's color strip: white text on solid chips. */
-.cf-table-resp-band .cf-score-chip {
+html[data-mantine-color-scheme="dark"] .cf-score-chip,
+html[data-mantine-color-scheme="dark"] .cf-table-count {
+  color: #e9ecef;
+  background-color: rgba(255, 255, 255, 0.12);
+}
+html[data-mantine-color-scheme="dark"] .cf-score-pass {
+  color: #b2f2bb;
+  background-color: rgba(47, 158, 68, 0.35);
+}
+html[data-mantine-color-scheme="dark"] .cf-score-fail {
+  color: #ffc9c9;
+  background-color: rgba(224, 49, 49, 0.35);
+}
+/* In a response's color strip: white text on solid chips, in either theme
+   (so more specific than the dark theme's chip colors above). */
+.cf-table-resp .cf-table-resp-band .cf-score-chip {
   color: #fff;
   background-color: rgba(0, 0, 0, 0.25);
 }
-.cf-table-resp-band .cf-score-pass {
+.cf-table-resp .cf-table-resp-band .cf-score-pass {
   background-color: rgba(43, 138, 62, 0.9);
 }
-.cf-table-resp-band .cf-score-fail {
+.cf-table-resp .cf-table-resp-band .cf-score-fail {
   background-color: rgba(201, 42, 42, 0.9);
 }
 .cf-model-dot {
@@ -735,7 +754,7 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp .cf-table-copy {
 .cf-table-resp-band .rating-toolbar-reveal button {
   height: 18px;
   min-height: 18px;
-  color: #fff;
+  color: var(--cf-band-text, #fff);
   background-color: transparent;
 }
 .cf-table-resp-band .rating-toolbar-reveal button[data-selected="true"] {
