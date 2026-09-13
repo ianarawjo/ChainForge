@@ -422,7 +422,11 @@ const togetherGroups = () => {
   const groupNames: string[] = [];
   const groups: { [key: string]: LLMGroup } = {};
   togetherModels.forEach((model) => {
-    const [groupName, modelName] = model.split("/");
+    // Strip the "together/" prefix if present, to get the org/model path
+    const modelPath = model.startsWith("together/") ? model.substring(9) : model;
+    const firstSlash = modelPath.indexOf("/");
+    const groupName = firstSlash === -1 ? modelPath : modelPath.substring(0, firstSlash);
+    const modelName = firstSlash === -1 ? modelPath : modelPath.substring(firstSlash + 1);
     const spec: LLMSpec = {
       name: modelName,
       emoji: "🤝",
