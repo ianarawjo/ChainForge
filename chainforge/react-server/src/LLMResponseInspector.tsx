@@ -34,7 +34,7 @@ import {
   IconChartBar,
   IconLayoutGrid,
 } from "@tabler/icons-react";
-import ImageGridView from "./ImageGridView";
+import ResponseGridView from "./ResponseGridView";
 import {
   MantineReactTable,
   useMantineReactTable,
@@ -424,18 +424,6 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
     () => (jsonResponses ? batchResponsesByUID(jsonResponses) : []),
     [jsonResponses],
   );
-
-  // The image grid tab is only offered when there are images to show.
-  const hasImages = useMemo(
-    () =>
-      batchedResponses.some((res_obj) =>
-        res_obj.responses.some(isImageResponseData),
-      ),
-    [batchedResponses],
-  );
-  useEffect(() => {
-    if (!hasImages && viewFormat === "grid") setViewFormat("hierarchy");
-  }, [hasImages, viewFormat]);
 
   // Table view data
   const [tableColumns, setTableColumns] = useState<MRT_ColumnDef<any>[]>([]);
@@ -1408,17 +1396,13 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             />
             {wideFormat ? " Table View" : ""}
           </Tabs.Tab>
-          {hasImages ? (
-            <Tabs.Tab value="grid">
-              <IconLayoutGrid
-                size="10pt"
-                style={{ marginBottom: wideFormat ? "0px" : "-4px" }}
-              />
-              {wideFormat ? " Image Grid" : ""}
-            </Tabs.Tab>
-          ) : (
-            <></>
-          )}
+          <Tabs.Tab value="grid">
+            <IconLayoutGrid
+              size="10pt"
+              style={{ marginBottom: wideFormat ? "0px" : "-4px" }}
+            />
+            {wideFormat ? " Grid View" : ""}
+          </Tabs.Tab>
           {showEvalScoreOptions && wideFormat ? (
             <Tabs.Tab value="vis">
               <IconChartBar
@@ -1476,7 +1460,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             <MantineReactTable table={table} />
           ) : viewFormat === "grid" ? (
             <Box pt="xs">
-              <ImageGridView
+              <ResponseGridView
                 responses={batchedResponses}
                 modelOf={getLLMName}
                 modelLabel={customLLMFieldName || "LLM"}
