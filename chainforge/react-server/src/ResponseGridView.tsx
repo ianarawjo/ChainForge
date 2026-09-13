@@ -745,6 +745,15 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
   // longest value needs, estimated from its length, since every column is at
   // least one slot wide.
   const colHeaderLineHeight = wideFormat ? 17 : 14;
+
+  // Row labels are as wide as the longest needs (estimated from its length),
+  // up to a cap past which long values (e.g. queries) wrap.
+  const rowLabelWidth = useMemo(() => {
+    if (!hasRows) return 0;
+    const longest = Math.max(0, ...grid.rowValues.map((v) => v.length));
+    const [charWidth, min, max] = wideFormat ? [7.5, 48, 220] : [6.5, 40, 110];
+    return Math.min(max, Math.max(min, Math.ceil(longest * charWidth) + 14));
+  }, [hasRows, grid, wideFormat]);
   const headerLines = useMemo(() => {
     if (!hasCols) return 0;
     const slotWidth = hasText
@@ -768,8 +777,7 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
         : itemSize,
       itemGap: ITEM_GAP,
       cellGap: CELL_GAP,
-      // Row labels are often long (e.g. queries), so they get room to wrap.
-      rowHeaderWidth: hasRows ? (wideFormat ? 220 : 110) : 0,
+      rowHeaderWidth: rowLabelWidth,
       headerHeight: hasCols ? headerLines * colHeaderLineHeight + 6 : 0,
       titleHeight: axes.split ? (wideFormat ? 28 : 22) : 0,
       sectionGap: SECTION_GAP,
@@ -787,6 +795,7 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
       axes.split,
       headerLines,
       colHeaderLineHeight,
+      rowLabelWidth,
     ],
   );
 

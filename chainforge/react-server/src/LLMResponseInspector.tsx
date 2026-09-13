@@ -68,13 +68,7 @@ import {
   blobOrFileToDataURL,
   blobToBase64,
 } from "./backend/utils";
-import {
-  MediaBox,
-  ResponseBox,
-  ResponseGroup,
-  genResponseTextsDisplay,
-  getEvalResultStr,
-} from "./ResponseBoxes";
+import { MediaBox, ResponseGroup, getEvalResultStr } from "./ResponseBoxes";
 import { getLabelForResponse } from "./ResponseRatingToolbar";
 import {
   Dict,
@@ -733,59 +727,80 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         }
       };
 
+      // How responses are shown, searched and opened in full, in both the
+      // Grouped List and the Table View.
+      const highlightText = searchValue
+        ? (txt: string) =>
+            genSpansForHighlightedValue(txt, searchValue, caseSensitive)
+        : undefined;
+      const showText =
+        searchValue.length > 0 && filterBySearchValue
+          ? (txt: string) => search_regex.test(txt)
+          : undefined;
+      const responseItems = collectGridItems(responses, tableLightboxAccessors);
+      const openResponse = (response: LLMResponse, index: number) => {
+        const at = responseItems.findIndex(
+          (item) => item.response === response && item.index === index,
+        );
+        if (at >= 0) setTableLightbox({ items: responseItems, index: at });
+      };
+      // Each response is colored by its model, as everywhere in ChainForge.
+      // Looked up here, not while rendering, since a new model gets a color
+      // assigned in the store.
+      const llmColors: Dict<string> = {};
+      (found_llms as string[]).forEach((llm) => {
+        llmColors[llm] = getColorForLLMAndSetIfNotFound(llm);
+      });
+      const modelColorFor = disableBackgroundColor
+        ? undefined
+        : (r: LLMResponse) => llmColors[getLLMName(r)];
+
+      // The Grouped List's responses, as cards like the Table View's, showing
+      // their full text.
       const generateResponseBoxes = (
         resps: LLMResponse[],
         eatenvars: string[],
         fixed_width: number,
-        hide_eval_scores?: boolean,
       ) => {
-        const hide_llm_name = eatenvars.includes("LLM");
+        // The group header already names the model when grouping by it.
+        const hide_llm_name =
+          eatenvars.includes("$LLM") || eatenvars.includes("LLM");
         return resps.map((res_obj, res_idx) => {
-          // If user has searched for something, further filter the response texts by only those that contain the search term
-          const respsFilterFunc = (responses: LLMResponseData[]) => {
-            if (searchValue.length === 0) return responses;
-            const filtered_resps = responses.filter(
-              (r) =>
-                (typeof r === "string" || typeof r === "number") &&
-                search_regex.test(StringLookup.get(r) ?? ""),
-            );
-            // numResponsesDisplayed += filtered_resps.length;
-            if (filterBySearchValue) return filtered_resps;
-            else return responses;
-          };
-
-          const innerTextsDisplay = genResponseTextsDisplay(
-            res_obj,
-            respsFilterFunc,
-            (txt) =>
-              searchValue
-                ? genSpansForHighlightedValue(txt, searchValue, caseSensitive)
-                : txt,
-            contains_eval_res && onlyShowScores,
-            hide_llm_name ? undefined : getLLMName(res_obj),
-            wideFormat,
-            hide_eval_scores,
-          );
-
           // At the deepest level, there may still be some vars left over. We want to display these
           // as tags, too, so we need to display only the ones that weren't 'eaten' during the recursive call:
           // (e.g., the vars that weren't part of the initial 'varnames' list that form the groupings)
-          const unused_vars = transformDict(
-            res_obj.vars,
-            (v) => !eatenvars.includes(v),
+          const unused_vars = Object.fromEntries(
+            Object.entries(
+              transformDict(res_obj.vars, (v) => !eatenvars.includes(v)),
+            ).map(([name, value]) => [
+              name,
+              truncStr(
+                llmResponseDataToString(value).trim(),
+                wideFormat ? 72 : 18,
+              ) ?? "",
+            ]),
           );
-          const llmName = getLLMName(res_obj);
           return (
-            <ResponseBox
+            <div
               key={"r" + res_idx}
-              boxColor={color_for_llm(llmName)}
-              width={`${fixed_width}%`}
-              vars={unused_vars}
-              truncLenForVars={wideFormat ? 72 : 18}
-              llmName={hide_llm_name ? undefined : llmName}
+              style={{
+                width: `${fixed_width}%`,
+                padding: "0 2px 4px",
+                boxSizing: "border-box",
+              }}
             >
-              {innerTextsDisplay}
-            </ResponseBox>
+              <TableResponseCell
+                responses={[res_obj]}
+                lines="none"
+                onlyShowScores={contains_eval_res && onlyShowScores}
+                showText={showText}
+                renderText={highlightText}
+                onOpen={openResponse}
+                modelColorFor={modelColorFor}
+                modelNameFor={hide_llm_name ? undefined : getLLMName}
+                varsFor={() => unused_vars}
+              />
+            </div>
           );
         });
       };
@@ -1048,36 +1063,11 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           });
         });
 
-        // How table responses are shown, searched and opened in full.
+        // Table responses are clamped to a few lines.
         const tableLines = wideFormat ? 6 : 4;
-        const highlightText = searchValue
-          ? (txt: string) =>
-              genSpansForHighlightedValue(txt, searchValue, caseSensitive)
-          : undefined;
-        const showText =
-          searchValue.length > 0 && filterBySearchValue
-            ? (txt: string) => search_regex.test(txt)
-            : undefined;
-        const tableItems = collectGridItems(responses, tableLightboxAccessors);
-        const openResponse = (response: LLMResponse, index: number) => {
-          const at = tableItems.findIndex(
-            (item) => item.response === response && item.index === index,
-          );
-          if (at >= 0) setTableLightbox({ items: tableItems, index: at });
-        };
         const cellPadding = (density: string) =>
           density === "xs" ? "3px 4px" : density === "xl" ? "12px" : "6px 8px";
         const numVarCols = var_cols.length + metavar_cols.length;
-        // Each response is colored by its model, as everywhere in ChainForge.
-        // Looked up here, not while rendering, since a new model gets a color
-        // assigned in the store.
-        const llmColors: Dict<string> = {};
-        (found_llms as string[]).forEach((llm) => {
-          llmColors[llm] = getColorForLLMAndSetIfNotFound(llm);
-        });
-        const modelColorFor = disableBackgroundColor
-          ? undefined
-          : (r: LLMResponse) => llmColors[getLLMName(r)];
         // Model columns are marked with the model's color, in place of coloring
         // every response in them.
         const modelColors = colnames.map((c, i) =>

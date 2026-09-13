@@ -11,6 +11,7 @@ import React, { Suspense, lazy } from "react";
 import { ActionIcon, CopyButton, Tooltip } from "@mantine/core";
 import { IconCheck, IconCopy } from "@tabler/icons-react";
 import {
+  Dict,
   EvaluationScore,
   LLMResponse,
   LLMResponseData,
@@ -88,8 +89,8 @@ export const ScoreChips: React.FC<{ score?: EvaluationScore | null }> = ({
 
 export interface TableResponseCellProps {
   responses: LLMResponse[];
-  /** Lines of text to show per response before clamping. */
-  lines: number;
+  /** Lines of text to show per response before clamping, or "none" for all. */
+  lines: number | "none";
   /** Leave scores out, e.g. when they have their own columns. */
   hideScores?: boolean;
   /** Show only the scores, without the response texts. */
@@ -105,6 +106,10 @@ export interface TableResponseCellProps {
    * Undefined for neutral gray, e.g. when a node turns model colors off.
    */
   modelColorFor?: (response: LLMResponse) => string | undefined;
+  /** A model name to show in the strip, where the view doesn't already show it. */
+  modelNameFor?: (response: LLMResponse) => string | undefined;
+  /** Prompt variables to list under the strip, e.g. those not grouped on. */
+  varsFor?: (response: LLMResponse) => Dict<string> | undefined;
 }
 
 /** Copies a text response; sits in the response's bottom-right corner, shown on hover. */
@@ -164,6 +169,8 @@ export const TableResponseCell: React.FC<TableResponseCellProps> = ({
   renderText,
   onOpen,
   modelColorFor,
+  modelNameFor,
+  varsFor,
 }) => (
   <div
     className="cf-table-cell"
@@ -171,6 +178,8 @@ export const TableResponseCell: React.FC<TableResponseCellProps> = ({
   >
     {responses.flatMap((response) => {
       const modelColor = modelColorFor?.(response);
+      const modelName = modelNameFor?.(response);
+      const vars = varsFor?.(response);
       return groupIdentical(response, showText).map(
         ({ text, data, indices }) => {
           const score = hideScores
@@ -195,6 +204,9 @@ export const TableResponseCell: React.FC<TableResponseCellProps> = ({
               }
             >
               <div className="cf-table-resp-band">
+                {modelName && (
+                  <span className="cf-table-resp-model">{modelName}</span>
+                )}
                 <ScoreChips score={score} />
                 {indices.length > 1 && (
                   <span
@@ -216,6 +228,15 @@ export const TableResponseCell: React.FC<TableResponseCellProps> = ({
                   </Suspense>
                 </div>
               </div>
+              {vars && Object.keys(vars).length > 0 && (
+                <div className="cf-table-resp-vars">
+                  {Object.entries(vars).map(([name, value]) => (
+                    <span key={name}>
+                      <b>{name}</b> = {value}
+                    </span>
+                  ))}
+                </div>
+              )}
               {!onlyShowScores &&
                 (isImageResponseData(data) ? (
                   <div className="cf-table-resp-image" onClick={open}>

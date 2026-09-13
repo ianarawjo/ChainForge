@@ -629,6 +629,21 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp {
   cursor: pointer;
   padding: 4px 7px;
 }
+/* Model name in the strip, where the view doesn't show it elsewhere. */
+.cf-table-resp-model {
+  font-size: 11px;
+  font-weight: 600;
+  margin-right: 2px;
+}
+/* Prompt variables under the strip (e.g. in the Grouped List). */
+.cf-table-resp-vars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  padding: 3px 7px 0;
+  font-size: 11px;
+  opacity: 0.75;
+}
 html[data-mantine-color-scheme="dark"] .cf-table-resp-text {
   color: #e9ecef;
 }
