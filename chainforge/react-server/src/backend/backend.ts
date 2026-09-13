@@ -1264,11 +1264,22 @@ export async function executepy(
 
   // Execute using Flask backend (unsecure; only use with trusted code)
   if (executor === "flask") {
+    // Resolve StringLookup keys in response data before sending to Flask backend,
+    // so that the Python evaluator receives actual text strings instead of numeric
+    // hash keys (fixes #371 - inconsistent response content in evaluate function).
+    const resolved_responses = responses.map((resp_obj) => ({
+      ...resp_obj,
+      responses: resp_obj.responses.map((r) => llmResponseDataToString(r)),
+      prompt: typeof resp_obj.prompt === "number"
+        ? StringLookup.get(resp_obj.prompt) ?? ""
+        : resp_obj.prompt,
+    }));
+
     // Call our Python server to execute the evaluation code across all responses:
     exec_response = await call_flask_backend("executepy", {
       id,
       code,
-      responses,
+      responses: resolved_responses,
       scope,
       process_type,
       script_paths,
