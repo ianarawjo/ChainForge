@@ -1615,7 +1615,11 @@ const App = () => {
               // console.log(err);
             }}
           >
-            <Background color="#999" gap={16} />
+            {/* Dots in a dull gray in dark mode, where #999 stands out. */}
+            <Background
+              color={colorScheme === "light" ? "#999" : "#444"}
+              gap={16}
+            />
             <Controls showZoom={true} />
           </ReactFlow>
         </div>
@@ -1629,6 +1633,7 @@ const App = () => {
     edges,
     onInit,
     hideContextMenu,
+    colorScheme,
   ]);
 
   // Save when the tab is hidden or the page is unloaded. The minute-long

@@ -266,9 +266,6 @@ html[data-mantine-color-scheme="dark"] button.remove-edge-btn:active {
   align-items: center;
   margin-bottom: 5px;
 }
-.input-field textarea {
-  font-family: var(--monofont), monospace;
-}
 
 .remove-text-field-btn {
   margin-left: 3px;
@@ -1249,24 +1246,23 @@ html[data-mantine-color-scheme="dark"] .code-mirror-field-header {
   color: #666;
 }
 
-/* Allows resizing the Mantine Textarea component */
+/* Allows resizing the Mantine Textarea component. Text is in the same font
+   and size as response cards (the theme's sans-serif, not monospace). */
 .text-field-fixed .mantine-Textarea-wrapper textarea {
   resize: vertical;
   overflow-y: auto;
   width: 260px;
   padding: calc(0.5rem / 3);
-  font-size: 10pt;
-  font-family: var(--monofont), monospace;
-  line-height: 1.2;
+  font-size: 12px;
+  line-height: 1.4;
   border-color: #999;
 }
 .prompt-field-fixed .mantine-Textarea-wrapper textarea {
   resize: vertical;
   overflow-y: auto;
   padding: calc(0.5rem / 3);
-  font-size: 10pt;
-  font-family: var(--monofont), monospace;
-  line-height: 1.2;
+  font-size: 12px;
+  line-height: 1.4;
   border-color: #999;
 }
 
