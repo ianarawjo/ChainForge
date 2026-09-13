@@ -53,10 +53,14 @@ export enum NativeLLM {
   OpenAI_ChatGPT_Instruct = "gpt-3.5-turbo-instruct",
 
   // OpenAI Image models
-  OpenAI_DallE_2 = "dall-e-2",
-  OpenAI_DallE_3 = "dall-e-3",
-  OpenAI_GPT_Image_1 = "gpt-image-1",
-  OpenAI_GPT_Image_1_mini = "gpt-image-1-mini",
+  OpenAI_GPT_Image_2_5_Flare = "gpt-image-2.5-flare",
+  OpenAI_GPT_Image_2_5_Sunburst = "gpt-image-2.5-sunburst",
+  OpenAI_GPT_Image_2 = "gpt-image-2",
+  OpenAI_GPT_Image_1_5 = "gpt-image-1.5", // shuts down 2026-12-01
+  OpenAI_GPT_Image_1 = "gpt-image-1", // retiring; replaced by gpt-image-2
+  OpenAI_GPT_Image_1_mini = "gpt-image-1-mini", // shuts down 2026-12-01
+  OpenAI_DallE_2 = "dall-e-2", // shut down 2026-05-12; kept so old flows still load
+  OpenAI_DallE_3 = "dall-e-3", // shut down 2026-05-12
 
   // Azure OpenAI Endpoints
   Azure_OpenAI = "azure-openai",
@@ -92,6 +96,12 @@ export enum NativeLLM {
   GEMINI_v1_5_flash = "gemini-1.5-flash",
   GEMINI_v1_5_flash_8B = "gemini-1.5-flash-8b",
   GEMINI_v1_5_pro = "gemini-1.5-pro",
+
+  // Google image generation models
+  GEMINI_v3_1_flash_image = "gemini-3.1-flash-image",
+  GEMINI_v3_1_flash_lite_image = "gemini-3.1-flash-lite-image",
+  GEMINI_v3_pro_image = "gemini-3-pro-image",
+  GEMINI_v2_5_flash_image = "gemini-2.5-flash-image", // shuts down 2026-10-02
 
   // DeepSeek
   DeepSeek_Chat = "deepseek-chat",
@@ -263,6 +273,25 @@ export enum LLMProvider {
  * @param llm the specific large language model
  * @returns an `LLMProvider` describing what provider hosts the model
  */
+/**
+ * Whether an OpenAI model generates images (GPT Image, or the retired DALL·E),
+ * and so goes through the Images API instead of chat completions. Matches by
+ * name, so newer snapshots (e.g. "gpt-image-2-2026-04-21") are recognized too.
+ */
+export function isOpenAIImageModel(llm: LLM | string): boolean {
+  const name = llm.toString().toLowerCase();
+  return (
+    name.startsWith("gpt-image") ||
+    name.startsWith("chatgpt-image") ||
+    name.startsWith("dall-e")
+  );
+}
+
+/** Whether a Google model generates images (e.g. "gemini-3.1-flash-image"). */
+export function isGeminiImageModel(llm: LLM | string): boolean {
+  return /^(models\/)?gemini-[\w.-]*image/i.test(llm.toString());
+}
+
 export function getProvider(llm: LLM): LLMProvider | undefined {
   const llm_name = getEnumName(NativeLLM, llm.toString());
   if (llm_name?.startsWith("WebLLM")) return LLMProvider.WebLLM;
