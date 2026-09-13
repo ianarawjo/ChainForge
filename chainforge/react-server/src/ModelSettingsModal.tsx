@@ -30,7 +30,7 @@ import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // Custom UI widgets for react-jsonschema-form
-const DatalistWidget = (props: WidgetProps) => {
+export const DatalistWidget = (props: WidgetProps) => {
   const [data, setData] = useState(
     (
       props.options.enumOptions?.map((option, index) => ({

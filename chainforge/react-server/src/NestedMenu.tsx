@@ -160,6 +160,16 @@ export default function NestedMenu({
   return (
     <Menu
       opened={menuOpened}
+      // Let Mantine close the menu on outside clicks and Escape. Its own
+      // handler accounts for the portaled dropdown, which a listener on an
+      // ancestor element cannot do.
+      onChange={(opened) => {
+        setMenuOpened(opened);
+        if (!opened) setSubmenusOpened(null);
+      }}
+      // Items close the menu themselves (see menuItemInfoToMenuItem), so that
+      // clicking a submenu parent, a label or a divider leaves it open.
+      closeOnItemClick={false}
       shadow="md"
       position="bottom-start"
       width={200}
@@ -168,7 +178,6 @@ export default function NestedMenu({
       withinPortal
     >
       <Menu.Target>{button(() => setMenuOpened(!menuOpened))}</Menu.Target>
-
       <Menu.Dropdown>{menuItems}</Menu.Dropdown>
     </Menu>
   );

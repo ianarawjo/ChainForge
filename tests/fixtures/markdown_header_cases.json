@@ -1,0 +1,186 @@
+{
+  "_comment": "Shared cases for the markdown_header chunker, which has two implementations: chainforge/rag/chunkers.py (reference) and chainforge/react-server/src/backend/browserChunkers.ts. Both test suites read this file, so a divergence fails a build instead of silently changing how a flow chunks. Expected values were generated from the Python implementation. Cases must keep exercising every heading level as a split point.",
+  "cases": [
+    {
+      "input": "# One\nalpha\n\n# Two\nbeta",
+      "expected": [
+        "# One\nalpha",
+        "# Two\nbeta"
+      ]
+    },
+    {
+      "input": "## B\ny\n### C\nz",
+      "expected": [
+        "## B\ny",
+        "### C\nz"
+      ]
+    },
+    {
+      "input": "intro text\n\n# Section\nbody",
+      "expected": [
+        "intro text",
+        "# Section\nbody"
+      ]
+    },
+    {
+      "input": "just a paragraph",
+      "expected": [
+        "just a paragraph"
+      ]
+    },
+    {
+      "input": "",
+      "expected": [
+        ""
+      ]
+    },
+    {
+      "input": "   \n  ",
+      "expected": [
+        "   \n  "
+      ]
+    },
+    {
+      "input": "#hashtag body text",
+      "expected": [
+        "#hashtag body text"
+      ]
+    },
+    {
+      "input": "#  extra spaced\nbody",
+      "expected": [
+        "#  extra spaced\nbody"
+      ]
+    },
+    {
+      "input": "text\n# H1\na\n## H2\nb\n# H3\nc",
+      "expected": [
+        "text",
+        "# H1\na",
+        "## H2\nb",
+        "# H3\nc"
+      ]
+    },
+    {
+      "input": "# only heading",
+      "expected": [
+        "# only heading"
+      ]
+    },
+    {
+      "input": "\n\n# after blank lines\nx",
+      "expected": [
+        "# after blank lines\nx"
+      ]
+    },
+    {
+      "input": "# One\r\nalpha\r\n# Two\r\nbeta",
+      "expected": [
+        "# One\nalpha",
+        "# Two\nbeta"
+      ]
+    },
+    {
+      "input": "# A\r\nwin\r\n\r\n## B\r\ndows",
+      "expected": [
+        "# A\nwin",
+        "## B\ndows"
+      ]
+    },
+    {
+      "input": "####### seven hashes",
+      "expected": [
+        "####### seven hashes"
+      ]
+    },
+    {
+      "input": "###### six hashes\nok",
+      "expected": [
+        "###### six hashes\nok"
+      ]
+    },
+    {
+      "input": "a\n\n\nb",
+      "expected": [
+        "a\n\n\nb"
+      ]
+    },
+    {
+      "input": "# dup\n# dup\n# dup",
+      "expected": [
+        "# dup",
+        "# dup",
+        "# dup"
+      ]
+    },
+    {
+      "input": "  # indented heading\nbody",
+      "expected": [
+        "# indented heading\nbody"
+      ]
+    },
+    {
+      "input": "#\nempty title",
+      "expected": [
+        "#\nempty title"
+      ]
+    },
+    {
+      "input": "# trailing blanks\n\n\n",
+      "expected": [
+        "# trailing blanks"
+      ]
+    },
+    {
+      "input": "\t# tab indented\nbody",
+      "expected": [
+        "# tab indented\nbody"
+      ]
+    },
+    {
+      "input": "# heading with # inside\nbody",
+      "expected": [
+        "# heading with # inside\nbody"
+      ]
+    },
+    {
+      "input": "# L1\na\n## L2\nb\n### L3\nc\n#### L4\nd\n##### L5\ne\n###### L6\nf",
+      "expected": [
+        "# L1\na",
+        "## L2\nb",
+        "### L3\nc",
+        "#### L4\nd",
+        "##### L5\ne",
+        "###### L6\nf"
+      ]
+    },
+    {
+      "input": "intro\n#### L4 only\nbody",
+      "expected": [
+        "intro",
+        "#### L4 only\nbody"
+      ]
+    },
+    {
+      "input": "intro\n##### L5 only\nbody",
+      "expected": [
+        "intro",
+        "##### L5 only\nbody"
+      ]
+    },
+    {
+      "input": "intro\n###### L6 only\nbody",
+      "expected": [
+        "intro",
+        "###### L6 only\nbody"
+      ]
+    },
+    {
+      "input": "#### L4\na\n#### L4 again\nb",
+      "expected": [
+        "#### L4\na",
+        "#### L4 again\nb"
+      ]
+    }
+  ]
+}

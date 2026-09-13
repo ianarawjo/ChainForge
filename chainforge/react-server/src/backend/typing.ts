@@ -200,6 +200,7 @@ export type CustomLLMProviderSpec = {
     settings: Dict<Dict<JSONCompatible>>;
     ui: Dict<Dict<JSONCompatible>>;
   };
+  category?: string;
 };
 
 /** Internal description of model settings, passed to react-json-schema */

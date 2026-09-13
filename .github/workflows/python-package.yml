@@ -9,19 +9,20 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
 
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest, macos-13, macos-14]
-        python-version: [3.11, 3.12, 3.13]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10.11", 3.11, 3.12, 3.13, 3.14]
       fail-fast: false
 
     steps:
     - name: Check out the repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -29,21 +30,64 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('chainforge/requirements.txt') }}
+        key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('chainforge/requirements.txt', 'chainforge/constraints.txt', 'setup.py') }}
         restore-keys: |
           ${{ runner.os }}-pip-${{ matrix.python-version }}-
+          ${{ runner.os }}-pip-
 
     - name: Upgrade pip
       run: python -m pip install --upgrade pip
 
-    - name: Install dependencies
+    - name: Install package
       run: |
-        pip install -r chainforge/requirements.txt
-        pip install .
+        pip install -e .
+    
+    - name: Install with RAG extras
+      run: |
+        pip install -e .[rag]
+
+    - name: Install pytest
+      run: |
         pip install pytest
+
+    # The RAG tests download sentence-transformers / model2vec models from the
+    # HuggingFace Hub. Cache them so that every matrix entry doesn't re-fetch
+    # a few hundred MB on each run.
+    - name: Cache HuggingFace models
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/huggingface
+        key: ${{ runner.os }}-hf-${{ hashFiles('tests/*.py') }}
+        restore-keys: |
+          ${{ runner.os }}-hf-
 
     # TODO: Check that the server runs
 
-    # TODO: Add pytest
-    # - name: Run tests
-    #   run: pytest
+    # NOTE: faiss-cpu is deliberately NOT installed here. It bundles its own
+    # OpenMP runtime, and a second libomp in the same interpreter as torch's
+    # segfaults (verified on macOS: merely having faiss-cpu installed, without
+    # importing it, turns the embedding tests into SIGSEGV). The FaissVectorStore
+    # tests therefore run in the separate step below.
+    - name: Run tests
+      env:
+        HF_HUB_DISABLE_TELEMETRY: "1"
+        # Tests needing a provider API key skip themselves when it is unset,
+        # so this job stays green (and free) without secrets.
+      run: pytest -v -m "not needs_faiss"
+
+    # A second, isolated invocation for the optional FAISS backend. ChainForge
+    # no longer offers a faiss extra -- the pip wheels collide with any other
+    # OpenMP library, so we do not install it for anyone -- but the
+    # faiss_vector_store retrieval method still works when a user installs it
+    # themselves, and this keeps that path from rotting. faiss-cpu is named
+    # directly here for the same reason.
+    #
+    # Installing it only now means it cannot destabilise the run above, and
+    # excluding `slow` keeps this process from loading a real ML model, which
+    # is the combination that crashes.
+    - name: Install faiss and run the FAISS backend tests
+      env:
+        HF_HUB_DISABLE_TELEMETRY: "1"
+      run: |
+        pip install faiss-cpu
+        pytest -v -m "needs_faiss and not slow"

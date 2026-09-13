@@ -1,0 +1,538 @@
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useContext,
+} from "react";
+import { Handle, Position } from "reactflow";
+import { Badge, Tooltip } from "@mantine/core";
+import { Status } from "./StatusIndicatorComponent";
+import { AlertModalContext } from "./AlertModal";
+import BaseNode from "./BaseNode";
+import NodeLabel from "./NodeLabelComponent";
+import useStore from "./store";
+
+import LLMResponseInspectorModal, {
+  LLMResponseInspectorModalRef,
+} from "./LLMResponseInspectorModal";
+import InspectFooter from "./InspectFooter";
+import { IconSearch, IconSortAscending } from "@tabler/icons-react";
+
+import RerankMethodListContainer, {
+  RerankMethodSpec,
+} from "./RerankMethodListComponent";
+
+import { TemplateVarInfo, LLMResponse } from "./backend/typing";
+import { StringLookup } from "./backend/cache";
+import {
+  canRerankInBrowser,
+  rerankInBrowser,
+} from "./backend/browserRerankers";
+import { FLASK_BASE_URL } from "./backend/utils";
+import { v4 as uuid } from "uuid";
+
+// Constants for handle positioning and styling
+const HANDLE_Y_START = 60; // Adjust this value to move the first handle up/down
+const HANDLE_Y_GAP = 30; // Adjust this value for spacing between handles
+const HANDLE_X_OFFSET = "-14px"; // Nudge handle horizontally if needed (ReactFlow default is centered)
+
+const handleStyle: React.CSSProperties = {
+  background: "#555",
+  position: "absolute", // Necessary for precise positioning relative to wrapper
+  left: HANDLE_X_OFFSET,
+};
+const badgeStyle: React.CSSProperties = { textTransform: "none" };
+const handleWrapperBaseStyle: React.CSSProperties = {
+  // Common style for the div wrapping Badge + Handle
+  position: "absolute",
+  left: "10px", // Padding from the node's left edge
+  display: "flex",
+  alignItems: "center", // Vertically align Badge and Handle dot
+  height: "20px", // Define height for alignment reference
+};
+const badgeWrapperStyle: React.CSSProperties = {
+  // Style for the div specifically containing the Badge
+  marginRight: "8px", // Space between Badge and Handle dot
+};
+
+interface RerankNodeProps {
+  data: {
+    title?: string;
+    methods?: RerankMethodSpec[];
+    refresh?: boolean;
+  };
+  id: string;
+}
+
+const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
+  const nodeDefaultTitle = "Rerank Node";
+  const nodeIcon = <IconSortAscending size={16} />;
+
+  const pullInputData = useStore((s) => s.pullInputData);
+  const setDataPropsForNode = useStore((s) => s.setDataPropsForNode);
+  const pingOutputNodes = useStore((s) => s.pingOutputNodes);
+  const apiKeys = useStore((s) => s.apiKeys);
+
+  const showAlert = useContext(AlertModalContext);
+
+  const [methodItems, setMethodItems] = useState<RerankMethodSpec[]>(
+    data.methods || [],
+  );
+  const [status, setStatus] = useState<Status>(Status.NONE);
+  const [jsonResponses, setJSONResponses] = useState<LLMResponse[]>([]);
+
+  const inspectorRef = useRef<LLMResponseInspectorModalRef>(null);
+
+  // On refresh
+  useEffect(() => {
+    if (data.refresh) {
+      setDataPropsForNode(id, { refresh: false, fields: [], output: [] });
+      setJSONResponses([]);
+      setStatus(Status.NONE);
+    }
+  }, [data.refresh, id, setDataPropsForNode]);
+
+  // Track changes in rerank methods
+  const handleMethodItemsChange = useCallback(
+    (newItems: RerankMethodSpec[], _oldItems: RerankMethodSpec[]) => {
+      setMethodItems(newItems);
+      setDataPropsForNode(id, { methods: newItems });
+      if (status === Status.READY) setStatus(Status.WARNING);
+    },
+    [id, status, setDataPropsForNode],
+  );
+
+  // The main reranking function
+  const runReranking = useCallback(async () => {
+    const handleError = (msg: string, err?: any) => {
+      console.error(msg, err);
+      showAlert?.(msg);
+      setStatus(Status.ERROR);
+    };
+
+    if (methodItems.length === 0) {
+      handleError("No reranking methods selected!");
+      return;
+    }
+
+    // 1) Pull data from upstream (chunks from ChunkNode or RetrievalNode, and query)
+    let inputData: {
+      chunks?: TemplateVarInfo[];
+      query?: TemplateVarInfo[];
+      text?: TemplateVarInfo[];
+    } = {};
+
+    try {
+      inputData = pullInputData(["chunks", "query", "text"], id) as {
+        chunks?: TemplateVarInfo[];
+        query?: TemplateVarInfo[];
+        text?: TemplateVarInfo[];
+      };
+    } catch (error) {
+      handleError(
+        "No input data found. Is a ChunkNode or RetrievalNode connected?",
+        error,
+      );
+      return;
+    }
+
+    // Use chunks if available, otherwise fall back to text
+    const documentsArr = inputData.chunks || inputData.text || [];
+    const queryArr = inputData.query || [];
+
+    if (documentsArr.length === 0) {
+      handleError(
+        "No documents found. Please attach a ChunkNode, RetrievalNode, or provide text.",
+      );
+      return;
+    }
+
+    // Validate that documents have valid text
+    const validDocuments = documentsArr.filter(
+      (doc) => doc && doc.text && StringLookup.get(doc.text),
+    );
+
+    if (validDocuments.length === 0) {
+      handleError(
+        "No valid documents with text found. Please check your input data.",
+      );
+      return;
+    }
+
+    /**
+     * The query a retrieved document was found for.
+     *
+     * A RetrievalNode records this on every row it emits, so the rerank node
+     * can read it back instead of being told again on a second wire.
+     */
+    const queryOfDocument = (doc: TemplateVarInfo): string => {
+      // RetrievalNode stores the endpoint's `vars` as fill_history, and the
+      // query is one of them. `prompt` carries it too, and is the fallback
+      // for rows that came from somewhere else.
+      const recorded = doc.fill_history?.query;
+      if (recorded !== undefined)
+        return StringLookup.get(recorded as any) || "";
+      return doc.prompt ? StringLookup.get(doc.prompt as any) || "" : "";
+    };
+
+    /**
+     * What to rerank, and against what.
+     *
+     * Documents are grouped by the query that retrieved them, so each group
+     * is scored against its own query. Reranking the whole pooled set against
+     * every query in turn -- which is what a single shared query wire forces
+     * -- mixes documents retrieved for one question into the ranking for
+     * another.
+     *
+     * A query wired in explicitly overrides that, which is what makes the
+     * node still usable on raw chunks straight from a ChunkNode, where there
+     * is no retrieval step to have recorded anything.
+     */
+    const wiredQueries = queryArr
+      .map((q) => (q?.text ? StringLookup.get(q.text) || "" : ""))
+      .filter((q) => q.length > 0);
+
+    let rerankGroups: { query: string; documents: TemplateVarInfo[] }[];
+    if (wiredQueries.length > 0) {
+      rerankGroups = wiredQueries.map((query) => ({
+        query,
+        documents: validDocuments,
+      }));
+    } else {
+      const byQuery = new Map<string, TemplateVarInfo[]>();
+      for (const doc of validDocuments) {
+        const q = queryOfDocument(doc);
+        if (!byQuery.has(q)) byQuery.set(q, []);
+        (byQuery.get(q) as TemplateVarInfo[]).push(doc);
+      }
+      rerankGroups = [...byQuery.entries()].map(([query, documents]) => ({
+        query,
+        documents,
+      }));
+    }
+
+    setStatus(Status.LOADING);
+    setJSONResponses([]);
+
+    // We'll group by method name to call the reranker
+    const allReranksByMethodName: Record<string, TemplateVarInfo[]> = {};
+    const allResponsesByMethodName: Record<string, LLMResponse[]> = {};
+
+    // Group methods by name
+    const methodsByName = methodItems.reduce(
+      (acc, method) => {
+        if (!acc[method.name]) acc[method.name] = [];
+        acc[method.name].push(method);
+        return acc;
+      },
+      {} as Record<string, RerankMethodSpec[]>,
+    );
+
+    // 2) For each method and each query (if available)
+    for (const [name, methods] of Object.entries(methodsByName)) {
+      allReranksByMethodName[name] = [];
+      allResponsesByMethodName[name] = [];
+
+      for (const group of rerankGroups) {
+        const query = group.query;
+        const groupDocuments = group.documents;
+
+        for (const method of methods) {
+          try {
+            const documents = groupDocuments.map(
+              (doc) => StringLookup.get(doc.text) || "",
+            );
+
+            if (!query) {
+              console.warn(
+                `Warning: No query found when preparing payload for reranking with method ${method.name}. Proceeding without 'query' component. Results will be suboptimal.`,
+              );
+            }
+
+            let rerankedResults: any[];
+
+            if (canRerankInBrowser(method.baseMethod)) {
+              // A client-side cross-encoder: no server, no round trip. The
+              // model is fetched on first use, so drive the progress bar.
+              rerankedResults = await rerankInBrowser(
+                documents,
+                query,
+                method.settings ?? {},
+              );
+            } else {
+              const formData = new FormData();
+              formData.append("baseMethod", method.baseMethod);
+              formData.append("documents", JSON.stringify(documents));
+              if (query) formData.append("query", query);
+
+              // Add the user settings
+              Object.entries(method.settings ?? {}).forEach(([k, v]) => {
+                formData.append(k, String(v));
+              });
+
+              // Add API keys
+              if (apiKeys) {
+                formData.append("api_keys", JSON.stringify(apiKeys));
+              }
+
+              const res = await fetch(`${FLASK_BASE_URL}rerank`, {
+                method: "POST",
+                body: formData,
+              });
+
+              if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || "Reranking request failed");
+              }
+
+              const json = await res.json();
+              rerankedResults = json.reranked_documents || json.results || [];
+            }
+
+            // Process reranked results
+            const methodSafe = method.methodType.replace(/\W+/g, "_");
+            const querySafe = query
+              ? query.slice(0, 20).replace(/\W+/g, "_")
+              : "no_query";
+
+            rerankedResults.forEach((result: any, index: number) => {
+              const rId = uuid();
+
+              // Extract text and score from result
+              let resultText = "";
+              let score = 0;
+
+              if (typeof result === "string") {
+                resultText = result;
+                score = 1.0 - index / rerankedResults.length; // Synthetic score based on rank
+              } else if (result.document || result.text) {
+                resultText = result.document || result.text;
+                score =
+                  result.score ||
+                  result.relevance_score ||
+                  1.0 - index / rerankedResults.length;
+              } else {
+                resultText = String(result);
+                score = 1.0 - index / rerankedResults.length;
+              }
+
+              // The row this result came from, so what retrieval knew about
+              // it -- which document, which chunk -- survives the rerank
+              // instead of being replaced by rank and score alone.
+              const sourceIndex =
+                typeof result?.index === "number" ? result.index : undefined;
+              const source =
+                sourceIndex !== undefined
+                  ? groupDocuments[sourceIndex]
+                  : groupDocuments.find(
+                      (d) => StringLookup.get(d.text) === resultText,
+                    );
+
+              // Create the reranked document object
+              const rerankVar: TemplateVarInfo = {
+                text: resultText,
+                prompt: query || "N/A",
+                fill_history: {
+                  ...(source?.fill_history ?? {}),
+                  // As with chunkMethod: the method's own name, not the
+                  // group prefixed onto it. This was reading
+                  // "Basic (no server needed) (Cross-encoder (in-browser))".
+                  rerankMethod: method.name,
+                  query: query || "N/A",
+                  originalRank: String(index),
+                  score: String(score),
+                },
+                llm: method.name,
+                // NOTE: keep these as strings. Numbers in fill_history/metavars
+                // are ambiguous with StringLookup intern indices, so a raw
+                // number risks being resolved against the intern table instead
+                // of being carried through as data.
+                metavars: {
+                  ...(source?.metavars ?? {}),
+                  query: query || "N/A",
+                  rerankMethod: method.name,
+                  originalRank: String(index),
+                  score: String(score),
+                },
+              };
+
+              allReranksByMethodName[name].push(rerankVar);
+
+              // LLMResponse for inspector
+              const respObj: LLMResponse = {
+                uid: rId,
+                prompt: `Query: ${query || "N/A"} | Rank: ${index + 1} | Score: ${score.toFixed(3)}`,
+                vars: {
+                  query: query || "N/A",
+                  rank: String(index + 1),
+                  score: String(score.toFixed(3)),
+                },
+                responses: [resultText],
+                llm: method.name,
+                metavars: rerankVar.metavars || {},
+              };
+
+              allResponsesByMethodName[name].push(respObj);
+            });
+          } catch (err: any) {
+            handleError(
+              `Error reranking with ${method.name}: ${err.message}`,
+              err,
+            );
+            return;
+          }
+        }
+      }
+    }
+
+    // Combine results
+    const allReranks = Object.values(allReranksByMethodName).flat();
+    const allResponses = Object.values(allResponsesByMethodName).flat();
+
+    // 3) Output data grouped by method
+    const groupedOutput = Object.entries(allReranksByMethodName).reduce(
+      (acc, [method, reranks]) => {
+        acc[method] = reranks.map((rr) => ({
+          rank: rr.metavars?.originalRank,
+          query: rr.metavars?.query,
+          score: rr.metavars?.score,
+          method: rr.fill_history?.rerankMethod,
+          text: rr.text,
+        }));
+        return acc;
+      },
+      {} as Record<string, any[]>,
+    );
+
+    setDataPropsForNode(id, {
+      fields: allReranks,
+      output: groupedOutput,
+    });
+    pingOutputNodes(id);
+
+    setJSONResponses(allResponses);
+    setStatus(Status.READY);
+  }, [
+    id,
+    methodItems,
+    pullInputData,
+    setDataPropsForNode,
+    showAlert,
+    pingOutputNodes,
+  ]);
+
+  // Open inspector
+  const openInspector = () => {
+    if (jsonResponses.length > 0 && inspectorRef.current) {
+      inspectorRef.current.trigger();
+    }
+  };
+
+  return (
+    <BaseNode nodeId={id} classNames="rerank-node">
+      <NodeLabel
+        title={data.title || nodeDefaultTitle}
+        nodeId={id}
+        icon={nodeIcon}
+        status={status}
+        handleRunClick={runReranking}
+        runButtonTooltip="Perform reranking on input documents"
+      />
+
+      <div>
+        {/* What gets reranked: normally a RetrievalNode's results, though
+            raw chunks work too. The handle id stays "chunks" so flows saved
+            before the rename keep their connections; only the label, which
+            is the part anyone actually reads, changes. */}
+        <div style={{ ...handleWrapperBaseStyle, top: `${HANDLE_Y_START}px` }}>
+          <div style={badgeWrapperStyle}>
+            <Tooltip
+              label="Retrieval results (or chunks) to reorder"
+              withArrow
+              position="left"
+            >
+              <Badge color="indigo" size="md" radius="sm" style={badgeStyle}>
+                documents
+              </Badge>
+            </Tooltip>
+          </div>
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="chunks"
+            style={handleStyle}
+          />
+        </div>
+
+        {/* Labeled Handle for 'query' */}
+        <div
+          style={{
+            ...handleWrapperBaseStyle,
+            top: `${HANDLE_Y_START + HANDLE_Y_GAP}px`,
+          }}
+        >
+          <div style={badgeWrapperStyle}>
+            <Tooltip
+              label="Optional. Retrieval results already carry the query they were found for; connect one only to override that, or when reranking raw chunks."
+              withArrow
+              position="left"
+              multiline
+              width={260}
+            >
+              <Badge color="indigo" size="md" radius="sm" style={badgeStyle}>
+                query (optional)
+              </Badge>
+            </Tooltip>
+          </div>
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="query"
+            style={handleStyle}
+          />
+        </div>
+
+        {/* Add margin top to push list below handles */}
+        <div style={{ marginTop: `${HANDLE_Y_START + 1 * HANDLE_Y_GAP}px` }}>
+          <RerankMethodListContainer
+            initMethodItems={data.methods || []}
+            onItemsChange={handleMethodItemsChange}
+          />
+        </div>
+      </div>
+
+      {jsonResponses && jsonResponses.length > 0 && (
+        <InspectFooter
+          onClick={openInspector}
+          showDrawerButton={false}
+          onDrawerClick={() => {
+            // Do nothing
+          }}
+          isDrawerOpen={false}
+          label={
+            <>
+              Inspect reranked docs <IconSearch size="12pt" />
+            </>
+          }
+        />
+      )}
+
+      {/* The LLM Response Inspector */}
+      <LLMResponseInspectorModal
+        ref={inspectorRef}
+        jsonResponses={jsonResponses}
+        customLLMFieldName="Rerank Method"
+      />
+
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="output"
+        style={{ top: "50%" }}
+      />
+    </BaseNode>
+  );
+};
+
+export default RerankNode;

@@ -1,0 +1,34 @@
+services:
+  chainforge:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: chainforge/chainforge:latest
+    container_name: chainforge
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount data directory for persistent storage
+      - chainforge-data:/home/chainforge/.local/share/chainforge
+    environment:
+      - NODE_ENV=production
+      - FLASK_ENV=production
+      # Add API keys as environment variables if needed
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - COHERE_API_KEY=${COHERE_API_KEY}
+      # - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      # - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      # - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+# Named volume for persistent data
+volumes:
+  chainforge-data:
+    driver: local

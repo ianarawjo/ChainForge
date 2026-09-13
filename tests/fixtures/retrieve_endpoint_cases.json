@@ -1,0 +1,2723 @@
+{
+  "_comment": "Reference /retrieve responses, captured from chainforge/flask_app.py, used to keep the client-side implementation in chainforge/react-server/src/backend/browserRetrieve.ts producing the same rows -- grouping, response shaping and fusion included. metavars.latency_ms is stripped: it is a wall-clock timing and cannot be compared.",
+  "cases": [
+    {
+      "name": "single method, one chunk group",
+      "request": {
+        "methods": [
+          {
+            "id": "m1",
+            "baseMethod": "bm25",
+            "methodName": "BM25",
+            "library": "BM25",
+            "settings": {
+              "top_k": 2
+            }
+          }
+        ],
+        "chunks": [
+          {
+            "text": "Python is an interpreted language emphasizing readability.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c1",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Rust focuses on memory safety without a garbage collector.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c2",
+              "chunkLibrary": "Fixed Size"
+            }
+          }
+        ],
+        "queries": [
+          {
+            "text": "python readability"
+          }
+        ]
+      },
+      "response": [
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        }
+      ]
+    },
+    {
+      "name": "two methods across two chunk groups",
+      "request": {
+        "methods": [
+          {
+            "id": "m1",
+            "baseMethod": "bm25",
+            "methodName": "BM25",
+            "library": "BM25",
+            "settings": {
+              "top_k": 2
+            }
+          },
+          {
+            "id": "m2",
+            "baseMethod": "overlap",
+            "methodName": "Overlap",
+            "library": "Overlap",
+            "settings": {
+              "top_k": 2
+            }
+          }
+        ],
+        "chunks": [
+          {
+            "text": "Python is an interpreted language emphasizing readability.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c1",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Rust focuses on memory safety without a garbage collector.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c2",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Python is also widely used for data analysis and machine learning.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c3",
+              "chunkLibrary": "Sentences"
+            }
+          },
+          {
+            "text": "Memory safety is Rust's defining feature.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c4",
+              "chunkLibrary": "Sentences"
+            }
+          }
+        ],
+        "queries": [
+          {
+            "text": "python readability"
+          }
+        ]
+      },
+      "response": [
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Fixed Size (A)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Fixed Size (A)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Sentences (B)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Sentences (B)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        }
+      ]
+    },
+    {
+      "name": "multiple queries",
+      "request": {
+        "methods": [
+          {
+            "id": "m1",
+            "baseMethod": "bm25",
+            "methodName": "BM25",
+            "library": "BM25",
+            "settings": {
+              "top_k": 2
+            }
+          }
+        ],
+        "chunks": [
+          {
+            "text": "Python is an interpreted language emphasizing readability.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c1",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Rust focuses on memory safety without a garbage collector.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c2",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Python is also widely used for data analysis and machine learning.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c3",
+              "chunkLibrary": "Sentences"
+            }
+          },
+          {
+            "text": "Memory safety is Rust's defining feature.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c4",
+              "chunkLibrary": "Sentences"
+            }
+          }
+        ],
+        "queries": [
+          {
+            "text": "python"
+          },
+          {
+            "text": "memory safety"
+          }
+        ]
+      },
+      "response": [
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "memory safety",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "memory safety",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "memory safety",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "memory safety",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "python",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "python",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "memory safety",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "memory safety",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "memory safety",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "memory safety",
+            "retrievalMethod": "BM25"
+          }
+        }
+      ]
+    },
+    {
+      "name": "three methods",
+      "request": {
+        "methods": [
+          {
+            "id": "m1",
+            "baseMethod": "bm25",
+            "methodName": "BM25",
+            "library": "BM25",
+            "settings": {
+              "top_k": 2
+            }
+          },
+          {
+            "id": "m2",
+            "baseMethod": "overlap",
+            "methodName": "Overlap",
+            "library": "Overlap",
+            "settings": {
+              "top_k": 2
+            }
+          },
+          {
+            "id": "m3",
+            "baseMethod": "boolean",
+            "methodName": "Boolean",
+            "library": "Boolean",
+            "settings": {
+              "top_k": 2
+            }
+          }
+        ],
+        "chunks": [
+          {
+            "text": "Python is an interpreted language emphasizing readability.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c1",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Rust focuses on memory safety without a garbage collector.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c2",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Python is also widely used for data analysis and machine learning.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c3",
+              "chunkLibrary": "Sentences"
+            }
+          },
+          {
+            "text": "Memory safety is Rust's defining feature.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c4",
+              "chunkLibrary": "Sentences"
+            }
+          }
+        ],
+        "queries": [
+          {
+            "text": "python is"
+          }
+        ]
+      },
+      "response": [
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python is",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python is",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python is",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python is",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Fixed Size (A)-Overlap"
+          },
+          "prompt": "python is",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python is",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Fixed Size (A)-Overlap"
+          },
+          "prompt": "python is",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python is",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m3",
+            "retrievalMethodSignature": "boolean",
+            "signature": "Fixed Size (A)-Boolean"
+          },
+          "prompt": "python is",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python is",
+            "retrievalMethod": "Boolean"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.305084745762712
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "python is",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python is",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "python is",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python is",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Sentences (B)-Overlap"
+          },
+          "prompt": "python is",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python is",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.5
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Sentences (B)-Overlap"
+          },
+          "prompt": "python is",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python is",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m3",
+            "retrievalMethodSignature": "boolean",
+            "signature": "Sentences (B)-Boolean"
+          },
+          "prompt": "python is",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python is",
+            "retrievalMethod": "Boolean"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.9166666666666666
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m3",
+            "retrievalMethodSignature": "boolean",
+            "signature": "Sentences (B)-Boolean"
+          },
+          "prompt": "python is",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python is",
+            "retrievalMethod": "Boolean"
+          }
+        }
+      ]
+    },
+    {
+      "name": "query carrying vars and metavars",
+      "request": {
+        "methods": [
+          {
+            "id": "m1",
+            "baseMethod": "bm25",
+            "methodName": "BM25",
+            "library": "BM25",
+            "settings": {
+              "top_k": 2
+            }
+          }
+        ],
+        "chunks": [
+          {
+            "text": "Python is an interpreted language emphasizing readability.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c1",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Rust focuses on memory safety without a garbage collector.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c2",
+              "chunkLibrary": "Fixed Size"
+            }
+          }
+        ],
+        "queries": [
+          {
+            "text": "python",
+            "vars": {
+              "topic": "langs"
+            },
+            "metavars": {
+              "qid": "q1"
+            },
+            "fill_history": {
+              "src": "upstream"
+            }
+          }
+        ]
+      },
+      "response": [
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "qid": "q1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python",
+            "retrievalMethod": "BM25",
+            "src": "upstream",
+            "topic": "langs"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "qid": "q1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python",
+            "retrievalMethod": "BM25",
+            "src": "upstream",
+            "topic": "langs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "string queries",
+      "request": {
+        "methods": [
+          {
+            "id": "m2",
+            "baseMethod": "overlap",
+            "methodName": "Overlap",
+            "library": "Overlap",
+            "settings": {
+              "top_k": 2
+            }
+          }
+        ],
+        "chunks": [
+          {
+            "text": "Python is an interpreted language emphasizing readability.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c1",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Rust focuses on memory safety without a garbage collector.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c2",
+              "chunkLibrary": "Fixed Size"
+            }
+          }
+        ],
+        "queries": [
+          "python readability"
+        ]
+      },
+      "response": [
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Fixed Size (A)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Fixed Size (A)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        }
+      ]
+    },
+    {
+      "name": "fusion: reciprocal rank",
+      "request": {
+        "methods": [
+          {
+            "id": "m1",
+            "baseMethod": "bm25",
+            "methodName": "BM25",
+            "library": "BM25",
+            "settings": {
+              "top_k": 2
+            }
+          },
+          {
+            "id": "m2",
+            "baseMethod": "overlap",
+            "methodName": "Overlap",
+            "library": "Overlap",
+            "settings": {
+              "top_k": 2
+            }
+          }
+        ],
+        "chunks": [
+          {
+            "text": "Python is an interpreted language emphasizing readability.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c1",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Rust focuses on memory safety without a garbage collector.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c2",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Python is also widely used for data analysis and machine learning.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c3",
+              "chunkLibrary": "Sentences"
+            }
+          },
+          {
+            "text": "Memory safety is Rust's defining feature.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c4",
+              "chunkLibrary": "Sentences"
+            }
+          }
+        ],
+        "queries": [
+          {
+            "text": "python readability"
+          }
+        ],
+        "fusion_enabled": true,
+        "linked_groups": [
+          {
+            "id": "g1",
+            "methodKeys": [
+              "m1",
+              "m2"
+            ],
+            "fusionMethod": "reciprocal_rank_fusion",
+            "fusionSettings": {
+              "k": 60
+            }
+          }
+        ]
+      },
+      "response": [
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Fixed Size (A)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Fixed Size (A)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Sentences (B)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Sentences (B)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.03278688524590164
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "group:g1",
+            "retrievalMethodSignature": "fusion:rrf",
+            "signature": "Fixed Size (A)-FUSED-g1"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Fused (BM25 + Overlap)"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.03225806451612903
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "group:g1",
+            "retrievalMethodSignature": "fusion:rrf",
+            "signature": "Fixed Size (A)-FUSED-g1"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Fused (BM25 + Overlap)"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.03278688524590164
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "group:g1",
+            "retrievalMethodSignature": "fusion:rrf",
+            "signature": "Sentences (B)-FUSED-g1"
+          },
+          "prompt": "python readability",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Fused (BM25 + Overlap)"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.03225806451612903
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "group:g1",
+            "retrievalMethodSignature": "fusion:rrf",
+            "signature": "Sentences (B)-FUSED-g1"
+          },
+          "prompt": "python readability",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Fused (BM25 + Overlap)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "fusion: weighted average",
+      "request": {
+        "methods": [
+          {
+            "id": "m1",
+            "baseMethod": "bm25",
+            "methodName": "BM25",
+            "library": "BM25",
+            "settings": {
+              "top_k": 2
+            }
+          },
+          {
+            "id": "m2",
+            "baseMethod": "overlap",
+            "methodName": "Overlap",
+            "library": "Overlap",
+            "settings": {
+              "top_k": 2
+            }
+          }
+        ],
+        "chunks": [
+          {
+            "text": "Python is an interpreted language emphasizing readability.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c1",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Rust focuses on memory safety without a garbage collector.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c2",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Python is also widely used for data analysis and machine learning.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c3",
+              "chunkLibrary": "Sentences"
+            }
+          },
+          {
+            "text": "Memory safety is Rust's defining feature.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c4",
+              "chunkLibrary": "Sentences"
+            }
+          }
+        ],
+        "queries": [
+          {
+            "text": "python readability"
+          }
+        ],
+        "fusion_enabled": true,
+        "linked_groups": [
+          {
+            "id": "g1",
+            "methodKeys": [
+              "m1",
+              "m2"
+            ],
+            "fusionMethod": "weighted_average",
+            "fusionSettings": {}
+          }
+        ]
+      },
+      "response": [
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Fixed Size (A)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Fixed Size (A)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Sentences (B)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Sentences (B)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "group:g1",
+            "retrievalMethodSignature": "fusion:weighted_average",
+            "signature": "Fixed Size (A)-FUSED-g1"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Fused (BM25 + Overlap)"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "group:g1",
+            "retrievalMethodSignature": "fusion:weighted_average",
+            "signature": "Fixed Size (A)-FUSED-g1"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Fused (BM25 + Overlap)"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "group:g1",
+            "retrievalMethodSignature": "fusion:weighted_average",
+            "signature": "Sentences (B)-FUSED-g1"
+          },
+          "prompt": "python readability",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Fused (BM25 + Overlap)"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "group:g1",
+            "retrievalMethodSignature": "fusion:weighted_average",
+            "signature": "Sentences (B)-FUSED-g1"
+          },
+          "prompt": "python readability",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Fused (BM25 + Overlap)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "fusion: weights applied",
+      "request": {
+        "methods": [
+          {
+            "id": "m1",
+            "baseMethod": "bm25",
+            "methodName": "BM25",
+            "library": "BM25",
+            "settings": {
+              "top_k": 2
+            }
+          },
+          {
+            "id": "m2",
+            "baseMethod": "overlap",
+            "methodName": "Overlap",
+            "library": "Overlap",
+            "settings": {
+              "top_k": 2
+            }
+          }
+        ],
+        "chunks": [
+          {
+            "text": "Python is an interpreted language emphasizing readability.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c1",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Rust focuses on memory safety without a garbage collector.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c2",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Python is also widely used for data analysis and machine learning.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c3",
+              "chunkLibrary": "Sentences"
+            }
+          },
+          {
+            "text": "Memory safety is Rust's defining feature.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c4",
+              "chunkLibrary": "Sentences"
+            }
+          }
+        ],
+        "queries": [
+          {
+            "text": "python readability"
+          }
+        ],
+        "fusion_enabled": true,
+        "linked_groups": [
+          {
+            "id": "g1",
+            "methodKeys": [
+              "m1",
+              "m2"
+            ],
+            "fusionMethod": "reciprocal_rank_fusion",
+            "fusionSettings": {
+              "k": 10,
+              "weights": [
+                3.0,
+                1.0
+              ]
+            }
+          }
+        ]
+      },
+      "response": [
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Fixed Size (A)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Fixed Size (A)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "python readability",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 1.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Sentences (B)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m2",
+            "retrievalMethodSignature": "overlap",
+            "signature": "Sentences (B)-Overlap"
+          },
+          "prompt": "python readability",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Overlap"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.36363636363636365
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "group:g1",
+            "retrievalMethodSignature": "fusion:rrf",
+            "signature": "Fixed Size (A)-FUSED-g1"
+          },
+          "prompt": "python readability",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Fused (BM25 + Overlap)"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.3333333333333333
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "group:g1",
+            "retrievalMethodSignature": "fusion:rrf",
+            "signature": "Fixed Size (A)-FUSED-g1"
+          },
+          "prompt": "python readability",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "python readability",
+            "retrievalMethod": "Fused (BM25 + Overlap)"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.36363636363636365
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "group:g1",
+            "retrievalMethodSignature": "fusion:rrf",
+            "signature": "Sentences (B)-FUSED-g1"
+          },
+          "prompt": "python readability",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Fused (BM25 + Overlap)"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.3333333333333333
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "group:g1",
+            "retrievalMethodSignature": "fusion:rrf",
+            "signature": "Sentences (B)-FUSED-g1"
+          },
+          "prompt": "python readability",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "python readability",
+            "retrievalMethod": "Fused (BM25 + Overlap)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "no matches",
+      "request": {
+        "methods": [
+          {
+            "id": "m1",
+            "baseMethod": "bm25",
+            "methodName": "BM25",
+            "library": "BM25",
+            "settings": {
+              "top_k": 2
+            }
+          },
+          {
+            "id": "m2",
+            "baseMethod": "overlap",
+            "methodName": "Overlap",
+            "library": "Overlap",
+            "settings": {
+              "top_k": 2
+            }
+          }
+        ],
+        "chunks": [
+          {
+            "text": "Python is an interpreted language emphasizing readability.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c1",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Rust focuses on memory safety without a garbage collector.",
+            "fill_history": {
+              "chunkMethod": "Fixed Size (A)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c2",
+              "chunkLibrary": "Fixed Size"
+            }
+          },
+          {
+            "text": "Python is also widely used for data analysis and machine learning.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "langs.md",
+              "chunkId": "c3",
+              "chunkLibrary": "Sentences"
+            }
+          },
+          {
+            "text": "Memory safety is Rust's defining feature.",
+            "fill_history": {
+              "chunkMethod": "Sentences (B)"
+            },
+            "metavars": {
+              "docTitle": "systems.md",
+              "chunkId": "c4",
+              "chunkLibrary": "Sentences"
+            }
+          }
+        ],
+        "queries": [
+          {
+            "text": "zzzz qqqq"
+          }
+        ]
+      },
+      "response": [
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c1",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "zzzz qqqq",
+          "text": "Python is an interpreted language emphasizing readability.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "zzzz qqqq",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c2",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Fixed Size (A)-BM25"
+          },
+          "prompt": "zzzz qqqq",
+          "text": "Rust focuses on memory safety without a garbage collector.",
+          "vars": {
+            "chunkMethod": "Fixed Size (A)",
+            "query": "zzzz qqqq",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 1,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c3",
+            "chunkLibrary": "",
+            "docTitle": "langs.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "zzzz qqqq",
+          "text": "Python is also widely used for data analysis and machine learning.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "zzzz qqqq",
+            "retrievalMethod": "BM25"
+          }
+        },
+        {
+          "eval_res": {
+            "dtype": "KeyValue_Mixed",
+            "items": [
+              {
+                "rank": 2,
+                "similarity": 0.0
+              }
+            ]
+          },
+          "llm": "(none)",
+          "metavars": {
+            "chunkId": "c4",
+            "chunkLibrary": "",
+            "docTitle": "systems.md",
+            "methodId": "m1",
+            "retrievalMethodSignature": "bm25",
+            "signature": "Sentences (B)-BM25"
+          },
+          "prompt": "zzzz qqqq",
+          "text": "Memory safety is Rust's defining feature.",
+          "vars": {
+            "chunkMethod": "Sentences (B)",
+            "query": "zzzz qqqq",
+            "retrievalMethod": "BM25"
+          }
+        }
+      ]
+    }
+  ]
+}

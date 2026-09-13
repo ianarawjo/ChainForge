@@ -146,6 +146,7 @@ export function AIPopover({
 }: {
   children: React.ReactNode;
 }) {
+  const [opened, setOpened] = useState(false);
   // API keys
   const apiKeys = useStore((state) => state.apiKeys);
   const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
@@ -219,9 +220,15 @@ export function AIPopover({
       shadow={popoverShadow}
       withinPortal
       keepMounted
+      opened={opened}
+      onChange={setOpened}
+      clickOutsideEvents={["click"]}
     >
       <Popover.Target>
-        <button className="ai-button nodrag">
+        <button
+          className="ai-button nodrag"
+          onClick={() => setOpened((o) => !o)}
+        >
           <IconSparkles size={10} fill="violet" />
         </button>
       </Popover.Target>

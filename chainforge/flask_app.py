@@ -1,4 +1,4 @@
-import json, os, sys, asyncio, time, shutil, uuid, hashlib, tempfile, zipfile
+import json, os, sys, asyncio, time, shutil, uuid, hashlib, tempfile, zipfile, threading
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Literal
@@ -11,9 +11,59 @@ from chainforge.security.password_utils import ensure_password
 from chainforge.security.secure_save import load_json_file, save_json_file
 import requests as py_requests
 from platformdirs import user_data_dir
+import copy
+from collections import defaultdict
 
-# RAG-specific imports
+# markitdown is a *core* dependency, not part of the optional [rag] extra:
+# media_to_text() needs it whether or not RAG features are installed.
 from markitdown import MarkItDown
+
+""" ========================================================
+    DETECT RAGFORGE AVAILABILITY AND IMPORT RAGFORGE MODULES
+    ========================================================
+"""
+# The optional dependency set installed by `pip install chainforge[rag]`.
+# Several of these are imported lazily deep inside chainforge.rag, so we probe
+# for all of them up front rather than inferring availability from the imports
+# below succeeding.
+_RAG_PACKAGES = ["pyarrow", "lancedb", "pandas", "sentence_transformers",
+                 "chonkie", "rank_bm25", "numpy", "nltk"]
+
+def _rag_packages_installed() -> bool:
+    """Whether every optional RAG dependency is importable, without importing them."""
+    from importlib.util import find_spec
+    for package in _RAG_PACKAGES:
+        try:
+            if find_spec(package) is None:
+                return False
+        except (ImportError, ValueError):
+            # find_spec raises if a parent package is missing or not a package.
+            return False
+    return True
+
+RAG_AVAILABLE = False
+if _rag_packages_installed():
+    # Import eagerly, but tolerate failure. A dependency that is present yet
+    # broken (a half-installed torch, say) must degrade to "RAG disabled"
+    # rather than stop ChainForge from starting at all.
+    try:
+        from chainforge.rag.chunkers import ChunkingMethodRegistry
+        from chainforge.rag.retrievers import RetrievalMethodRegistry
+        from chainforge.rag.rerankers import RerankingMethodRegistry, rrf_fuse, weighted_avg_fuse
+        from chainforge.rag.embeddings import EmbeddingMethodRegistry
+        RAG_AVAILABLE = True
+        print("RAGForge dependencies detected. Enabling RAGForge features...")
+    except Exception as e:
+        print(f"RAGForge dependencies are installed but could not be loaded; RAG features "
+              f"will be disabled. ({type(e).__name__}: {e})", file=sys.stderr)
+
+if not RAG_AVAILABLE:
+    print("You are running ChainForge core. RAG features are disabled. "
+          "To enable them, install `chainforge[rag]`.")
+
+def IS_RAG_AVAILABLE() -> bool:
+    """Whether the optional RAG dependencies loaded successfully at startup."""
+    return RAG_AVAILABLE
 
 
 """ =================
@@ -42,6 +92,27 @@ MEDIA_DIR = os.path.join(FLOWS_DIR, 'media')
 # Cryptography
 SECURE_MODE: Literal['off', 'settings', 'all'] = 'off'  # The mode of encryption to use for files
 FLOWS_DIR_PWD = None  # The password to use for encryption/decryption
+
+# GLOBAL STATE: Progress of each retrieval method in the current run, keyed by
+# method name and polled by the front-end via /getRetrieveProgress. Flask serves
+# requests on multiple threads, so guard it with a lock and mutate in place --
+# rebinding the dict would discard a concurrent run's progress, and reading it
+# unguarded can raise "dictionary changed size during iteration".
+RETRIEVAL_PROGRESS = {}
+RETRIEVAL_PROGRESS_LOCK = threading.Lock()
+
+def reset_retrieval_progress(method_names):
+    with RETRIEVAL_PROGRESS_LOCK:
+        RETRIEVAL_PROGRESS.clear()
+        RETRIEVAL_PROGRESS.update({name: 0 for name in method_names})
+
+def set_retrieval_progress(method_name, percent):
+    with RETRIEVAL_PROGRESS_LOCK:
+        RETRIEVAL_PROGRESS[method_name] = percent
+
+def get_retrieval_progress():
+    with RETRIEVAL_PROGRESS_LOCK:
+        return dict(RETRIEVAL_PROGRESS)
 
 class MetricType(Enum):
     KeyValue = 0
@@ -271,10 +342,12 @@ def exclude_key(d, key_to_exclude):
 def index():
     # Get the index.html HTML code
     html_str = render_template("index.html")
+
+    # RAG available flag
+    rag_av = "true" if RAG_AVAILABLE else "false"
     
-    # Inject global JS variables __CF_HOSTNAME and __CF_PORT at the top so that the application knows 
-    # that it's running from a Flask server, and what the hostname and port of that server is:
-    html_str = html_str[:60] + f'<script>window.__CF_HOSTNAME="{HOSTNAME}"; window.__CF_PORT={PORT};</script>' + html_str[60:]
+    # Inject global JS variables like __CF_HOSTNAME and __CF_PORT at the top so that the application knows that it's running from a Flask server, and what the hostname and port of that server is:
+    html_str = html_str[:60] + f'<script>window.__CF_HOSTNAME="{HOSTNAME}"; window.__CF_PORT={PORT}; window.__RAG_AVAILABLE={rag_av};</script>' + html_str[60:]
 
     return html_str
 
@@ -401,6 +474,14 @@ def fetchExampleFlow():
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
+@app.get("/examples/<path:filename>")
+def serve_cfzip(filename: str):
+    # CORS is already applied app-wide, so no @cross_origin() is needed here.
+    # send_from_directory() safe-joins the path, so traversal attempts 404.
+    if not filename.lower().endswith((".cfzip", ".zip")):
+        return jsonify({"error": "Only .cfzip flow bundles are served here."}), 404
+    return send_from_directory(EXAMPLES_DIR, filename, mimetype="application/zip")
+
 
 @app.route('/app/fetchOpenAIEval', methods=['POST'])
 def fetchOpenAIEval():
@@ -491,6 +572,17 @@ def fetchEnvironAPIKeys():
     }
     d = { alias: os.environ.get(key) for key, alias in keymap.items() }
     ret = jsonify(d)
+    ret.headers.add('Access-Control-Allow-Origin', '*')
+    return ret
+
+
+@app.route('/app/checkRagAvailable', methods=['POST'])
+def checkRagAvailable():
+    """
+    Check if RAG dependencies are available.
+    Returns True if all required RAG packages are installed, False otherwise.
+    """
+    ret = jsonify({"rag_available": IS_RAG_AVAILABLE()})
     ret.headers.add('Access-Control-Allow-Origin', '*')
     return ret
 
@@ -597,7 +689,7 @@ def initCustomProvider():
 
     # Copy the passed Python script to a local file in the package directory
     try:
-        with open(os.path.join(provider_scripts_dir, f"{script_id}.py"), 'w') as f:
+        with open(os.path.join(provider_scripts_dir, f"{script_id}.py"), 'w', encoding="utf-8") as f:
             f.write(data['code'])
     except Exception as e:
         return jsonify({'error': f"Error saving script 'provider_scripts' at filepath {provider_scripts_dir}: {str(e)}"})
@@ -624,7 +716,7 @@ def loadCachedCustomProviders():
                 ProviderRegistry.set_curr_script_id(os.path.splitext(file_name)[0])  
 
                 # Read the Python script
-                with open(file_path, 'r') as f:
+                with open(file_path, 'r', encoding="utf-8") as f:
                     code = f.read()
                 
                 # Try to execute it in the global context
@@ -1040,7 +1132,7 @@ def media_to_text(uid):
     try:
         ext = os.path.splitext(file_path)[1].lower()
 
-        allowed_extensions = {".pdf", ".txt", ".docx", ".xlsx", ".xls", ".pptx"}
+        allowed_extensions = {".pdf", ".txt", ".docx", ".xlsx", ".xls", ".pptx", ".md"}
         if ext == '.txt':
             # Read text files directly
             with open(file_path, 'rb') as f:
@@ -1312,6 +1404,635 @@ def verify_media_file_integrity(uid):
         raise ValueError(f"Hash mismatch: expected {expected_hash}, got {actual_hash}")
 
 
+"""
+    RAGForge Endpoints and Functions
+"""
+def requires_rag(view):
+    """Return a clean 501 if the optional RAG dependencies aren't installed.
+
+    The RAG routes are registered unconditionally so that the API surface does
+    not change with the install, but their registries only exist when the
+    `chainforge[rag]` extra loaded successfully.
+    """
+    from functools import wraps
+
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        if not RAG_AVAILABLE:
+            return jsonify({"error": "RAG features are not available. Install them with "
+                                     "`pip install chainforge[rag]` and restart ChainForge."}), 501
+        return view(*args, **kwargs)
+    return wrapper
+
+
+# Chunking Endpoint
+@app.route("/chunk", methods=["POST"])
+@requires_rag
+def chunk():
+    """
+    Handles text processing requests, specifically chunking.
+    Uses a registry to dispatch to the correct chunking function.
+    Expects multipart/form-data with:
+      - 'baseMethod' in request.form
+      - 'document' in request.files (UTF-8 text as a file/blob)
+      - optional additional settings as small form fields
+    """
+    if not request.form and not request.files:
+        return jsonify({"error": "Request must be form data"}), 400
+
+    base_method = request.form.get("baseMethod")
+    if not base_method:
+        return jsonify({"error": "Missing 'baseMethod' in form data"}), 400
+
+    # We now require the text as an uploaded file named "document"
+    file = request.files.get("document")
+    if file is None:
+        return jsonify({"error": "Missing 'document' in form data"}), 400
+
+    # Read and decode the uploaded text file
+    raw_bytes = file.read() # type: bytes
+    text = raw_bytes.decode("utf-8", errors="ignore") # bytes -> str
+
+    # Look up the chunking handler
+    handler = ChunkingMethodRegistry.get_handler(base_method)
+
+    # if it wasn't a built‑in chunker, see if it's a custom provider
+    if not handler and base_method.startswith("__custom/"):
+        provider_name = base_method[len("__custom/"):]
+        entry = ProviderRegistry.get(provider_name)
+        if entry and entry.get("func"):
+            handler = entry["func"]
+
+    if not handler:
+        return jsonify({"error": f"Unsupported chunking method: {base_method}"}), 400
+
+    # Extract additional settings from form data, converting types carefully
+    settings = {}
+    known_int_params = {"chunk_size", "chunk_overlap", "n_topics", "min_topic_size", "top_k", "max_features"}
+    known_float_params = {"bm25_k1", "bm25_b"}
+    known_bool_params = {"keep_separator"}
+
+    for key, value in request.form.items():
+        if key == "baseMethod":
+            continue 
+        try:
+            if key in known_int_params:
+                settings[key] = int(value)
+            elif key in known_float_params:
+                settings[key] = float(value)
+            elif key in known_bool_params:
+                # Handle boolean conversion robustly
+                settings[key] = value.lower() in ['true', 'yes']
+            else:
+                settings[key] = value # Keep as string if type unknown
+        except (ValueError, TypeError):
+            print(f"Warning: Could not convert setting '{key}' with value '{value}' to expected type. Using raw value.", file=sys.stderr)
+            settings[key] = value # Fallback to string if conversion fails
+
+    try:
+        # Call the registered handler function
+        chunks = handler(text, **settings)
+        return jsonify({"chunks": chunks}), 200
+    except ValueError as ve: # Catch specific config/setup errors
+        print(f"Configuration or setup error during chunking ({base_method}): {ve}", file=sys.stderr)
+        return jsonify({"error": f"Setup error: {ve}"}), 400 # Bad Request
+    except ImportError as ie:
+         print(f"Import error during chunking ({base_method}): {ie}", file=sys.stderr)
+         return jsonify({"error": f"Missing library dependency: {ie.name}"}), 500 # Internal Server Error
+    except Exception as e:
+        # Log the full error for server-side debugging
+        print(f"Unexpected error during chunking ({base_method}): {e}", file=sys.stderr)
+        # Return a generic error to the client
+        return jsonify({"error": "An internal error occurred during text processing."}), 500
+
+# === Retrieval Endpoint===
+@app.route("/retrieve", methods=["POST"])
+@requires_rag
+def retrieve():
+    """
+    Process multiple retrieval methods against provided chunks and queries.
+    
+    Expected request format:
+    {
+        "methods": [
+            {
+                "id": "unique_method_id",
+                "baseMethod": "bm25",
+                "methodName": "BM25",
+                "library": "BM25",
+                "settings": { "top_k": 5, ... }
+            },
+            ...
+        ],
+        "chunks": [
+            {
+                "text": "chunk text",
+                "prompt": "original query",
+                "fill_history": {"chunkMethod": "method name", "docTitle": "doc1", ...},
+                "metavars": {"docTitle": "doc1", "chunkLibrary": "library", ...},
+                ...
+            },
+            ...
+        ],
+        "queries": [
+            {
+                "query": "query text",
+                "fill_history": {"chunkMethod": "method name", "docTitle": "doc1", ...},
+                "metavars": {"docTitle": "doc1", "chunkLibrary": "library", ...},
+                ...
+            },
+            ...
+        ] 
+    }
+
+    Expected output format:
+    A flat array of objects in the ChainForge TemplateVarInfo format:
+    [
+        {
+            "text": "chunk text",
+            "prompt": "query text",
+            "vars": {
+                "query": "query text",
+                "chunkMethod": "chunking method used"
+            },
+            "metavars": {
+                "method": "retrieval method name",
+                "baseMethod": "retrieval base method",
+                "chunkMethod": "chunking method used",
+                "similarity": 0.85,
+                "docTitle": "document title",
+                "chunkId": "unique id",
+                "rank": 1
+            },
+            "fill_history": {
+                "retrievalMethod": "method name",
+                "baseMethod": "base method type",
+                "methodId": "method id",
+                "embeddingModel": "model name if applicable",
+                "chunkMethod": "chunking method used",
+                "similarity": 0.85,
+                "docTitle": "document title",
+                "chunkId": "unique id"
+            },
+            "llm": "retrieval method name"
+        },
+        ...
+    ]
+    """
+    data = request.json
+    methods = data.get("methods", [])
+    chunks = data.get("chunks", [])
+    queries = data.get("queries", [])
+    api_keys = data.get("api_keys", [])
+
+    fusion_enabled = bool(data.get("fusion_enabled", False))
+    linked_groups = data.get("linked_groups", []) if fusion_enabled else []
+    method_name_by_id = {m["id"]: m["methodName"] for m in methods}
+
+    queries = [{'text': q} if isinstance(q, str) else q for q in queries]
+
+    try:
+    
+        # Validate inputs
+        if not methods:
+            return jsonify({"error": "No retrieval methods provided"}), 400
+        if not chunks:
+            return jsonify({"error": "No chunks provided"}), 400
+        if not queries:
+            return jsonify({"error": "No queries provided"}), 400
+        
+        reset_retrieval_progress(m["methodName"] for m in methods)
+        
+        method_id_to_group = {}
+        group_cfg = {}
+        if fusion_enabled:
+            for g in linked_groups:
+                gid = g.get("id")
+                if not gid:
+                    continue
+                group_cfg[gid] = g
+                for mid in g.get("methodKeys", []):
+                    method_id_to_group[mid] = gid
+
+        # (query_text, chunkMethod) -> { methodId -> [ {doc_id, rank, score, obj} ] }
+        staging = defaultdict(lambda: defaultdict(list))
+
+        
+        resolved_handlers = {}
+        for method in methods:
+            base_method = method.get("baseMethod")
+            
+            # 1) Try built‑in lookup
+            handler = RetrievalMethodRegistry.get_handler(base_method)
+
+            # 2) Fallback to any custom provider
+            if not handler and base_method.startswith("__custom/"):
+                provider_name = base_method[len("__custom/"):]
+                entry = ProviderRegistry.get(provider_name)
+                if entry and entry.get("func"):
+                    handler = entry["func"]
+
+            if not handler:
+                return jsonify({"error": f"Unknown retrieval method: {base_method}"}), 400
+
+            # cache it for later use
+            resolved_handlers[base_method] = handler
+        def find_query_metadata(query_text, queries):
+            for q in queries:
+                if isinstance(q, dict) and q.get("text") == query_text:
+                    return q
+            return {}
+        
+        # Group chunks by chunking method
+        chunks_by_method = {}
+        for chunk in chunks:
+            # Extract chunking method from the chunk
+            chunk_method = chunk.get("fill_history", {}).get("chunkMethod", "unknown")
+            
+            if chunk_method not in chunks_by_method:
+                chunks_by_method[chunk_method] = []
+            
+            # Store the full chunk with all its metadata
+            chunks_by_method[chunk_method].append({
+                "text": chunk.get("text", ""),
+                "docTitle": chunk.get("metavars", {}).get("docTitle", ""),
+                "chunkId": chunk.get("metavars", {}).get("chunkId", ""),
+                "chunkMethod": chunk_method,
+                "chunkLibrary": chunk.get("metavars", {}).get("chunkLibrary", "")
+            })
+
+        # Group retrieval methods by embedding model to avoid redundant computation
+        embedding_methods = {}  # model -> list of methods requiring this model
+        keyword_methods = []    # methods not requiring embeddings
+
+        for method in methods:
+            embedding_provider = method.get("embeddingProvider", None)
+            if embedding_provider:
+                # This is an embedding-based method
+                embedding_model = method.get("settings", {}).get("embeddingModel", "default")
+                full_embedder = f"{embedding_provider}#{embedding_model}"    
+                if full_embedder not in embedding_methods:
+                    embedding_methods[full_embedder] = []
+                embedding_methods[full_embedder].append(method)
+            else:
+                # Non-embedding method
+                keyword_methods.append(method)
+
+        # Prepare the final flat results array
+        flat_results = []
+        # Per-method failures. Individual methods are skipped rather than
+        # aborting the run, but we surface them if nothing succeeded at all.
+        method_errors = []
+        
+        # Process each chunking method separately
+        for chunk_method, chunk_group in chunks_by_method.items():
+            # Skip empty chunk groups
+            if not chunk_group:
+                continue
+                
+            # Process keyword methods for this chunk group
+            for method in keyword_methods:
+                method_id = method.get("id")
+                base_method = method.get("baseMethod")
+                method_name = method.get("methodName")
+                
+                try:
+                    handler = resolved_handlers.get(base_method)
+                    if not handler:
+                        raise ValueError(f"Unknown method: {base_method}")
+                    set_retrieval_progress(method_name, 10)
+                    start_time = time.perf_counter()
+                    
+                    # Get retrieved chunks for this method and chunk group
+                    retrieved = handler(chunk_group, queries, method.get("settings", {}))
+                    set_retrieval_progress(method_name, 70)
+                    end_time = time.perf_counter()
+                    latency_ms = (end_time - start_time) * 1000
+                    # Process retrieved chunks for each query
+                    for resp in retrieved:
+                        query_object = resp.get("query_object", "")
+                        retrieved_chunks = resp.get("retrieved_chunks", [])
+                        for i, chunk in enumerate(retrieved_chunks):
+                            # Create response object
+                            response_obj = {
+                                "text": chunk["text"],
+                                "prompt": query_object['text'],
+                                "eval_res": {
+                                    "items": [{
+                                        "similarity": chunk["similarity"],
+                                        "rank": i + 1,
+                                    }],
+                                    "dtype": "KeyValue_Mixed",
+                                },
+                                "vars": {
+                                    **query_object.get("vars", {}),  # Include original query vars
+                                    **query_object.get("fill_history", {}),  # Include original query fill_history, if any
+                                    "query": query_object['text'],
+                                    "retrievalMethod": method_name,
+                                    "chunkMethod": chunk_method,  # Include chunking method in vars
+                                },
+                                "metavars": {
+                                    **query_object.get("metavars", {}),  # Include original query metavars
+                                    "methodId": method_id,
+                                    "retrievalMethodSignature": base_method,
+                                    "signature": chunk_method + "-" + method_name,
+                                    "docTitle": chunk.get("docTitle", ""),
+                                    "chunkId": chunk.get("chunkId", ""),
+                                    "chunkLibrary": chunk.get("chunkLibrary", ""),
+                                    "latency_ms": f"{latency_ms:.2f}ms"
+                                },
+                                "llm": chunk.get("llm", "(none)"),  # Use chunk's LLM if available
+                            }
+
+                            if fusion_enabled:
+                                doc_id = chunk.get("chunkId")
+                                score = float(chunk.get("similarity", 0.0))
+                                rank = i + 1
+                                query_txt = query_object['text']
+                                staging[(query_txt, chunk_method)][method_id].append({
+                                    "doc_id": doc_id, "rank": rank, "score": score, "obj": response_obj
+                                })
+                            
+                            flat_results.append(response_obj)
+                    set_retrieval_progress(method_name, 100)
+                except Exception as e:
+                    # Skip errors - we'll just not include results from this method
+                    msg = f"Error with {method_name} on {chunk_method}: {e}"
+                    print(msg, file=sys.stderr)
+                    method_errors.append(msg)
+                    continue
+
+            # Process embedding-based methods for this chunk group
+            # NOTE: bind to `embedder_methods`, not `methods` -- the latter is the
+            # full list of methods from the request body.
+            for embedder, embedder_methods in embedding_methods.items():
+                try:
+                    provider, model_name = embedder.split("#", 1)
+                    embedder_func = EmbeddingMethodRegistry.get_embedder(provider)
+                    model_path = next((m['settings'].get('embeddingLocalPath') for m in embedder_methods if
+                                    m['settings'].get('embeddingLocalPath')), None)
+
+                    if not embedder_func:
+                        raise ValueError(f"Unknown embedding model: {model_name}")
+                    for m in embedder_methods:
+                         set_retrieval_progress(m["methodName"], 30)
+                    
+                    # Compute embeddings once for all methods using this model
+                    chunk_texts = [c["text"] for c in chunk_group]
+                    chunk_embeddings = embedder_func(chunk_texts, model_name, model_path, api_keys)
+                    query_embeddings = embedder_func([query.get("text", "") for query in queries], model_name, model_path, api_keys)
+                    
+                except Exception as e:
+                    # Skip just the methods using this embedder, as we do for
+                    # keyword methods, so one bad embedder cannot wipe out the
+                    # whole run. Collected errors are reported below if nothing
+                    # at all could be retrieved.
+                    msg = f"Embedding error with {embedder} on {chunk_method}: {e}"
+                    print(msg, file=sys.stderr)
+                    method_errors.append(msg)
+                    continue
+                
+                # Process each method with the same embeddings
+                for method in embedder_methods:
+                    method_id = method.get("id")
+                    base_method = method.get("baseMethod")
+                    method_name = method.get("methodName")
+
+                    # A safe database path to use to store on local disk, if necessary
+                    # :: For instance, vector databases like LanceDB, FAISS or Chroma. 
+                    db_path = os.path.join(MEDIA_DIR, method_id + ".db")
+                    
+                    try:
+                        handler = resolved_handlers.get(base_method)
+                        if not handler:
+                            raise ValueError(f"Unknown method: {base_method}")
+                        set_retrieval_progress(method_name, 50)
+                        start_time = time.perf_counter()
+                        # Get retrieved chunks for this method and chunk group
+                        retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings, method.get("settings", {}), db_path)
+                        set_retrieval_progress(method_name, 80)
+                        end_time = time.perf_counter()
+                        latency_ms = (end_time - start_time) * 1000
+                        # Process retrieved chunks for each query
+                        for resp in retrieved:
+                            query_object = resp.get("query_object", "")
+                            retrieved_chunks = resp.get("retrieved_chunks", [])
+                            for i, chunk in enumerate(retrieved_chunks):
+                                # Create response object
+                                response_obj = {
+                                    "text": chunk["text"],
+                                    "prompt": query_object['text'],
+                                    "eval_res": {
+                                        "items": [{
+                                            "similarity": chunk["similarity"],
+                                            "rank": i + 1,
+                                        }],
+                                        "dtype": "KeyValue_Mixed",
+                                    },
+                                    "vars": {
+                                        **query_object.get("vars", {}),  # Include original query vars
+                                        **query_object.get("fill_history", {}),  # Include original query fill_history, if any
+                                        "query": query_object['text'],
+                                        "retrievalMethod": method_name,
+                                        "chunkMethod": chunk_method,  # Include chunking method in vars
+                                    },
+                                    "metavars": {
+                                        **query_object.get("metavars", {}),  # Include original query metavars
+                                        "methodId": method_id,
+                                        "retrievalMethodSignature": base_method,
+                                        "signature": chunk_method + "-" + method_name,
+                                        "docTitle": chunk.get("docTitle", ""),
+                                        "chunkId": chunk.get("chunkId", ""),
+                                        "chunkLibrary": chunk.get("chunkLibrary", ""),
+                                        "embeddingModel": model_name,
+                                        "latency_ms": f"{latency_ms:.2f}ms"
+                                    },
+                                    "llm": chunk.get("llm", "(none)"),  # Use chunk's LLM if available
+                                }
+
+                                if fusion_enabled:
+                                    doc_id = chunk.get("chunkId")
+                                    score = float(chunk.get("similarity", 0.0))
+                                    rank = i + 1
+                                    query_txt = query_object['text']
+                                    staging[(query_txt, chunk_method)][method_id].append({
+                                        "doc_id": doc_id, "rank": rank, "score": score, "obj": response_obj
+                                    })
+                                flat_results.append(response_obj)
+                        set_retrieval_progress(method_name, 100)
+                    except Exception as e:
+                        msg = f"Error with {method_name} on {chunk_method}: {e}"
+                        print(msg, file=sys.stderr)
+                        method_errors.append(msg)
+                        continue
+        # === Retrieval Fusion (imported helpers) ===
+        if fusion_enabled and linked_groups:
+            for (query_txt, chunk_method), per_method in staging.items():
+                groups = defaultdict(dict)
+                for mid, items in per_method.items():
+                    gid = method_id_to_group.get(mid)
+                    if gid: groups[gid][mid] = items
+                for gid, method_lists in groups.items():
+                    cfg = group_cfg.get(gid, {})
+                    fmethod = cfg.get("fusionMethod")
+                    settings = cfg.get("fusionSettings") or {}
+                    if fmethod == "reciprocal_rank_fusion":
+                        method_keys = (cfg.get("methodKeys") or [])
+                        weights_arr = settings.get("weights") or []
+                        weights_map = {mid: float(w) for i, mid in enumerate(method_keys)
+                                    for w in [weights_arr[i] if i < len(weights_arr) else None] if isinstance(w, (int, float))}
+                        k_val = int(settings.get("k", settings.get("K", 60)))
+                        fused = rrf_fuse(method_lists, k=k_val, weights_by_method=weights_map)
+                        fusion_sig = "fusion:rrf"
+                    else: # Weighted Average
+                        method_keys = (cfg.get("methodKeys") or [])
+                        weights_arr = settings.get("weights") or []
+                        weights_map = {
+                            mid: float(w)
+                            for i, mid in enumerate(method_keys)
+                            for w in [weights_arr[i] if i < len(weights_arr) else None]
+                            if isinstance(w, (int, float))
+                        }
+                        fused = weighted_avg_fuse(
+                            method_lists,
+                            weights_by_method=weights_map,
+                        )
+                        fusion_sig = "fusion:weighted_average"
+                    group_method_ids = [mid for mid in (cfg.get("methodKeys") or []) if mid in method_lists]
+                    pretty_names = [method_name_by_id[mid] for mid in group_method_ids]
+                    fused_label = f"Fused ({' + '.join(pretty_names)})"
+                    for rank_idx, (doc_id, fused_score, base_obj) in enumerate(fused, start=1):
+                        obj = copy.deepcopy(base_obj)
+                        obj["eval_res"]["items"] = [{"similarity": fused_score, "rank": rank_idx}]
+                        obj["vars"]["retrievalMethod"] = fused_label
+                        obj["metavars"].update({
+                            "methodId": f"group:{gid}",
+                            "retrievalMethodSignature": fusion_sig,
+                            "signature": f"{chunk_method}-FUSED-{gid}",
+                        })
+                        flat_results.append(obj)
+        
+        # Every method failed: report why rather than returning an empty list,
+        # which the front-end cannot distinguish from "no matches".
+        if not flat_results and method_errors:
+            return jsonify({"error": "No retrieval method succeeded.\n" + "\n".join(method_errors)}), 400
+
+        return jsonify(flat_results), 200
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 400
+
+@app.route('/getRetrieveProgress', methods=['GET'])
+@requires_rag
+def get_retrieve_progress():
+    """
+    Returns the current progress of all active retrieval methods.
+    Used by the frontend polling loop.
+    """
+    return jsonify(get_retrieval_progress())
+
+
+# === Reranking Endpoint ===
+@app.route("/rerank", methods=["POST"])
+@requires_rag
+def rerank():
+    """
+    Rerank documents using the specified reranking method.
+    
+    Expected form data:
+    - baseMethod: The reranking method identifier (e.g., "cross_encoder", "cohere_rerank")
+    - documents: JSON array of document texts to rerank
+    - query: Query text for relevance scoring (optional)
+    - api_keys: JSON object containing API keys (optional)
+    - Additional method-specific settings as form fields
+    
+    Returns:
+    - JSON response with reranked documents containing:
+      - reranked_documents: List of documents with scores and indices
+    """
+    if not request.form:
+        return jsonify({"error": "Request must be form data"}), 400
+    
+    base_method = request.form.get("baseMethod")
+    documents_json = request.form.get("documents")
+    query = request.form.get("query", "")
+    api_keys_json = request.form.get("api_keys", "{}")
+    
+    if not base_method:
+        return jsonify({"error": "Missing 'baseMethod' in form data"}), 400
+    if not documents_json:
+        return jsonify({"error": "Missing 'documents' in form data"}), 400
+    
+    try:
+        # Parse documents JSON
+        import json
+        documents = json.loads(documents_json)
+        if not isinstance(documents, list):
+            return jsonify({"error": "Documents must be a JSON array"}), 400
+    except (json.JSONDecodeError, ValueError) as e:
+        return jsonify({"error": f"Invalid JSON in documents: {e}"}), 400
+    
+    # Parse api_keys JSON
+    try:
+        api_keys = json.loads(api_keys_json) if api_keys_json else {}
+        if not isinstance(api_keys, dict):
+            return jsonify({"error": "api_keys must be a JSON object"}), 400
+    except (json.JSONDecodeError, ValueError) as e:
+        return jsonify({"error": f"Invalid JSON in api_keys: {e}"}), 400
+    
+    # Get the reranking handler
+    handler = RerankingMethodRegistry.get_handler(base_method)
+    
+    # Check for custom provider if not found in built-in methods
+    if not handler and base_method.startswith("__custom/"):
+        provider_name = base_method[len("__custom/"):]
+        entry = ProviderRegistry.get(provider_name)
+        if entry and entry.get("func"):
+            handler = entry["func"]
+    
+    if not handler:
+        return jsonify({"error": f"Unsupported reranking method: {base_method}"}), 400
+    
+    # Extract additional settings from form data
+    settings = {}
+    known_int_params = {"top_k", "batch_size", "max_chunks_per_doc", "preserve_top_k", "k_param"}
+    known_float_params = {"lambda_param", "diversity_threshold"}
+    known_bool_params = {"normalize_scores"}
+    
+    for key, value in request.form.items():
+        if key not in ["baseMethod", "documents", "query", "api_keys"]:
+            try:
+                if key in known_int_params:
+                    settings[key] = int(value)
+                elif key in known_float_params:
+                    settings[key] = float(value)
+                elif key in known_bool_params:
+                    settings[key] = value.lower() in ['true', 'yes']
+                else:
+                    settings[key] = value  # Keep as string if type unknown
+            except (ValueError, TypeError):
+                print(f"Warning: Could not convert setting '{key}' with value '{value}' to expected type. Using raw value.", file=sys.stderr)
+                settings[key] = value  # Fallback to string if conversion fails
+    
+    # Add api_keys to settings
+    if api_keys:
+        settings['api_keys'] = api_keys
+    
+    try:
+        # Call the reranking handler
+        reranked_results = handler(documents, query, **settings)
+        return jsonify({"reranked_documents": reranked_results}), 200
+        
+    except ValueError as ve:
+        print(f"Configuration or setup error during reranking ({base_method}): {ve}", file=sys.stderr)
+        return jsonify({"error": f"Setup error: {ve}"}), 400
+    except ImportError as ie:
+        print(f"Import error during reranking ({base_method}): {ie}", file=sys.stderr)
+        return jsonify({"error": f"Missing library dependency: {ie.name}"}), 500
+    except Exception as e:
+        print(f"Unexpected error during reranking ({base_method}): {e}", file=sys.stderr)
+        return jsonify({"error": "An internal error occurred during reranking."}), 500
+
+
 @app.route('/api/proxyImage', methods=['GET'])
 def proxy_image():
     """Proxy for fetching images to avoid CORS restrictions"""
@@ -1343,7 +2064,7 @@ def proxy_image():
     except Exception as e:
         return jsonify({"error": f"Error fetching image: {str(e)}"}), 500
 
-      
+
 """ 
     SPIN UP SERVER
 """

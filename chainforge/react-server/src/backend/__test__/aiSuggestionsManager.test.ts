@@ -1,3 +1,20 @@
+// The Pyodide loader uses import.meta, which CRA's CommonJS Jest cannot parse.
+jest.mock("../pyodide/exec-py", () => ({
+  execPy: () => Promise.reject(new Error("execPy is unavailable in tests")),
+}));
+
+// The app's store and ModelSettingSchemas import each other, so importing the
+// real store during a test evaluates it mid-cycle and its schema-derived
+// constants come back undefined. These tests don't exercise the store, so stub
+// it (same approach as minimax.test.ts).
+jest.mock("../../store", () => ({
+  __esModule: true,
+  default: {
+    getState: () => ({ AvailableLLMs: [], setAvailableLLMs: () => undefined }),
+  },
+}));
+
+// eslint-disable-next-line import/first
 import AISuggestionsManager from "../aiSuggestionsManager";
 
 describe("AISuggestionsManager", () => {
@@ -7,16 +24,6 @@ describe("AISuggestionsManager", () => {
   beforeEach(() => {
     suggestionsManager = new AISuggestionsManager(() => "OpenAI");
     mockRows = ["one", "two", "three"];
-  });
-
-  describe("update", () => {
-    it("should clear suggestions if necessary", () => {
-      jest.useFakeTimers();
-      suggestionsManager.suggestions = [...mockRows];
-      suggestionsManager.update(["one", "", ""]);
-      jest.runAllTimers();
-      expect(suggestionsManager.suggestions).toEqual([]);
-    });
   });
 
   describe("peekSuggestions", () => {

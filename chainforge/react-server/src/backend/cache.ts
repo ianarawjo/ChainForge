@@ -9,8 +9,21 @@ import {
 } from "./utils";
 import { v4 as uuid } from "uuid";
 import Bottleneck from "bottleneck";
+import { extractTextInBrowser } from "./extractText";
+import {
+  clearMedia,
+  deleteMedia,
+  getMedia,
+  listMedia,
+  putMedia,
+} from "./mediaStore";
 
-const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
+// NOTE: call APP_IS_RUNNING_LOCALLY() where it is needed rather than caching it
+// at module scope. cache.ts and utils.ts import each other, so evaluating it
+// during module initialization throws
+// "ReferenceError: Cannot access '_APP_IS_RUNNING_LOCALLY' before
+// initialization" whenever the cycle is entered through utils.ts. The result is
+// already memoized inside APP_IS_RUNNING_LOCALLY itself.
 
 /**
  * Singleton JSON cache that functions like a local filesystem in a Python backend,
@@ -268,14 +281,19 @@ export class StringLookup {
     const entries = Object.entries(d);
     for (const [key, value] of entries) {
       const ignore = ignoreKey.includes(key);
+      // A number here is *usually* an index into the intern table, but it can
+      // also be genuine numeric data (a score, a rank, a year) -- the two share
+      // one value space. When the lookup misses, keep the number rather than
+      // replacing it with undefined: doing so silently deleted the value, since
+      // callers JSON round-trip these dicts and JSON drops undefined.
       if (!ignore && typeof value === "number")
-        newDict[key] = StringLookup.get(value);
+        newDict[key] = StringLookup.get(value) ?? value;
       else if (
         !ignore &&
         Array.isArray(value) &&
         value.every((v) => typeof v === "number")
       )
-        newDict[key] = value.map((v) => StringLookup.get(v));
+        newDict[key] = value.map((v) => StringLookup.get(v) ?? v);
       else if (
         !ignore &&
         depth > 0 &&
@@ -345,6 +363,16 @@ export class MediaLookup {
   // Use a cache if running locally, otherwise use the backend
   private cache: Dict<Blob> = {};
 
+  /**
+   * Sizes of every browser-stored file, whether or not its bytes are currently
+   * in `cache`.
+   *
+   * Files are persisted to IndexedDB, and loaded back on demand rather than all
+   * at once, so `cache` holds only a subset. This index is what lets us report
+   * usage and enforce the budget without pulling every Blob into memory.
+   */
+  private sizes: Map<string, number> = new Map();
+
   // Temporary in-memory cache with size limit
   private tempCache: {
     items: Map<string, Blob>;
@@ -358,6 +386,58 @@ export class MediaLookup {
 
   // Maximum size of the temporary cache in bytes (50MB)
   private readonly MAX_TEMP_CACHE_SIZE = 50 * 1024 * 1024;
+
+  /**
+   * Browser-only limits.
+   *
+   * When there's no Flask backend, `cache` is the *authoritative* store for
+   * uploaded files -- not a read-through cache -- so it cannot evict like
+   * `tempCache` does: dropping a blob would break any node referencing its
+   * uid. We therefore refuse uploads past a budget instead, with an error the
+   * UI can show.
+   *
+   * The budget is sized for export, which is now the binding constraint:
+   * exporting in browser mode base64-encodes every blob into one .cforge JSON
+   * string, inflating it by 4/3. V8 caps a single string at ~512M chars, so
+   * roughly 400MB of files would throw "RangeError: Invalid string length".
+   * 250MB keeps the worst case near 65% of that ceiling.
+   *
+   * Files themselves live in IndexedDB (see ./mediaStore), so this is no longer
+   * limited by how much can be held in memory.
+   */
+  private readonly MAX_BROWSER_FILE_BYTES = 50 * 1024 * 1024; // per file
+  private readonly MAX_BROWSER_CACHE_BYTES = 250 * 1024 * 1024; // all files
+
+  /** Total bytes currently held in the browser-mode store. */
+  private browserCacheBytes(): number {
+    let total = 0;
+    for (const size of this.sizes.values()) total += size;
+    return total;
+  }
+
+  /**
+   * Throws a user-facing error if caching `blob` would exceed the browser
+   * budget. No-op when a backend is available, where files go to disk.
+   */
+  private assertBrowserCacheHasRoom(blob: Blob, name?: string): void {
+    const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+    const label = name ? `"${name}"` : "This file";
+
+    if (blob.size > this.MAX_BROWSER_FILE_BYTES)
+      throw new Error(
+        `${label} is ${mb(blob.size)}, over the ${mb(this.MAX_BROWSER_FILE_BYTES)} ` +
+          `per-file limit for running ChainForge without a local server. ` +
+          `Run ChainForge locally to work with larger files.`,
+      );
+
+    const used = this.browserCacheBytes();
+    if (used + blob.size > this.MAX_BROWSER_CACHE_BYTES)
+      throw new Error(
+        `Adding ${label} (${mb(blob.size)}) would exceed the ${mb(this.MAX_BROWSER_CACHE_BYTES)} ` +
+          `total limit for files held in the browser (${mb(used)} already in use). ` +
+          `Remove some files, or run ChainForge locally.`,
+      );
+  }
 
   // A rate limiter for uploads
   private static uploadLimiter = new Bottleneck({
@@ -440,24 +520,77 @@ export class MediaLookup {
   }
 
   /**
-   * Saves the current state of the media lookup table to localStorage.
+   * Records which media uids are in play, in the StorageCache.
+   *
+   * Only the uid list is stored. Blobs are deliberately left out: the
+   * StorageCache is persisted with JSON.stringify, and `JSON.stringify(blob)`
+   * is `{}` -- so storing them wrote a useless placeholder per file and, on
+   * restore, installed those placeholders as though they were real Blobs.
+   *
+   * Blob bytes are held in memory for the session, and serialized properly
+   * (as data URLs) by `toJSON()` when a flow is exported.
    */
   public saveStateToStorageCache(): void {
-    const savedState = {
+    StorageCache.store("__media", {
       mediaUIDs: Array.from(this.mediaUIDs),
-      cache: this.cache,
-    };
-    StorageCache.store("__media", savedState);
+    });
   }
 
+  /**
+   * Restores the set of known media uids from the StorageCache.
+   *
+   * Note that this recovers uids only, not file contents -- see
+   * saveStateToStorageCache. Callers should treat a uid with no cached blob as
+   * "referenced but unavailable" rather than assuming the bytes are present.
+   */
   public restoreStateFromStorageCache(): boolean {
     const savedState = StorageCache.get("__media");
-    if (savedState) {
+    if (savedState && Array.isArray(savedState.mediaUIDs)) {
       this.mediaUIDs = new Set(savedState.mediaUIDs);
-      this.cache = savedState.cache;
       return true;
     }
     return false;
+  }
+
+  /**
+   * Reloads the index of persisted files, without loading their contents.
+   *
+   * Call once at startup. Until this runs, files uploaded in a previous session
+   * are still readable through get() -- which falls back to IndexedDB per uid --
+   * but the reported usage and uid set would not include them.
+   *
+   * @returns How many persisted files were found.
+   */
+  public static async hydrateFromIndexedDB(): Promise<number> {
+    const mediaLookup = MediaLookup.getInstance();
+    const stored = await listMedia();
+
+    for (const { uid, size } of stored) {
+      mediaLookup.mediaUIDs.add(uid);
+      // Don't clobber a size already known from this session's own uploads.
+      if (!mediaLookup.sizes.has(uid)) mediaLookup.sizes.set(uid, size);
+    }
+
+    if (stored.length > 0) mediaLookup.saveStateToStorageCache();
+    return stored.length;
+  }
+
+  /**
+   * How much file data the browser is currently holding, for display in the UI.
+   */
+  public static storageUsage(): {
+    files: number;
+    bytes: number;
+    limitBytes: number;
+    fileLimitBytes: number;
+  } {
+    const mediaLookup = MediaLookup.getInstance();
+    return {
+      files: mediaLookup.sizes.size,
+      bytes: mediaLookup.browserCacheBytes(),
+      limitBytes: mediaLookup.MAX_BROWSER_CACHE_BYTES,
+      fileLimitBytes: mediaLookup.MAX_BROWSER_FILE_BYTES,
+    };
   }
 
   /**
@@ -469,7 +602,17 @@ export class MediaLookup {
   private add(uid: string, blob?: Blob | File): void {
     this.mediaUIDs.add(uid);
 
-    if (blob) this.cache[uid] = blob;
+    if (blob) {
+      this.cache[uid] = blob;
+      this.sizes.set(uid, blob.size);
+
+      // Persist without blocking the caller. Durability is best-effort: if
+      // IndexedDB is unavailable or full the file still works this session,
+      // which is exactly the behaviour before it was persisted at all.
+      putMedia(uid, blob).catch((err) =>
+        console.warn(`Could not persist ${uid}: ${String(err)}`),
+      );
+    }
 
     this.saveStateToStorageCache();
   }
@@ -478,6 +621,10 @@ export class MediaLookup {
     const mediaLookup = MediaLookup.getInstance();
     mediaLookup.mediaUIDs.add(uid);
     mediaLookup.cache[uid] = blob;
+    mediaLookup.sizes.set(uid, blob.size);
+    putMedia(uid, blob).catch((err) =>
+      console.warn(`Could not persist ${uid}: ${String(err)}`),
+    );
   }
 
   static getInstance(): MediaLookup {
@@ -491,47 +638,102 @@ export class MediaLookup {
     const mediaLookup = MediaLookup.getInstance();
     return (
       mediaLookup.mediaUIDs.size > 0 ||
-      Object.keys(mediaLookup.cache).length > 0
+      Object.keys(mediaLookup.cache).length > 0 ||
+      mediaLookup.sizes.size > 0
     );
   }
 
   /**
-   * Uploads a file to the backend and returns its UID.
+   * Whether a failed request means "no server there" rather than "the server
+   * said no".
+   *
+   * fetch rejects only on a network-level failure; an HTTP error still
+   * resolves. The distinction matters: an unreachable backend should fall back
+   * to browser storage, while a backend that actively refused a file (too
+   * large, wrong type) must surface that refusal rather than quietly storing
+   * something the server rejected.
+   */
+  private static isBackendUnreachable(err: unknown): boolean {
+    return err instanceof TypeError;
+  }
+
+  /** Logged at most once, so a backend-less session is not spammed. */
+  private static warnedNoBackend = false;
+
+  /** Uploads via the Flask backend. Rejects if it is unreachable. */
+  private static uploadToBackend(file: File | Blob): Promise<string> {
+    return MediaLookup.uploadLimiter.schedule(async () => {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${FLASK_BASE_URL}upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
+
+      const json = await res.json();
+      const uid = json.uid;
+
+      if (!uid) throw new Error("Upload failed: No UID returned");
+
+      // Store the UID in the media UIDs set
+      MediaLookup.getInstance().add(uid);
+
+      return uid;
+    });
+  }
+
+  /** Keeps the file in the browser, under the client-side storage budget. */
+  private static uploadToBrowser(file: File | Blob): string {
+    // The browser holds the file itself, so enforce a budget before taking it
+    // (throws with a message the caller can surface).
+    const mediaLookup = MediaLookup.getInstance();
+    mediaLookup.assertBrowserCacheHasRoom(
+      file,
+      "name" in file ? file.name : undefined,
+    );
+
+    // Make a uid for the file, and use it to cache the file:
+    // NOTE: We keep the file name around, if there is one, just in case we need to recover it later.
+    const uid =
+      `cache__${uuid()}__cache` + ("name" in file ? `__${file.name}` : "");
+    mediaLookup.add(uid, file);
+    return uid;
+  }
+
+  /**
+   * Stores a file and returns its UID, using the backend when one is there.
+   *
+   * APP_IS_RUNNING_LOCALLY only reports whether the page is served from
+   * localhost, which is not the same question as whether a Flask server is
+   * answering. Serving the static build locally -- an ordinary way to run the
+   * browser-only feature set -- put us on the backend path with no backend,
+   * and the upload failed outright instead of falling back. So the hostname
+   * is treated as a hint about where to try first, and an unreachable server
+   * simply means the browser keeps the file.
+   *
    * @param file A Blob or File object to upload
-   * @returns The UID assigned by the backend
+   * @returns The UID assigned by the backend, or a client-side UID
    */
   public static async upload(file: File | Blob): Promise<string> {
-    if (IS_RUNNING_LOCALLY) {
-      // Use the limiter to throttle uploads
-      return MediaLookup.uploadLimiter.schedule(async () => {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const res = await fetch(`${FLASK_BASE_URL}upload`, {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
-
-        const json = await res.json();
-        const uid = json.uid;
-
-        if (!uid) throw new Error("Upload failed: No UID returned");
-
-        // Store the UID in the media UIDs set
-        MediaLookup.getInstance().add(uid);
-
-        return uid;
-      });
-    } else {
-      // Make a uid for the file, and use it to cache the file:
-      // NOTE: We keep the file name around, if there is one, just in case we need to recover it later.
-      const uid =
-        `cache__${uuid()}__cache` + ("name" in file ? `__${file.name}` : "");
-      MediaLookup.getInstance().add(uid, file);
-      return uid;
+    if (APP_IS_RUNNING_LOCALLY()) {
+      try {
+        return await MediaLookup.uploadToBackend(file);
+      } catch (err) {
+        // A server that answered and refused is a real error; report it.
+        if (!MediaLookup.isBackendUnreachable(err)) throw err;
+        if (!MediaLookup.warnedNoBackend) {
+          MediaLookup.warnedNoBackend = true;
+          console.warn(
+            "No ChainForge server is answering, so uploaded files will be " +
+              "kept in this browser instead.",
+          );
+        }
+      }
     }
+    return MediaLookup.uploadToBrowser(file);
   }
 
   public static async uploadDataURL(dataURL: string): Promise<string> {
@@ -598,7 +800,7 @@ export class MediaLookup {
       return tempCachedBlob;
     }
 
-    if (IS_RUNNING_LOCALLY && !uid.startsWith("cache__")) {
+    if (APP_IS_RUNNING_LOCALLY() && !uid.startsWith("cache__")) {
       // Fetch the file from the backend
       // NOTE: We use the limiter to throttle lookups, so we don't overload the server.
       return MediaLookup.lookupLimiter.schedule(async () => {
@@ -619,25 +821,48 @@ export class MediaLookup {
 
           return blob;
         } catch (error) {
+          if (MediaLookup.isBackendUnreachable(error))
+            // Nothing is listening; the file may still be held locally.
+            return await MediaLookup.getFromBrowser(uid, isInLookup);
           console.error(
             `Error fetching file with UID ${uid}: ${(error as Error).message}`,
           );
           return undefined;
         }
       });
-    } else {
-      // Check if the file is in the cache
-      const blob = mediaLookup.cache[uid];
-      if (blob) {
-        // If the file was for some reason not listed in the media UIDs, add it now:
-        if (!isInLookup) mediaLookup.add(uid);
+    }
+    return MediaLookup.getFromBrowser(uid, isInLookup);
+  }
 
-        return blob;
-      } else {
-        console.error(`File with UID ${uid} not found in cache.`);
-        return undefined;
+  /** Looks a file up in browser storage, in memory then IndexedDB. */
+  private static async getFromBrowser(
+    uid: string,
+    isInLookup: boolean,
+  ): Promise<Blob | undefined> {
+    const mediaLookup = MediaLookup.getInstance();
+
+    // Check if the file is in the cache
+    let blob = mediaLookup.cache[uid];
+
+    // Not in memory: it may have been persisted in an earlier session.
+    // Loading on demand keeps memory proportional to what's actually used.
+    if (!blob) {
+      const persisted = await getMedia(uid);
+      if (persisted) {
+        blob = persisted;
+        mediaLookup.cache[uid] = persisted;
+        mediaLookup.sizes.set(uid, persisted.size);
       }
     }
+
+    if (blob) {
+      // If the file was for some reason not listed in the media UIDs, add it now:
+      if (!isInLookup) mediaLookup.add(uid);
+
+      return blob;
+    }
+    console.error(`File with UID ${uid} not found in cache.`);
+    return undefined;
   }
 
   /**
@@ -655,28 +880,43 @@ export class MediaLookup {
       );
     }
 
-    if (IS_RUNNING_LOCALLY) {
-      // Fetch the file from the backend
-      const res = await fetch(`${FLASK_BASE_URL}mediaToText/${uid}`);
-      if (!res.ok) {
-        throw new Error(`Fetch failed for UID ${uid}: ${res.statusText}`);
+    // As in upload(): being served from localhost is not proof that a server
+    // is answering, so an unreachable one falls through to doing the
+    // extraction here rather than failing the upload.
+    if (APP_IS_RUNNING_LOCALLY() && !uid.startsWith("cache__")) {
+      try {
+        const res = await fetch(`${FLASK_BASE_URL}mediaToText/${uid}`);
+        if (!res.ok) {
+          throw new Error(`Fetch failed for UID ${uid}: ${res.statusText}`);
+        }
+        const json = await res.json();
+        const text = json.text;
+
+        if (text === undefined)
+          throw new Error(`Fetch failed for UID ${uid}: No text returned`);
+
+        // If the file was for some reason not listed in the media UIDs, add it now:
+        if (!isInLookup) mediaLookup.add(uid);
+
+        return json.text;
+      } catch (err) {
+        // A server that answered and refused is a real error.
+        if (!MediaLookup.isBackendUnreachable(err)) throw err;
       }
-      const json = await res.json();
-      const text = json.text;
-
-      if (text === undefined)
-        throw new Error(`Fetch failed for UID ${uid}: No text returned`);
-
-      // If the file was for some reason not listed in the media UIDs, add it now:
-      if (!isInLookup) mediaLookup.add(uid);
-
-      return json.text;
-    } else {
-      // TODO: Implement this for the local cache
-      throw new Error(
-        `Text content not available for UID ${uid} in local cache.`,
-      );
     }
+
+    // No backend to convert the file, so do it client-side. Formats needing
+    // a real parser (PDF, DOCX) throw with an explanation.
+    const blob = await MediaLookup.get(uid);
+    if (!blob)
+      throw new Error(
+        `No file contents are available for UID ${uid}. It may have been ` +
+          `uploaded in a previous session -- file contents are held in ` +
+          `memory only when running without a local server.`,
+      );
+
+    if (!isInLookup) mediaLookup.add(uid);
+    return await extractTextInBrowser(blob, uid);
   }
 
   /**
@@ -701,6 +941,8 @@ export class MediaLookup {
     const mediaLookup = MediaLookup.getInstance();
     mediaLookup.mediaUIDs.clear();
     mediaLookup.cache = {};
+    mediaLookup.sizes.clear();
+    clearMedia().catch(() => undefined);
 
     // Clear the temp cache
     mediaLookup.tempCache.items.clear();
@@ -718,6 +960,8 @@ export class MediaLookup {
     const mediaLookup = MediaLookup.getInstance();
     mediaLookup.mediaUIDs.delete(uid);
     delete mediaLookup.cache[uid];
+    mediaLookup.sizes.delete(uid);
+    deleteMedia(uid).catch(() => undefined);
 
     // Remove from temp cache if present
     if (mediaLookup.tempCache.items.has(uid)) {
@@ -756,6 +1000,10 @@ export class MediaLookup {
       for (const [key, base64String] of Object.entries(savedState.cache)) {
         const blob = dataURLToBlob(base64String);
         mediaLookup.cache[key] = blob;
+        mediaLookup.sizes.set(key, blob.size);
+        // Persist too, so files that arrive by importing a flow survive a
+        // reload like uploaded ones do.
+        putMedia(key, blob).catch(() => undefined);
       }
     }
 

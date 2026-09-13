@@ -1,0 +1,456 @@
+# --- Chunk Endpoint ---
+import sys
+from typing import List, Dict, Any, Callable, Union
+
+# === Define the Chunking Registry (Place after imports) ===
+class ChunkingMethodRegistry:
+    """Registry for text chunking methods."""
+    _methods: Dict[str, Callable] = {}
+
+    @classmethod
+    def register(cls, identifier: str):
+        """Decorator to register a chunking function."""
+        if not isinstance(identifier, str) or not identifier:
+            raise ValueError("Method identifier must be a non-empty string.")
+
+        def decorator(handler_func: Callable):
+            if not callable(handler_func):
+                raise TypeError("Registered handler must be a callable function.")
+            if identifier in cls._methods:
+                 print(f"Warning: Overwriting existing chunking method '{identifier}'.", file=sys.stderr)
+            cls._methods[identifier] = handler_func
+            # print(f"Registered chunking method: {identifier}") # Optional: for debugging
+            return handler_func
+        return decorator
+
+    @classmethod
+    def get_handler(cls, identifier: str) -> Union[Callable, None]:
+        """Get the handler function for a given method identifier."""
+        return cls._methods.get(identifier)
+
+# === Chunking Helper Functions ===
+@ChunkingMethodRegistry.register("overlapping_openai_tiktoken")
+def overlapping_openai_tiktoken(text: str, **kwargs: Any) -> List[str]:
+    # OpenAI's Tiktoken for token-based chunking
+    import tiktoken
+
+    model = kwargs.get("model", "gpt-3.5-turbo")
+    chunk_size = int(kwargs.get("chunk_size", 200))
+    chunk_overlap = int(kwargs.get("chunk_overlap", 50))
+
+    # Consider making model name configurable if needed
+    enc = None
+    model_error = None
+    try:
+        enc = tiktoken.encoding_for_model(model)
+    except Exception as e:
+         model_error = e
+         try:
+             enc = tiktoken.get_encoding(model)
+         except Exception as e2:
+             print(f"Warning: Could not resolve tokenizer/model '{model}' via encoding_for_model ({model_error}) or get_encoding ({e2}); falling back to cl100k_base.", file=sys.stderr)
+             enc = tiktoken.get_encoding("cl100k_base")
+
+    tokens = enc.encode(text)
+    result = []
+    start = 0
+    while start < len(tokens):
+        end = min(start + chunk_size, len(tokens)) # Prevent overshoot
+        chunk_tokens = tokens[start:end]
+        # Filter out potential empty strings from decoding edge cases
+        decoded_chunk = enc.decode(chunk_tokens).strip()
+        if decoded_chunk:
+            result.append(decoded_chunk)
+
+        # Ensure overlap doesn't push start before 0
+        start = max(0, end - chunk_overlap)
+
+        # Break if we've processed the last chunk or start isn't advancing
+        if end == len(tokens) or start >= end:
+            break
+
+        # Safety break for potential infinite loops if overlap >= size
+        if chunk_overlap >= chunk_size and start > 0:
+            print(f"Warning: chunk_overlap ({chunk_overlap}) >= chunk_size ({chunk_size}). Breaking loop early.", file=sys.stderr)
+            break
+
+    return result if result else [text]
+
+@ChunkingMethodRegistry.register("overlapping_huggingface_tokenizers")
+def overlapping_huggingface_tokenizers(text: str, **kwargs: Any) -> List[str]:
+    # HuggingFace Tokenizers for token-based chunking
+    from transformers import AutoTokenizer
+
+    tokenizer = kwargs.get("tokenizer", "bert-base-uncased")
+
+    # Consider making model name configurable
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer)
+    except Exception as e:
+        print(f"Error loading HuggingFace tokenizer model '{tokenizer}': {e}", file=sys.stderr)
+        raise ValueError(f"Failed to load HuggingFace tokenizer model {tokenizer}.") from e
+    
+    chunk_size = int(kwargs.get("chunk_size", 200))
+    chunk_overlap = int(kwargs.get("chunk_overlap", 50))
+
+    tokens = tokenizer.encode(text, add_special_tokens=False) # Avoid splitting on special tokens
+    result = []
+    start = 0
+    while start < len(tokens):
+        end = min(start + chunk_size, len(tokens)) # Prevent overshoot
+        chunk_tokens = tokens[start:end]
+        # skip_special_tokens=True ensures things like [CLS] aren't in the output text
+        decoded_chunk = tokenizer.decode(chunk_tokens, skip_special_tokens=True).strip()
+        if decoded_chunk:
+            result.append(decoded_chunk)
+
+        start = max(0, end - chunk_overlap) # Ensure overlap doesn't push start before 0
+
+        # Break if we've processed the last chunk or start isn't advancing
+        if end == len(tokens) or start >= end:
+            break
+
+        # Safety break for potential infinite loops if overlap >= size
+        if chunk_overlap >= chunk_size and start > 0:
+            print(f"Warning: chunk_overlap ({chunk_overlap}) >= chunk_size ({chunk_size}). Breaking loop early.", file=sys.stderr)
+            break
+
+    return result if result else [text]
+
+# --- Markdown headings chunker ---
+@ChunkingMethodRegistry.register("markdown_header")
+def markdown_header(text: str, **kwargs) -> list[str]:
+    """
+    Splits markdown into sections at each ATX heading (levels 1–6),
+    keeping the heading with its section.
+    """
+    import re
+    if text is None:
+        return [""]
+
+    # normalize CRLF
+    text = text.replace("\r\n", "\n")
+
+    # split at lines that start with 1–6 '#' followed by a space; keep the heading (lookahead)
+    sections = re.split(r"(?m)(?=^#{1,6}\s+)", text)
+    chunks = [sec.strip() for sec in sections if sec and sec.strip()]
+    return chunks if chunks else [text]
+
+
+@ChunkingMethodRegistry.register("syntax_nltk")
+def syntax_nltk(text: str, **kwargs: Any) -> List[str]:
+    import nltk
+    from nltk.tokenize import sent_tokenize
+
+    # Ensure both punkt and punkt_tab are available (NLTK >= 3.8)
+    for resource in ["punkt", "punkt_tab"]:
+        try:
+            nltk.data.find(f"tokenizers/{resource}")
+        except LookupError:
+            try:
+                nltk.download(resource, quiet=True)
+            except Exception as e:
+                raise ValueError(f"Error downloading NLTK {resource}: {e}")
+
+    try:
+        sents = sent_tokenize(text)
+        sents = [s.strip() for s in sents if s.strip()]
+        return sents if sents else [text]
+    except Exception as e:
+        raise ValueError(f"NLTK sent_tokenize error: {e}")
+
+
+# TextTiling method
+_SIMPLE_EN_STOPWORDS = {
+    "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", "yourself", "yourselves", 
+    "he", "him", "his", "himself", "she", "her", "hers", "herself", "it", "its", "itself", "they", "them", "their", 
+    "theirs", "themselves", "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", "was", 
+    "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", "did", "doing", "a", "an", "the", "and", 
+    "but", "if", "or", "because", "as", "until", "while", "of", "at", "by", "for", "with", "about", "against", "between", 
+    "into", "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", "in", "out", "on", "off", 
+    "over", "under", "again", "further", "then", "once", "here", "there", "when", "where", "why", "how", "all", "any", "both",
+    "each", "few", "more", "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", "than", "too", "very", 
+    "s", "t", "can", "will", "just", "don", "should", "now"
+}
+@ChunkingMethodRegistry.register("syntax_texttiling")
+def syntax_texttiling(text: str) -> List[str]:
+    from nltk.tokenize import TextTilingTokenizer
+
+    # Pass our own stopwords to avoid touching nltk.corpus.stopwords
+    ttt = TextTilingTokenizer(stopwords=_SIMPLE_EN_STOPWORDS)
+    chunks = ttt.tokenize(text)
+    return chunks if chunks else [text]
+
+def _chonkie_kwargs(chunker_cls: Any, **kwargs: Any) -> Dict[str, Any]:
+    """Adapt keyword arguments to the installed Chonkie version's signature.
+
+    Chonkie renamed some constructor parameters after 1.3.x (notably
+    `tokenizer_or_token_counter` -> `tokenizer` and `min_sentences` ->
+    `min_sentences_per_chunk`). Since we don't pin an exact Chonkie version,
+    pass whichever spelling the installed class actually accepts.
+    """
+    import inspect
+
+    aliases = {
+        "tokenizer_or_token_counter": ("tokenizer",),
+        "tokenizer": ("tokenizer_or_token_counter",),
+        "min_sentences": ("min_sentences_per_chunk",),
+        "min_sentences_per_chunk": ("min_sentences",),
+    }
+
+    try:
+        accepted = set(inspect.signature(chunker_cls.__init__).parameters)
+    except (TypeError, ValueError):
+        return kwargs  # Can't introspect; let Chonkie decide.
+
+    adapted: Dict[str, Any] = {}
+    for key, value in kwargs.items():
+        if key in accepted:
+            adapted[key] = value
+            continue
+        for alt in aliases.get(key, ()):
+            if alt in accepted:
+                adapted[alt] = value
+                break
+        else:
+            # Not necessarily a class: fall back to the type's name.
+            name = getattr(chunker_cls, "__name__", type(chunker_cls).__name__)
+            print(f"Warning: {name} in the installed version of Chonkie "
+                  f"does not accept '{key}'; ignoring it.", file=sys.stderr)
+    return adapted
+
+
+"""
+   Chonkie Methods
+"""
+@ChunkingMethodRegistry.register("chonkie_token")
+def chonkie_token(text: str, **kwargs: Any) -> List[str]:
+    from chonkie import TokenChunker
+
+    tokenizer = kwargs.get("tokenizer", "gpt2")
+    chunk_size = int(kwargs.get("chunk_size", 512))
+    chunk_overlap = int(kwargs.get("chunk_overlap", 0))
+
+    chunker = TokenChunker(**_chonkie_kwargs(
+        TokenChunker,
+        tokenizer=tokenizer,  # Supports string identifiers
+        chunk_size=chunk_size,    # Maximum tokens per chunk
+        chunk_overlap=chunk_overlap,  # Overlap between chunks
+    ))
+
+    texts = [t.text for t in chunker.chunk(text)]
+    return texts if texts else [text]
+
+@ChunkingMethodRegistry.register("chonkie_sentence")
+def chonkie_sentence(text: str, **kwargs: Any) -> List[str]:
+    from chonkie import SentenceChunker
+    import json
+
+    tokenizer_or_token_counter = kwargs.get("tokenizer_or_token_counter", "gpt2")
+    chunk_size = int(kwargs.get("chunk_size", 1))
+    chunk_overlap = int(kwargs.get("chunk_overlap", 0))
+    min_sentences_per_chunk = int(kwargs.get("min_sentences_per_chunk", 1))
+    min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 12))
+    delim = kwargs.get("delim", '[".", "!", "?", "\\n\\n"]')
+    include_delim = kwargs.get("include_delim", "prev")
+    if len(include_delim.strip()) == 0:
+        include_delim = None
+
+    try: 
+        delim = json.loads(delim)  # Validate JSON format
+        if not isinstance(delim, list) or not all(isinstance(d, str) for d in delim):
+            raise ValueError("Delim must be a JSON parseable string representing an array of characters.")
+    except Exception as e:
+        print(f"Invalid JSON format for delim: {delim}. Delimeter must be a JSON parseable string representing an array of characters. Skipping custom delimeter. Error: {e}", file=sys.stderr)
+        delim = ['.', '!', '?', '\n']
+
+    chunker = SentenceChunker(**_chonkie_kwargs(
+        SentenceChunker,
+        tokenizer_or_token_counter=tokenizer_or_token_counter,
+        chunk_size=chunk_size,       
+        chunk_overlap=chunk_overlap,    
+        min_sentences_per_chunk=min_sentences_per_chunk,  
+        min_characters_per_sentence=min_characters_per_sentence,
+        delim=delim,  # Custom delimiters
+        include_delim=include_delim,  # Include delimiters in the chunk
+    ))
+
+    texts = [t.text for t in chunker.chunk(text)]
+    return texts if texts else [text]
+
+@ChunkingMethodRegistry.register("chonkie_recursive")
+def chonkie_recursive(text: str, **kwargs: Any) -> List[str]:
+    from chonkie import RecursiveChunker, RecursiveRules
+    import json
+
+    tokenizer_or_token_counter = kwargs.get("tokenizer_or_token_counter", "gpt2")
+    chunk_size = int(kwargs.get("chunk_size", 512))
+    min_characters_per_chunk = int(kwargs.get("min_characters_per_chunk", 12))
+
+    # If provided, will override the default rules and provided delimeters
+    # Format is "<name>-<language>", e.g., "markdown-en"
+    # https://huggingface.co/datasets/chonkie-ai/recipes/viewer/recipes/train?row=5&views%5B%5D=recipes
+    use_premade_recipe = kwargs.get("use_premade_recipe", None)
+
+    # Custom recipe is assumed to be a JSON parseable string,
+    # representing a list of dictionaries for RecursiveLevels. 
+    # For format, see https://docs.chonkie.ai/chunkers/recursive-chunker and the above dataset,
+    # far right column, "recipe" under the "recursive_rules"->"levels" key. 
+    # If provided, will override the default rules and provided delimeters
+    custom_recipe = kwargs.get("custom_recipe", None)
+
+    rules = RecursiveRules()
+    if custom_recipe: 
+        try:
+            rules = RecursiveRules.from_dict({ "levels": json.loads(custom_recipe) })
+        except Exception as e:
+            print(f"Invalid JSON format for custom recipe: {custom_recipe}. Error: {e}", file=sys.stderr)
+            custom_recipe = None
+    elif use_premade_recipe:
+        try:
+            if "-" in use_premade_recipe:
+                # Initialize using recipe (e.g., "markdown-en")
+                name, lang = use_premade_recipe.split("-")
+                rules = RecursiveRules.from_recipe(name=name, lang=lang)
+            else:
+                # Handle language-only case
+                # Initialize using recipe (e.g., "en")
+                rules = RecursiveRules.from_recipe(lang=use_premade_recipe)
+        except Exception as e:
+            print(f"Invalid recipe name for use_premade_recipe: {use_premade_recipe}. Error: {e}", file=sys.stderr)
+            use_premade_recipe = None
+
+    chunker = RecursiveChunker(**_chonkie_kwargs(
+        RecursiveChunker,
+        tokenizer_or_token_counter=tokenizer_or_token_counter,
+        chunk_size=chunk_size,
+        rules=rules,
+        min_characters_per_chunk=min_characters_per_chunk,
+    ))
+
+    texts = [t.text for t in chunker.chunk(text)]
+    return texts if texts else [text]
+
+@ChunkingMethodRegistry.register("chonkie_semantic")
+def chonkie_semantic(text: str, **kwargs: Any) -> List[str]:
+    from chonkie import SemanticChunker
+    import json
+    import sys
+
+    # --- CONFIGURATION ---
+    # 1. Setup Model
+    embedding_model = kwargs.get("embedding_model", "minishlab/potion-base-8M")
+    local_path = kwargs.get("embedding_local_path", '')
+    if local_path:
+        embedding_model = local_path
+        
+    chunk_size = int(kwargs.get("chunk_size", 512))
+    threshold = kwargs.get("threshold", 0.8)
+
+    # 2. Setup Advanced Params (Supported in 1.3.1)
+    similarity_window = int(kwargs.get("similarity_window", 1))
+    min_sentences = int(kwargs.get("min_sentences", 1))
+    min_characters_per_sentence = int(kwargs.get("min_characters_per_sentence", 12))
+    
+    # 3. THE MAGIC SWITCH (SDPM Support)
+    # If the user sets skip_window > 0, this acts exactly like the old SDPMChunker.
+    # If skip_window is 0 (default), it acts like standard SemanticChunker.
+    skip_window = int(kwargs.get("skip_window", 0)) 
+
+    # 4. Clean Threshold
+    if isinstance(threshold, str) and threshold != 0.8:
+        try:
+            threshold = float(threshold)
+        except ValueError:
+            threshold = 0.8
+
+    # --- INITIALIZATION ---
+    # Note: We removed 'mode', 'threshold_step', 'delim', and 'min_chunk_size' 
+    # because Chonkie 1.3.1 no longer supports them.
+    chunker = SemanticChunker(**_chonkie_kwargs(
+        SemanticChunker,
+        embedding_model=embedding_model,
+        threshold=threshold,
+        chunk_size=chunk_size,
+        similarity_window=similarity_window,
+        min_sentences=min_sentences,
+        min_characters_per_sentence=min_characters_per_sentence,
+        skip_window=skip_window,
+    ))
+
+    # --- EXECUTION ---
+    texts = [t.text for t in chunker.chunk(text)]
+    return texts if texts else [text]
+
+@ChunkingMethodRegistry.register("chonkie_late")
+def chonkie_late(text: str, **kwargs: Any) -> List[str]:
+    from sentence_transformers import SentenceTransformer
+    from chonkie import LateChunker, RecursiveRules
+    import json
+
+    # Ensure sentence-transformers doesn't choke on Chonkie's extra kwarg.
+    original_encode = SentenceTransformer.encode
+    # Only wrap once per process to avoid stacking wrappers.
+    if not getattr(original_encode, "_chainforge_patch", False):
+        def encode_without_add_special_tokens(self, sentences, **encode_kwargs):
+            # SentenceTransformer >=3 raises if this kwarg is unsupported,
+            # but Chonkie always sets it, so just remove it and forward.
+            if "add_special_tokens" in encode_kwargs:
+                encode_kwargs = dict(encode_kwargs)
+                encode_kwargs.pop("add_special_tokens", None)
+            return original_encode(self, sentences, **encode_kwargs)
+
+        encode_without_add_special_tokens._chainforge_patch = True
+        SentenceTransformer.encode = encode_without_add_special_tokens
+
+    # Basic parameters
+    embedding_model = kwargs.get("embedding_model", "sentence-transformers/all-MiniLM-L6-v2")
+    embedding_path = kwargs.get("embedding_local_path", '')
+    if embedding_path != '':
+        embedding_model = embedding_path
+    chunk_size = int(kwargs.get("chunk_size", 512))
+    min_characters_per_chunk = int(kwargs.get("min_characters_per_chunk", 24))
+
+    # If provided, will override the default rules
+    # Format is "<name>-<language>", e.g., "markdown-en"
+    use_premade_recipe = kwargs.get("use_premade_recipe", None)
+
+    # Custom recipe is assumed to be a JSON parseable string,
+    # representing a list of dictionaries for RecursiveLevels
+    custom_recipe = kwargs.get("custom_recipe", None)
+
+    # Handle rules setup (similar to recursive chunker)
+    rules = RecursiveRules()
+    if custom_recipe: 
+        try:
+            rules = RecursiveRules.from_dict({ "levels": json.loads(custom_recipe) })
+        except Exception as e:
+            print(f"Invalid JSON format for custom recipe: {custom_recipe}. Error: {e}", file=sys.stderr)
+            custom_recipe = None
+    elif use_premade_recipe:
+        try:
+            # Initialize using recipe (e.g., "markdown-en")
+            if "-" in use_premade_recipe:
+                # Initialize using recipe (e.g., "markdown-en")
+                name, lang = use_premade_recipe.split("-")
+                rules = RecursiveRules.from_recipe(name=name, lang=lang)
+            else:
+                # Handle language-only case
+                # Initialize using recipe (e.g., "en")
+                rules = RecursiveRules.from_recipe(lang=use_premade_recipe)
+        except Exception as e:
+            print(f"Invalid recipe name for use_premade_recipe: {use_premade_recipe}. Error: {e}", file=sys.stderr)
+            use_premade_recipe = None
+
+    # Initialize standard chunker with provided parameters
+    chunker = LateChunker(**_chonkie_kwargs(
+        LateChunker,
+        embedding_model=embedding_model,
+        chunk_size=chunk_size,
+        rules=rules,
+        min_characters_per_chunk=min_characters_per_chunk,
+    ))
+
+    chunks = chunker.chunk(text)
+    return [chunk.text for chunk in chunks] if chunks else [text]
+    

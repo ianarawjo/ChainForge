@@ -21,8 +21,10 @@ test("saving and loading cache data from localStorage", () => {
   d = StorageCache.get("hello");
   expect(d).toBeUndefined();
 
-  // Load cache from localStorage
-  StorageCache.loadFromLocalStorage("test", false);
+  // Load cache from localStorage.
+  // NOTE: the second arg must be true to repopulate the StorageCache; with
+  // false, loadFromLocalStorage only *returns* the data.
+  StorageCache.loadFromLocalStorage("test", true);
 
   // Verify stored data:
   d = StorageCache.get("hello");

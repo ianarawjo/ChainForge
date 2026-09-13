@@ -17,6 +17,7 @@ import ReactFlow, {
 import {
   Button,
   LoadingOverlay,
+  Menu,
   Text,
   Box,
   List,
@@ -43,6 +44,10 @@ import {
   IconHeart,
   IconCheckbox,
   IconTransform,
+  IconSortAscending,
+  IconChevronDown,
+  IconFileCode,
+  IconFileDownload,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -50,6 +55,7 @@ import PromptNode from "./PromptNode";
 import CodeEvaluatorNode from "./CodeEvaluatorNode";
 import VisNode from "./VisNode";
 import InspectNode from "./InspectorNode";
+import SelectVarsNode from "./SelectVarsNode";
 import ScriptNode from "./ScriptNode";
 import { AlertModalContext } from "./AlertModal";
 import ItemsNode from "./ItemsNode";
@@ -57,12 +63,17 @@ import TabularDataNode from "./TabularDataNode";
 import JoinNode from "./JoinNode";
 import SplitNode from "./SplitNode";
 import CommentNode from "./CommentNode";
+import MultiEvalNode from "./MultiEvalNode";
+import RerankNode from "./RerankNode";
 import GlobalSettingsModal, {
   GlobalSettingsModalRef,
 } from "./GlobalSettingsModal";
 import ExampleFlowsModal, { ExampleFlowsModalRef } from "./ExampleFlowsModal";
 import LLMEvaluatorNode from "./LLMEvalNode";
 import SimpleEvalNode from "./SimpleEvalNode";
+import UploadNode from "./UploadNode";
+import ChunkNode from "./ChunkNode";
+import RetrievalNode from "./RetrievalNode";
 import {
   getDefaultModelFormData,
   getDefaultModelSettings,
@@ -115,9 +126,9 @@ import {
   isMobileSafari,
   isSafari,
 } from "react-device-detect";
-import MultiEvalNode from "./MultiEvalNode";
 import FlowSidebar from "./FlowSidebar";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
+import { ragNodeAvailable } from "./backend/ragCapabilities";
 import RequestClarificationModal, {
   RequestClarificationModalProps,
 } from "./RequestClarificationModal";
@@ -189,6 +200,7 @@ const INITIAL_LLM = () => {
 const nodeTypes = {
   textfields: TextFieldsNode, // Register the custom node
   prompt: PromptNode,
+  selectvars: SelectVarsNode,
   chat: PromptNode,
   simpleval: SimpleEvalNode,
   evaluator: CodeEvaluatorNode,
@@ -203,6 +215,10 @@ const nodeTypes = {
   join: JoinNode,
   split: SplitNode,
   processor: CodeEvaluatorNode,
+  upload: UploadNode,
+  chunk: ChunkNode,
+  retrieval: RetrievalNode,
+  rerank: RerankNode,
   media: MediaNode,
 };
 
@@ -222,6 +238,10 @@ const nodeEmojis = {
   comment: "✏️",
   join: <IconArrowMerge size={16} />,
   split: <IconArrowsSplit size={16} />,
+  upload: "📂",
+  chunk: "🧩",
+  retrieval: "🎯",
+  rerank: <IconSortAscending size={16} />,
   media: "📺",
 };
 
@@ -308,6 +328,10 @@ const App = () => {
   // Offload intensive computation to redraw and avoid blocking UI
   const [isSaving, startSaveTransition] = useTransition();
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  // Sticky, unlike showSaveSuccess: autosave runs every minute with alerts
+  // suppressed, so a quota failure there would otherwise only reach the
+  // console. This keeps the save button showing a problem until a save works.
+  const [saveFailed, setSaveFailed] = useState(false);
 
   // For modal popup to set global settings like API keys
   const settingsModal = useRef<GlobalSettingsModalRef>(null);
@@ -352,8 +376,90 @@ const App = () => {
 
   // Add Nodes list
   const addNodesMenuItems = useMemo(() => {
+    // RAG nodes are offered individually, by whether they can actually run:
+    // some work client-side, others need the Flask backend with the `rag`
+    // extra. See backend/ragCapabilities.
+    const ragNodes = [
+      {
+        // Menu.Label
+        key: "RAG",
+      },
+      {
+        available: ragNodeAvailable("upload"),
+        key: "upload",
+        title: "Upload Docs Node",
+        icon: nodeEmojis.upload,
+        tooltip: "Upload documents to the flow, such as text files or PDFs.",
+        onClick: () => addNode("upload"),
+      },
+      {
+        available: ragNodeAvailable("chunk"),
+        key: "chunk",
+        title: "Chunking Node",
+        icon: nodeEmojis.chunk,
+        tooltip:
+          "Chunk texts into smaller pieces. Compare different chunking methods. Typically used after the Upload Node.",
+        onClick: () => addNode("chunk"),
+      },
+      {
+        available: ragNodeAvailable("retrieval"),
+        key: "retrieval",
+        title: "Retrieval Node",
+        icon: nodeEmojis.retrieval,
+        tooltip:
+          "Given chunks and queries, retrieve relevant chunks for the given query. Compare retrieval methods across queries. Retrieval methods include both classical methods like BM25, and vector stores.",
+        onClick: () => addNode("retrieval"),
+      },
+      {
+        available: ragNodeAvailable("rerank"),
+        key: "rerank",
+        title: "Rerank Node",
+        icon: nodeEmojis.rerank,
+        tooltip: "Reranks retrieval outputs.",
+        onClick: () => addNode("rerank"),
+      },
+      {
+        key: "divider",
+      },
+    ]
+      // Drop the nodes that cannot run in the current setup, so nobody adds a
+      // node that only fails when they press run.
+      .filter((item) => (item as any).available !== false)
+      .map(({ available, ...item }: any) => item) as NestedMenuItemProps[];
+
+    // Misc nodes
+    const miscNodes: NestedMenuItemProps[] = [
+      {
+        // Menu.Label
+        key: "Misc",
+      },
+      {
+        key: "comment",
+        title: "Comment Node",
+        icon: nodeEmojis.comment,
+        tooltip: "Make a comment about your flow.",
+        onClick: () => addNode("comment"),
+      },
+      {
+        key: "script",
+        title: "Global Python Scripts",
+        icon: nodeEmojis.script,
+        tooltip:
+          "Specify directories to load as local packages, so they can be imported in your Python evaluator nodes (add to sys path).",
+        onClick: () => addNode("scriptNode", "script"),
+      },
+      {
+        key: "selectvars",
+        title: "Filter Variables Node",
+        icon: <IconCheckbox size={16} />,
+        tooltip:
+          "Filter which variables and metavariables to keep for the next steps.",
+        onClick: () => addNode("selectVarsNode", "selectvars"),
+      },
+    ];
+
     // All initial nodes available in ChainForge
-    const initNodes = [
+    let initNodes = [
       {
         // Menu.Label
         key: "Input Data",
@@ -545,26 +651,13 @@ const App = () => {
       {
         key: "divider",
       },
-      {
-        // Menu.Label
-        key: "Misc",
-      },
-      {
-        key: "comment",
-        title: "Comment Node",
-        icon: nodeEmojis.comment,
-        tooltip: "Make a comment about your flow.",
-        onClick: () => addNode("comment"),
-      },
-      {
-        key: "script",
-        title: "Global Python Scripts",
-        icon: nodeEmojis.script,
-        tooltip:
-          "Specify directories to load as local packages, so they can be imported in your Python evaluator nodes (add to sys path).",
-        onClick: () => addNode("scriptNode", "script"),
-      },
     ] as NestedMenuItemProps[];
+
+    // Show the RAG group if anything in it is usable. ragNodes still holds
+    // its label and divider when every node is filtered out, hence the >2.
+    if (ragNodes.length > 2)
+      initNodes = [...initNodes, ...ragNodes, ...miscNodes];
+    else initNodes = [...initNodes, ...miscNodes];
 
     // Add favorite nodes to the menu
     const favoriteNodes = favorites?.nodes?.map(({ name, value, uid }, idx) => {
@@ -595,9 +688,6 @@ const App = () => {
         key: "divider",
       });
     }
-
-    // <Menu.Label>Favorites</Menu.Label>
-    // <Menu.Divider />
 
     return initNodes;
   }, [favorites, addNode]);
@@ -738,11 +828,20 @@ const App = () => {
         const saveToLocalStorage = () => {
           // This line only saves the front-end state. Cache files
           // are not pulled or overwritten upon loading from localStorage.
-          StorageCache.saveToLocalStorage("chainforge-flow", flow);
+          const flowSaved = StorageCache.saveToLocalStorage(
+            "chainforge-flow",
+            flow,
+          );
 
           // Attempt to save the current back-end state,
           // in the StorageCache. (This does LZ compression to save space.)
-          StorageCache.saveToLocalStorage("chainforge-state");
+          const stateSaved =
+            StorageCache.saveToLocalStorage("chainforge-state");
+
+          // Both must land for the flow to be recoverable. The usual cause of
+          // failure is the browser's localStorage quota (~5MB in most
+          // browsers), which large flows and uploaded documents can exhaust.
+          return flowSaved && stateSaved;
         };
 
         const onFlowSaved = () => {
@@ -765,12 +864,29 @@ const App = () => {
           )?.then(onFlowSaved);
         } else {
           // SAVE TO BROWSER LOCALSTORAGE
-          saveToLocalStorage();
-          onFlowSaved();
+          // NOTE: Do not report success unconditionally here. saveToLocalStorage
+          // returns false when the browser refuses the write (quota exceeded),
+          // and claiming "Flow saved!" in that case loses the user's work
+          // silently.
+          if (saveToLocalStorage()) {
+            setSaveFailed(false);
+            onFlowSaved();
+          } else {
+            const msg =
+              "Could not save this flow to browser storage: the browser's " +
+              "storage limit was reached. Export the flow to a file to avoid " +
+              "losing work, and consider removing large uploaded documents " +
+              "or running ChainForge locally.";
+            // Autosave passes hideErrorAlert, so don't pop an alert every
+            // minute -- but do leave the failure visible on the save button.
+            setSaveFailed(true);
+            if (hideErrorAlert) console.error(msg);
+            else handleError(msg);
+          }
         }
       });
     },
-    [rfInstance, exportFlow, flowFileName],
+    [rfInstance, exportFlow, flowFileName, handleError],
   );
 
   // Keyboard save handler
@@ -1119,26 +1235,51 @@ const App = () => {
     ],
   );
 
-  // Load flow from examples modal
-  const onSelectExampleFlow = (name: string, example_category?: string) => {
-    // Trigger the 'loading' modal
+  // cfzip importer
+  const importFlowZipFromURL = useCallback(
+    async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
+      const blob = await res.blob();
+
+      // ensure filename ends with .cfzip
+      const urlName =
+        new URL(url, window.location.origin).pathname.split("/").pop() ||
+        "example.cfzip";
+      const fileName = /\.cfzip$/i.test(urlName) ? urlName : `${urlName}.cfzip`;
+
+      const file = new File([blob], fileName, { type: "application/zip" });
+
+      const { flow, flowName } = await importFlowBundle(file);
+      importFlowFromJSON(flow);
+      await safeSetFlowFileName(flowName);
+    },
+    [importFlowFromJSON, safeSetFlowFileName],
+  );
+
+  // loader for example flows
+  const onSelectExampleFlow = async (name: string) => {
     setIsLoading(true);
+    try {
+      const base = FLASK_BASE_URL.replace(/\/$/, "");
 
-    // Detect a special category of the example flow, and use the right loader for it:
-    if (example_category === "openai-eval") {
-      importFlowFromOpenAIEval(name);
+      if (/\.cfzip$/i.test(name)) {
+        const file = name.endsWith(".cfzip") ? name : `${name}.cfzip`;
+        const url = name.startsWith("http") ? name : `${base}/examples/${file}`;
+        await importFlowZipFromURL(url);
+        return;
+      }
+
+      // treat everything else as .cforge JSON
+      const baseName = name.replace(/\.cforge$/i, "");
+      const flowJSON = await fetchExampleFlow(baseName);
+      importFlowFromJSON(flowJSON);
       setFlowFileNameAndCache(`flow-${Date.now()}`);
-      return;
+    } catch (err) {
+      handleError(err as Error);
+    } finally {
+      setIsLoading(false);
     }
-
-    // Fetch the example flow data from the backend
-    fetchExampleFlow(name)
-      .then(function (flowJSON) {
-        // We have the data, import it:
-        importFlowFromJSON(flowJSON);
-        setFlowFileNameAndCache(`flow-${Date.now()}`);
-      })
-      .catch(handleError);
   };
 
   // When the user clicks the 'New Flow' button
@@ -1447,12 +1588,29 @@ const App = () => {
     hideContextMenu,
   ]);
 
+  // Recover the index of files persisted in IndexedDB by earlier sessions, so
+  // the storage readout and export include them. Contents are loaded on demand
+  // by MediaLookup.get, so this stays cheap.
+  useEffect(() => {
+    if (IS_RUNNING_LOCALLY) return; // files live on disk in that case
+    MediaLookup.hydrateFromIndexedDB()
+      .then((n) => {
+        if (n > 0) console.log(`Recovered ${n} uploaded file(s) from storage.`);
+      })
+      .catch((err) => console.warn("Could not read persisted uploads:", err));
+  }, []);
+
   const saveMessage = useMemo(() => {
     if (isSaving) return "Saving...";
     else if (showSaveSuccess) return "Success!";
+    else if (saveFailed)
+      return (
+        "Last save FAILED -- browser storage is full. Export this flow to a " +
+        "file to avoid losing work."
+      );
     else if (IS_RUNNING_LOCALLY) return "Save to local disk";
     else return "Save to local cache";
-  }, [isSaving, showSaveSuccess]);
+  }, [isSaving, showSaveSuccess, saveFailed]);
 
   const flowSidebar = useMemo(() => {
     if (!IS_RUNNING_LOCALLY) return undefined;
@@ -1563,28 +1721,51 @@ const App = () => {
                 </Button>
               )}
             />
-            <Button
-              onClick={() => exportFlow()}
-              size="sm"
-              variant="outline"
-              color={colorScheme === "light" ? "blue" : "gray"}
-              bg={colorScheme === "light" ? "#eee" : "#222"}
-              compact
-              mr="xs"
-            >
-              Export
-            </Button>
-            <Button
-              onClick={() => exportYml()}
-              size="sm"
-              variant="outline"
-              color={colorScheme === "light" ? "blue" : "gray"}
-              bg={colorScheme === "light" ? "#eee" : "#222"}
-              compact
-              mr="xs"
-            >
-              Export YML
-            </Button>
+            {/* Export is a split button: the common case stays one click,
+                while YAML -- which most people never use -- moves into the
+                caret instead of occupying a second slot in the toolbar. */}
+            <Button.Group mr="xs">
+              <Button
+                onClick={() => exportFlow()}
+                size="sm"
+                variant="outline"
+                color={colorScheme === "light" ? "blue" : "gray"}
+                bg={colorScheme === "light" ? "#eee" : "#222"}
+                compact
+              >
+                Export
+              </Button>
+              <Menu shadow="md" width={210} position="bottom-end">
+                <Menu.Target>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    color={colorScheme === "light" ? "blue" : "gray"}
+                    bg={colorScheme === "light" ? "#eee" : "#222"}
+                    compact
+                    px={4}
+                    title="More export options"
+                    aria-label="More export options"
+                  >
+                    <IconChevronDown size={14} />
+                  </Button>
+                </Menu.Target>
+                <Menu.Dropdown>
+                  <Menu.Item
+                    icon={<IconFileDownload size={14} />}
+                    onClick={() => exportFlow()}
+                  >
+                    Export flow (.cforge)
+                  </Menu.Item>
+                  <Menu.Item
+                    icon={<IconFileCode size={14} />}
+                    onClick={() => exportYml()}
+                  >
+                    Export as YAML (.yml)
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            </Button.Group>
             <Button
               onClick={importFlowFromFile}
               size="sm"
@@ -1602,7 +1783,9 @@ const App = () => {
                 size="sm"
                 compact
                 onClick={() => saveFlow()}
-                color={colorScheme === "light" ? "blue" : "gray"}
+                color={
+                  saveFailed ? "red" : colorScheme === "light" ? "blue" : "gray"
+                }
                 bg={colorScheme === "light" ? "#eee" : "#222"}
                 loading={isSaving}
                 disabled={isLoading || isSaving}

@@ -63,7 +63,6 @@ const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
 
 /** Where the ChainForge Flask server is being hosted, if any. */
-
 export const FLASK_BASE_URL =
   // @ts-expect-error undefined
   window.__CF_HOSTNAME !== undefined && window.__CF_PORT !== undefined
@@ -113,6 +112,48 @@ export function APP_IS_RUNNING_LOCALLY(): boolean {
   }
   return _APP_IS_RUNNING_LOCALLY;
 }
+
+// We cache the RAG availability check to avoid repeated backend calls
+export let RAG_AVAILABLE: boolean | undefined;
+let _RAG_CHECK_PROMISE: Promise<boolean> | undefined;
+
+async function checkRagAvailabilityFromBackend(): Promise<boolean> {
+  try {
+    const response = await call_flask_backend("checkRagAvailable", {});
+    return response.rag_available === true;
+  } catch (error) {
+    console.warn("Failed to check RAG availability from backend:", error);
+    return false;
+  }
+}
+
+export async function isRagAvailable(): Promise<boolean> {
+  // First check if the window flag is set
+  // @ts-expect-error undefined
+  if (window.__RAG_AVAILABLE !== undefined) {
+    RAG_AVAILABLE = (window as any).__RAG_AVAILABLE as boolean;
+  } else if (window?.location.port === "3000") {
+    // Dev mode -- assume RAG is available for easier testing
+    RAG_AVAILABLE = true;
+  }
+  // If not cached, check with the backend
+  else if (RAG_AVAILABLE === undefined) {
+    // Avoid multiple concurrent requests
+    if (!_RAG_CHECK_PROMISE) {
+      _RAG_CHECK_PROMISE = checkRagAvailabilityFromBackend();
+    }
+    RAG_AVAILABLE = await _RAG_CHECK_PROMISE;
+    _RAG_CHECK_PROMISE = undefined;
+  }
+
+  return RAG_AVAILABLE;
+}
+
+// Check RAG availability immediately upon load
+// :: Start the async check but don't block
+isRagAvailable().catch((err) =>
+  console.warn("Background RAG availability check failed:", err),
+);
 
 /**
  * Equivalent to a 'fetch' call, but routes it to the backend Flask server in
@@ -1424,8 +1465,11 @@ export async function call_ollama_provider(
       query.messages,
       "ollama",
     );
+    // construct_chat_history only attaches `images` when there are some, so a
+    // text-only prompt leaves the property undefined -- which made every
+    // image-free Ollama chat request throw before it was ever sent.
     n_images = query.messages.filter(
-      (msg: Dict) => msg.role === "user" && msg.images.length > 0,
+      (msg: Dict) => msg.role === "user" && (msg.images?.length ?? 0) > 0,
     ).length;
     console.log(
       "Resolved images in user messages: ",

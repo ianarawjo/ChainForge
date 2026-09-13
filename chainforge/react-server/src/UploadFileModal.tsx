@@ -227,7 +227,7 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
 
       setIsFetching(true);
       try {
-        const proxyUrl = `${FLASK_BASE_URL}/api/proxyImage?url=${encodeURIComponent(url)}`;
+        const proxyUrl = `${FLASK_BASE_URL}api/proxyImage?url=${encodeURIComponent(url)}`;
         const response = await fetch(proxyUrl);
 
         if (!response.ok) {
