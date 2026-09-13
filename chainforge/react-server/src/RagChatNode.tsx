@@ -343,7 +343,7 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
                 {members.map((i) => (
                   <Badge
                     key={i}
-                    size="xs"
+                    size="md"
                     radius="sm"
                     variant="light"
                     // Grey, so configurations read as detail about the
@@ -351,11 +351,18 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
                     color="gray"
                     className="ragchat-chip"
                     styles={{
+                      // Readable, since telling configurations apart is the
+                      // point of the chip; long labels wrap, not truncate.
                       root: {
                         textTransform: "none",
                         maxWidth: "100%",
+                        height: "auto",
+                        padding: "2px 8px",
+                        fontSize: 12,
+                        lineHeight: 1.4,
                         fontWeight: 500,
                       },
+                      inner: { whiteSpace: "normal", overflow: "visible" },
                     }}
                   >
                     {distinct[i]}

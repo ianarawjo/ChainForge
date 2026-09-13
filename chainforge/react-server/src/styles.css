@@ -1921,9 +1921,9 @@ html[data-mantine-color-scheme="dark"] .ragchat-bubble-warning {
    quieter than the answer. */
 .ragchat-chip {
   background: rgba(0, 0, 0, 0.07);
-  color: #495057;
+  color: #343a40;
 }
 html[data-mantine-color-scheme="dark"] .ragchat-chip {
   background: rgba(255, 255, 255, 0.08);
-  color: #a6a7ab;
+  color: #c1c2c5;
 }
