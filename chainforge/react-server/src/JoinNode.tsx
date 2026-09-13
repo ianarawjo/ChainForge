@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNodeRunner } from "./useNodeRunner";
 import { Handle, Position } from "reactflow";
 import { v4 as uuid } from "uuid";
 import useStore from "./store";
@@ -329,7 +330,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
     let input_data: LLMResponsesByVarDict = pullInputData(["__input"], id);
     if (!input_data?.__input) {
       // soft fail
-      return;
+      return Promise.resolve(false);
     }
 
     // Find all vars and metavars in the input data (if any):
@@ -367,7 +368,10 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
     // Generate (flatten) the inputs, which could be recursively chained templates
     // and a mix of LLM resp objects, templates, and strings.
     // (We tagged each object with its LLM key so that we can use built-in features to keep track of the LLM associated with each response object)
-    generatePrompts(
+    // Returned so a driver can wait for the join to finish writing its fields.
+    // Joining is asynchronous, and a prompt node run straight after it would
+    // otherwise read the previous join's output.
+    return generatePrompts(
       "{__input}",
       input_data as Dict<(TemplateVarInfo | string)[]>,
     )
@@ -452,8 +456,12 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
             setDataPropsForNode(id, { fields: [joined_texts] });
           }
         }
+        return true;
       })
-      .catch(console.error);
+      .catch((err) => {
+        console.error(err);
+        return false;
+      });
   }, [
     formatting,
     pullInputData,
@@ -464,6 +472,11 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
     setDataPropsForNode,
     handleSetAndSave,
   ]);
+
+  // Lets a driver, such as a chat box over this flow, run this node without a
+  // click. A join has no run button or status of its own: it succeeds when it
+  // has written its fields. See backend/runGraph.ts.
+  useNodeRunner(id, async () => ((await handleOnConnect()) ? "ok" : "failed"));
 
   if (data.input) {
     // If there's a change in inputs...

@@ -28,6 +28,12 @@ import {
 } from "./backend/browserRetrieve";
 import type { LinkedMethodGroup } from "./RetrievalMethodListComponent";
 import { Status } from "./StatusIndicatorComponent";
+import {
+  runnerFromStatus,
+  useCapturedAlert,
+  useNodeRunner,
+  useTrackedStatus,
+} from "./useNodeRunner";
 
 interface RetrievalNodeProps {
   id: string;
@@ -75,13 +81,16 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
   const apiKeys = useStore((s) => s.apiKeys);
 
   // Context
-  const showAlert = useContext(AlertModalContext);
+  // Alerts from a run driven elsewhere, such as a chat, are reported there.
+  const [showAlert, alertsRef] = useCapturedAlert(
+    useContext(AlertModalContext),
+  );
 
   // State
   const [methodItems, setMethodItems] = useState<RetrievalMethodSpec[]>(
     data.methods || [],
   );
-  const [status, setStatus] = useState<Status>(Status.NONE);
+  const [status, setStatus, statusRef] = useTrackedStatus();
   const [runTooltip, setRunTooltip] = useState<string>("Run Retrieval");
   const [confirmMessage, setConfirmMessage] = useState<string>("");
   const [results, setResults] = useState<Record<string, any>>(
@@ -429,6 +438,15 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
     apiKeys,
     linkedGroups,
   ]);
+
+  // Lets a driver, such as a chat box over this flow, run this node without a
+  // click. See backend/runGraph.ts.
+  //
+  // Registers runRetrieval rather than the button's confirmAndRunRetrieval, so
+  // it skips the "this may modify vector stores" modal. Sending a message is
+  // already the confirmation; a modal on every chat turn would make the chat
+  // unusable.
+  useNodeRunner(id, runnerFromStatus(runRetrieval, statusRef, alertsRef));
 
   // Update stored data when methods change
   useEffect(() => {

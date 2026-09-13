@@ -76,6 +76,12 @@ import {
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import {
+  runnerFromStatus,
+  useCapturedAlert,
+  useNodeRunner,
+  useTrackedStatus,
+} from "./useNodeRunner";
+import {
   clearCachedResponses,
   countQueries,
   generatePrompts,
@@ -386,7 +392,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState<
     string | string[] | null
   >(null);
-  const [status, setStatus] = useState(Status.NONE);
+  const [status, setStatus, statusRef] = useTrackedStatus();
   const [numGenerations, setNumGenerations] = useState<number>(data.n ?? 1);
   const [numGenerationsLastRun, setNumGenerationsLastRun] = useState<number>(
     data.n ?? 1,
@@ -397,7 +403,10 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const [llmItemsCurrState, setLLMItemsCurrState] = useState<LLMSpec[]>([]);
 
   // For displaying error messages to user
-  const showAlert = useContext(AlertModalContext);
+  // Alerts from a run driven elsewhere, such as a chat, are reported there.
+  const [showAlert, alertsRef] = useCapturedAlert(
+    useContext(AlertModalContext),
+  );
 
   // For a way to inspect responses without having to attach a dedicated node
   const inspectModal = useRef<LLMResponseInspectorModalRef>(null);
@@ -1018,7 +1027,7 @@ Soft failing by replacing undefined with empty strings.`,
 
     // Check that there is at least one LLM selected:
     if (_llmItemsCurrState.length === 0) {
-      window.alert("Please select at least one LLM to prompt.");
+      triggerAlert("Please select at least one LLM to prompt.");
       return;
     }
 
@@ -1268,8 +1277,9 @@ Soft failing by replacing undefined with empty strings.`,
       });
     };
 
-    // Now put it all together!
-    fetch_resp_count()
+    // Now put it all together! Returned so a driver can await the whole run;
+    // the run button ignores the value.
+    return fetch_resp_count()
       .then(open_progress_listener)
       .then(query_llms)
       .catch(rejected);
@@ -1330,6 +1340,10 @@ Soft failing by replacing undefined with empty strings.`,
     },
     [numGenerationsLastRun, status],
   );
+
+  // Lets a driver, such as a chat box over this flow, run this node without a
+  // click. See backend/runGraph.ts.
+  useNodeRunner(id, runnerFromStatus(handleRunClick, statusRef, alertsRef));
 
   const hideStatusIndicator = () => {
     if (status !== Status.NONE) setStatus(Status.NONE);
