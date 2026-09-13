@@ -73,16 +73,45 @@ export async function call_flask_backend(
   route: string,
   params: Dict | string,
 ): Promise<Dict> {
-  return fetch(`${FLASK_BASE_URL}app/${route}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-    },
-    body: JSON.stringify(params),
-  }).then(function (res) {
-    return res.json();
-  });
+  const url = `${FLASK_BASE_URL}app/${route}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(params),
+    });
+  } catch (err) {
+    const msg = (err as Error)?.message ?? String(err);
+    if (
+      msg.includes("Failed to fetch") ||
+      msg.includes("NetworkError") ||
+      msg.includes("ERR_CONNECTION_REFUSED")
+    ) {
+      throw new Error(
+        `Could not connect to the ChainForge Flask backend at ${url}. ` +
+          "Please ensure the ChainForge server is running locally.",
+      );
+    }
+    throw new Error(`Network error calling Flask backend: ${msg}`);
+  }
+
+  if (!res.ok) {
+    let errorBody: string;
+    try {
+      const json = await res.json();
+      errorBody = json?.error ?? JSON.stringify(json);
+    } catch {
+      errorBody = await res.text().catch(() => "");
+    }
+    throw new Error(
+      `Flask backend returned HTTP ${res.status}: ${errorBody || res.statusText}`,
+    );
+  }
+
+  return res.json();
 }
 
 // We only calculate whether the app is running locally once upon load, and store it here:
