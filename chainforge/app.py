@@ -1,4 +1,5 @@
 import argparse
+import os
 from chainforge.flask_app import run_server
 import textwrap
 
@@ -49,12 +50,38 @@ def main():
                                 This setting is only for local storage.""")
                                )
 
+    serve_parser.add_argument('--allowed-hosts',
+                              dest='allowed_hosts',
+                              default=os.environ.get("CHAINFORGE_ALLOWED_HOSTS", ""),
+                              metavar='HOSTS',
+                              help=textwrap.dedent("""\
+                                Comma-separated names or IP addresses, besides localhost and 127.0.0.1, that
+                                ChainForge may be reached by -- for example a server's domain name, or this
+                                machine's address on your network. Requests addressed to any other name are
+                                refused, which protects against DNS rebinding attacks.
+                                Can also be set with the CHAINFORGE_ALLOWED_HOSTS environment variable."""))
+    serve_parser.add_argument('--dev-origins',
+                              dest='dev_origins',
+                              default=os.environ.get("CHAINFORGE_DEV_ORIGINS", ""),
+                              metavar='ORIGINS',
+                              help=textwrap.dedent("""\
+                                For front-end development only. Comma-separated origins of a separate dev
+                                server allowed to use this server, e.g. http://localhost:3000. Anything served
+                                from these origins can run code through ChainForge, so only list servers you run.
+                                Can also be set with the CHAINFORGE_DEV_ORIGINS environment variable."""))
+
     args = parser.parse_args()
 
     # Currently only support the 'serve' command...
     if not args.serve:
         parser.print_help()
         exit(0)
+
+    from chainforge.local_access import normalize_origin, parse_list
+    dev_origins = parse_list(args.dev_origins)
+    for origin in dev_origins:
+        if normalize_origin(origin) is None:
+            serve_parser.error(f"--dev-origins: '{origin}' is not an origin like http://localhost:3000")
 
     port = args.port if args.port else 8000
     host = args.host if args.host else "localhost"
@@ -74,7 +101,8 @@ def main():
         )
 
     print(f"Serving Flask server on {host} on port {port}...")
-    run_server(host=host, port=port, flows_dir=args.dir, secure=args.secure)
+    run_server(host=host, port=port, flows_dir=args.dir, secure=args.secure,
+               allowed_hosts=parse_list(args.allowed_hosts), dev_origins=dev_origins)
 
 if __name__ == "__main__":
     main()

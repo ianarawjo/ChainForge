@@ -11,6 +11,12 @@ In the project directory, you can run:
 Runs the app in the development mode.\
 Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
+The dev server is a different origin from ChainForge's Python server, which refuses other origins by default. Start the server allowing it:
+
+```bash
+CHAINFORGE_DEV_ORIGINS=http://localhost:3000 chainforge serve
+```
+
 The page will reload when you make changes.\
 You may also see any lint errors in the console.
 

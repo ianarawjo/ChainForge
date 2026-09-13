@@ -6,6 +6,11 @@ import reportWebVitals from "./reportWebVitals";
 import { ContextMenuProvider } from "mantine-contextmenu";
 import { AlertModalProvider } from "./AlertModal";
 import ColorThemeProvider from "./ColorThemeProvider";
+import { installBackendAuth } from "./backend/sessionToken";
+
+// Before anything talks to the server: requests to it must carry the session
+// token, or it refuses them. See backend/sessionToken.ts.
+installBackendAuth();
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(

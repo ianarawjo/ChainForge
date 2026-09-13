@@ -46,6 +46,8 @@ chainforge serve
 
 Open [localhost:8000](http://localhost:8000/) in a Google Chrome, Firefox, Microsoft Edge, or Brave browser.
 
+> **Security:** ChainForge can run Python code on your computer, so its server only accepts requests from ChainForge's own page. It refuses requests from other websites, and requests addressed to any name other than `localhost` or `127.0.0.1`. If you reach ChainForge by another name or address (on a server, say, or from another machine), add it: `chainforge serve --host 0.0.0.0 --allowed-hosts your.server.name`.
+
 ## Retrieval-augmented generation (RAG)
 
 ChainForge's RAG nodes -- Upload, Chunk, Retrieval and Rerank -- work in the
@@ -87,6 +89,8 @@ You can set your API keys by clicking the Settings icon in the top-right corner.
 docker compose up -d
 ```
 Access ChainForge at http://localhost:8000
+
+To open it from another machine, tell ChainForge the name or IP address you use, e.g. `-e CHAINFORGE_ALLOWED_HOSTS=your.server.name`. Requests addressed to other names are refused.
 
 For detailed Docker documentation including architecture support, environment variables, and CI/CD setup, see [docker/README.md](docker/README.md).
 

@@ -18,8 +18,12 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 @pytest.fixture
 def client():
   """Create a test client for the app."""
+  import chainforge.flask_app as flask_app
+  from chainforge.local_access import TOKEN_HEADER
   app.config['TESTING'] = True
   with app.test_client() as client:
+    # Like ChainForge's own page, send the session token (see local_access.py).
+    client.environ_base["HTTP_" + TOKEN_HEADER.upper().replace("-", "_")] = flask_app.SESSION_TOKEN
     yield client
 
 @pytest.fixture
