@@ -341,6 +341,19 @@ const ResponseLightbox: React.FC<ResponseLightboxProps> = ({
 };
 
 /** A small key for the heatmap coloring. */
+/** A control with its label beside it, to keep the toolbar to one short row. */
+const InlineField: React.FC<{ label: string; children: React.ReactNode }> = ({
+  label,
+  children,
+}) => (
+  <Flex align="center" gap={6} wrap="nowrap">
+    <Text size="xs" color="dimmed" style={{ whiteSpace: "nowrap" }}>
+      {label}
+    </Text>
+    {children}
+  </Flex>
+);
+
 const HeatLegend: React.FC<{ metric: string; scale: HeatScale }> = ({
   metric,
   scale,
@@ -613,85 +626,104 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
           </Text>
         </Flex>
       )}
-      {showControls && (
-        <Flex gap={sz} wrap="wrap" align="end" mb="sm">
-          {AXIS_KEYS.map((key) => (
-            <NativeSelect
-              key={key}
-              label={{ rows: "Rows", cols: "Columns", split: "Split by" }[key]}
-              value={axes[key] ?? ""}
-              onChange={(e) => setAxis(key, e.currentTarget.value)}
-              data={axisChoices}
-              size={sz}
-              w={wideFormat ? 180 : 110}
-            />
-          ))}
-          {filterAxes.map((axis) => (
-            <NativeSelect
-              key={"filter-" + axis}
-              label={labelOf(axis)}
-              value={filters[axis] ?? ""}
-              onChange={(e) => {
-                const value = e.currentTarget.value;
-                setFilters((prev) => ({ ...prev, [axis]: value }));
-              }}
-              data={[
-                { value: "", label: "All" },
-                ...axisValues(items, axis, accessors).map((v) => ({
-                  value: v,
-                  label: v,
-                })),
-              ]}
-              size={sz}
-              w={wideFormat ? 160 : 100}
-            />
-          ))}
-          {metrics.length > 0 && (
-            <NativeSelect
-              label="Color by"
-              value={colorBy}
-              onChange={(e) => {
-                setColorBy(e.currentTarget.value);
-                setUserChoseColor(true);
-              }}
-              data={[
-                { value: "", label: "None" },
-                ...metrics.map((m) => ({ value: m, label: m })),
-              ]}
-              size={sz}
-              w={wideFormat ? 160 : 100}
-            />
-          )}
-          <Box w={wideFormat ? 140 : 100} pb={6}>
-            <Text size={sz}>Size</Text>
-            <Slider
-              min={48}
-              max={320}
-              step={8}
-              value={itemSize}
-              onChange={setItemSize}
-              size="sm"
-              label={null}
-            />
-          </Box>
-          {hasText && (
-            <Box w={wideFormat ? 140 : 100} pb={6}>
-              <Text size={sz}>Lines: {lines}</Text>
+      {/* One compact toolbar, since space above the grid is scarce. */}
+      <Flex
+        align="center"
+        columnGap="sm"
+        rowGap={6}
+        wrap="wrap"
+        mb={wideFormat ? "xs" : 6}
+      >
+        {showControls && (
+          <>
+            {AXIS_KEYS.map((key) => (
+              <InlineField
+                key={key}
+                label={
+                  { rows: "Rows", cols: "Columns", split: "Split by" }[key]
+                }
+              >
+                <NativeSelect
+                  aria-label={
+                    { rows: "Rows", cols: "Columns", split: "Split by" }[key]
+                  }
+                  value={axes[key] ?? ""}
+                  onChange={(e) => setAxis(key, e.currentTarget.value)}
+                  data={axisChoices}
+                  size="xs"
+                  w={wideFormat ? 130 : 100}
+                />
+              </InlineField>
+            ))}
+            {filterAxes.map((axis) => (
+              <InlineField key={"filter-" + axis} label={labelOf(axis)}>
+                <NativeSelect
+                  aria-label={labelOf(axis)}
+                  value={filters[axis] ?? ""}
+                  onChange={(e) => {
+                    const value = e.currentTarget.value;
+                    setFilters((prev) => ({ ...prev, [axis]: value }));
+                  }}
+                  data={[
+                    { value: "", label: "All" },
+                    ...axisValues(items, axis, accessors).map((v) => ({
+                      value: v,
+                      label: v,
+                    })),
+                  ]}
+                  size="xs"
+                  w={wideFormat ? 120 : 90}
+                />
+              </InlineField>
+            ))}
+            {metrics.length > 0 && (
+              <InlineField label="Color by">
+                <NativeSelect
+                  aria-label="Color by"
+                  value={colorBy}
+                  onChange={(e) => {
+                    setColorBy(e.currentTarget.value);
+                    setUserChoseColor(true);
+                  }}
+                  data={[
+                    { value: "", label: "None" },
+                    ...metrics.map((m) => ({ value: m, label: m })),
+                  ]}
+                  size="xs"
+                  w={wideFormat ? 120 : 90}
+                />
+              </InlineField>
+            )}
+            <InlineField label="Size">
               <Slider
-                min={1}
-                max={20}
-                step={1}
-                value={lines}
-                onChange={setLines}
-                size="sm"
+                aria-label="Size"
+                min={48}
+                max={320}
+                step={8}
+                value={itemSize}
+                onChange={setItemSize}
+                size="xs"
                 label={null}
+                w={wideFormat ? 100 : 80}
               />
-            </Box>
-          )}
-        </Flex>
-      )}
-
-      <Flex align="center" gap="md" wrap="wrap" mb="xs">
+            </InlineField>
+            {hasText && (
+              <InlineField label={`Lines: ${lines}`}>
+                <Slider
+                  aria-label="Lines"
+                  min={1}
+                  max={20}
+                  step={1}
+                  value={lines}
+                  onChange={setLines}
+                  size="xs"
+                  label={null}
+                  w={wideFormat ? 100 : 80}
+                />
+              </InlineField>
+            )}
+          </>
+        )}
         {wideFormat && (
           <Text size="xs" color="dimmed">
             {countText}
