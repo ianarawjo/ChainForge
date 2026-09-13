@@ -64,7 +64,7 @@ FAKE_SERVER = textwrap.dedent("""\
 @pytest.fixture
 def fake_chainforge(tmp_path, monkeypatch):
     script = tmp_path / "chainforge"
-    script.write_text(f"#!{sys.executable}\n" + FAKE_SERVER)
+    script.write_text(f"#!{sys.executable}\n" + FAKE_SERVER, encoding="utf-8")
     script.chmod(0o755)
     monkeypatch.setenv("FAKE_CHILD_PID_FILE", str(tmp_path / "child.pid"))
     return script
@@ -82,7 +82,7 @@ class TestConfig:
 
     def test_loads_with_defaults(self, core, tmp_path):
         path = tmp_path / "launcher.json"
-        path.write_text(json.dumps({"chainforge": "/opt/cf"}))
+        path.write_text(json.dumps({"chainforge": "/opt/cf"}), encoding="utf-8")
         config = core.LauncherConfig.load(path)
         assert config.host == "127.0.0.1"
         assert config.port == 8000
@@ -91,13 +91,13 @@ class TestConfig:
 
     def test_requires_the_chainforge_command(self, core, tmp_path):
         path = tmp_path / "launcher.json"
-        path.write_text(json.dumps({"port": 8000}))
+        path.write_text(json.dumps({"port": 8000}), encoding="utf-8")
         with pytest.raises(ValueError):
             core.LauncherConfig.load(path)
 
     def test_rejects_an_idle_timeout_that_is_not_positive(self, core, tmp_path):
         path = tmp_path / "launcher.json"
-        path.write_text(json.dumps({"chainforge": "/opt/cf", "idle_shutdown_minutes": 0}))
+        path.write_text(json.dumps({"chainforge": "/opt/cf", "idle_shutdown_minutes": 0}), encoding="utf-8")
         with pytest.raises(ValueError):
             core.LauncherConfig.load(path)
 
@@ -158,7 +158,7 @@ class TestServerLifecycle:
         process = core.start_server(config, log)
         try:
             assert core.wait_until_ready(config.url, process, timeout=20) is True
-            child = int((tmp_path / "child.pid").read_text())
+            child = int((tmp_path / "child.pid").read_text(encoding="utf-8"))
             assert alive(child)
         finally:
             core.stop_server(process, grace_seconds=5)
@@ -167,7 +167,7 @@ class TestServerLifecycle:
         while alive(child) and time.monotonic() < deadline:
             time.sleep(0.05)
         assert not alive(child), "stopping must also stop what the server started"
-        text = log.read_text()
+        text = log.read_text(encoding="utf-8")
         assert "serve --host 127.0.0.1" in text and "--idle-shutdown 20" in text
         assert "idle=20" in text
 
@@ -197,13 +197,13 @@ class TestWhyItStopped:
     def test_an_idle_stop_is_recognised(self, core, tmp_path):
         log = tmp_path / "chainforge.log"
         log.write_text("--- start\nServing...\nNo ChainForge page has been open for 20 minutes. "
-                       "Stopping the server.\n")
+                       "Stopping the server.\n", encoding="utf-8")
         assert core.why_it_stopped(log) == "idle"
 
     def test_an_earlier_idle_stop_does_not_explain_a_later_crash(self, core, tmp_path):
         log = tmp_path / "chainforge.log"
         log.write_text("--- start 1\nNo ChainForge page has been open for 20 minutes.\n"
-                       "--- start 2\nTraceback (most recent call last):\n")
+                       "--- start 2\nTraceback (most recent call last):\n", encoding="utf-8")
         assert core.why_it_stopped(log) == "exited"
 
     def test_a_missing_log_means_it_simply_exited(self, core, tmp_path):

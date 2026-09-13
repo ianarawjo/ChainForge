@@ -42,7 +42,7 @@ class LauncherConfig:
 
     @classmethod
     def load(cls, path: Path) -> "LauncherConfig":
-        data = json.loads(Path(path).read_text())
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
         if not data.get("chainforge"):
             raise ValueError(f"{path} does not say where the chainforge command is")
         known = {"chainforge", "host", "port", "idle_shutdown_minutes", "flows_dir"}
@@ -65,7 +65,7 @@ class SingleInstance:
 
     def acquire(self) -> bool:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        handle = open(self.path, "w")
+        handle = open(self.path, "w", encoding="utf-8")
         try:
             fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
@@ -110,7 +110,7 @@ def start_server(config: LauncherConfig, log_path: Path) -> subprocess.Popen:
     """
     log_path = Path(log_path)
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    log = open(log_path, "a")
+    log = open(log_path, "a", encoding="utf-8")
     log.write(f"\n--- {time.strftime('%Y-%m-%d %H:%M:%S')} starting: "
               f"{' '.join(server_command(config))}\n")
     log.flush()
