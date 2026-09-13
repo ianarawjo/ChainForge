@@ -8,8 +8,11 @@ import {
   answersAgree,
   answersFromPromptOutput,
   buildChatTurn,
+  collectStageValues,
+  explainMixedStage,
   explainTurn,
   groupAgreeingAnswers,
+  mixedStages,
   progressMessage,
   splitAnswerLabels,
 } from "../ragChat";
@@ -568,5 +571,144 @@ describe("groupAgreeingAnswers", () => {
       [0, 2],
       [1, 3],
     ]);
+  });
+});
+
+describe("collectStageValues", () => {
+  test("gathers each stage's methods across nodes, once each, in order seen", () => {
+    const retrieval = [
+      {
+        fill_history: {
+          query: QUERY,
+          chunkMethod: "Markdown Headers",
+          retrievalMethod: "BM25",
+        },
+      },
+      {
+        fill_history: {
+          query: QUERY,
+          chunkMethod: "Fixed size",
+          retrievalMethod: "BM25",
+        },
+      },
+      {
+        fill_history: {
+          query: QUERY,
+          chunkMethod: "Markdown Headers",
+          retrievalMethod: "Semantic",
+        },
+      },
+    ];
+    const rerank = [
+      {
+        fill_history: {
+          chunkMethod: "Markdown Headers",
+          rerankMethod: "Cross-encoder",
+        },
+      },
+    ];
+    expect(collectStageValues([retrieval, rerank], resolveText)).toEqual({
+      chunkMethod: ["Markdown Headers", "Fixed size"],
+      retrievalMethod: ["BM25", "Semantic"],
+      rerankMethod: ["Cross-encoder"],
+    });
+  });
+
+  test("resolves interned values", () => {
+    expect(
+      collectStageValues(
+        [[{ fill_history: { retrievalMethod: 3 } }]],
+        resolveText,
+      ),
+    ).toEqual({ retrievalMethod: ["BM25 Retrieval"] });
+  });
+
+  test("skips outputs that are not lists, and entries without variables", () => {
+    expect(
+      collectStageValues(
+        [undefined, {}, "text", [null, { text: "x" }]],
+        resolveText,
+      ),
+    ).toEqual({});
+  });
+});
+
+describe("mixedStages", () => {
+  const stageValues = {
+    chunkMethod: ["Markdown Headers", "Fixed size"],
+    retrievalMethod: ["BM25", "Semantic"],
+  };
+
+  test("a Join grouped by retriever only merges the chunkers", () => {
+    // The Join drops chunkMethod, since it differs within each group.
+    const answers = [
+      answer("a", { retrievalMethod: "BM25" }),
+      answer("b", { retrievalMethod: "Semantic" }),
+    ];
+    expect(mixedStages(stageValues, answers)).toEqual([
+      { key: "chunkMethod", values: ["Markdown Headers", "Fixed size"] },
+    ]);
+  });
+
+  test("merging everything into one answer flags every stage", () => {
+    expect(mixedStages(stageValues, [answer("a", {})])).toEqual([
+      { key: "chunkMethod", values: ["Markdown Headers", "Fixed size"] },
+      { key: "retrievalMethod", values: ["BM25", "Semantic"] },
+    ]);
+  });
+
+  test("a Join grouped by every stage is fine", () => {
+    const answers = [
+      answer("a", { chunkMethod: "Markdown Headers", retrievalMethod: "BM25" }),
+      answer("b", { chunkMethod: "Fixed size", retrievalMethod: "Semantic" }),
+    ];
+    expect(mixedStages(stageValues, answers)).toEqual([]);
+  });
+
+  test("a stage with a single method cannot be mixed", () => {
+    expect(
+      mixedStages({ chunkMethod: ["Markdown Headers"] }, [answer("a", {})]),
+    ).toEqual([]);
+  });
+
+  test("no answers, nothing to warn about", () => {
+    expect(mixedStages(stageValues, [])).toEqual([]);
+  });
+});
+
+describe("buildChatTurn with stage values", () => {
+  test("records merged stages on the turn", () => {
+    const turn = buildChatTurn({
+      id: "t",
+      query: QUERY,
+      askedAt: 0,
+      results: [{ nodeId: "p", outcome: "ok" }],
+      promptOutputs: {
+        p: [
+          output({ fill_history: { query: QUERY, retrievalMethod: "BM25" } }),
+        ],
+      },
+      typeOf: () => "prompt",
+      nodeLabel: () => "Prompt Node",
+      resolveText,
+      stageValues: { chunkMethod: ["Markdown Headers", "Fixed size"] },
+    });
+    expect(turn.mixed).toEqual([
+      { key: "chunkMethod", values: ["Markdown Headers", "Fixed size"] },
+    ]);
+  });
+});
+
+describe("explainMixedStage", () => {
+  test("names the methods and the variable to group by", () => {
+    expect(
+      explainMixedStage({
+        key: "chunkMethod",
+        values: ["Markdown Headers", "Fixed size (characters)"],
+      }),
+    ).toBe(
+      "Answers mix results from 2 chunkers (Markdown Headers, Fixed size (characters)). " +
+        "To compare them, group the Join node by chunkMethod too.",
+    );
   });
 });

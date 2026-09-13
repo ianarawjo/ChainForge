@@ -1860,7 +1860,9 @@ html[data-mantine-color-scheme="dark"] .carousel-nav-button:hover {
   color: white;
 }
 .ragchat-bubble-answer {
-  align-self: flex-start;
+  /* Full width, so answers line up rather than each sizing to its text. */
+  align-self: stretch;
+  max-width: none;
   background: #f1f3f5;
   color: #212529;
 }
@@ -1902,4 +1904,15 @@ html[data-mantine-color-scheme="dark"] .ragchat-bubble-error {
 }
 html[data-mantine-color-scheme="dark"] .ragchat-member + .ragchat-member {
   border-top-color: rgba(255, 255, 255, 0.12);
+}
+/* A flow that merged the configurations it was built to compare. */
+.ragchat-bubble-warning {
+  align-self: stretch;
+  max-width: none;
+  background: #fff4e6;
+  color: #d9480f;
+}
+html[data-mantine-color-scheme="dark"] .ragchat-bubble-warning {
+  background: rgba(255, 146, 43, 0.12);
+  color: #ffc078;
 }

@@ -46,6 +46,8 @@ import {
   answerLabel,
   answeringNodeIds,
   buildChatTurn,
+  collectStageValues,
+  explainMixedStage,
   explainTurn,
   groupAgreeingAnswers,
   progressMessage,
@@ -185,6 +187,18 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
         | PromptOutputLike[]
         | undefined;
 
+    // Every method each stage ran, to catch a Join that merged the
+    // configurations the flow was built to compare.
+    const stageValues = collectStageValues(
+      results
+        .filter((r) => r.outcome === "ok")
+        .flatMap((r) => {
+          const nodeData = state.getNode(r.nodeId)?.data;
+          return [nodeData?.fields, nodeData?.output];
+        }),
+      resolveText,
+    );
+
     const turn = buildChatTurn({
       id: uuid(),
       // Matched against what downstream nodes recorded, which is the escaped
@@ -196,6 +210,7 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
       typeOf,
       nodeLabel,
       resolveText,
+      stageValues,
     });
 
     saveHistory([...historyRef.current, { ...turn, query: question }]);
@@ -417,6 +432,14 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
               {turn.answers.length > 1
                 ? renderComparison(turn)
                 : turn.answers.map((a) => renderAnswer(turn, a))}
+              {turn.mixed?.map((stage) => (
+                <div
+                  key={stage.key}
+                  className="ragchat-bubble ragchat-bubble-warning"
+                >
+                  <Text size="xs">{explainMixedStage(stage)}</Text>
+                </div>
+              ))}
               {explainTurn(turn) && (
                 <div
                   className={`ragchat-bubble ragchat-bubble-system ${

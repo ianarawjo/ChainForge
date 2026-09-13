@@ -71,6 +71,14 @@ export type ChatTurnStatus =
   /** Everything ran, but no Prompt node downstream produced an answer. */
   | "no-answer";
 
+/** A stage that ran several methods whose results were merged together. */
+export interface MixedStage {
+  /** The variable naming the stage's method, e.g. "chunkMethod". */
+  key: string;
+  /** The methods that were merged, in the order first seen. */
+  values: string[];
+}
+
 export interface ChatTurn {
   id: string;
   query: string;
@@ -78,6 +86,11 @@ export interface ChatTurn {
   status: ChatTurnStatus;
   answers: ChatAnswer[];
   problems: ChatProblem[];
+  /**
+   * Stages that ran several methods whose results the answers merged. Absent
+   * on turns saved before this was checked.
+   */
+  mixed?: MixedStage[];
 }
 
 /** Node types whose output is an answer to show. */
@@ -249,6 +262,8 @@ export interface BuildChatTurnArgs {
   typeOf: (nodeId: string) => string | undefined;
   nodeLabel: (nodeId: string) => string;
   resolveText: ResolveText;
+  /** Every method each stage ran this turn; see collectStageValues. */
+  stageValues?: Record<string, string[]>;
 }
 
 /** Assembles one chat turn from a finished run. */
@@ -284,6 +299,7 @@ export function buildChatTurn(args: BuildChatTurnArgs): ChatTurn {
     status,
     answers,
     problems,
+    mixed: args.stageValues ? mixedStages(args.stageValues, answers) : [],
   };
 }
 
@@ -491,4 +507,73 @@ export function groupAgreeingAnswers(
   });
   // Array.prototype.sort is stable, so equal-sized groups keep their order.
   return groups.sort((x, y) => y.length - x.length);
+}
+
+/*
+ * Catching merged configurations.
+ *
+ * To compare chunkers or retrievers, a Join node has to group by each of
+ * them. Grouping by retrievalMethod alone quietly puts both chunkers' chunks
+ * into every prompt: the flow still runs and answers, just not the comparison
+ * it was built for, and nothing looks wrong. The Join drops a variable whose
+ * value differs within a group, so the tell is a stage that ran several
+ * methods while an answer no longer records which one it used.
+ */
+
+/**
+ * Every method each pipeline stage ran, read from node outputs.
+ *
+ * Accepts anything a node stores as output and skips what is not a list of
+ * entries, so callers can pass node data fields without checking them first.
+ */
+export function collectStageValues(
+  outputs: unknown[],
+  resolveText: ResolveText,
+): Record<string, string[]> {
+  const seen: Record<string, Set<string>> = {};
+  for (const output of outputs) {
+    if (!Array.isArray(output)) continue;
+    for (const entry of output) {
+      const vars = (entry as PromptOutputLike | undefined)?.fill_history;
+      if (!vars) continue;
+      for (const key of PIPELINE_CONFIG_KEYS) {
+        if (!(key in vars)) continue;
+        const value = asString(vars[key], resolveText);
+        if (value.length === 0) continue;
+        (seen[key] ??= new Set()).add(value);
+      }
+    }
+  }
+  const values: Record<string, string[]> = {};
+  for (const [key, set] of Object.entries(seen)) values[key] = [...set];
+  return values;
+}
+
+/** Stages that ran several methods but that some answer does not record. */
+export function mixedStages(
+  stageValues: Record<string, string[]>,
+  answers: ChatAnswer[],
+): MixedStage[] {
+  if (answers.length === 0) return [];
+  return PIPELINE_CONFIG_KEYS.filter(
+    (key) =>
+      (stageValues[key]?.length ?? 0) > 1 &&
+      answers.some((a) => a.config[key] === undefined),
+  ).map((key) => ({ key, values: stageValues[key] }));
+}
+
+const STAGE_NOUNS: Record<string, string> = {
+  chunkMethod: "chunkers",
+  retrievalMethod: "retrieval methods",
+  rerankMethod: "rerankers",
+};
+
+/** A warning about a merged stage, saying what to change. */
+export function explainMixedStage(stage: MixedStage): string {
+  const noun = STAGE_NOUNS[stage.key] ?? stage.key;
+  return (
+    `Answers mix results from ${stage.values.length} ${noun} ` +
+    `(${stage.values.join(", ")}). To compare them, group the Join node by ` +
+    `${stage.key} too.`
+  );
 }
