@@ -13,6 +13,7 @@ from chainforge.local_access import (
     normalize_origin, origin_allowed, token_valid,
 )
 from chainforge.idle_shutdown import IdleWatchdog, idle_shutdown_message, stop_this_server
+from chainforge import stats as cf_stats
 import requests as py_requests
 from platformdirs import user_data_dir
 import copy
@@ -68,6 +69,16 @@ if not RAG_AVAILABLE:
 def IS_RAG_AVAILABLE() -> bool:
     """Whether the optional RAG dependencies loaded successfully at startup."""
     return RAG_AVAILABLE
+
+
+""" ========================================
+    DETECT EVALSTATS (VIS NODE STATISTICS)
+    ========================================
+"""
+# The optional `pip install chainforge[stats]` extra. Checked from package
+# metadata only; chainforge.stats imports evalstats on the first comparison.
+EVALSTATS_UNAVAILABLE_REASON = cf_stats.evalstats_unavailable_reason()
+EVALSTATS_AVAILABLE = EVALSTATS_UNAVAILABLE_REASON is None
 
 
 """ =================
@@ -433,8 +444,9 @@ def page_globals_script() -> str:
     serverHeartbeat.ts), so pages from an ordinary server send none.
     """
     rag_av = "true" if RAG_AVAILABLE else "false"
+    stats_av = "true" if EVALSTATS_AVAILABLE else "false"
     script = (f'window.__CF_HOSTNAME="{HOSTNAME}"; window.__CF_PORT={PORT}; window.__RAG_AVAILABLE={rag_av};'
-              f' window.__CF_SESSION_TOKEN="{SESSION_TOKEN}";')
+              f' window.__EVALSTATS_AVAILABLE={stats_av}; window.__CF_SESSION_TOKEN="{SESSION_TOKEN}";')
     if IDLE_WATCHDOG is not None:
         script += f' window.__CF_IDLE_SHUTDOWN_MINUTES={IDLE_WATCHDOG.timeout_seconds / 60:g};'
     return f"<script>{script}</script>"
@@ -678,6 +690,37 @@ def checkRagAvailable():
     """
     ret = jsonify({"rag_available": IS_RAG_AVAILABLE()})
     return ret
+
+
+@app.route('/app/checkEvalStatsAvailable', methods=['POST'])
+def checkEvalStatsAvailable():
+    """Whether the Vis Node can show statistics, i.e. the [stats] extra is installed."""
+    return jsonify({"available": EVALSTATS_AVAILABLE, "reason": EVALSTATS_UNAVAILABLE_REASON})
+
+
+@app.route('/app/compareEvalStats', methods=['POST'])
+def compareEvalStats():
+    """
+    Compare groups of evaluation scores with evalstats, for the Vis Node.
+
+    POST'd data should be in form:
+    {
+        'rows': [{'group': str, 'group2'?: str, 'item': str, 'run': int, 'score': number | bool}],
+        'item_labels'?: { item id: readable name }
+    }
+    See chainforge/stats.py for what comes back.
+    """
+    if not EVALSTATS_AVAILABLE:
+        return jsonify({"error": EVALSTATS_UNAVAILABLE_REASON}), 501
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not isinstance(data.get("rows"), list):
+        return jsonify({"error": "POST data must include a list of `rows`."}), 400
+    try:
+        return jsonify(cf_stats.compare_eval_results(data["rows"], data.get("item_labels")))
+    except cf_stats.StatsInputError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": f"Statistics failed: {type(e).__name__}: {e}"}), 500
 
 
 @app.route('/app/makeFetchCall', methods=['POST'])

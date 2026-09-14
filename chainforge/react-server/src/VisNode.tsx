@@ -12,6 +12,7 @@ import {
   Button,
   Menu,
   NativeSelect,
+  Switch,
   useMantineColorScheme,
 } from "@mantine/core";
 import useStore, { colorPalettes } from "./store";
@@ -24,6 +25,17 @@ import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import ResizeHandle from "./ResizeHandle";
 import PlotLegend from "./PlotLegend";
+import VisStatsPanel from "./VisStatsPanel";
+import {
+  buildEvalStatsRows,
+  compareEvalStats,
+  EvalStatsEntity,
+  EvalStatsFactor,
+  EvalStatsResult,
+  EvalStatsRow,
+  isEvalStatsAvailable,
+  toStatsScore,
+} from "./backend/evalStats";
 import {
   cleanMetavarsFilterFunc,
   llmResponseDataToString,
@@ -277,7 +289,75 @@ interface VisNodeData {
   input: string;
   refresh: boolean;
   title: string;
+  /** Show statistics from evalstats under the plot (local ChainForge only). */
+  show_stats?: boolean;
 }
+
+/** The statistics to compute for the plot currently shown. */
+interface StatsRequest {
+  key: string;
+  rows: EvalStatsRow[];
+  itemLabels: Dict<string>;
+  /** The Vis Node keys of the groupings compared: "LLM", a var, or `__meta_<name>`. */
+  factorKeys: string[];
+  asPercent: boolean;
+  /** Why this plot can't have statistics, in place of rows to compare. */
+  unsupported?: string;
+}
+
+/**
+ * Confidence intervals drawn over a plot, as diamonds at the mean with
+ * whiskers, one per group. `names` and `shortnames` are the plot's own, so
+ * each interval lands on its group's row.
+ */
+const ciOverlayTrace = (
+  names: Iterable<string>,
+  shortnames: Dict<string>,
+  entityByName: Dict<EvalStatsEntity>,
+  scale: number,
+  alpha: number,
+  colorScheme: string,
+): Dict => {
+  const x: number[] = [];
+  const y: string[] = [];
+  const plus: number[] = [];
+  const minus: number[] = [];
+  const bounds: number[][] = [];
+  for (const name of names) {
+    const e = entityByName[name];
+    if (!e || e.mean === null || e.ci_low === null || e.ci_high === null)
+      continue;
+    x.push(e.mean * scale);
+    y.push(shortnames[name]);
+    plus.push((e.ci_high - e.mean) * scale);
+    minus.push((e.mean - e.ci_low) * scale);
+    bounds.push([e.ci_low * scale, e.ci_high * scale]);
+  }
+  const ink = colorScheme === "light" ? "#222" : "#eee";
+  const fmt = scale === 100 ? ":.1f" : ":.3g";
+  const ciPct = Math.round((1 - alpha) * 100);
+  return {
+    type: "scatter",
+    mode: "markers",
+    // Horizontal, so that in grouped plots it can sit beside its bar or box.
+    orientation: "h",
+    x,
+    y,
+    customdata: bounds,
+    marker: { symbol: "diamond", size: 7, color: ink },
+    error_x: {
+      type: "data",
+      symmetric: false,
+      array: plus,
+      arrayminus: minus,
+      color: ink,
+      thickness: 1.5,
+      width: 4,
+    },
+    hovertemplate: `mean %{x${fmt}} [%{customdata[0]${fmt}}, %{customdata[1]${fmt}}]<extra>${ciPct}% CI</extra>`,
+    showlegend: false,
+  };
+};
 
 /**
  * Graph types to choose between, for data that can be shown either way.
@@ -302,6 +382,8 @@ export interface VisViewProps {
   id?: string;
   data?: VisNodeData;
   whenReplotting?: (isReplotting: boolean) => void;
+  /** Show statistics from evalstats under the plot, when the backend has it. */
+  showStats?: boolean;
 }
 export interface VisViewRef {
   resetControls: (responses: LLMResponse[]) => void;
@@ -312,7 +394,7 @@ export interface VisViewRef {
  */
 export const VisView = forwardRef<VisViewRef, VisViewProps>(
   function VisViewComponent(
-    { responses, id, data, whenReplotting, wideFormat },
+    { responses, id, data, whenReplotting, wideFormat, showStats },
     ref,
   ) {
     // Color scheme
@@ -397,6 +479,40 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       },
       [id, setDataPropsForNode],
     );
+
+    // Statistics from evalstats, when ChainForge runs locally with the [stats] extra.
+    const getColorForLLM = useStore((state) => state.getColorForLLM);
+    const [statsAvailable, setStatsAvailable] = useState(false);
+    useEffect(() => {
+      isEvalStatsAvailable().then(setStatsAvailable);
+    }, []);
+    // What to compute for the current plot, set while replotting. It is only
+    // replaced when its key changes, so replotting the same data doesn't refetch.
+    const [statsRequest, setStatsRequest] = useState<StatsRequest | null>(null);
+    const [statsResponse, setStatsResponse] = useState<{
+      key: string;
+      result?: EvalStatsResult;
+      error?: string;
+    } | null>(null);
+    useEffect(() => {
+      if (!statsRequest || statsRequest.unsupported) return;
+      const { key, rows, itemLabels } = statsRequest;
+      let cancelled = false;
+      // Wait for settings to stop changing before asking the backend.
+      const timer = setTimeout(() => {
+        compareEvalStats(rows, itemLabels)
+          .then((result) => {
+            if (!cancelled) setStatsResponse({ key, result });
+          })
+          .catch((err: Error) => {
+            if (!cancelled) setStatsResponse({ key, error: err.message });
+          });
+      }, 300);
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
+    }, [statsRequest]);
 
     // When the user clicks an item in the drop-down,
     // we want to autoclose the multiselect drop-down:
@@ -531,6 +647,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             Evaluator Node or LLM Scorer Node first.
           </p>,
         );
+        setStatsRequest(null);
         return;
       }
 
@@ -698,6 +815,84 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           return eval_res_obj.items;
         };
 
+        // Statistics: what the plot below compares, and evalstats' results for
+        // it once they arrive (drawn over plots of single groupings).
+        let stats_entities: Dict<EvalStatsEntity> | undefined;
+        let stats_alpha = 0.05;
+        if (showStats && statsAvailable) {
+          const llm_factor: EvalStatsFactor = {
+            key: selectedLLMGroup,
+            valueOf: get_llm,
+          };
+          let stats_factors: EvalStatsFactor[] = [];
+          let unsupported: string | undefined;
+          if (
+            sel_typeof_eval_res !== "Boolean" &&
+            sel_typeof_eval_res !== "Numeric"
+          )
+            unsupported = "Statistics need numeric or true/false scores.";
+          else if (varnames.length === 0) stats_factors = [llm_factor];
+          else if (varnames.length === 1) {
+            const var_factor: EvalStatsFactor = {
+              key: varnames[0],
+              valueOf: (r) => get_var_and_trim(r, varnames[0], true),
+            };
+            stats_factors =
+              llm_names.length === 1 || selectedLLMGroup === varnames[0]
+                ? [var_factor]
+                : [llm_factor, var_factor];
+          } else
+            unsupported =
+              "Statistics aren't available for plots of two variables.";
+
+          let request: StatsRequest;
+          if (unsupported)
+            request = {
+              key: unsupported,
+              rows: [],
+              itemLabels: {},
+              factorKeys: [],
+              asPercent: false,
+              unsupported,
+            };
+          else {
+            const { rows, itemLabels } = buildEvalStatsRows(
+              responses,
+              stats_factors,
+              (r) => get_items(r.eval_res).map(toStatsScore),
+            );
+            const factorKeys = stats_factors.map((f) => f.key);
+            request = {
+              key: JSON.stringify([factorKeys, rows]),
+              rows,
+              itemLabels,
+              factorKeys,
+              asPercent: sel_typeof_eval_res === "Boolean",
+            };
+          }
+          setStatsRequest((prev) =>
+            prev?.key === request.key ? prev : request,
+          );
+
+          const result =
+            statsResponse?.key === request.key
+              ? statsResponse.result
+              : undefined;
+          if (result?.ok) {
+            stats_alpha = result.alpha;
+            // By group, or by [group, value of the variable] when comparing both.
+            const by_name: Dict<EvalStatsEntity> = {};
+            result.entities.forEach((e) => {
+              const key =
+                request.factorKeys.length === 1
+                  ? e.group
+                  : JSON.stringify([e.group, e.group2]);
+              by_name[key] = e;
+            });
+            stats_entities = by_name;
+          }
+        } else setStatsRequest(null);
+
         // Only for Boolean data
         const plot_accuracy = (
           resp_to_x: (r: LLMResponse) => string,
@@ -769,6 +964,20 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               orientation: "h",
             },
           ];
+          if (stats_entities) {
+            spec.push(
+              ciOverlayTrace(
+                names,
+                shortnames,
+                stats_entities,
+                100,
+                stats_alpha,
+                colorScheme,
+              ),
+            );
+            // A second trace would otherwise bring up Plotly's legend.
+            layout.showlegend = false;
+          }
           layout.xaxis = {
             range: [0, 100],
             tickmode: "linear",
@@ -929,6 +1138,28 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               spec.push(d);
             }
           }
+          // Intervals of the mean only fit box plots here; bars show sums.
+          if (
+            stats_entities &&
+            !plotting_categorical_vars &&
+            spec.length > 0 &&
+            spec.every((trace: Dict) => trace.type === "box")
+          ) {
+            // Boxes mark medians; also mark the means the intervals are around.
+            spec.forEach((trace: Dict) => {
+              trace.boxmean = true;
+            });
+            spec.push(
+              ciOverlayTrace(
+                names,
+                shortnames,
+                stats_entities,
+                1,
+                stats_alpha,
+                colorScheme,
+              ),
+            );
+          }
           layout.hovermode = "closest";
           layout.showlegend = false;
 
@@ -974,19 +1205,35 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             }
 
             if (sel_typeof_eval_res === "Boolean") {
-              // Plot a histogram for boolean (true/false) categorical data.
+              // Percent true for each value of the variable, one bar per group
+              // side by side (not stacked), so each bar can carry its own
+              // confidence interval.
+              const bar_x: number[] = [];
+              const bar_y: string[] = [];
+              for (const name of names) {
+                const vals = x_items.filter(
+                  (_, idx) => y_items[idx] === shortnames[name],
+                );
+                if (vals.length === 0) continue;
+                bar_y.push(shortnames[name]);
+                bar_x.push(
+                  (100 * vals.filter((v) => v === true).length) / vals.length,
+                );
+              }
               spec.push({
-                type: "histogram",
-                histfunc: "sum",
+                type: "bar",
                 name: llm,
+                offsetgroup: llm,
                 marker: { color: getColorForLLMAndSetIfNotFound(llm) },
-                x: x_items.map((i) => (i === true ? "1" : "0")),
-                y: y_items,
+                x: bar_x,
+                y: bar_y,
                 orientation: "h",
+                hovertemplate: "%{x:.1f}%<extra>%{fullData.name}</extra>",
               });
-              layout.barmode = "stack";
+              layout.barmode = "group";
               layout.xaxis = {
-                title: { font: { size: 12 }, text: "Number of 'true' values" },
+                title: { font: { size: 12 }, text: "% percent true" },
+                range: [0, 100],
                 ...layout.xaxis,
               };
               setForcedGraphType("bar");
@@ -1047,6 +1294,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               } else {
                 // Box-and-whiskers plot
                 d.type = "box";
+                d.offsetgroup = llm;
               }
 
               spec.push(d);
@@ -1056,6 +1304,39 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               };
             }
           });
+          // Confidence intervals for each group and value, beside their bars
+          // (percent true) or boxes. Bars of sums have none.
+          if (
+            stats_entities &&
+            (sel_typeof_eval_res === "Boolean" ||
+              spec.every((trace: Dict) => trace.type === "box"))
+          ) {
+            const entities = stats_entities;
+            const scale = sel_typeof_eval_res === "Boolean" ? 100 : 1;
+            llm_names.forEach((llm) => {
+              const by_name: Dict<EvalStatsEntity> = {};
+              for (const name of names) {
+                const e = entities[JSON.stringify([llm, name])];
+                if (e) by_name[name] = e;
+              }
+              spec.push({
+                ...ciOverlayTrace(
+                  names,
+                  shortnames,
+                  by_name,
+                  scale,
+                  stats_alpha,
+                  colorScheme,
+                ),
+                offsetgroup: llm,
+              });
+            });
+            // Boxes mark medians; also mark the means the intervals are around.
+            spec.forEach((trace: Dict) => {
+              if (trace.type === "box") trace.boxmean = true;
+            });
+            layout.scattermode = "group";
+          }
           layout.boxmode = "group";
           layout.bargap = 0.5;
 
@@ -1284,6 +1565,21 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
         if (!Array.isArray(spec)) spec = [spec];
 
+        // Plotly derives grid lines from the axis color, which in dark mode
+        // makes them bright enough to crowd out the data. Keep them faint.
+        if (colorScheme !== "light") {
+          layout.xaxis = {
+            gridcolor: "rgba(255, 255, 255, 0.1)",
+            zerolinecolor: "rgba(255, 255, 255, 0.25)",
+            ...layout.xaxis,
+          };
+          layout.yaxis = {
+            gridcolor: "rgba(255, 255, 255, 0.1)",
+            zerolinecolor: "rgba(255, 255, 255, 0.25)",
+            ...layout.yaxis,
+          };
+        }
+
         setPlotLegend(plot_legend);
         setPlotlySpec(spec as Dict[]);
         setPlotlyLayout(layout);
@@ -1304,6 +1600,9 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       // By key, so only a real change of graph type replots.
       graphType.key,
       colorScheme,
+      showStats,
+      statsAvailable,
+      statsResponse,
     ]);
 
     // Resize the plot when the div around it is resized (e.g. with the resize
@@ -1476,6 +1775,37 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           {plotLegend ?? <></>}
           <ResizeHandle targetRef={plotDivRef} minWidth={150} minHeight={100} />
         </div>
+        {statsAvailable && showStats && (
+          <VisStatsPanel
+            // While new statistics load, the last ones stay up (marked updating).
+            result={statsResponse?.result}
+            loading={
+              !!statsRequest &&
+              !statsRequest.unsupported &&
+              statsResponse?.key !== statsRequest.key
+            }
+            error={
+              statsRequest && statsResponse?.key === statsRequest.key
+                ? statsResponse.error
+                : undefined
+            }
+            unsupported={statsRequest?.unsupported}
+            asPercent={statsRequest?.asPercent ?? false}
+            nameOf={(e) => {
+              const factors = statsResponse?.result?.ok
+                ? statsResponse.result.factors
+                : ["group" as const];
+              return factors.map((f) => e[f] ?? "").join(" · ");
+            }}
+            colorOf={
+              // LLMs (or whatever the plot groups by) have colors in the plot.
+              statsRequest?.factorKeys[0] === selectedLLMGroup
+                ? (e) => getColorForLLM(e.group)
+                : undefined
+            }
+            colorScheme={colorScheme}
+          />
+        )}
       </>
     );
   },
@@ -1498,6 +1828,12 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
   const [status, setStatus] = useState<Status>(Status.NONE);
   const [pastInputs, setPastInputs] = useState<JSONCompatible>([]);
   const [responses, setResponses] = useState<LLMResponse[]>([]);
+
+  // Statistics are switched on from the header, when the backend has evalstats.
+  const [statsAvailable, setStatsAvailable] = useState(false);
+  useEffect(() => {
+    isEvalStatsAvailable().then(setStatsAvailable);
+  }, []);
 
   // On load of vis view
   // const setVisViewRef = useCallback((elem: VisViewRef) => {
@@ -1548,11 +1884,39 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         nodeId={id}
         status={status}
         icon={"📊"}
+        customButtons={
+          statsAvailable
+            ? [
+                <Switch
+                  key="stats"
+                  size="xs"
+                  label="Stats"
+                  title="Confidence intervals and significance tests, from evalstats"
+                  checked={data.show_stats ?? false}
+                  onChange={(event) =>
+                    setDataPropsForNode(id, {
+                      show_stats: event.currentTarget.checked,
+                    })
+                  }
+                  className="nodrag"
+                  styles={{
+                    root: {
+                      display: "inline-flex",
+                      alignItems: "center",
+                      marginRight: 6,
+                    },
+                    label: { paddingLeft: 4, fontSize: "9pt" },
+                  }}
+                />,
+              ]
+            : undefined
+        }
       />
       <VisView
         ref={visViewRef}
         id={id}
         responses={responses}
+        showStats={data.show_stats ?? false}
         data={data}
         whenReplotting={(isReplotting) =>
           setStatus(isReplotting ? Status.LOADING : Status.NONE)

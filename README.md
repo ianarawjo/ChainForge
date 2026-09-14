@@ -80,6 +80,22 @@ runtimes from killing each other, and say so when it does. That makes embedding
 slower, which is why it only happens when FAISS is actually present. Set
 `OMP_NUM_THREADS` yourself to override it.
 
+## Statistics in the Vis Node
+
+When ChainForge runs locally, the Vis Node can show confidence intervals,
+pairwise significance tests, and which options are tied for best, computed with
+[evalstats](https://github.com/ianarawjo/evalstats). Install the extra, restart
+ChainForge, and switch on **Stats** in a Vis Node:
+
+```bash
+pip install chainforge[stats]
+```
+
+Statistics compare results for the same inputs across groups (a paired design),
+so they need an eval set of at least 15 inputs with a result for every group.
+Inputs missing a result for any group are left out, and the Vis Node lists
+them so you can rerun those queries.
+
 You can set your API keys by clicking the Settings icon in the top-right corner. If you prefer to not worry about this everytime you open ChainForge, we **highly recommend** that save your OpenAI, Anthropic, Google, etc API keys and/or Amazon AWS credentials to your local environment. For more details, see the [How to Install](https://chainforge.ai/docs/getting_started/).
 
 ## Run using Docker
