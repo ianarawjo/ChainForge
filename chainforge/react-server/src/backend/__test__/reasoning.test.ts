@@ -39,6 +39,7 @@ import { describe, expect, test } from "@jest/globals";
 import {
   REASONING_METAVAR,
   anthropic_chat_history,
+  anthropic_clean_sampling,
   anthropic_thinking_config,
   call_chatgpt,
   chat_history_with_reasoning,
@@ -298,6 +299,69 @@ describe("reasoning from each provider", () => {
         LLMProvider.OpenAI,
       ),
     ).toBeUndefined();
+  });
+});
+
+describe("Claude sampling settings", () => {
+  const settings = { temperature: 0.5, top_k: -1, top_p: -1 };
+
+  test("ChainForge's -1 (not set) never reaches the API", () => {
+    expect(
+      anthropic_clean_sampling({
+        model: "claude-3-7-sonnet-latest",
+        ...settings,
+      }),
+    ).toEqual({ model: "claude-3-7-sonnet-latest", temperature: 0.5 });
+  });
+
+  test("models after Opus 4.6 get no temperature, top_p or top_k", () => {
+    for (const model of [
+      "claude-sonnet-5",
+      "claude-opus-5",
+      "claude-fable-5-1",
+    ])
+      expect(
+        anthropic_clean_sampling({
+          model,
+          temperature: 1,
+          top_k: 40,
+          top_p: 0.9,
+        }),
+      ).toEqual({ model });
+  });
+
+  test("while thinking, only a temperature of 1 and a top_p of at least 0.95 are kept", () => {
+    const thinking = { type: "enabled", budget_tokens: 2048 };
+    expect(
+      anthropic_clean_sampling({
+        model: "claude-haiku-4-5",
+        thinking,
+        temperature: 0.5,
+        top_k: 40,
+        top_p: 0.9,
+      }),
+    ).toEqual({ model: "claude-haiku-4-5", thinking });
+    expect(
+      anthropic_clean_sampling({
+        model: "claude-haiku-4-5",
+        thinking,
+        temperature: 1,
+        top_p: 0.97,
+      }),
+    ).toEqual({
+      model: "claude-haiku-4-5",
+      thinking,
+      temperature: 1,
+      top_p: 0.97,
+    });
+    // Without thinking, sampling settings stay
+    expect(
+      anthropic_clean_sampling({
+        model: "claude-haiku-4-5",
+        temperature: 0.5,
+        top_k: 40,
+      }),
+    ).toEqual({ model: "claude-haiku-4-5", temperature: 0.5, top_k: 40 });
   });
 });
 

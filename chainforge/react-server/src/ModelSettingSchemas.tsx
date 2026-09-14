@@ -386,8 +386,15 @@ const DeepSeekSettings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select a DeepSeek model to query. For more details on the differences, see the DeepSeek API documentation.",
-        enum: ["deepseek-chat", "deepseek-reasoner"],
-        default: "deepseek-chat",
+        // deepseek-flash and deepseek-v4-pro think by default, and return their
+        // reasoning; deepseek-chat and deepseek-reasoner are older names.
+        enum: [
+          "deepseek-flash",
+          "deepseek-v4-pro",
+          "deepseek-chat",
+          "deepseek-reasoner",
+        ],
+        default: "deepseek-flash",
       },
       system_msg: {
         type: "string",
@@ -476,7 +483,7 @@ const DeepSeekSettings: ModelSettingsDict = {
   uiSchema: {
     ...ChatGPTSettings.uiSchema,
     model: {
-      "ui:help": "Defaults to deepseek-chat.",
+      "ui:help": "Defaults to deepseek-flash.",
       "ui:widget": "datalist",
     },
   },
@@ -1281,7 +1288,7 @@ const ClaudeSettings: ModelSettingsDict = {
         type: "string",
         title: "thinking",
         description:
-          "Whether Claude thinks before it answers, with its thinking shown alongside each response. 'auto' shows the thinking of models that think by default (Claude Opus 5, Sonnet 5 and Fable), and leaves other models as they are. 'adaptive' lets Claude 4.6 and later decide when and how much to think. 'enabled' thinks within a fixed token budget, for Claude 3.7 through 4.5. 'disabled' turns thinking off, where the model allows it. Thinking counts toward max_tokens_to_sample, so set it generously.",
+          "Whether Claude thinks before it answers, with its thinking shown alongside each response. 'auto' shows the thinking of models that think by default (Claude Opus 5, Sonnet 5 and Fable), and leaves other models as they are. 'adaptive' lets Claude 4.6 and later decide when and how much to think. 'enabled' thinks within a fixed token budget, for Claude 3.7 through 4.5. 'disabled' turns thinking off, where the model allows it. Thinking counts toward max_tokens_to_sample, so set it generously. While Claude thinks, ChainForge leaves out a temperature other than 1, top_k, and a top_p below 0.95, which thinking doesn't allow. Claude Opus 4.7 and later, Sonnet 5 and Fable don't take temperature, top_p or top_k at all.",
         enum: ["auto", "adaptive", "enabled", "disabled"],
         default: "auto",
       },
@@ -1476,6 +1483,7 @@ const Gemini25Settings: ModelSettingsDict = {
           "Select a Gemini model to query. For more details on the differences, see the Google Gemini API documentation.",
         enum: [
           "gemini-3.8-flash",
+          "gemini-3.6-flash",
           "gemini-3.5-flash-lite",
           "gemini-3.1-pro-preview",
           "gemini-2.5-pro",
@@ -1488,7 +1496,7 @@ const Gemini25Settings: ModelSettingsDict = {
           "text-embedding-004",
           "text-multilingual-embedding-002",
         ],
-        default: "gemini-2.5-flash",
+        default: "gemini-3.8-flash",
         shortname_map: {
           "gemini-2.5-pro": "Gemini 2.5 Pro",
           "gemini-2.5-flash": "Gemini 2.5 Flash",
@@ -1500,6 +1508,7 @@ const Gemini25Settings: ModelSettingsDict = {
           "text-embedding-004": "text-embedding-004",
           "text-multilingual-embedding-002": "text-multilingual-embedding-002",
           "gemini-3.8-flash": "Gemini 3.8 Flash",
+          "gemini-3.6-flash": "Gemini 3.6 Flash",
           "gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite",
           "gemini-3.1-pro-preview": "Gemini 3.1 Pro",
         },
@@ -1585,7 +1594,8 @@ const Gemini25Settings: ModelSettingsDict = {
       "ui:autofocus": true,
     },
     model: {
-      "ui:help": "Defaults to gemini-2.5-flash.",
+      "ui:help":
+        "Defaults to gemini-3.8-flash. Gemini 2.5 and 2.0 models are no longer available to new API keys.",
       "ui:widget": "datalist",
     },
     system_msg: {

@@ -1335,6 +1335,41 @@ function is_newer_anthropic_model(model: LLM) {
 /** Claude models that think by default, but leave out the thinking's text unless asked for it. */
 const CLAUDE_THINKS_BY_DEFAULT = /^claude-(opus-5|sonnet-5|fable|mythos)/;
 
+/** Claude models released after Opus 4.6, which reject temperature, top_p and top_k set to anything but their defaults. */
+const CLAUDE_FIXED_SAMPLING =
+  /^claude-(opus-4-[7-9]|sonnet-4-[7-9]|(opus|sonnet|haiku)-[5-9]|fable|mythos)/;
+
+/**
+ * Removes the sampling settings a Claude Messages API request can't have, in
+ * place: ChainForge's -1 ("not set") for top_k and top_p; temperature, top_p and
+ * top_k on models that don't take them; and, while thinking, a temperature
+ * other than 1, top_k, and a top_p below 0.95.
+ * See https://platform.claude.com/docs/en/build-with-claude/thinking
+ */
+export function anthropic_clean_sampling(query: Dict): Dict {
+  for (const key of ["top_k", "top_p"])
+    if (is_blank_setting(query[key]) || Number(query[key]) < 0)
+      delete query[key];
+
+  const model = String(query.model);
+  const thinking =
+    query.thinking?.type === "enabled" ||
+    query.thinking?.type === "adaptive" ||
+    (CLAUDE_THINKS_BY_DEFAULT.test(model) &&
+      query.thinking?.type !== "disabled");
+  if (CLAUDE_FIXED_SAMPLING.test(model)) {
+    delete query.temperature;
+    delete query.top_k;
+    delete query.top_p;
+  } else if (thinking) {
+    if (query.temperature !== 1) delete query.temperature;
+    delete query.top_k;
+    if (query.top_p !== undefined && Number(query.top_p) < 0.95)
+      delete query.top_p;
+  }
+  return query;
+}
+
 /**
  * The thinking request fields for a Claude model, from ChainForge's settings
  * (`thinking`, `thinking_budget_tokens` and `effort`). With `thinking` "auto"
@@ -1496,6 +1531,7 @@ export async function call_anthropic(
     // toward it, so a thinking budget gets room of its own.
     query.max_tokens = max_tokens_to_sample + thinking_budget;
     Object.assign(query, thinking_fields);
+    anthropic_clean_sampling(query);
     query.messages = construct_chat_history(
       prompt,
       images,

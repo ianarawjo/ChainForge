@@ -97,6 +97,12 @@ export enum NativeLLM {
   GEMINI_v1_5_flash_8B = "gemini-1.5-flash-8b",
   GEMINI_v1_5_pro = "gemini-1.5-pro",
 
+  // Google Gemini 3 models
+  GEMINI_v3_8_flash = "gemini-3.8-flash",
+  GEMINI_v3_6_flash = "gemini-3.6-flash",
+  GEMINI_v3_5_flash_lite = "gemini-3.5-flash-lite",
+  GEMINI_v3_1_pro_preview = "gemini-3.1-pro-preview",
+
   // Google image generation models
   GEMINI_v3_1_flash_image = "gemini-3.1-flash-image",
   GEMINI_v3_1_flash_lite_image = "gemini-3.1-flash-lite-image",
@@ -104,6 +110,8 @@ export enum NativeLLM {
   GEMINI_v2_5_flash_image = "gemini-2.5-flash-image", // shuts down 2026-10-02
 
   // DeepSeek
+  DeepSeek_Flash = "deepseek-flash",
+  DeepSeek_V4_Pro = "deepseek-v4-pro",
   DeepSeek_Chat = "deepseek-chat",
   DeepSeek_Reasoner = "deepseek-reasoner",
 
