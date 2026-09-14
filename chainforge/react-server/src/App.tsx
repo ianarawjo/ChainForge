@@ -15,6 +15,7 @@ import ReactFlow, {
   Node,
 } from "reactflow";
 import {
+  Alert,
   Button,
   LoadingOverlay,
   Menu,
@@ -48,6 +49,7 @@ import {
   IconChevronDown,
   IconFileCode,
   IconFileDownload,
+  IconAlertTriangle,
 } from "@tabler/icons-react";
 import RemoveEdge from "./RemoveEdge";
 import TextFieldsNode from "./TextFieldsNode"; // Import a custom node
@@ -97,6 +99,15 @@ import useStore, { StoreHandles } from "./store";
 import StorageCache, { MediaLookup, StringLookup } from "./backend/cache";
 import { FlowLoadSource, flowLoadReplacesMedia } from "./backend/flowLoading";
 import { claimActiveTab, isActiveTab } from "./backend/activeTab";
+import {
+  StorageProtection,
+  checkStorageProtection,
+  dismissStorageNotice,
+  getStorageProtection,
+  requestStorageProtection,
+  storageNoticeDismissed,
+  subscribeStorageProtection,
+} from "./backend/storagePersistence";
 import {
   APP_IS_RUNNING_LOCALLY,
   browserTabIsActive,
@@ -903,6 +914,10 @@ const App = () => {
           if (saveToLocalStorage()) {
             setSaveFailed(false);
             onFlowSaved();
+            // A save the user asked for (autosave hides alerts): ask the
+            // browser not to clear its storage. Not on autosave, since
+            // Firefox asks the user, which should follow their own action.
+            if (!hideErrorAlert) requestStorageProtection();
           } else {
             const msg =
               "Could not save this flow to browser storage: the browser's " +
@@ -1697,6 +1712,42 @@ const App = () => {
       .catch((err) => console.warn("Could not read persisted uploads:", err));
   }, []);
 
+  // Whether the browser has agreed not to clear its storage, where flows and
+  // files are kept when there's no local server. See ./backend/storagePersistence.
+  const [storageProtection, setStorageProtection] =
+    useState<StorageProtection>(getStorageProtection);
+  const [storageNoticeClosed, setStorageNoticeClosed] = useState(
+    storageNoticeDismissed,
+  );
+  useEffect(() => {
+    if (IS_RUNNING_LOCALLY) return; // flows and files are saved to disk
+    const unsubscribe = subscribeStorageProtection(setStorageProtection);
+    // Reads the state without requesting it, so never prompts.
+    checkStorageProtection();
+    return unsubscribe;
+  }, []);
+
+  const storageRiskMessage = useMemo(() => {
+    if (storageProtection.status !== "at-risk") return undefined;
+    switch (storageProtection.reason) {
+      case "safari":
+        return (
+          "Safari deletes a site's saved data after 7 days of use without " +
+          "visiting it. Export this flow to keep a copy."
+        );
+      case "unsupported":
+        return (
+          "This browser may clear saved data to free up space. Export this " +
+          "flow to keep a copy."
+        );
+      default:
+        return (
+          "The browser may clear saved data to free up space. Export this " +
+          "flow to keep a copy."
+        );
+    }
+  }, [storageProtection]);
+
   const saveMessage = useMemo(() => {
     if (isSaving) return "Saving...";
     else if (showSaveSuccess) return "Success!";
@@ -1706,8 +1757,18 @@ const App = () => {
         "file to avoid losing work."
       );
     else if (IS_RUNNING_LOCALLY) return "Save to local disk";
+    else if (storageProtection.status === "protected")
+      return "Save to this browser. The browser has agreed not to clear it.";
+    else if (storageRiskMessage)
+      return `Save to this browser. ${storageRiskMessage}`;
     else return "Save to local cache";
-  }, [isSaving, showSaveSuccess, saveFailed]);
+  }, [
+    isSaving,
+    showSaveSuccess,
+    saveFailed,
+    storageProtection,
+    storageRiskMessage,
+  ]);
 
   // Rename the current flow from the toolbar. Locally, the flow may already be
   // a file on disk, which must be renamed too -- otherwise the next save would
@@ -1945,7 +2006,7 @@ const App = () => {
             >
               Import
             </Button>
-            <Tooltip label={saveMessage} withArrow>
+            <Tooltip label={saveMessage} withArrow multiline width={300}>
               <Button
                 variant="outline"
                 ml="sm"
@@ -2048,6 +2109,47 @@ const App = () => {
             </Button>
           </div>
         </div>
+        {/* Once work is saved in the browser, if the browser may clear it.
+            Shown until dismissed, once per browser. */}
+        {storageRiskMessage &&
+          storageProtection.requested &&
+          !storageNoticeClosed && (
+            <Alert
+              icon={<IconAlertTriangle size={16} />}
+              title="Your browser may clear this flow"
+              color="yellow"
+              withCloseButton
+              closeButtonLabel="Dismiss"
+              onClose={() => {
+                dismissStorageNotice();
+                setStorageNoticeClosed(true);
+              }}
+              style={{
+                position: "fixed",
+                left: "10px",
+                top: "46px",
+                zIndex: 8,
+                maxWidth: "360px",
+              }}
+              styles={{ title: { marginBottom: 2 } }}
+            >
+              <Text size="xs">
+                {storageRiskMessage} Running ChainForge locally saves flows to
+                disk instead.
+              </Text>
+              <Button
+                size="xs"
+                compact
+                mt={6}
+                variant="light"
+                color="yellow"
+                leftIcon={<IconFileDownload size={14} />}
+                onClick={() => exportFlow()}
+              >
+                Export flow
+              </Button>
+            </Alert>
+          )}
         <div
           style={{
             position: "fixed",
