@@ -535,6 +535,26 @@ export async function call_chatgpt(
 
   strip_empty_chat_params(params);
 
+  // Reasoning summaries only come from the Responses API, so OpenAI's reasoning
+  // models go through it when a summary is asked for.
+  const reasoning_summary = params?.reasoning_summary;
+  delete params?.reasoning_summary;
+  if (
+    BASE_URL === undefined &&
+    typeof reasoning_summary === "string" &&
+    reasoning_summary !== "off" &&
+    is_openai_reasoning_model(modelname)
+  )
+    return call_openai_responses(
+      prompt,
+      modelname,
+      n,
+      reasoning_summary,
+      params,
+      should_cancel,
+      images,
+    );
+
   // Pass in o3 and GPT-5+ only parameters, removing them if the
   // model name does not correspond to those models:
   // NOTE: Chat Completions passes reasoning_effort instead of a dictionary for 'reasoning'.
@@ -874,6 +894,162 @@ export async function call_openrouter_image_gen(
   ];
 }
 
+/** Whether an OpenAI model reasons: the o-series, and GPT-5 and later (but not their chat models). */
+function is_openai_reasoning_model(model: string): boolean {
+  return /^(o\d|gpt-[5-9])/.test(model) && !/-chat/.test(model);
+}
+
+/**
+ * Calls an OpenAI reasoning model through the Responses API, which, unlike
+ * Chat Completions, can return summaries of the model's reasoning. Settings the
+ * Responses API doesn't take (stop, seed, penalties, logit_bias) are left out,
+ * as are temperature and top_p, which reasoning models don't accept.
+ * See https://developers.openai.com/api/docs/guides/reasoning
+ */
+async function call_openai_responses(
+  prompt: string,
+  model: string,
+  n: number,
+  summary: string,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  const settings: Dict = { ...params };
+  const messages = await resolve_images_in_user_messages(
+    construct_chat_history(
+      prompt,
+      images,
+      settings.chat_history,
+      settings.system_msg,
+    ),
+    "openai",
+  );
+
+  // System messages become instructions, and content parts take the Responses API's types.
+  const isSystem = (m: Dict) => m.role === "system" || m.role === "developer";
+  const instructions = messages
+    .filter(isSystem)
+    .map((m) => m.content)
+    .join("\n\n");
+  const input = messages
+    .filter((m) => !isSystem(m))
+    .map((m) => ({
+      role: m.role,
+      content:
+        typeof m.content === "string"
+          ? m.content
+          : m.content.map((part: Dict) =>
+              part.type === "image_url"
+                ? {
+                    type: "input_image",
+                    image_url: part.image_url?.url ?? part.image_url,
+                  }
+                : part.type === "text"
+                  ? {
+                      type:
+                        m.role === "assistant" ? "output_text" : "input_text",
+                      text: part.text,
+                    }
+                  : part,
+            ),
+    }));
+
+  const query: Dict = { model, input, reasoning: { summary }, store: false };
+  if (instructions) query.instructions = instructions;
+  if (settings.reasoning_effort)
+    query.reasoning.effort = settings.reasoning_effort;
+  if (settings.verbosity) query.text = { verbosity: settings.verbosity };
+  const format = settings.response_format;
+  if (format && format.type !== "text")
+    query.text = {
+      ...query.text,
+      format:
+        format.type === "json_schema"
+          ? { type: "json_schema", ...format.json_schema }
+          : format,
+    };
+  const max_tokens = settings.max_completion_tokens ?? settings.max_tokens;
+  if (!is_blank_setting(max_tokens)) query.max_output_tokens = max_tokens;
+  if (Array.isArray(settings.tools) && settings.tools.length > 0) {
+    // Function tools are flat: {type: "function", name, parameters}
+    query.tools = settings.tools.map((t: Dict) =>
+      t.function
+        ? { type: "function", ...t.function }
+        : t.type
+          ? t
+          : { type: "function", ...t },
+    );
+    const choice = settings.tool_choice;
+    if (choice)
+      query.tool_choice = choice.function
+        ? { type: "function", name: choice.function.name }
+        : choice;
+    if (settings.parallel_tool_calls !== undefined)
+      query.parallel_tool_calls = settings.parallel_tool_calls;
+  }
+
+  console.log(
+    `Querying OpenAI model '${model}' through the Responses API (n=${n})...`,
+  );
+
+  const base = (OPENAI_BASE_URL || "https://api.openai.com/v1").replace(
+    /\/+$/,
+    "",
+  );
+  const responses: Dict[] = [];
+  while (responses.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+    const res = await fetch(`${base}/responses`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(query),
+    });
+    let payload: Dict | undefined;
+    try {
+      payload = await res.json();
+    } catch {
+      payload = undefined;
+    }
+    if (!res.ok || payload?.error)
+      throw new Error(
+        payload?.error?.message ??
+          `OpenAI request failed (HTTP ${res.status}).`,
+      );
+    // A reasoning model can spend its whole token budget thinking, leaving no answer.
+    if (
+      payload?.status === "incomplete" &&
+      !_extract_openai_responses_api_text(payload)
+    )
+      throw new Error(
+        `${model} stopped before it answered (${payload.incomplete_details?.reason ?? "incomplete"}). Raise max_completion_tokens, or lower the reasoning effort.`,
+      );
+    responses.push(payload as Dict);
+  }
+
+  return [query, responses];
+}
+
+/** The answer in a Responses API result: its output text, or its tool calls. */
+function _extract_openai_responses_api_text(response: Dict): string {
+  const output: Dict[] = Array.isArray(response?.output) ? response.output : [];
+  const calls = output.filter((o) => o?.type === "function_call");
+  if (calls.length > 0)
+    return (
+      "[[TOOLS]] " + calls.map((c) => c.name + " " + c.arguments).join("\n\n")
+    );
+  return output
+    .filter((o) => o?.type === "message")
+    .flatMap((o) => o.content ?? [])
+    .filter((c: Dict) => c?.type === "output_text")
+    .map((c: Dict) => c.text)
+    .join("");
+}
+
 /** The most images OpenAI's Images API returns for one request. */
 const OPENAI_MAX_IMAGES_PER_REQUEST = 10;
 
@@ -1125,8 +1301,45 @@ export async function call_azure_openai(
   return [query, response];
 }
 
+/**
+ * Whether a Claude model uses the Messages API: all but the earliest models
+ * (Claude 1, Claude Instant and Claude 2.0), which use text completions.
+ */
 function is_newer_anthropic_model(model: LLM) {
-  return model.startsWith("claude-2.1") || model.startsWith("claude-3");
+  return !/^claude-(v1|instant|2$|2\.0)/.test(model.toString());
+}
+
+/** Claude models that think by default, but leave out the thinking's text unless asked for it. */
+const CLAUDE_THINKS_BY_DEFAULT = /^claude-(opus-5|sonnet-5|fable|mythos)/;
+
+/**
+ * The thinking request fields for a Claude model, from ChainForge's settings
+ * (`thinking`, `thinking_budget_tokens` and `effort`). With `thinking` "auto"
+ * (the default), only models that already think are asked for a summary of it,
+ * so other models behave as before.
+ * See https://platform.claude.com/docs/en/build-with-claude/thinking
+ */
+export function anthropic_thinking_config(model: string, params?: Dict): Dict {
+  const mode = params?.thinking ?? "auto";
+  const fields: Dict = {};
+  if (mode === "enabled")
+    fields.thinking = {
+      type: "enabled",
+      budget_tokens: is_blank_setting(params?.thinking_budget_tokens)
+        ? 2048
+        : params?.thinking_budget_tokens,
+    };
+  else if (
+    mode === "adaptive" ||
+    (mode === "auto" && CLAUDE_THINKS_BY_DEFAULT.test(model))
+  )
+    fields.thinking = { type: "adaptive", display: "summarized" };
+  else if (mode === "disabled") fields.thinking = { type: "disabled" };
+
+  const effort = params?.effort;
+  if (typeof effort === "string" && effort && effort !== "default")
+    fields.output_config = { effort };
+  return fields;
 }
 
 /**
@@ -1181,6 +1394,13 @@ export async function call_anthropic(
   delete params?.max_tokens_to_sample;
   delete params?.system_msg;
 
+  // Thinking settings become request fields (see anthropic_thinking_config)
+  const thinking_fields = anthropic_thinking_config(model.toString(), params);
+  const thinking_budget: number = thinking_fields.thinking?.budget_tokens ?? 0;
+  delete params?.thinking;
+  delete params?.thinking_budget_tokens;
+  delete params?.effort;
+
   // Tool usage -- remove tool params before passing, if they are empty
   if (
     params?.tools !== undefined &&
@@ -1195,7 +1415,11 @@ export async function call_anthropic(
     delete params.tool_choice;
   if (params?.tools === undefined) delete params?.parallel_tool_calls;
   else {
-    if (params?.tool_choice === undefined) params.tool_choice = { type: "any" };
+    // A fixed thinking budget only allows Claude to choose its tools itself.
+    if (params?.tool_choice === undefined)
+      params.tool_choice = {
+        type: thinking_fields.thinking?.type === "enabled" ? "auto" : "any",
+      };
     params.tool_choice.disable_parallel_tool_use = !params.parallel_tool_calls;
     delete params?.parallel_tool_calls;
   }
@@ -1241,7 +1465,10 @@ export async function call_anthropic(
   };
 
   if (use_messages_api) {
-    query.max_tokens = max_tokens_to_sample; // this goes by a different name than text completions
+    // This goes by a different name than text completions. Thinking counts
+    // toward it, so a thinking budget gets room of its own.
+    query.max_tokens = max_tokens_to_sample + thinking_budget;
+    Object.assign(query, thinking_fields);
     query.messages = construct_chat_history(
       prompt,
       images,
@@ -1316,6 +1543,28 @@ export async function call_anthropic(
 }
 
 /**
+ * The thinking config for a Gemini model that thinks (Gemini 2.5 and later),
+ * from ChainForge's settings: thought summaries unless `include_thoughts` is
+ * off, and a `thinking_budget` if one is set. Undefined for other models.
+ * See https://ai.google.dev/gemini-api/docs/generate-content/thinking
+ */
+export function gemini_thinking_config(
+  model: string,
+  params?: Dict,
+): GenerateContentConfig["thinkingConfig"] {
+  if (!/^(models\/)?gemini-(2\.5|[3-9])/.test(model)) return undefined;
+  const config: Dict = {};
+  if (
+    params?.include_thoughts !== false &&
+    params?.include_thoughts !== "false"
+  )
+    config.includeThoughts = true;
+  if (!is_blank_setting(params?.thinking_budget))
+    config.thinkingBudget = Number(params?.thinking_budget);
+  return Object.keys(config).length > 0 ? config : undefined;
+}
+
+/**
  * Calls a Google Gemini model, based on the model selection from the user.
  * Returns raw query and response JSON dicts.
  */
@@ -1356,6 +1605,12 @@ export async function call_google_ai(
     candidateCount: 1,
     systemInstruction: system_msg,
   };
+
+  // Thought summaries; the response's text leaves them out.
+  const thinking_config = gemini_thinking_config(model.toString(), params);
+  if (thinking_config) gemini_config.thinkingConfig = thinking_config;
+  delete params?.include_thoughts;
+  delete params?.thinking_budget;
 
   const query: Dict = {
     model: `models/${model}`,
@@ -2491,12 +2746,16 @@ function _extract_anthropic_chat_responses(
               input: c.input,
             })
           );
+        // Thinking, which extract_reasoning collects instead
+        else if (c?.type === "thinking" || c?.type === "redacted_thinking")
+          return undefined;
         // Unknown type of message
         else
           throw Error(
             `Unknown type '${c?.type}' of message found in Anthropic response. If this is a new type, raise an Issue on the ChainForge Github.`,
           );
       })
+      .filter((s: string | undefined) => s !== undefined)
       .join("\n\n"),
   );
 }
@@ -2561,17 +2820,67 @@ export function extract_reasoning(
   provider: LLMProvider,
 ): Array<string | null> | undefined {
   const llm_provider = provider ?? getProvider(llm as LLM);
+  const llm_name = llm.toString();
+  const readable = (s: unknown) =>
+    typeof s === "string" && s.trim().length > 0 ? s : null;
+  const joined = (parts: unknown[]) =>
+    readable(parts.filter((p) => readable(p) !== null).join("\n\n"));
+  const responses: Dict[] = Array.isArray(response)
+    ? (response as Dict[])
+    : [response as Dict];
+
   let reasoning: Array<string | null> = [];
-  if (
-    llm_provider === LLMProvider.OpenRouter &&
-    !isOpenRouterImageModel(llm) &&
-    Array.isArray(response)
-  )
-    reasoning = (response as Dict[]).flatMap((r) =>
-      (r?.choices ?? []).map((c: Dict) =>
-        _extract_openrouter_message_reasoning(c?.message),
-      ),
-    );
+  switch (llm_provider) {
+    case LLMProvider.OpenRouter:
+      if (!isOpenRouterImageModel(llm))
+        reasoning = responses.flatMap((r) =>
+          (r?.choices ?? []).map((c: Dict) =>
+            _extract_openrouter_message_reasoning(c?.message),
+          ),
+        );
+      break;
+    case LLMProvider.DeepSeek:
+      // OpenAI-format chat completions, with the reasoning beside the content
+      reasoning = responses.flatMap((r) =>
+        (r?.choices ?? []).map((c: Dict) =>
+          readable(c?.message?.reasoning_content),
+        ),
+      );
+      break;
+    case LLMProvider.OpenAI:
+      // Only Responses API results (see call_openai_responses) have reasoning summaries
+      reasoning = responses
+        .filter((r) => Array.isArray(r?.output))
+        .map((r) =>
+          joined(
+            r.output
+              .filter((o: Dict) => o?.type === "reasoning")
+              .flatMap((o: Dict) =>
+                (o.summary ?? []).map((s: Dict) => s?.text),
+              ),
+          ),
+        );
+      break;
+    case LLMProvider.Anthropic:
+      reasoning = responses.map((r) =>
+        joined(
+          (Array.isArray(r?.content) ? r.content : [])
+            .filter((c: Dict) => c?.type === "thinking")
+            .map((c: Dict) => c.thinking),
+        ),
+      );
+      break;
+    case LLMProvider.Google:
+      if (!isGeminiImageModel(llm_name))
+        reasoning = responses.map((r) =>
+          joined(
+            (r?.candidates?.[0]?.content?.parts ?? [])
+              .filter((p: Dict) => p?.thought)
+              .map((p: Dict) => p.text),
+          ),
+        );
+      break;
+  }
   return reasoning.some((r) => r !== null) ? reasoning : undefined;
 }
 
@@ -2595,6 +2904,9 @@ export function extract_responses(
         );
       else if (llm_name.includes("davinci") || llm_name.includes("instruct"))
         return _extract_openai_completion_responses(response);
+      // Responses API results (see call_openai_responses)
+      else if (Array.isArray(response))
+        return (response as Dict[]).map(_extract_openai_responses_api_text);
       else return _extract_chatgpt_responses(response);
     case LLMProvider.WebLLM:
       return _extract_chatgpt_responses(response);
@@ -3149,19 +3461,32 @@ export function cleanMetavarsFilterFunc(key: string) {
   );
 }
 
+/** The reasoning of the response at `index` of a response object, if it has any. */
+export function reasoningAt(
+  resp_obj: { reasoning?: (StringOrHash | null)[] },
+  index: number,
+): string | undefined {
+  const r = resp_obj.reasoning?.[index];
+  return (typeof r === "number" ? StringLookup.get(r) : r) || undefined;
+}
+
 /**
  * The metavars for the response at `index` of a response object, with that
- * response's reasoning (if any) under REASONING_METAVAR. Without reasoning,
- * returns `metavars` itself, unchanged.
+ * response's reasoning under REASONING_METAVAR. A response without reasoning
+ * gets none, so reasoning carried from an earlier model doesn't pass as its
+ * own. Returns `metavars` itself when there's nothing to change.
  */
 export function withReasoningMetavar<T extends Dict>(
   metavars: T,
   resp_obj: { reasoning?: (StringOrHash | null)[] },
   index: number,
 ): T {
-  const r = resp_obj.reasoning?.[index];
-  const text = typeof r === "number" ? StringLookup.get(r) : r;
-  return text ? { ...metavars, [REASONING_METAVAR]: text } : metavars;
+  const text = reasoningAt(resp_obj, index);
+  if (text) return { ...metavars, [REASONING_METAVAR]: text };
+  if (!(REASONING_METAVAR in metavars)) return metavars;
+  const rest: Dict = { ...metavars };
+  delete rest[REASONING_METAVAR];
+  return rest as T;
 }
 
 // Verify data integrity: check that uids are present for all responses.

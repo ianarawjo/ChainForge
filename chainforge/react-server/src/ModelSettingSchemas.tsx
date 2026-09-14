@@ -135,6 +135,14 @@ const ChatGPTSettings: ModelSettingsDict = {
         enum: ["low", "medium", "high"],
         default: "medium",
       },
+      reasoning_summary: {
+        type: "string",
+        title: "reasoning.summary",
+        description:
+          "Ask a reasoning model (o-series, GPT-5+) for a summary of its reasoning, which ChainForge shows with each response. Only OpenAI's Responses API returns summaries, so ChainForge uses it for these models when this is on: stop sequences, seed, penalties and logit_bias don't apply, and temperature and top_p are left to the model. OpenAI may require your organization to be verified before it returns summaries.",
+        enum: ["off", "auto", "concise", "detailed"],
+        default: "off",
+      },
       response_format: {
         type: "string",
         title: "response_format",
@@ -1221,6 +1229,10 @@ const ClaudeSettings: ModelSettingsDict = {
         description:
           "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
         enum: [
+          "claude-opus-5",
+          "claude-sonnet-5",
+          "claude-haiku-4-5",
+          "claude-fable-5-1",
           "claude-3-7-sonnet-latest",
           "claude-3-7-sonnet-20250219",
           "claude-3-opus-latest",
@@ -1259,7 +1271,35 @@ const ClaudeSettings: ModelSettingsDict = {
           "claude-3-5-haiku-latest": "claude-3.5-haiku",
           "claude-3-7-sonnet-latest": "claude-3.7-sonnet",
           "claude-3-7-sonnet-20250219": "claude-3.7-sonnet",
+          "claude-opus-5": "Claude Opus 5",
+          "claude-sonnet-5": "Claude Sonnet 5",
+          "claude-haiku-4-5": "Claude Haiku 4.5",
+          "claude-fable-5-1": "Claude Fable 5.1",
         },
+      },
+      thinking: {
+        type: "string",
+        title: "thinking",
+        description:
+          "Whether Claude thinks before it answers, with its thinking shown alongside each response. 'auto' shows the thinking of models that think by default (Claude Opus 5, Sonnet 5 and Fable), and leaves other models as they are. 'adaptive' lets Claude 4.6 and later decide when and how much to think. 'enabled' thinks within a fixed token budget, for Claude 3.7 through 4.5. 'disabled' turns thinking off, where the model allows it. Thinking counts toward max_tokens_to_sample, so set it generously.",
+        enum: ["auto", "adaptive", "enabled", "disabled"],
+        default: "auto",
+      },
+      thinking_budget_tokens: {
+        type: "integer",
+        title: "thinking_budget_tokens",
+        description:
+          "For thinking 'enabled': how many tokens Claude may spend thinking (at least 1024). ChainForge adds this to max_tokens_to_sample, so the answer keeps its own room.",
+        default: 2048,
+        minimum: 1024,
+      },
+      effort: {
+        type: "string",
+        title: "effort",
+        description:
+          "How much work Claude puts into its response, thinking included (Claude 4.6 and later; not Haiku 4.5). 'default' leaves it to the model.",
+        enum: ["default", "low", "medium", "high", "xhigh", "max"],
+        default: "default",
       },
       system_msg: {
         type: "string",
@@ -1435,6 +1475,9 @@ const Gemini25Settings: ModelSettingsDict = {
         description:
           "Select a Gemini model to query. For more details on the differences, see the Google Gemini API documentation.",
         enum: [
+          "gemini-3.8-flash",
+          "gemini-3.5-flash-lite",
+          "gemini-3.1-pro-preview",
           "gemini-2.5-pro",
           "gemini-2.5-flash",
           "gemini-2.5-flash-lite",
@@ -1456,7 +1499,24 @@ const Gemini25Settings: ModelSettingsDict = {
           "text-embedding-005": "text-embedding-005",
           "text-embedding-004": "text-embedding-004",
           "text-multilingual-embedding-002": "text-multilingual-embedding-002",
+          "gemini-3.8-flash": "Gemini 3.8 Flash",
+          "gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite",
+          "gemini-3.1-pro-preview": "Gemini 3.1 Pro",
         },
+      },
+      include_thoughts: {
+        type: "boolean",
+        title: "include_thoughts",
+        description:
+          "Return summaries of the model's thinking (Gemini 2.5 and later), shown alongside each response. They don't change the response itself.",
+        enum: [true, false],
+        default: true,
+      },
+      thinking_budget: {
+        type: "integer",
+        title: "thinking_budget",
+        description:
+          "Gemini 2.5 only: how many tokens the model may spend thinking. 0 turns thinking off (not on 2.5 Pro), and -1 lets the model decide. Leave blank for the model's default. (Gemini 3 models set thinking by level, which ChainForge doesn't support yet.)",
       },
       system_msg: {
         type: "string",

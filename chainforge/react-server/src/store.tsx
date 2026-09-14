@@ -243,6 +243,27 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "📚",
     items: [
       {
+        name: "Claude Opus 5",
+        emoji: "📚",
+        model: "claude-opus-5",
+        base_model: "claude-v1",
+        temp: 1.0,
+      },
+      {
+        name: "Claude Sonnet 5",
+        emoji: "📘",
+        model: "claude-sonnet-5",
+        base_model: "claude-v1",
+        temp: 1.0,
+      },
+      {
+        name: "Claude Haiku 4.5",
+        emoji: "📗",
+        model: "claude-haiku-4-5",
+        base_model: "claude-v1",
+        temp: 1.0,
+      },
+      {
         name: "Claude 3.7 Sonnet",
         emoji: "📚",
         model: "claude-3-7-sonnet-latest",
@@ -276,6 +297,13 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     group: "Gemini",
     emoji: "♊",
     items: [
+      {
+        name: "Gemini 3.8 Flash",
+        emoji: "⚡️",
+        model: "gemini-3.8-flash",
+        base_model: "gemini-2.5",
+        temp: 0.7,
+      },
       {
         name: "Gemini 2.5 Pro",
         emoji: "♊",

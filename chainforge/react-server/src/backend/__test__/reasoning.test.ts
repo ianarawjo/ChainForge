@@ -38,9 +38,14 @@ import { describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
 import {
   REASONING_METAVAR,
+  anthropic_thinking_config,
+  call_chatgpt,
   cleanMetavarsFilterFunc,
   extract_reasoning,
+  extract_responses,
+  gemini_thinking_config,
   merge_response_objs,
+  set_api_keys,
   withReasoningMetavar,
 } from "../utils";
 // eslint-disable-next-line import/first
@@ -189,5 +194,193 @@ describe("the reasoning metavar", () => {
     );
     expect(error).toBeUndefined();
     expect(responses?.[0].eval_res?.items).toEqual(["because 1", "none"]);
+  });
+
+  test("a response without reasoning drops reasoning carried from an earlier model", () => {
+    const carried = {
+      topic: "math",
+      [REASONING_METAVAR]: "An earlier model's thinking",
+    };
+    expect(withReasoningMetavar(carried, respObj(["a"]), 0)).toEqual({
+      topic: "math",
+    });
+    expect(carried).toHaveProperty(REASONING_METAVAR); // not changed in place
+  });
+});
+
+describe("reasoning from each provider", () => {
+  test("DeepSeek: reasoning_content beside each choice's content", () => {
+    const response = {
+      choices: [
+        { message: { content: "4", reasoning_content: "2 + 2 = 4" } },
+        { message: { content: "4" } },
+      ],
+    };
+    expect(
+      extract_reasoning(response, "deepseek-reasoner", LLMProvider.DeepSeek),
+    ).toEqual(["2 + 2 = 4", null]);
+  });
+
+  test("Claude: thinking blocks, which the answer text leaves out", () => {
+    const messages = [
+      {
+        content: [
+          { type: "thinking", thinking: "Let me add.", signature: "sig" },
+          { type: "redacted_thinking", data: "opaque" },
+          { type: "text", text: "4" },
+        ],
+      },
+      {
+        // Thinking whose text was omitted
+        content: [
+          { type: "thinking", thinking: "", signature: "sig" },
+          { type: "text", text: "Four" },
+        ],
+      },
+    ];
+    expect(
+      extract_reasoning(messages, "claude-sonnet-5", LLMProvider.Anthropic),
+    ).toEqual(["Let me add.", null]);
+    expect(
+      extract_responses(messages, "claude-sonnet-5", LLMProvider.Anthropic),
+    ).toEqual(["4", "Four"]);
+  });
+
+  test("Gemini: thought parts", () => {
+    const responses = [
+      {
+        text: "4",
+        candidates: [
+          {
+            content: {
+              parts: [{ text: "Adding.", thought: true }, { text: "4" }],
+            },
+          },
+        ],
+      },
+    ];
+    expect(
+      extract_reasoning(responses, "gemini-3.8-flash", LLMProvider.Google),
+    ).toEqual(["Adding."]);
+  });
+
+  test("OpenAI: reasoning summaries in Responses API results, and none from Chat Completions", () => {
+    const results = [
+      {
+        status: "completed",
+        output: [
+          {
+            type: "reasoning",
+            summary: [
+              { type: "summary_text", text: "Adding." },
+              { type: "summary_text", text: "Checked." },
+            ],
+          },
+          { type: "message", content: [{ type: "output_text", text: "4" }] },
+        ],
+      },
+    ];
+    expect(extract_reasoning(results, "gpt-5", LLMProvider.OpenAI)).toEqual([
+      "Adding.\n\nChecked.",
+    ]);
+    expect(extract_responses(results, "gpt-5", LLMProvider.OpenAI)).toEqual([
+      "4",
+    ]);
+    expect(
+      extract_reasoning(
+        { choices: [{ message: { content: "4" } }] },
+        "gpt-5",
+        LLMProvider.OpenAI,
+      ),
+    ).toBeUndefined();
+  });
+});
+
+describe("asking providers for reasoning", () => {
+  test("Claude: 'auto' asks for summarized thinking only from models that think by default", () => {
+    expect(anthropic_thinking_config("claude-sonnet-5", {})).toEqual({
+      thinking: { type: "adaptive", display: "summarized" },
+    });
+    expect(anthropic_thinking_config("claude-haiku-4-5", {})).toEqual({});
+    expect(
+      anthropic_thinking_config("claude-haiku-4-5", {
+        thinking: "enabled",
+        thinking_budget_tokens: 4000,
+      }),
+    ).toEqual({ thinking: { type: "enabled", budget_tokens: 4000 } });
+    expect(
+      anthropic_thinking_config("claude-opus-4-8", {
+        thinking: "adaptive",
+        effort: "low",
+      }),
+    ).toEqual({
+      thinking: { type: "adaptive", display: "summarized" },
+      output_config: { effort: "low" },
+    });
+  });
+
+  test("Gemini: thought summaries from thinking models, unless turned off", () => {
+    expect(gemini_thinking_config("gemini-3.8-flash", {})).toEqual({
+      includeThoughts: true,
+    });
+    expect(
+      gemini_thinking_config("gemini-2.5-flash", { thinking_budget: 512 }),
+    ).toEqual({ includeThoughts: true, thinkingBudget: 512 });
+    expect(
+      gemini_thinking_config("gemini-2.5-pro", { include_thoughts: false }),
+    ).toBeUndefined();
+    expect(gemini_thinking_config("gemini-2.0-flash", {})).toBeUndefined();
+  });
+
+  test("OpenAI: a reasoning summary sends reasoning models through the Responses API", async () => {
+    set_api_keys({ OpenAI: "sk-test" });
+    const calls: { url: string; init: RequestInit }[] = [];
+    (globalThis as any).fetch = jest.fn(
+      async (url: string, init: RequestInit) => {
+        calls.push({ url, init });
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: "completed",
+            output: [
+              {
+                type: "message",
+                content: [{ type: "output_text", text: "4" }],
+              },
+            ],
+          }),
+        };
+      },
+    );
+
+    const [, responses] = await call_chatgpt("What is 2 + 2?", "gpt-5", 2, 1, {
+      reasoning_summary: "auto",
+      reasoning_effort: "high",
+      system_msg: "Be brief.",
+      stop: [],
+      seed: "",
+      response_format: { type: "text" },
+      max_completion_tokens: 2000,
+    });
+
+    expect(calls).toHaveLength(2); // one request per response
+    expect(calls[0].url).toBe("https://api.openai.com/v1/responses");
+    const body = JSON.parse(calls[0].init.body as string);
+    expect(body).toMatchObject({
+      model: "gpt-5",
+      instructions: "Be brief.",
+      reasoning: { summary: "auto", effort: "high" },
+      store: false,
+      max_output_tokens: 2000,
+    });
+    expect(body.input).toHaveLength(1);
+    expect(JSON.stringify(body.input[0])).toContain("What is 2 + 2?");
+    for (const key of ["temperature", "stop", "seed", "n", "text"])
+      expect(body).not.toHaveProperty(key);
+    expect(extract_responses(responses, "gpt-5", LLMProvider.OpenAI)).toEqual([
+      "4",
+      "4",
+    ]);
   });
 });

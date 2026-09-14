@@ -17,8 +17,11 @@ import {
   LLMResponseData,
   isImageResponseData,
 } from "./backend/typing";
-import { llmResponseDataToString, truncStr } from "./backend/utils";
-import { StringLookup } from "./backend/cache";
+import {
+  llmResponseDataToString,
+  reasoningAt,
+  truncStr,
+} from "./backend/utils";
 import { formatScore, passFail } from "./backend/responseGrid";
 import { MediaBox } from "./ResponseBoxes";
 
@@ -159,12 +162,6 @@ function groupIdentical(
   return Array.from(groups.values()).sort(
     (a, b) => b.indices.length - a.indices.length,
   );
-}
-
-/** A response's reasoning (a reasoning model's "thinking"), if it has any. */
-function reasoningAt(response: LLMResponse, index: number): string | undefined {
-  const r = response.reasoning?.[index];
-  return (typeof r === "number" ? StringLookup.get(r) : r) || undefined;
 }
 
 /** Marks a response that has reasoning: previews it on hover, and expands it on click. */

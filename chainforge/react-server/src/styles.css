@@ -701,6 +701,34 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp-reasoning {
   font-style: italic;
   margin-bottom: 2px;
 }
+/* Grid View (ResponseGridView.tsx): a mark on text cards with reasoning, and
+   the reasoning, collapsed, in the full response view. */
+.cf-grid-reasoning-mark {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.8;
+  pointer-events: none;
+}
+.cf-lightbox-reasoning summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.cf-lightbox-reasoning-text {
+  margin-top: 6px;
+  max-height: 35vh;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.8;
+  padding-left: 10px;
+  border-left: 2px solid rgba(128, 128, 128, 0.4);
+}
 /* Copy button in a response's bottom-right corner, shown on hover. */
 .cf-table-resp {
   position: relative;

@@ -46,6 +46,7 @@ import {
   getVarsAndMetavars,
   stripLLMDetailsFromResponses,
   toStandardResponseFormat,
+  withReasoningMetavar,
 } from "./backend/utils";
 import InspectFooter from "./InspectFooter";
 import ResizeHandle from "./ResizeHandle";
@@ -579,7 +580,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
         setDataPropsForNode(id, {
           fields: json.responses
             .map((resp_obj) =>
-              resp_obj.responses.map((r) => {
+              resp_obj.responses.map((r, j) => {
                 // Carry over the response text, prompt, prompt fill history (vars), and llm data
                 const o: TemplateVarInfo = {
                   text:
@@ -592,7 +593,11 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
                     typeof r === "object" && r.t === "img" ? r.d : undefined,
                   prompt: resp_obj.prompt,
                   fill_history: resp_obj.vars,
-                  metavars: resp_obj.metavars || {},
+                  metavars: withReasoningMetavar(
+                    resp_obj.metavars || {},
+                    resp_obj,
+                    j,
+                  ),
                   llm: resp_obj.llm,
                   uid: resp_obj.uid,
                 };

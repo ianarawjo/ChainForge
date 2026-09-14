@@ -32,6 +32,7 @@ import {
   extractSettingsVars,
   genDebounceFunc,
   stripLLMDetailsFromResponses,
+  withReasoningMetavar,
 } from "./backend/utils";
 import { AlertModalContext } from "./AlertModal";
 import {
@@ -426,14 +427,14 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
         .then(function (resp_objs) {
           const inputs = resp_objs
             .map((obj: LLMResponse) =>
-              obj.responses.map((r: LLMResponseData) => ({
+              obj.responses.map((r: LLMResponseData, j: number) => ({
                 text:
                   typeof r === "string" || typeof r === "number"
                     ? r
                     : undefined,
                 image: typeof r === "object" && r.t === "img" ? r.d : undefined,
                 fill_history: obj.vars,
-                metavars: obj.metavars,
+                metavars: withReasoningMetavar(obj.metavars, obj, j),
               })),
             )
             .flat();
