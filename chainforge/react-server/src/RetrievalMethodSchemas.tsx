@@ -22,12 +22,13 @@ export const embeddingProviders = [
     label: "🤖 OpenAI Embeddings",
     value: "openai",
     models: [
-      "text-embedding-ada-002",
       "text-embedding-3-small",
       "text-embedding-3-large",
+      "text-embedding-ada-002",
     ],
   },
   {
+    // Azure routes by deployment, so the model field holds a deployment name.
     label: "🔷 Azure OpenAI Embeddings",
     value: "azure-openai",
     models: [],
@@ -36,9 +37,11 @@ export const embeddingProviders = [
     label: "💬 Cohere Embeddings",
     value: "cohere",
     models: [
-      "embed-english-v2.0",
-      "embed-multilingual-v2.0",
-      "embed-english-light-v2.0",
+      "embed-english-v3.0",
+      "embed-multilingual-v3.0",
+      "embed-english-light-v3.0",
+      "embed-multilingual-light-v3.0",
+      "embed-v4.0",
     ],
   },
   {
@@ -241,7 +244,7 @@ export const KeywordOverlapSchema: ModelSettingsDict = {
   description: "Retrieves documents based on keyword overlap ratio",
   schema: {
     type: "object",
-    required: ["top_k", "normalization_factor"],
+    required: ["top_k"],
     properties: {
       shortName: {
         type: "string",
@@ -254,11 +257,6 @@ export const KeywordOverlapSchema: ModelSettingsDict = {
         type: "number",
         default: 5,
         title: "Top K Results",
-      },
-      normalization_factor: {
-        type: "number",
-        default: 0.75,
-        title: "Normalization Factor",
       },
     },
   },
@@ -277,17 +275,20 @@ export const KeywordOverlapSchema: ModelSettingsDict = {
         step: 1,
       },
     },
-    normalization_factor: {
-      "ui:widget": "range",
-      "ui:options": {
-        min: 0,
-        max: 1,
-        step: 0.05,
-      },
-    },
   },
   postprocessors: {},
 };
+
+/** Whether a vector store builds its index from the connected chunks or loads one. */
+const indexModeProperty = (backend: string) => ({
+  type: "string",
+  default: "create",
+  title: "Index",
+  enum: ["create", "load"],
+  description:
+    `Build embeds the connected chunks into a new ${backend} index, saved at the path below if you give one. ` +
+    "Load searches an index already at that path, and ignores the connected chunks.",
+});
 
 /**
  * Unified Embedding-based Similarity Schema
@@ -347,7 +348,9 @@ export const EmbeddingSimilaritySchema: ModelSettingsDict = {
         maximum: 100,
         step: 1,
         description:
-          "Minimum similarity percentage (0-100) required for a result to be considered relevant.",
+          "Results scoring below this are dropped, so fewer than Top K may come back. " +
+          "Cosine scores map -1..1 onto 0..100%; Euclidean scores are 1 / (1 + squared distance); " +
+          "dot product scores are the raw dot product.",
       },
       similarity_metric: {
         type: "string",
@@ -356,13 +359,21 @@ export const EmbeddingSimilaritySchema: ModelSettingsDict = {
         enum: ["cosine", "euclidean", "dot_product"],
         description: "How to measure similarity between embeddings",
       },
+      // Named for LanceDB originally, but applies to every storage backend.
+      lancedb_search_method: {
+        type: "string",
+        default: "similarity",
+        title: "Search Method",
+        enum: ["similarity", "mmr"],
+        description:
+          "Similarity returns the closest chunks. MMR (Maximal Marginal Relevance) trades a little closeness for variety, so near-duplicate chunks don't fill every slot.",
+      },
       storage_backend: {
         type: "string",
         default: "lancedb",
         title: "Storage Backend",
-        enum: ["lancedb", "faiss"],
-        description:
-          "Where to store and search embeddings. LanceDB is simplest for persistence; FAISS for large-scale (requires separate installation) and possibly connecting to a pre-computed FAISS vector store on your local disk.",
+        enum: ["memory", "lancedb", "faiss"],
+        description: "Where embeddings are indexed and searched.",
       },
       // Disable clustering method for now, too complex
       // use_clustering: {
@@ -377,42 +388,47 @@ export const EmbeddingSimilaritySchema: ModelSettingsDict = {
       //   title: "Number of Clusters",
       //   description: "How many clusters to create (only used if clustering is enabled)",
       // },
-      // LanceDB-specific settings
-      lancedb_path: {
-        type: "string",
-        default: "",
-        title: "LanceDB Path",
-        description:
-          "File path for LanceDB database (required if using LanceDB backend)",
-      },
-      lancedb_table: {
-        type: "string",
-        default: "embeddings",
-        title: "LanceDB Table Name",
-        description: "Table name within LanceDB",
-      },
-      lancedb_search_method: {
-        type: "string",
-        default: "similarity",
-        title: "LanceDB Search Method",
-        enum: ["similarity", "mmr", "hybrid"],
-        description:
-          "Search strategy: standard similarity, MMR (diverse results), or hybrid (vector + keyword)",
-      },
-      // FAISS-specific settings
-      faiss_path: {
-        type: "string",
-        default: "",
-        title: "FAISS Index Path",
-        description:
-          "File path to save/load FAISS index (required if using FAISS backend)",
-      },
-      faiss_mode: {
-        type: "string",
-        default: "create",
-        title: "FAISS Mode",
-        enum: ["create", "load"],
-        description: "Create new FAISS index or load existing one",
+    },
+    // Settings that only apply to one storage backend appear only when it is
+    // selected. The keys are unchanged, so saved flows keep their values.
+    dependencies: {
+      storage_backend: {
+        oneOf: [
+          { properties: { storage_backend: { enum: ["memory"] } } },
+          {
+            properties: {
+              storage_backend: { enum: ["lancedb"] },
+              lancedb_mode: indexModeProperty("LanceDB"),
+              lancedb_path: {
+                type: "string",
+                default: "",
+                title: "LanceDB Path",
+                description:
+                  "Folder for the LanceDB database. Leave empty for a temporary index rebuilt each run. Required to load an index.",
+              },
+              lancedb_table: {
+                type: "string",
+                default: "embeddings",
+                title: "LanceDB Table Name",
+                description:
+                  "Table within the database. When several chunking methods are connected, each is saved to its own table, named <table>_<chunking method>.",
+              },
+            },
+          },
+          {
+            properties: {
+              storage_backend: { enum: ["faiss"] },
+              faiss_mode: indexModeProperty("FAISS"),
+              faiss_path: {
+                type: "string",
+                default: "",
+                title: "FAISS Index Path",
+                description:
+                  "Folder, or .faiss file, for the index. Leave empty for a temporary index rebuilt each run. Required to load an index. When several chunking methods are connected, each is saved as its own index, named <index>_<chunking method>.",
+              },
+            },
+          },
+        ],
       },
     },
   },
@@ -473,12 +489,24 @@ export const EmbeddingSimilaritySchema: ModelSettingsDict = {
       "ui:widget": "select",
       "ui:options": {
         enumOptions: [
-          { label: "In-Memory (simple, no persistence)", value: "memory" },
-          { label: "LanceDB (persistent, recommended)", value: "lancedb" },
+          { label: "In-memory (no files; rebuilt each run)", value: "memory" },
           {
-            label: "FAISS (high-performance, requires installation)",
+            label: "LanceDB (can save and load indexes; recommended)",
+            value: "lancedb",
+          },
+          {
+            label: "FAISS (can save and load indexes; needs faiss-cpu)",
             value: "faiss",
           },
+        ],
+      },
+    },
+    lancedb_mode: {
+      "ui:widget": "select",
+      "ui:options": {
+        enumOptions: [
+          { label: "Build from the connected chunks", value: "create" },
+          { label: "Load an existing index", value: "load" },
         ],
       },
     },
@@ -509,12 +537,11 @@ export const EmbeddingSimilaritySchema: ModelSettingsDict = {
       "ui:widget": "select",
       "ui:options": {
         enumOptions: [
-          { label: "Standard Similarity", value: "similarity" },
+          { label: "Similarity (closest chunks)", value: "similarity" },
           {
-            label: "Maximum Marginal Relevance (diverse results)",
+            label: "Maximal Marginal Relevance (closest, but varied)",
             value: "mmr",
           },
-          { label: "Hybrid (vector + keyword)", value: "hybrid" },
         ],
       },
     },
@@ -528,8 +555,8 @@ export const EmbeddingSimilaritySchema: ModelSettingsDict = {
       "ui:widget": "select",
       "ui:options": {
         enumOptions: [
-          { label: "Create New Index", value: "create" },
-          { label: "Load Existing Index", value: "load" },
+          { label: "Build from the connected chunks", value: "create" },
+          { label: "Load an existing index", value: "load" },
         ],
       },
     },
@@ -565,17 +592,12 @@ export const rankFusionMethods = [
   {
     value: "weighted_average",
     label: "Weighted Average",
-    description: "Simple weighted average of scores",
+    description:
+      "Adds each method's weighted scores, after rescaling each method's scores to 0-1 so none dominates just because its scores run larger.",
+    // Only per-method weights, which the fusion settings form adds itself.
     schema: {
       type: "object",
-      properties: {
-        normalize_scores: {
-          type: "boolean",
-          title: "Normalize Scores",
-          default: true,
-          description: "Normalize scores before combining",
-        },
-      },
+      properties: {},
     },
   },
 ];

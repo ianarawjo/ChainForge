@@ -1,8 +1,10 @@
-import math, heapq
+import math, heapq, os, re
 from typing import List, Any, Tuple, Dict
 import numpy as np
 from chainforge.rag.simple_preprocess import simple_preprocess
-from chainforge.rag.vector_stores import LancedbVectorStore, FaissVectorStore
+from chainforge.rag.vector_stores import (
+    LancedbVectorStore, FaissVectorStore, normalize_metric, mmr_select,
+)
 
 
 # Define a registry for retrieval methods
@@ -60,37 +62,32 @@ def _attach_chunk_identity(hits: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 @RetrievalMethodRegistry.register("embedding")
 def handle_embedding(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path):
     """
-    Unified embedding-based retrieval handler that delegates to the appropriate
-    vector store backend (LanceDB or FAISS) based on storage_backend settings.
-    
+    Unified embedding-based retrieval handler that delegates to the vector
+    store backend named by `storage_backend`: in-memory, LanceDB or FAISS.
+
     The similarity metric is passed through to the vector store, which handles
     the actual similarity computation.
     """
     storage_backend = settings.get("storage_backend", "lancedb")
     similarity_metric = settings.get("similarity_metric", "cosine")
-    
+
     # Map similarity metric names to backend-specific metric names
-    # This will be used by the vector store handlers
     metric_map = {
         "cosine": "cosine",
         "euclidean": "l2",
         "dot_product": "dot",
     }
-    settings["metric"] = metric_map.get(similarity_metric, "cosine")
-    
-    # Route to the appropriate vector store handler
-    if storage_backend == "lancedb":
-        handler = RetrievalMethodRegistry.get_handler("lancedb_vector_store")
-        if handler:
-            return handler(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path)
-        raise ValueError("LanceDB handler not found")
-    elif storage_backend == "faiss":
-        handler = RetrievalMethodRegistry.get_handler("faiss_vector_store")
-        if handler:
-            return handler(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path)
-        raise ValueError("FAISS handler not found")
-    else:
-        raise ValueError(f"Unsupported storage backend: {storage_backend}. Use 'lancedb' or 'faiss'.")
+    settings = {**settings, "metric": metric_map.get(similarity_metric, "cosine")}
+
+    handler_name = {
+        "memory": "memory_vector_store",
+        "lancedb": "lancedb_vector_store",
+        "faiss": "faiss_vector_store",
+    }.get(storage_backend)
+    if handler_name is None:
+        raise ValueError(f"Unsupported storage backend: {storage_backend}. Use 'memory', 'lancedb' or 'faiss'.")
+    handler = RetrievalMethodRegistry.get_handler(handler_name)
+    return handler(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path)
 
 @RetrievalMethodRegistry.register("bm25")
 def handle_bm25(chunk_objs: List[Dict], query_objs: List[Any], settings: Dict[str, Any]) -> List[Dict]:
@@ -380,87 +377,228 @@ def handle_clustered(chunk_objs, chunk_embeddings, query_objs, query_embeddings,
     return results
 
 
+# === Shared by the vector store handlers ===
+
+_BACKEND_OF_METHOD = {
+    "memory_vector_store": "memory",
+    "lancedb_vector_store": "lancedb",
+    "faiss_vector_store": "faiss",
+}
+
+_MODE_SETTING = {"lancedb": "lancedb_mode", "faiss": "faiss_mode"}
+
+
+def uses_existing_index(base_method: str, settings: Dict[str, Any]) -> bool:
+    """Whether a method searches an index already on disk, ignoring the connected chunks."""
+    if base_method == "embedding":
+        backend = settings.get("storage_backend", "lancedb")
+    else:
+        backend = _BACKEND_OF_METHOD.get(base_method)
+    mode_setting = _MODE_SETTING.get(backend)
+    return mode_setting is not None and settings.get(mode_setting) == "load"
+
+
+def _index_folder(user_path: str, scratch_path: str, loading: bool) -> str:
+    """The folder a store's index lives in: the user's, or a scratch one.
+
+    Loading needs the user's: the scratch folder is rebuilt on every run.
+    """
+    if user_path:
+        return user_path
+    if loading:
+        raise ValueError("Loading an existing index needs its path. Set the index path, "
+                         "or build the index from the connected chunks instead.")
+    return scratch_path
+
+
+def _per_chunk_method(name: str, settings: Dict[str, Any], user_path: str) -> str:
+    """Name a saved index after its chunking method, when there are several.
+
+    /retrieve runs each method once per chunking method, so with one fixed name
+    each run would replace the index the previous one saved. `_index_suffix` is
+    set by /retrieve only when several chunking methods are connected. Scratch
+    indexes are rebuilt every run anyway, so they keep the plain name.
+    """
+    suffix = re.sub(r"\W+", "_", str(settings.get("_index_suffix") or "")).strip("_")
+    return f"{name}_{suffix}" if suffix and user_path else name
+
+
+def _search_method(settings: Dict[str, Any]) -> str:
+    """"similarity" or "mmr".
+
+    The setting keeps its original name, `lancedb_search_method`, so saved flows
+    still load, though it applies to every backend. "hybrid" was once offered
+    but never ran, so flows that saved it have always had plain similarity
+    search, and still get it.
+    """
+    method = str(settings.get("lancedb_search_method") or "similarity").lower()
+    if method not in ("similarity", "mmr"):
+        print(f"Warning: search method '{method}' is not supported; using similarity search.")
+        return "similarity"
+    return method
+
+
+def _apply_threshold(hits: List[Dict[str, Any]], settings: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Drop hits scoring below `similarity_threshold`, a percentage (0-100)."""
+    threshold = settings.get("similarity_threshold")
+    if threshold is None or threshold == "":
+        return hits
+    cutoff = float(threshold) / 100.0
+    return [h for h in hits if h["similarity"] >= cutoff]
+
+
+def _chunk_metadata(chunk_objs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [{
+        "fill_history": chunk.get("fill_history", {}),
+        "metadata": chunk.get("metadata", {}),
+        "docTitle": chunk.get("docTitle", ""),
+        "chunkId": chunk.get("chunkId", ""),
+    } for chunk in chunk_objs]
+
+
+def _search_store(store, query_objs, query_embeddings, settings, metric):
+    """Run every query against a store, applying the search method and threshold."""
+    top_k = int(settings.get("top_k", 5))
+    method = _search_method(settings)
+    results = []
+    for query_obj, query_emb in zip(query_objs, query_embeddings):
+        hits = store.search(
+            query=query_emb if query_emb is not None else query_obj.get("text", ""),
+            k=top_k,
+            distance_metric=metric,
+            method=method,
+        )
+        results.append({'query_object': query_obj,
+                        'retrieved_chunks': _apply_threshold(_attach_chunk_identity(hits), settings)})
+    return results
+
+
 @RetrievalMethodRegistry.register("lancedb_vector_store")
 def handle_lancedb_vector_store(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path):
     """
     Retrieve chunks using a local vector store with LanceDB.
+
+    The index is built from the connected chunks: in a scratch folder by
+    default, or at `lancedb_path`, where it is left for later. With
+    `lancedb_mode` "load", the table already at `lancedb_path` is searched
+    as it is, and the connected chunks are ignored.
     """
+    metric = normalize_metric(settings.get("metric", "l2"))
+    if metric is None:
+        print(f"Warning: Invalid LanceDB metric '{settings.get('metric')}' specified. Defaulting to 'l2'.")
+        metric = "l2"
 
-    top_k = settings.get("top_k", 5)
-    user_requested_metric = settings.get("metric", "l2").lower()
-    if user_requested_metric not in ["l2", "cosine", "dot"]:
-        print(f"Warning: Invalid FAISS metric '{user_requested_metric}' specified. Defaulting to 'l2'.")
-        user_requested_metric = "l2"
-
-    # Basic Input Validation
-    if not chunk_objs or not chunk_embeddings:
+    loading = uses_existing_index("lancedb_vector_store", settings)
+    if not loading and (not chunk_objs or not chunk_embeddings):
         raise Exception("Error: chunk_objs or chunk_embeddings are empty.")
     if not query_objs or not query_embeddings:
         raise Exception("Error: query_objs or query_embeddings are empty.")
 
-    # Create a local vector store (loading an existing one from disk if it exists)
-    vector_store = LancedbVectorStore(
-        db_path=db_path,
-        embedding_func=None,
-    )
+    user_path = os.path.expanduser(str(settings.get("lancedb_path") or "").strip())
+    folder = _index_folder(user_path, db_path, loading)
+    table = str(settings.get("lancedb_table") or "").strip() or "embeddings"
 
-    # Add chunks to the vector store
-    # NOTE: This will automatically skip chunks that are already in the store, 
-    # since the store used the hash of the chunk text as the ID.
-    vector_store.add(
-        texts=[chunk.get("text", "") for chunk in chunk_objs],
-        embeddings=chunk_embeddings,
-        metadata=[{
-            "fill_history": chunk.get("fill_history", {}),
-            "metadata": chunk.get("metadata", {}),
-            "docTitle": chunk.get("docTitle", ""),
-            "chunkId": chunk.get("chunkId", ""),
-        } for chunk in chunk_objs],
-    )
-
-    # Perform a similarity search for each query
-    results = []
-    for query_obj, query_emb in zip(query_objs, query_embeddings):
-        # Perform the search
-        res = vector_store.search(
-            query=query_emb if query_emb is not None else query_obj.get("text", ""),
-            k=top_k,
-            metric=user_requested_metric,
+    if loading:
+        vector_store = LancedbVectorStore(db_path=folder, table_name=table, db_mode="load")
+    else:
+        vector_store = LancedbVectorStore(
+            db_path=folder,
+            table_name=_per_chunk_method(table, settings, user_path),
+            db_mode="create",
         )
-        results.append({'query_object': query_obj,
-                        'retrieved_chunks': _attach_chunk_identity(res)})
+        vector_store.add(
+            texts=[chunk.get("text", "") for chunk in chunk_objs],
+            embeddings=chunk_embeddings,
+            metadata=_chunk_metadata(chunk_objs),
+        )
 
-    return results
+    return _search_store(vector_store, query_objs, query_embeddings, settings, metric)
 
 
 @RetrievalMethodRegistry.register("faiss_vector_store")
 def handle_faiss_vector_store(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path):
-    top_k = settings.get("top_k", 5)
-    metric = settings.get("metric", "l2")
-    vector_store = FaissVectorStore(
-        db_path=db_path,
-        embedding_func=None,
-        index_name="index",
-        metric=metric
-    )
-    # Ajout des documents (si besoin)
-    vector_store.add(
-        texts=[chunk.get("text", "") for chunk in chunk_objs],
-        embeddings=chunk_embeddings,
-        metadata=[{
-            "fill_history": chunk.get("fill_history", {}),
-            "metadata": chunk.get("metadata", {}),
-            "docTitle": chunk.get("docTitle", ""),
-            "chunkId": chunk.get("chunkId", ""),
-        } for chunk in chunk_objs],
-    )
-    # Recherche pour chaque requête
+    """
+    Retrieve chunks using a FAISS index.
+
+    `faiss_path` may name a folder or a .faiss file. As with LanceDB, the index
+    is built from the connected chunks unless `faiss_mode` is "load".
+    """
+    loading = uses_existing_index("faiss_vector_store", settings)
+
+    user_path = os.path.expanduser(str(settings.get("faiss_path") or "").strip())
+    index_name = "index"
+    if user_path.endswith(".faiss"):
+        user_path, index_name = os.path.split(user_path[:-len(".faiss")])
+        user_path = user_path or "."
+    folder = _index_folder(user_path, db_path, loading)
+
+    if loading:
+        vector_store = FaissVectorStore(db_path=folder, index_name=index_name,
+                                        metric=settings.get("metric", "l2"), db_mode="load")
+    else:
+        vector_store = FaissVectorStore(
+            db_path=folder,
+            index_name=_per_chunk_method(index_name, settings, user_path),
+            metric=settings.get("metric", "l2"),
+            db_mode="create",
+        )
+        vector_store.add(
+            texts=[chunk.get("text", "") for chunk in chunk_objs],
+            embeddings=chunk_embeddings,
+            metadata=_chunk_metadata(chunk_objs),
+        )
+
+    return _search_store(vector_store, query_objs, query_embeddings, settings, vector_store.metric)
+
+
+@RetrievalMethodRegistry.register("memory_vector_store")
+def handle_memory_vector_store(chunk_objs, chunk_embeddings, query_objs, query_embeddings, settings, db_path=None):
+    """
+    Retrieve chunks by exact search over their embeddings, held in memory.
+
+    Nothing to install and no files written; the index is rebuilt every run.
+    Scores use the same scale as the LanceDB and FAISS stores.
+    """
+    if not chunk_objs or chunk_embeddings is None or len(chunk_embeddings) == 0:
+        raise Exception("Error: chunk_objs or chunk_embeddings are empty.")
+    if not query_objs or query_embeddings is None or len(query_embeddings) == 0:
+        raise Exception("Error: query_objs or query_embeddings are empty.")
+
+    metric = normalize_metric(settings.get("metric", "cosine")) or "cosine"
+    top_k = int(settings.get("top_k", 5))
+    method = _search_method(settings)
+
+    vectors = np.asarray(chunk_embeddings, dtype=np.float32)
+    norms = np.linalg.norm(vectors, axis=1)
+    norms[norms == 0] = 1.0
+    metadata = _chunk_metadata(chunk_objs)
+
     results = []
     for query_obj, query_emb in zip(query_objs, query_embeddings):
-        res = vector_store.search(
-            query=query_emb if query_emb is not None else query_obj.get("text", ""),
-            k=top_k,
-        )
+        query = np.asarray(query_emb, dtype=np.float32)
+        if metric == "cosine":
+            cos = (vectors @ query) / (norms * (np.linalg.norm(query) or 1.0))
+            sims = (1.0 + cos) / 2.0  # as vector_stores.cosine_to_similarity
+        elif metric == "dot":
+            sims = vectors @ query
+        else:
+            sims = 1.0 / (1.0 + np.sum((vectors - query) ** 2, axis=1))
+
+        order = np.argsort(-sims, kind="stable")
+        if method == "mmr":
+            candidates = order[:top_k * 3]
+            order = candidates[mmr_select(query, vectors[candidates], top_k)]
+
+        hits = [{
+            "text": chunk_objs[i].get("text", ""),
+            "similarity": float(sims[i]),
+            "metadata": metadata[i],
+        } for i in order[:top_k]]
         results.append({'query_object': query_obj,
-                        'retrieved_chunks': _attach_chunk_identity(res)})
+                        'retrieved_chunks': _apply_threshold(_attach_chunk_identity(hits), settings)})
     return results
+
+
+def cosine_to_similarity_array(cos):
+    """Vectorized form of vector_stores.cosine_to_similarity."""
+    return (1.0 + cos) / 2.0

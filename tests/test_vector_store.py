@@ -187,9 +187,11 @@ class TestLocalVectorStore:
         mmr_results = vector_store.search(query_embedding, k=3, method="mmr")
         assert len(mmr_results) <= 3
         
-        # Test hybrid search
-        hybrid_results = vector_store.search(query_embedding, k=3, method="hybrid")
-        assert len(hybrid_results) <= 3
+        # Hybrid was removed: nothing could reach it, and it only matched the
+        # whole query as a substring. Fusing BM25 with an embedding method is
+        # the working equivalent.
+        with pytest.raises(ValueError, match="Unknown search method"):
+            vector_store.search(query_embedding, k=3, method="hybrid")
 
     def test_clear(self, vector_store, dummy_documents, dummy_metadata):
         """Test clearing all documents"""

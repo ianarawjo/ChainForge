@@ -1,0 +1,193 @@
+{
+  "_comment": "Every setting each RAG node's methods offer, with the default its settings form fills in, and where each method runs. The *Settings.test.ts files keep this in step with RetrievalMethodSchemas.tsx, ChunkMethodSchemas.tsx and RerankMethodSchemas.tsx. tests/test_*_settings_matter.py (server) and those same TS files (browser) then require a test showing each setting changes what the method does, so a setting that silently does nothing fails the build. null means the form has no default.",
+  "retrieval": {
+    "bm25": {
+      "runsIn": "both",
+      "settings": {
+        "bm25_b": 0.75,
+        "bm25_k1": 1.5,
+        "shortName": "BM25 Retrieval",
+        "top_k": 5
+      }
+    },
+    "boolean": {
+      "runsIn": "both",
+      "settings": {
+        "required_match_count": 1,
+        "shortName": "Boolean Search",
+        "top_k": 5
+      }
+    },
+    "browser_embedding": {
+      "runsIn": "browser",
+      "settings": {
+        "browserEmbeddingModel": "Xenova/bge-small-en-v1.5",
+        "shortName": "Semantic Search",
+        "top_k": 5
+      }
+    },
+    "embedding": {
+      "runsIn": "backend",
+      "settings": {
+        "embeddingLocalPath": "",
+        "embeddingModel": "sentence-transformers/all-MiniLM-L6-v2",
+        "embeddingProvider": "huggingface",
+        "faiss_mode": "create",
+        "faiss_path": "",
+        "lancedb_mode": "create",
+        "lancedb_path": "",
+        "lancedb_search_method": "similarity",
+        "lancedb_table": "embeddings",
+        "shortName": "Embedding Similarity",
+        "similarity_metric": "cosine",
+        "similarity_threshold": 50,
+        "storage_backend": "lancedb",
+        "top_k": 5
+      }
+    },
+    "overlap": {
+      "runsIn": "both",
+      "settings": {
+        "shortName": "Keyword Overlap",
+        "top_k": 5
+      }
+    },
+    "tfidf": {
+      "runsIn": "backend",
+      "settings": {
+        "max_features": 500,
+        "shortName": "TF-IDF Retrieval",
+        "top_k": null
+      }
+    }
+  },
+  "chunking": {
+    "browser_character": {
+      "runsIn": "browser",
+      "settings": {
+        "chunk_overlap": 100,
+        "chunk_size": 1000
+      }
+    },
+    "browser_sentence": {
+      "runsIn": "browser",
+      "settings": {
+        "chunk_size": 1000,
+        "sentence_overlap": 0
+      }
+    },
+    "chonkie_late": {
+      "runsIn": "backend",
+      "settings": {
+        "chunk_size": 512,
+        "custom_recipe": "",
+        "embedding_local_path": "",
+        "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+        "min_characters_per_chunk": 24,
+        "use_premade_recipe": "markdown-en"
+      }
+    },
+    "chonkie_recursive": {
+      "runsIn": "backend",
+      "settings": {
+        "chunk_size": 512,
+        "custom_recipe": "",
+        "min_characters_per_chunk": 12,
+        "tokenizer_or_token_counter": "gpt2",
+        "use_premade_recipe": "markdown-en"
+      }
+    },
+    "chonkie_semantic": {
+      "runsIn": "backend",
+      "settings": {
+        "chunk_size": 512,
+        "embedding_local_path": "",
+        "embedding_model": "minishlab/potion-base-8M",
+        "min_characters_per_sentence": 12,
+        "min_sentences": 1,
+        "similarity_window": 1,
+        "skip_window": 0,
+        "threshold": 0.8
+      }
+    },
+    "chonkie_sentence": {
+      "runsIn": "backend",
+      "settings": {
+        "chunk_overlap": 0,
+        "chunk_size": 1,
+        "delim": "[\".\", \"!\", \"?\"]",
+        "include_delim": "prev",
+        "min_characters_per_sentence": 12,
+        "min_sentences_per_chunk": 1,
+        "tokenizer_or_token_counter": "gpt2"
+      }
+    },
+    "chonkie_token": {
+      "runsIn": "backend",
+      "settings": {
+        "chunk_overlap": 0,
+        "chunk_size": 512,
+        "tokenizer": "gpt2"
+      }
+    },
+    "markdown_header": {
+      "runsIn": "both",
+      "settings": {}
+    },
+    "overlapping_huggingface_tokenizers": {
+      "runsIn": "backend",
+      "settings": {
+        "chunk_overlap": 50,
+        "chunk_size": 200,
+        "tokenizer": "bert-base-uncased"
+      }
+    },
+    "overlapping_openai_tiktoken": {
+      "runsIn": "backend",
+      "settings": {
+        "chunk_overlap": 50,
+        "chunk_size": 200,
+        "model": "gpt-3.5-turbo"
+      }
+    },
+    "syntax_nltk": {
+      "runsIn": "backend",
+      "settings": {}
+    },
+    "syntax_texttiling": {
+      "runsIn": "backend",
+      "settings": {
+        "k": 10,
+        "w": 20
+      }
+    }
+  },
+  "reranking": {
+    "browser_cross_encoder": {
+      "runsIn": "browser",
+      "settings": {
+        "browserRerankModel": "Xenova/ms-marco-MiniLM-L-6-v2",
+        "shortName": "Reranker",
+        "top_k": 5
+      }
+    },
+    "cohere_rerank": {
+      "runsIn": "backend",
+      "settings": {
+        "max_tokens_per_doc": 4096,
+        "model": "rerank-v3.5",
+        "shortName": "Cohere Rerank",
+        "top_k": 5
+      }
+    },
+    "cross_encoder": {
+      "runsIn": "backend",
+      "settings": {
+        "batch_size": 32,
+        "model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+        "shortName": "Cross-encoder Reranker",
+        "top_k": 5
+      }
+    }
+  }
+}

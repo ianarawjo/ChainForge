@@ -52,8 +52,8 @@ if _rag_packages_installed():
     # rather than stop ChainForge from starting at all.
     try:
         from chainforge.rag.chunkers import ChunkingMethodRegistry
-        from chainforge.rag.retrievers import RetrievalMethodRegistry
-        from chainforge.rag.rerankers import RerankingMethodRegistry, rrf_fuse, weighted_avg_fuse
+        from chainforge.rag.retrievers import RetrievalMethodRegistry, uses_existing_index
+        from chainforge.rag.rerankers import RerankingMethodRegistry, rrf_fuse, weighted_avg_fuse, fusion_doc_key
         from chainforge.rag.embeddings import EmbeddingMethodRegistry
         RAG_AVAILABLE = True
         print("RAGForge dependencies detected. Enabling RAGForge features...")
@@ -1749,7 +1749,10 @@ def retrieve():
         keyword_methods = []    # methods not requiring embeddings
 
         for method in methods:
-            embedding_provider = method.get("embeddingProvider", None)
+            # The settings form can switch provider after the method was added
+            # from the menu, which set the top-level value; the form's wins.
+            embedding_provider = ((method.get("settings") or {}).get("embeddingProvider")
+                                  or method.get("embeddingProvider", None))
             if embedding_provider:
                 # This is an embedding-based method
                 embedding_model = method.get("settings", {}).get("embeddingModel", "default")
@@ -1760,6 +1763,12 @@ def retrieve():
             else:
                 # Non-embedding method
                 keyword_methods.append(method)
+
+        # Methods loading an existing index search the same index whichever
+        # chunks are connected, so they run once rather than per chunking method.
+        existing_index_methods_run = set()
+        # With several chunking methods, each saves its index under its own name.
+        multiple_chunk_groups = len(chunks_by_method) > 1
 
         # Prepare the final flat results array
         flat_results = []
@@ -1828,7 +1837,7 @@ def retrieve():
                             }
 
                             if fusion_enabled:
-                                doc_id = chunk.get("chunkId")
+                                doc_id = fusion_doc_key(chunk.get("chunkId"), chunk.get("docTitle"), chunk["text"])
                                 score = float(chunk.get("similarity", 0.0))
                                 rank = i + 1
                                 query_txt = query_object['text']
@@ -1860,11 +1869,30 @@ def retrieve():
                     for m in embedder_methods:
                          set_retrieval_progress(m["methodName"], 30)
                     
-                    # Compute embeddings once for all methods using this model
+                    active_methods = [
+                        m for m in embedder_methods
+                        if not (uses_existing_index(m.get("baseMethod"), m.get("settings", {}))
+                                and m.get("id") in existing_index_methods_run)
+                    ]
+                    if not active_methods:
+                        continue
+
+                    # Compute embeddings once for all methods using this model. An
+                    # existing index already holds its chunks' vectors.
+                    needs_chunk_vectors = any(
+                        not uses_existing_index(m.get("baseMethod"), m.get("settings", {}))
+                        for m in active_methods
+                    )
                     chunk_texts = [c["text"] for c in chunk_group]
-                    chunk_embeddings = embedder_func(chunk_texts, model_name, model_path, api_keys)
-                    query_embeddings = embedder_func([query.get("text", "") for query in queries], model_name, model_path, api_keys)
-                    
+                    chunk_embeddings = embedder_func(
+                        chunk_texts, model_name=model_name, path=model_path,
+                        api_keys=api_keys, input_type="document",
+                    ) if needs_chunk_vectors else None
+                    query_embeddings = embedder_func(
+                        [query.get("text", "") for query in queries], model_name=model_name,
+                        path=model_path, api_keys=api_keys, input_type="query",
+                    )
+
                 except Exception as e:
                     # Skip just the methods using this embedder, as we do for
                     # keyword methods, so one bad embedder cannot wipe out the
@@ -1876,13 +1904,22 @@ def retrieve():
                     continue
                 
                 # Process each method with the same embeddings
-                for method in embedder_methods:
+                for method in active_methods:
                     method_id = method.get("id")
                     base_method = method.get("baseMethod")
                     method_name = method.get("methodName")
 
-                    # A safe database path to use to store on local disk, if necessary
-                    # :: For instance, vector databases like LanceDB, FAISS or Chroma. 
+                    method_settings = dict(method.get("settings", {}))
+                    loads_existing_index = uses_existing_index(base_method, method_settings)
+                    if loads_existing_index:
+                        existing_index_methods_run.add(method_id)
+                    elif multiple_chunk_groups:
+                        method_settings["_index_suffix"] = chunk_method
+                    # Hits from an existing index didn't come from the connected chunks.
+                    row_chunk_method = "(existing index)" if loads_existing_index else chunk_method
+
+                    # A scratch folder for this method's index, used unless the
+                    # method's settings name one of their own.
                     db_path = os.path.join(MEDIA_DIR, method_id + ".db")
                     
                     try:
@@ -1892,7 +1929,7 @@ def retrieve():
                         set_retrieval_progress(method_name, 50)
                         start_time = time.perf_counter()
                         # Get retrieved chunks for this method and chunk group
-                        retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings, method.get("settings", {}), db_path)
+                        retrieved = handler(chunk_group, chunk_embeddings, queries, query_embeddings, method_settings, db_path)
                         set_retrieval_progress(method_name, 80)
                         end_time = time.perf_counter()
                         latency_ms = (end_time - start_time) * 1000
@@ -1917,13 +1954,13 @@ def retrieve():
                                         **query_object.get("fill_history", {}),  # Include original query fill_history, if any
                                         "query": query_object['text'],
                                         "retrievalMethod": method_name,
-                                        "chunkMethod": chunk_method,  # Include chunking method in vars
+                                        "chunkMethod": row_chunk_method,  # Include chunking method in vars
                                     },
                                     "metavars": {
                                         **query_object.get("metavars", {}),  # Include original query metavars
                                         "methodId": method_id,
                                         "retrievalMethodSignature": base_method,
-                                        "signature": chunk_method + "-" + method_name,
+                                        "signature": row_chunk_method + "-" + method_name,
                                         "docTitle": chunk.get("docTitle", ""),
                                         "chunkId": chunk.get("chunkId", ""),
                                         "chunkLibrary": chunk.get("chunkLibrary", ""),
@@ -1934,17 +1971,17 @@ def retrieve():
                                 }
 
                                 if fusion_enabled:
-                                    doc_id = chunk.get("chunkId")
+                                    doc_id = fusion_doc_key(chunk.get("chunkId"), chunk.get("docTitle"), chunk["text"])
                                     score = float(chunk.get("similarity", 0.0))
                                     rank = i + 1
                                     query_txt = query_object['text']
-                                    staging[(query_txt, chunk_method)][method_id].append({
+                                    staging[(query_txt, row_chunk_method)][method_id].append({
                                         "doc_id": doc_id, "rank": rank, "score": score, "obj": response_obj
                                     })
                                 flat_results.append(response_obj)
                         set_retrieval_progress(method_name, 100)
                     except Exception as e:
-                        msg = f"Error with {method_name} on {chunk_method}: {e}"
+                        msg = f"Error with {method_name} on {row_chunk_method}: {e}"
                         print(msg, file=sys.stderr)
                         method_errors.append(msg)
                         continue
@@ -2077,7 +2114,7 @@ def rerank():
     
     # Extract additional settings from form data
     settings = {}
-    known_int_params = {"top_k", "batch_size", "max_chunks_per_doc", "preserve_top_k", "k_param"}
+    known_int_params = {"top_k", "batch_size", "max_chunks_per_doc", "max_tokens_per_doc", "preserve_top_k", "k_param"}
     known_float_params = {"lambda_param", "diversity_threshold"}
     known_bool_params = {"normalize_scores"}
     

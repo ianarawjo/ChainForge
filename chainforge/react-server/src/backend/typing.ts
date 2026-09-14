@@ -212,6 +212,8 @@ export interface ModelSettingsDict {
     required: string[];
     properties: Dict<Dict<JSONCompatible>>;
     description?: string;
+    /** JSON Schema dependencies, e.g. fields shown only for one choice. */
+    dependencies?: Dict<any>;
   };
   uiSchema: Dict<JSONCompatible>;
   postprocessors: Dict<(val: string | number | boolean) => any>;

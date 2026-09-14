@@ -55,15 +55,62 @@ def _sql_string_literal(value: Any) -> str:
     return "'" + str(value).replace("'", "''") + "'"
 
 
-def _sql_like_pattern(value: Any) -> str:
-    """Render a substring-match pattern for use with `LIKE ... ESCAPE '\\'`."""
-    escaped = (
-        str(value)
-        .replace("\\", "\\\\")
-        .replace("%", "\\%")
-        .replace("_", "\\_")
-    )
-    return _sql_string_literal(f"%{escaped}%")
+_METRIC_ALIASES = {
+    "cosine": "cosine",
+    "l2": "l2",
+    "euclidean": "l2",
+    "dot": "dot",
+    "dot_product": "dot",
+    "ip": "dot",
+}
+
+
+def normalize_metric(name: Any) -> Optional[str]:
+    """Map any accepted metric spelling to "cosine", "l2" or "dot"; None if unknown."""
+    return _METRIC_ALIASES.get(str(name or "").lower())
+
+
+# Every backend reports similarity on the same scale, so a similarity
+# threshold -- or a fused score -- means the same whichever store produced it:
+#   cosine: (1 + cosine similarity) / 2, in [0, 1]
+#   l2:     1 / (1 + squared Euclidean distance), in (0, 1]
+#   dot:    the raw dot product
+def cosine_to_similarity(cos: float) -> float:
+    return (1.0 + float(cos)) / 2.0
+
+
+def squared_l2_to_similarity(sq_dist: float) -> float:
+    return 1.0 / (1.0 + float(sq_dist))
+
+
+def mmr_select(query_vec, candidate_vecs, k: int, lambda_param: float = 0.5) -> List[int]:
+    """Maximal Marginal Relevance: pick k candidates balancing relevance and variety.
+
+    Relevance and redundancy are both cosine similarities. `lambda_param` near
+    1 favours relevance; near 0, variety. Returns candidate indices in the
+    order they were picked.
+    """
+    vecs = np.asarray(candidate_vecs, dtype=np.float32)
+    if len(vecs) == 0 or k <= 0:
+        return []
+    query = np.asarray(query_vec, dtype=np.float32)
+    query = query / (np.linalg.norm(query) or 1.0)
+    norms = np.linalg.norm(vecs, axis=1, keepdims=True)
+    vecs = vecs / np.where(norms == 0, 1.0, norms)
+    relevance = vecs @ query
+
+    selected: List[int] = []
+    remaining = list(range(len(vecs)))
+    while remaining and len(selected) < k:
+        if selected:
+            redundancy = np.max(vecs[remaining] @ vecs[selected].T, axis=1)
+        else:
+            redundancy = np.zeros(len(remaining))
+        scores = lambda_param * relevance[remaining] - (1 - lambda_param) * redundancy
+        best = remaining[int(np.argmax(scores))]
+        selected.append(best)
+        remaining.remove(best)
+    return selected
 
 
 class VectorStore(ABC):
@@ -81,23 +128,15 @@ class VectorStore(ABC):
         Args:
             embedding_func: Optional function to generate embeddings
             db_path: path for DB
-            db_mode: if want to create or load db
+            db_mode: "create" to start this store's index afresh, or "load" to
+                open an existing one. Either way, only the store's own index is
+                touched: db_path may be a folder the user chose, holding other
+                files, so it is never emptied wholesale.
         """
+        if db_mode not in ("create", "load"):
+            raise ValueError(f"Unknown db_mode '{db_mode}'. Use 'create' or 'load'.")
         self.embedding_func = embedding_func
-
-        if db_mode == "create" and db_path is not None:
-            # Supprimer le contenu du dossier db_path
-            if os.path.exists(db_path):
-                # Supprime tout le contenu du dossier, mais garde le dossier lui-même
-                for filename in os.listdir(db_path):
-                    file_path = os.path.join(db_path, filename)
-                    if os.path.isfile(file_path) or os.path.islink(file_path):
-                        os.unlink(file_path)
-                    elif os.path.isdir(file_path):
-                        shutil.rmtree(file_path)
-            else:
-                # Crée le dossier s'il n'existe pas
-                os.makedirs(db_path, exist_ok=True)
+        self.db_mode = db_mode
 
     @abstractmethod
     def add(self, texts: List[str], embeddings: Optional[List[List[float]]] = None,
@@ -227,26 +266,46 @@ class LancedbVectorStore(VectorStore):
                  db_mode: str = "create"):
         """
         Initialize LanceDB vector store.
-        
+
         Args:
-            uri: Path where LanceDB will store the database on disk
+            db_path: Folder where LanceDB stores the database on disk
             table_name: Name of the table to use for vector storage
+            db_mode: "create" drops any existing table of this name, so the
+                index holds exactly what is added next; "load" opens an
+                existing table, raising if there is none.
         """
         super().__init__(embedding_func, db_path, db_mode)
-        # Create directory if it doesn't exist
-        
-        # Connect to the database
+        if db_mode == "load" and not os.path.isdir(db_path):
+            # Checked first: connecting would create the folder.
+            raise FileNotFoundError(f"No LanceDB database found at '{db_path}'.")
+
         self.db = lancedb.connect(db_path)
         self.table_name = table_name
         self.table = None
-        
-        # Check if table exists
-        # list_tables() replaced the deprecated table_names(); fall back for
-        # older LanceDB versions still allowed by our floor (>=0.17).
-        list_tables = getattr(self.db, "list_tables", None) or self.db.table_names
-        table_names = list(list_tables())
-        if table_name in table_names:
+
+        # list_tables() replaced the deprecated table_names(), and returns a
+        # paged response rather than a list of names -- so testing membership
+        # on it directly never finds a table. Fall back for older LanceDB
+        # versions still allowed by our floor (>=0.17).
+        if hasattr(self.db, "list_tables"):
+            names, page_token = [], None
+            while True:
+                page = (self.db.list_tables(page_token=page_token) if page_token
+                        else self.db.list_tables())
+                names.extend(getattr(page, "tables", page))
+                page_token = getattr(page, "page_token", None)
+                if not page_token:
+                    break
+        else:
+            names = list(self.db.table_names())
+        table_exists = table_name in names
+        if db_mode == "load":
+            if not table_exists:
+                raise FileNotFoundError(
+                    f"No LanceDB table named '{table_name}' in '{db_path}'.")
             self.table = self.db.open_table(table_name)
+        elif table_exists:
+            self.db.drop_table(table_name)
         
 
     def _generate_id(self, text: str) -> str:
@@ -369,182 +428,76 @@ class LancedbVectorStore(VectorStore):
         
         return orig_doc_ids  # Return original IDs, including those that were not added
     
-    def search(self, query: Union[str, List[float]], k: int = 5, 
+    def search(self, query: Union[str, List[float]], k: int = 5,
                **kwargs) -> List[Dict[str, Any]]:
         """
         Search for similar documents based on a query embedding.
-        
+
         Args:
-            query_embedding: The query embedding vector
+            query: The query embedding vector, or text if an embedding_func was given
             k: Number of results to return
             **kwargs: Additional search parameters:
-                - distance_metric: Distance metric for search ('cosine', 'euclidean', 'dot_product')
-                - method: Search method ('similarity', 'mmr', 'hybrid')
-                - lambda_param: Balance between relevance and diversity for MMR (0-1)
-                - keyword: Keyword for hybrid search
-                - blend: Balance between vector and keyword scores (0-1)
+                - distance_metric: 'cosine', 'l2' / 'euclidean', or 'dot' / 'dot_product'
+                - method: 'similarity' (default) or 'mmr'
+                - lambda_param: Balance between relevance and variety for MMR (0-1)
                 - filters: Query filters in LanceDB syntax
-        
+
         Returns:
-            List of document dictionaries with text, score, and metadata
+            List of document dictionaries with text, similarity, and metadata.
+            Similarity uses the scale shared by every backend; see
+            `cosine_to_similarity`.
         """
         if self.table is None:
             return []
-        
-        # Map schema metric names to LanceDB metric names
-        distance_metric = kwargs.get("distance_metric", "l2")
-        metric_mapping = {
-            "euclidean": "l2",
-            "dot_product": "dot",
-            "cosine": "cosine",
-            # Also support legacy names
-            "l2": "l2",
-            "dot": "dot"
-        }
-        distance_metric = metric_mapping.get(distance_metric, "l2")
-        
+
+        distance_metric = normalize_metric(kwargs.get("distance_metric", "l2")) or "l2"
         method = kwargs.get("method", "similarity")
+        if method not in ("similarity", "mmr"):
+            raise ValueError(f"Unknown search method: {method}")
         filters = kwargs.get("filters", None)
 
-        # Check if query is a string or embedding, and handle accordingly
         if isinstance(query, str):
-            # If query is a string, generate embedding using the embedding function
             if self.embedding_func is None:
                 raise ValueError("Embedding function not provided for string query")
             query_embedding = self.embedding_func([query])[0]
-        elif isinstance(query, list):
-            # If query is a list, assume it's already an embedding
-            query_embedding = query
-        
-        # Search the table using the query embedding and distance metric
+        else:
+            query_embedding = np.asarray(query, dtype=np.float32).tolist()
+
         q = self.table.search(query_embedding).metric(distance_metric)
-        
         if filters:
             q = q.where(filters)
-        
-        if method == "similarity":
-            # Standard cosine similarity search
-            results = q.limit(k).to_pandas()
-        
-        elif method == "mmr":
-            # Maximum Marginal Relevance search
-            lambda_param = kwargs.get("lambda_param", 0.5)
-            results = q.limit(k * 3).to_pandas()  # Get more results for diversity filtering
-            
-            # Apply MMR algorithm to rerank
-            vectors = np.array([r["vector"] for _, r in results.iterrows()])
-            query_vec = np.array(query_embedding)
-            
-            # Normalize vectors
-            query_vec = query_vec / np.linalg.norm(query_vec)
-            vectors = vectors / np.linalg.norm(vectors, axis=1)[:, np.newaxis]
-            
-            # Calculate similarities
-            sims = np.dot(vectors, query_vec)
-            
-            # MMR reranking
-            selected = []
-            remaining = list(range(len(vectors)))
-            
-            while len(selected) < k and remaining:
-                best_score = -1
-                best_idx = -1
-                
-                for i in remaining:
-                    relevance = sims[i]
-                    
-                    # Calculate diversity component
-                    if selected:
-                        sel_vectors = vectors[selected]
-                        diversity_sim = np.max(np.dot(vectors[i], sel_vectors.T))
-                        mmr_score = lambda_param * relevance - (1 - lambda_param) * diversity_sim
-                    else:
-                        mmr_score = relevance
-                    
-                    if mmr_score > best_score:
-                        best_score = mmr_score
-                        best_idx = i
-                
-                if best_idx != -1:
-                    selected.append(best_idx)
-                    remaining.remove(best_idx)
-            
-            results = results.iloc[selected]
-        
-        elif method == "hybrid":
-            # Hybrid search combining vector similarity with keyword matching
-            keyword = kwargs.get("keyword", "")
-            blend = kwargs.get("blend", 0.5)
-            
-            if not keyword:
-                return self.search(query_embedding, k, method="similarity")
-            
-            # Get vector search results
-            vector_results = q.limit(k * 2).to_pandas()
-            
-            # Get keyword search results
-            keyword_query = self.table.search().where(
-                f"text LIKE {_sql_like_pattern(keyword)} ESCAPE '\\'"
-            ).limit(k * 2)
-            keyword_results = keyword_query.to_pandas()
-            
-            # Combine results with blended scoring
-            all_results = {}
-            
-            # Add vector results with blended score
-            for _, row in vector_results.iterrows():
-                doc_id = row["id"]
-                vector_score = row["_distance"]  # LanceDB distance score
-                all_results[doc_id] = {"row": row, "similarity": blend * vector_score}
-            
-            # Add or update with keyword results
-            for _, row in keyword_results.iterrows():
-                doc_id = row["id"]
-                keyword_score = 1.0  # Binary match score for simplicity
-                
-                if doc_id in all_results:
-                    all_results[doc_id]["similarity"] += (1 - blend) * keyword_score
-                else:
-                    all_results[doc_id] = {"row": row, "similarity": (1 - blend) * keyword_score}
-            
-            # Sort by blended score and take top k
-            sorted_results = sorted(all_results.values(), key=lambda x: x["similarity"], reverse=True)[:k]
-            results = pd.DataFrame([r["row"] for r in sorted_results])
-        
+
+        if method == "mmr":
+            # Over-fetch, then pick a relevant but varied k from the candidates.
+            candidates = q.limit(k * 3).to_pandas()
+            picked = mmr_select(query_embedding, list(candidates["vector"]), k,
+                                float(kwargs.get("lambda_param", 0.5)))
+            results = candidates.iloc[picked]
         else:
-            raise ValueError(f"Unknown search method: {method}")
-        
-        # Format results
+            results = q.limit(k).to_pandas()
+
         formatted_results = []
         for _, row in results.iterrows():
-            # Convert distance to similarity score based on the metric used
-            distance = row["_distance"]
-            
+            distance = float(row["_distance"])
             if distance_metric == "cosine":
-                # Cosine distance is in [0, 2], where 0 = identical, 2 = opposite
-                # Convert to similarity in [0, 1]
-                similarity = 1.0 - (distance / 2.0)
-            elif distance_metric == "l2":
-                # L2 (Euclidean) distance is in [0, ∞), convert to similarity in [0, 1]
-                # Use inverse distance: similarity = 1 / (1 + distance)
-                similarity = 1.0 / (1.0 + distance)
+                # LanceDB's cosine distance is 1 - cosine similarity.
+                similarity = cosine_to_similarity(1.0 - distance)
             elif distance_metric == "dot":
-                # Dot product in LanceDB is negative (for minimization)
-                # Negate it to get the actual dot product similarity
-                similarity = -distance
+                # LanceDB's dot distance is 1 - dot product.
+                similarity = 1.0 - distance
             else:
-                # Fallback to simple conversion
-                similarity = 1.0 / (1.0 + distance)
-            
+                # LanceDB's l2 distance is the squared Euclidean distance.
+                similarity = squared_l2_to_similarity(distance)
+
             formatted_results.append({
                 "id": row["id"],
                 "text": row["text"],
                 "similarity": float(similarity),
                 "metadata": _deserialize_metadata(row["metadata"])
             })
-        
+
         return formatted_results
-    
+
     def get(self, doc_id: str) -> Optional[Dict[str, Any]]:
         """
         Get a document by ID.
@@ -727,7 +680,10 @@ class FaissVectorStore(VectorStore):
             db_path: Directory where FAISS index and metadata are stored
             embedding_func: Optional function to generate embeddings
             index_name: Name of the FAISS index file (without extension)
-            metric: 'l2', 'ip', 'euclidean', 'dot_product', or 'cosine'
+            metric: 'l2' / 'euclidean', 'dot' / 'dot_product' / 'ip', or 'cosine'
+            db_mode: "create" replaces any index of this name; "load" opens the
+                existing one, raising if there is none. A loaded index keeps
+                the metric it was built with.
         """
         super().__init__(embedding_func, db_path, db_mode)
 
@@ -736,18 +692,8 @@ class FaissVectorStore(VectorStore):
 
         self.db_path = db_path
         self.index_name = index_name
-        
-        # Map schema metric names to FAISS metric names
-        metric_mapping = {
-            "euclidean": "l2",
-            "dot_product": "ip",
-            "cosine": "ip",  # Cosine is IP with normalized vectors
-            # Also support legacy names
-            "l2": "l2",
-            "ip": "ip"
-        }
-        self.metric = metric_mapping.get(metric.lower(), "l2")
-        
+        self.metric = normalize_metric(metric) or "l2"
+
         self.index_file = os.path.join(db_path, f"{index_name}.faiss")
         self.meta_file = os.path.join(db_path, f"{index_name}_meta.pkl")
 
@@ -755,10 +701,30 @@ class FaissVectorStore(VectorStore):
         self.id_to_meta = {}  # id -> dict with text, metadata, vector index
         self.ids = []         # list of ids in FAISS order
 
-        self._load()
+        if db_mode == "load":
+            if not (os.path.exists(self.index_file) and os.path.exists(self.meta_file)):
+                raise FileNotFoundError(f"No FAISS index named '{index_name}' in '{db_path}'.")
+            self._load()
+        else:
+            os.makedirs(db_path, exist_ok=True)
+            for path in (self.index_file, self.meta_file):
+                if os.path.exists(path):
+                    os.remove(path)
 
     def _generate_id(self, text: str) -> str:
         return hashlib.sha256(text.encode('utf-8')).hexdigest()
+
+    def _new_index(self, dim: int):
+        # Cosine is inner product over normalized vectors.
+        return faiss.IndexFlatL2(dim) if self.metric == "l2" else faiss.IndexFlatIP(dim)
+
+    def _similarity(self, score: float) -> float:
+        """FAISS returns squared L2 distances or inner products; see cosine_to_similarity."""
+        if self.metric == "l2":
+            return squared_l2_to_similarity(score)
+        if self.metric == "cosine":
+            return cosine_to_similarity(score)
+        return float(score)
 
     def _save(self):
         if self.index is not None:
@@ -772,30 +738,37 @@ class FaissVectorStore(VectorStore):
                 for doc_id, meta in self.id_to_meta.items()
             },
             "ids": self.ids,
+            "metric": self.metric,
         }
         with open(self.meta_file, "w", encoding="utf-8") as f:
             json.dump(payload, f, default=str)
 
     def _load(self):
-        if os.path.exists(self.index_file) and os.path.exists(self.meta_file):
-            self.index = faiss.read_index(self.index_file)
-            with open(self.meta_file, "rb") as f:
-                raw = f.read()
-            try:
-                data = json.loads(raw.decode("utf-8"))
-            except (UnicodeDecodeError, json.JSONDecodeError):
-                data = pickle.loads(raw)  # legacy store, written before JSON
-            # Normalize metadata back to the serialized form used in memory.
-            self.id_to_meta = {
-                doc_id: {**meta, "metadata": _serialize_metadata(
-                    _deserialize_metadata(meta.get("metadata")))}
-                for doc_id, meta in (data.get("id_to_meta") or {}).items()
-            }
-            self.ids = data.get("ids", [])
-        else:
-            self.index = None
-            self.id_to_meta = {}
-            self.ids = []
+        self.index = faiss.read_index(self.index_file)
+        with open(self.meta_file, "rb") as f:
+            raw = f.read()
+        try:
+            data = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            data = pickle.loads(raw)  # legacy store, written before JSON
+        # Normalize metadata back to the serialized form used in memory.
+        self.id_to_meta = {
+            doc_id: {**meta, "metadata": _serialize_metadata(
+                _deserialize_metadata(meta.get("metadata")))}
+            for doc_id, meta in (data.get("id_to_meta") or {}).items()
+        }
+        self.ids = data.get("ids", [])
+
+        # Search with the metric the vectors were indexed for.
+        stored_metric = normalize_metric(data.get("metric"))
+        if stored_metric is None:
+            # Written before the metric was recorded, when every inner-product
+            # index held normalized vectors.
+            stored_metric = "cosine" if self.index.metric_type == faiss.METRIC_INNER_PRODUCT else "l2"
+        if stored_metric != self.metric:
+            print(f"Note: FAISS index '{self.index_name}' was built for the {stored_metric} "
+                  f"metric, so it is searched with that rather than {self.metric}.")
+            self.metric = stored_metric
 
     def add(self, texts: List[str], embeddings: Optional[List[List[float]]] = None,
             metadata: Optional[List[Dict[str, Any]]] = None) -> List[str]:
@@ -832,14 +805,11 @@ class FaissVectorStore(VectorStore):
         # Prepare FAISS index
         dim = len(new_embeddings[0])
         if self.index is None:
-            if self.metric == "ip":
-                self.index = faiss.IndexFlatIP(dim)
-            else:
-                self.index = faiss.IndexFlatL2(dim)
+            self.index = self._new_index(dim)
 
         # Add to FAISS
         new_embeddings_np = np.array(new_embeddings).astype("float32")
-        if self.metric == "ip":
+        if self.metric == "cosine":
             faiss.normalize_L2(new_embeddings_np)
         self.index.add(new_embeddings_np)
 
@@ -857,15 +827,22 @@ class FaissVectorStore(VectorStore):
         return doc_ids
 
     def search(self, query: Union[str, List[float]], k: int = 5, **kwargs) -> List[Dict[str, Any]]:
+        """
+        Search by query embedding, or by text given an embedding_func.
+
+        kwargs:
+            method: 'similarity' (default) or 'mmr'
+            lambda_param: Balance between relevance and variety for MMR (0-1)
+
+        The metric is the index's own; see __init__.
+        """
         if self.index is None or not self.ids:
             return []
 
-        similarity_threshold = kwargs.get('similarity_threshold')
-        # Conversion du seuil en proportion si fourni
-        if similarity_threshold is not None:
-            similarity_threshold = float(similarity_threshold) / 100.0
+        method = kwargs.get("method", "similarity")
+        if method not in ("similarity", "mmr"):
+            raise ValueError(f"Unknown search method: {method}")
 
-        # Préparation de l'embedding de la requête
         if isinstance(query, str):
             if self.embedding_func is None:
                 raise ValueError("Embedding function not provided for string query")
@@ -874,27 +851,27 @@ class FaissVectorStore(VectorStore):
             query_emb = query
 
         query_emb = np.array(query_emb, dtype="float32").reshape(1, -1)
-        if self.metric == "ip":
+        if self.metric == "cosine":
             faiss.normalize_L2(query_emb)
 
-        D, I = self.index.search(query_emb, min(k, len(self.ids)))
+        n = len(self.ids)
+        D, I = self.index.search(query_emb, min(k * 3 if method == "mmr" else k, n))
+        found = [(int(idx), float(score)) for idx, score in zip(I[0], D[0]) if 0 <= idx < n]
+        if method == "mmr" and found:
+            vectors = [self.index.reconstruct(idx) for idx, _ in found]
+            picked = mmr_select(query_emb[0], vectors, k, float(kwargs.get("lambda_param", 0.5)))
+            found = [found[i] for i in picked]
+
         results = []
-        for idx, dist in zip(I[0], D[0]):
-            if idx < 0 or idx >= len(self.ids):
-                continue
+        for idx, score in found[:k]:
             doc_id = self.ids[idx]
             meta = self.id_to_meta[doc_id]
-            similarity = 1.0 / (1.0 + dist) if self.metric == "l2" else float(dist)
-            # Filtrage par similarité si le seuil est défini
-            if similarity_threshold is not None and similarity < similarity_threshold:
-                continue
             results.append({
                 "id": doc_id,
                 "text": meta["text"],
-                "similarity": similarity,
+                "similarity": self._similarity(score),
                 "metadata": _deserialize_metadata(meta["metadata"])
             })
-        results.sort(key=lambda x: x["similarity"], reverse=True)
         return results
 
     def get(self, doc_id: str) -> Optional[Dict[str, Any]]:
@@ -924,12 +901,9 @@ class FaissVectorStore(VectorStore):
             self._save()
             return True
         embeddings = self.index.reconstruct_n(0, len(self.ids))
+        # Stored vectors are already normalized when the metric is cosine.
         new_embeddings = np.array([embeddings[i] for i in keep_indices]).astype("float32")
-        if self.metric == "ip":
-            faiss.normalize_L2(new_embeddings)
-            self.index = faiss.IndexFlatIP(new_embeddings.shape[1])
-        else:
-            self.index = faiss.IndexFlatL2(new_embeddings.shape[1])
+        self.index = self._new_index(new_embeddings.shape[1])
         self.index.add(new_embeddings)
         # Update ids and meta
         new_ids = [self.ids[i] for i in keep_indices]

@@ -14,7 +14,6 @@ from chainforge.rag.vector_stores import (
     LancedbVectorStore,
     _deserialize_metadata,
     _serialize_metadata,
-    _sql_like_pattern,
     _sql_string_literal,
 )
 
@@ -22,8 +21,8 @@ from chainforge.rag.vector_stores import (
 class TestSQLLiteralEscaping:
     """LanceDB filters are SQL expressions built by interpolation.
 
-    A query containing an apostrophe used to produce
-    "Unterminated string literal" and abort hybrid search.
+    A value containing an apostrophe used to produce
+    "Unterminated string literal".
     """
 
     def test_plain_value(self):
@@ -38,22 +37,8 @@ class TestSQLLiteralEscaping:
     def test_non_strings_are_stringified(self):
         assert _sql_string_literal(42) == "'42'"
 
-    def test_like_pattern_wraps_in_wildcards(self):
-        assert _sql_like_pattern("abc") == "'%abc%'"
 
-    @pytest.mark.parametrize("raw,escaped", [
-        ("100%", r"'%100\%%'"),
-        ("a_b", r"'%a\_b%'"),
-        ("back\\slash", r"'%back\\slash%'"),
-    ])
-    def test_like_wildcards_are_escaped(self, raw, escaped):
-        assert _sql_like_pattern(raw) == escaped
-
-    def test_like_pattern_quotes_are_also_doubled(self):
-        assert _sql_like_pattern("what's") == "'%what''s%'"
-
-
-class TestHybridSearchQuoting:
+class TestSQLQuotingInStoreLookups:
     """End-to-end: the escaping above has to satisfy the real SQL parser."""
 
     @pytest.fixture
@@ -66,26 +51,6 @@ class TestHybridSearchQuoting:
             metadata=[{"i": 1}, {"i": 2}, {"i": 3}],
         )
         return store
-
-    @pytest.mark.parametrize("keyword", [
-        "best", "what's", "100%", "a_b", "back\\slash", "' OR 1=1 --", '"quoted"',
-    ])
-    def test_hostile_keywords_do_not_raise(self, store, keyword, fake_embedder):
-        query = fake_embedder(["anything"])[0]
-        results = store.search(query, k=3, method="hybrid", keyword=keyword)
-        assert isinstance(results, list)
-
-    def test_underscore_is_a_literal_not_a_wildcard(self, store):
-        rows = store.table.search().where(
-            f"text LIKE {_sql_like_pattern('a_b')} ESCAPE '\\'"
-        ).to_pandas()
-        assert list(rows["text"]) == ["an a_b pattern here"]
-
-    def test_percent_is_a_literal_not_a_wildcard(self, store):
-        rows = store.table.search().where(
-            f"text LIKE {_sql_like_pattern('100%')} ESCAPE '\\'"
-        ).to_pandas()
-        assert list(rows["text"]) == ["Java is 100% verbose"]
 
     def test_get_with_a_quoted_id_returns_none_rather_than_raising(self, store):
         assert store.get("x' OR '1'='1") is None
