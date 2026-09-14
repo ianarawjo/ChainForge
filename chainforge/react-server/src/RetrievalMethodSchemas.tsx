@@ -148,8 +148,10 @@ export const TFIDFSchema: ModelSettingsDict = {
       },
       max_features: {
         type: "number",
-        title: "Max Features (Vocabulary Size)", // Clarified title
-        default: 500,
+        title: "Max Features (Vocabulary Size)",
+        default: 0,
+        description:
+          "0 keeps every word. A cap keeps only the most frequent words, which drops the rare, specific words TF-IDF relies on; a query using only dropped words matches nothing.",
       },
     },
   },
@@ -171,8 +173,8 @@ export const TFIDFSchema: ModelSettingsDict = {
     max_features: {
       "ui:widget": "range",
       "ui:options": {
-        min: 100,
-        max: 10000, // Increased max? Adjust as needed
+        min: 0,
+        max: 10000,
         step: 100,
       },
     },

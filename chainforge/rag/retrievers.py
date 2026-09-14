@@ -155,7 +155,11 @@ def handle_tfidf(chunk_objs: List[Dict], query_objs: List[Any], settings: Dict[s
     """Retrieve top-k chunks for each query using TF-IDF cosine similarity."""
     # Safely cast settings
     top_k = int(settings.get("top_k", 5))
-    max_features = int(settings.get("max_features", 500))
+    # 0 (the default) keeps every word. A cap keeps only the most frequent
+    # words, which are the ones TF-IDF weighs least: at 500 on a novel, words
+    # like "author" fall out, and a question using only such words matches
+    # nothing.
+    max_features = int(settings.get("max_features") or 0) or None
 
     # Prepare the corpus texts
     docs = [str(c.get("text", "")) for c in chunk_objs]
@@ -180,6 +184,13 @@ def handle_tfidf(chunk_objs: List[Dict], query_objs: List[Any], settings: Dict[s
 
         # Transform query into vector
         query_vec = vectorizer.transform([query_text])
+
+        # No query word is in the vocabulary, so every chunk would score 0 and
+        # the "top" chunks would just be the first ones. Return nothing
+        # instead, as Boolean Search and Keyword Overlap do.
+        if query_vec.nnz == 0:
+            results.append({"query_object": q_obj, "retrieved_chunks": []})
+            continue
 
         # Compute raw similarities
         sims = (tfidf_matrix * query_vec.T).toarray().flatten()

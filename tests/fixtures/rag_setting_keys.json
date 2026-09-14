@@ -55,7 +55,7 @@
     "tfidf": {
       "runsIn": "backend",
       "settings": {
-        "max_features": 500,
+        "max_features": 0,
         "shortName": "TF-IDF Retrieval",
         "top_k": null
       }
