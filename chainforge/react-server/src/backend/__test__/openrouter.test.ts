@@ -172,8 +172,9 @@ describe("OpenRouter chat completions", () => {
     expect(body.temperature).toBe(0.5);
     expect(body.top_p).toBe(1);
     expect(body).not.toHaveProperty("n"); // OpenRouter doesn't support n
+    // Reasoning goes in the reasoning object (see the reasoning settings tests)
+    expect(body.reasoning).toEqual({ enabled: true });
     for (const key of [
-      "reasoning",
       "reasoning_effort",
       "max_tokens",
       "stop",
@@ -283,6 +284,37 @@ describe("OpenRouter chat completions", () => {
     await expect(
       call_openrouter("Q", "openrouter/openai/gpt-5.5"),
     ).rejects.toThrow("Provider down");
+  });
+});
+
+describe("OpenRouter reasoning settings", () => {
+  const reasoningSent = async (settings: Dict) => {
+    mockFetch({ body: chatReply({ content: "4" }) });
+    await call_openrouter(
+      "Q",
+      "openrouter/deepseek/deepseek-v4-pro",
+      1,
+      1,
+      settings,
+    );
+    return jsonBody(calls[0]).reasoning;
+  };
+
+  test("reasoning is on unless turned off, since some models have it off by default", async () => {
+    expect(await reasoningSent({})).toEqual({ enabled: true });
+    expect(await reasoningSent({ reasoning_effort: "on" })).toEqual({
+      enabled: true,
+    });
+    // An older name for "on"
+    expect(await reasoningSent({ reasoning_effort: "default" })).toEqual({
+      enabled: true,
+    });
+    expect(await reasoningSent({ reasoning_effort: "off" })).toEqual({
+      enabled: false,
+    });
+    expect(await reasoningSent({ reasoning_effort: "high" })).toEqual({
+      effort: "high",
+    });
   });
 });
 

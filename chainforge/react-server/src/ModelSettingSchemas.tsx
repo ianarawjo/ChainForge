@@ -670,18 +670,9 @@ export const OpenRouterSettings: ModelSettingsDict = {
         type: "string",
         title: "reasoning.effort",
         description:
-          "How much a reasoning model thinks before it answers. 'default' leaves it to the model, and 'none' turns reasoning off where the model allows it. Not every model supports every level. Models that don't reason ignore this.",
-        enum: [
-          "default",
-          "none",
-          "minimal",
-          "low",
-          "medium",
-          "high",
-          "xhigh",
-          "max",
-        ],
-        default: "default",
+          "How much a reasoning model thinks before it answers. 'on' turns reasoning on at the model's usual effort (some models, like GPT-5.4 Nano and DeepSeek V4 Pro, otherwise don't reason), and 'off' turns it off where the model allows it. Not every model supports every level, and OpenAI models don't return their reasoning through OpenRouter. Models that don't reason ignore this.",
+        enum: ["on", "off", "minimal", "low", "medium", "high", "xhigh", "max"],
+        default: "on",
       },
       reasoning_max_tokens: {
         type: "integer",
@@ -769,7 +760,7 @@ export const OpenRouterSettings: ModelSettingsDict = {
       "ui:widget": "datalist",
     },
     reasoning_effort: {
-      "ui:help": "Defaults to the model's own setting.",
+      "ui:help": "Defaults to on.",
     },
     reasoning_max_tokens: {
       "ui:help": "Defaults to blank (use reasoning.effort).",

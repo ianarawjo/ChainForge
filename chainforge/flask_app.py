@@ -264,14 +264,9 @@ class ResponseInfo:
         return md_ast_parser(self.text)
 
 def with_reasoning_metavar(metavars: dict, reasoning: list, index: int) -> dict:
-    """The metavars for the response at `index`, with that response's reasoning (if any) under 'reasoning'.
-       A response without reasoning gets none, so reasoning carried from an earlier model doesn't pass as its own."""
+    """The metavars for the response at `index`, with that response's reasoning (if any) under 'reasoning'."""
     text = reasoning[index] if index < len(reasoning) else None
-    if isinstance(text, str) and text:
-        return {**metavars, 'reasoning': text}
-    if 'reasoning' in metavars:
-        return {k: v for k, v in metavars.items() if k != 'reasoning'}
-    return metavars
+    return {**metavars, 'reasoning': text} if isinstance(text, str) and text else metavars
 
 def check_typeof_vals(arr: list) -> MetricType:
     if len(arr) == 0: return MetricType.Empty

@@ -776,13 +776,15 @@ export async function call_openrouter(
   // Reasoning takes either a token budget or an effort level, not both. Models
   // that don't reason ignore it. See https://openrouter.ai/docs/use-cases/reasoning-tokens
   const reasoning: Dict = {};
+  // Some models have reasoning off by default (e.g. GPT-5.4 Nano and DeepSeek
+  // V4 Pro), so it's on unless turned off. ("default" is an older name for "on".)
+  const effort = settings.reasoning_effort;
   if (!is_blank_setting(settings.reasoning_max_tokens))
     reasoning.max_tokens = settings.reasoning_max_tokens;
-  else if (
-    !is_blank_setting(settings.reasoning_effort) &&
-    settings.reasoning_effort !== "default"
-  )
-    reasoning.effort = settings.reasoning_effort;
+  else if (is_blank_setting(effort) || effort === "on" || effort === "default")
+    reasoning.enabled = true;
+  else if (effort === "off") reasoning.enabled = false;
+  else reasoning.effort = effort;
   delete settings.reasoning_max_tokens;
   delete settings.reasoning_effort;
 
@@ -3462,6 +3464,13 @@ export const toStandardResponseFormat = (r: Dict | string) => {
   };
   if (r?.eval_res !== undefined) resp_obj.eval_res = r.eval_res;
   if (r?.chat_history !== undefined) resp_obj.chat_history = r.chat_history;
+  // A single response, e.g. from a Prompt Node's output, whose reasoning
+  // is a metavar: keep it (and its reasoning state) with the response.
+  const reasoning = r?.metavars?.[REASONING_METAVAR];
+  if (reasoning !== undefined && reasoning !== null)
+    resp_obj.reasoning = [reasoning];
+  if (r?.reasoning_state !== undefined)
+    resp_obj.reasoning_state = [r.reasoning_state];
   return resp_obj;
 };
 
@@ -3706,9 +3715,8 @@ export function reasoningAt(
 
 /**
  * The metavars for the response at `index` of a response object, with that
- * response's reasoning under REASONING_METAVAR. A response without reasoning
- * gets none, so reasoning carried from an earlier model doesn't pass as its
- * own. Returns `metavars` itself when there's nothing to change.
+ * response's reasoning (if any) under REASONING_METAVAR. Without reasoning,
+ * returns `metavars` itself, unchanged.
  */
 export function withReasoningMetavar<T extends Dict>(
   metavars: T,
@@ -3716,7 +3724,14 @@ export function withReasoningMetavar<T extends Dict>(
   index: number,
 ): T {
   const text = reasoningAt(resp_obj, index);
-  if (text) return { ...metavars, [REASONING_METAVAR]: text };
+  return text ? { ...metavars, [REASONING_METAVAR]: text } : metavars;
+}
+
+/**
+ * Metavars without REASONING_METAVAR: for a new response, whose metavars would
+ * otherwise carry an earlier model's reasoning as though it were its own.
+ */
+export function withoutReasoningMetavar<T extends Dict>(metavars: T): T {
   if (!(REASONING_METAVAR in metavars)) return metavars;
   const rest: Dict = { ...metavars };
   delete rest[REASONING_METAVAR];

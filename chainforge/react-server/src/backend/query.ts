@@ -15,6 +15,7 @@ import {
   extract_reasoning,
   extract_reasoning_state,
   extract_responses,
+  withoutReasoningMetavar,
   merge_response_objs,
   call_llm,
   mergeDicts,
@@ -183,7 +184,10 @@ export class PromptPipeline {
       responses: extracted_resps,
       llm,
       vars: mergeDicts(info, chat_history?.fill_history) ?? {},
-      metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
+      // This response's reasoning is its own (below), not one carried from an earlier model
+      metavars: withoutReasoningMetavar(
+        mergeDicts(metavars, chat_history?.metavars) ?? {},
+      ),
     };
 
     if (reasoning) resp_obj.reasoning = reasoning;
@@ -354,7 +358,9 @@ export class PromptPipeline {
             // We want to use the new info, since 'vars' could have changed even though
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
             vars: mergeDicts(info, chat_history?.fill_history) ?? {},
-            metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
+            metavars: withoutReasoningMetavar(
+              mergeDicts(metavars, chat_history?.metavars) ?? {},
+            ),
           };
           if (cached_resp.reasoning)
             resp.reasoning = cached_resp.reasoning.slice(0, n);

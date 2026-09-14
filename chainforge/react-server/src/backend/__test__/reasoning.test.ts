@@ -52,7 +52,9 @@ import {
   merge_response_objs,
   set_api_keys,
   strip_reasoning_state,
+  toStandardResponseFormat,
   withReasoningMetavar,
+  withoutReasoningMetavar,
 } from "../utils";
 // eslint-disable-next-line import/first
 import { executejs } from "../backend";
@@ -202,15 +204,44 @@ describe("the reasoning metavar", () => {
     expect(responses?.[0].eval_res?.items).toEqual(["because 1", "none"]);
   });
 
-  test("a response without reasoning drops reasoning carried from an earlier model", () => {
+  test("reasoning carried from an earlier model is left out of a new response's metavars", () => {
     const carried = {
       topic: "math",
       [REASONING_METAVAR]: "An earlier model's thinking",
     };
-    expect(withReasoningMetavar(carried, respObj(["a"]), 0)).toEqual({
-      topic: "math",
-    });
+    expect(withoutReasoningMetavar(carried)).toEqual({ topic: "math" });
     expect(carried).toHaveProperty(REASONING_METAVAR); // not changed in place
+  });
+
+  test("evaluators see the reasoning of responses pulled from a Prompt Node's output", async () => {
+    // One response from a Prompt Node's output, with its reasoning as a metavar
+    const pulled = toStandardResponseFormat({
+      text: "4",
+      prompt: "What is 2 + 2?",
+      fill_history: {},
+      metavars: { [REASONING_METAVAR]: "2 + 2 = 4" },
+      reasoning_state: {
+        provider: LLMProvider.DeepSeek,
+        reasoning_content: "2 + 2 = 4",
+      },
+      llm: "Model",
+      uid: "pulled",
+    });
+    expect(pulled.reasoning).toEqual(["2 + 2 = 4"]);
+    expect(pulled.reasoning_state).toHaveLength(1);
+
+    const iframe = document.createElement("iframe");
+    iframe.id = "reasoning-pulled-iframe";
+    document.body.appendChild(iframe);
+    const { responses, error } = await executejs(
+      "reasoning-pulled",
+      "function evaluate(r) { return r.meta.reasoning || 'none'; }",
+      [pulled],
+      "response",
+      "evaluator",
+    );
+    expect(error).toBeUndefined();
+    expect(responses?.[0].eval_res?.items).toEqual(["2 + 2 = 4"]);
   });
 });
 
