@@ -127,6 +127,7 @@ import {
   isSafari,
 } from "react-device-detect";
 import FlowSidebar from "./FlowSidebar";
+import FlowNameEditor from "./FlowNameEditor";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 import { ragNodeAvailable } from "./backend/ragCapabilities";
 import {
@@ -1699,6 +1700,47 @@ const App = () => {
     else return "Save to local cache";
   }, [isSaving, showSaveSuccess, saveFailed]);
 
+  // Rename the current flow from the toolbar. Locally, the flow may already be
+  // a file on disk, which must be renamed too -- otherwise the next save would
+  // write a second file and leave the old one behind in the saved flows list.
+  const renameCurrentFlow = useCallback(
+    async (newName: string) => {
+      if (!IS_RUNNING_LOCALLY) {
+        // In the browser, the name is only used for exported filenames
+        setFlowFileNameAndCache(newName);
+        return true;
+      }
+      const flowExists = async (name: string) =>
+        (
+          await axios.get(
+            `${FLASK_BASE_URL}api/flowExists/${encodeURIComponent(name)}`,
+          )
+        ).data.exists === true;
+      try {
+        if (await flowExists(flowFileName)) {
+          // The backend refuses names that are already taken
+          await axios.put(
+            `${FLASK_BASE_URL}api/flows/${encodeURIComponent(flowFileName)}`,
+            { newName },
+          );
+        } else if (await flowExists(newName)) {
+          // Not saved yet, so there's nothing to rename on disk. But saving
+          // under a taken name would silently overwrite that other flow.
+          throw new Error("A flow with that name already exists.");
+        }
+        setFlowFileNameAndCache(newName);
+        return true;
+      } catch (err) {
+        const msg = axios.isAxiosError(err)
+          ? err.response?.data?.error ?? err.message
+          : (err as Error).message;
+        if (showAlert) showAlert(`Could not rename flow: ${msg}`);
+        return false;
+      }
+    },
+    [flowFileName, setFlowFileNameAndCache, showAlert],
+  );
+
   const flowSidebar = useMemo(() => {
     if (!IS_RUNNING_LOCALLY) return undefined;
     return (
@@ -1797,16 +1839,33 @@ const App = () => {
 
         {reactFlowUI}
 
+        {/* Top bar: left toolbar, flow name, right toolbar. It ignores clicks
+            so the canvas beneath its empty space stays usable. */}
         <div
-          id="custom-controls"
           style={{
             position: "fixed",
-            left: IS_RUNNING_LOCALLY ? "44px" : "10px",
+            left: "10px",
+            right: "10px",
             top: "10px",
             zIndex: 8,
+            display: "grid",
+            // The side columns never shrink below their toolbars and split the
+            // leftover space evenly. So the name sits at the window's center
+            // when it fits there, and otherwise as close to it as it can get.
+            gridTemplateColumns:
+              "minmax(max-content, 1fr) minmax(0, max-content) minmax(max-content, 1fr)",
+            columnGap: "16px",
+            alignItems: "start",
+            pointerEvents: "none",
           }}
         >
-          <Flex>
+          <Flex
+            id="custom-controls"
+            align="center"
+            // Leaves room for the saved flows sidebar toggle
+            ml={IS_RUNNING_LOCALLY ? "34px" : 0}
+            style={{ justifySelf: "start", pointerEvents: "auto" }}
+          >
             <NestedMenu
               items={addNodesMenuItems}
               button={(toggleMenu) => (
@@ -1905,75 +1964,80 @@ const App = () => {
               </Button>
             </Tooltip>
           </Flex>
-        </div>
-        <div
-          style={{ position: "fixed", right: "10px", top: "10px", zIndex: 8 }}
-        >
-          {IS_RUNNING_LOCALLY ? (
-            <></>
-          ) : (
+          <Box maw="240px" miw={0} style={{ pointerEvents: "auto" }}>
+            <FlowNameEditor
+              name={flowFileName}
+              onRename={renameCurrentFlow}
+              disabled={isLoading}
+            />
+          </Box>
+          <div style={{ justifySelf: "end", pointerEvents: "auto" }}>
+            {IS_RUNNING_LOCALLY ? (
+              <></>
+            ) : (
+              <Button
+                onClick={onClickShareFlow}
+                size="sm"
+                variant="outline"
+                compact
+                color={
+                  clipboard.copied
+                    ? "teal"
+                    : colorScheme === "light"
+                      ? "blue"
+                      : "gray"
+                }
+                mr="xs"
+                style={{ float: "left" }}
+              >
+                {waitingForShare ? (
+                  <Loader size="xs" mr="4px" />
+                ) : (
+                  <IconFileSymlink size="16px" />
+                )}
+                {clipboard.copied
+                  ? "Link copied!"
+                  : waitingForShare
+                    ? "Sharing..."
+                    : "Share"}
+              </Button>
+            )}
             <Button
-              onClick={onClickShareFlow}
+              onClick={onClickNewFlow}
               size="sm"
               variant="outline"
+              color={colorScheme === "light" ? "blue" : "gray"}
+              bg={colorScheme === "light" ? "#eee" : "#222"}
               compact
-              color={
-                clipboard.copied
-                  ? "teal"
-                  : colorScheme === "light"
-                    ? "blue"
-                    : "gray"
-              }
               mr="xs"
               style={{ float: "left" }}
             >
-              {waitingForShare ? (
-                <Loader size="xs" mr="4px" />
-              ) : (
-                <IconFileSymlink size="16px" />
-              )}
-              {clipboard.copied
-                ? "Link copied!"
-                : waitingForShare
-                  ? "Sharing..."
-                  : "Share"}
+              {" "}
+              New Flow{" "}
             </Button>
-          )}
-          <Button
-            onClick={onClickNewFlow}
-            size="sm"
-            variant="outline"
-            color={colorScheme === "light" ? "blue" : "gray"}
-            bg={colorScheme === "light" ? "#eee" : "#222"}
-            compact
-            mr="xs"
-            style={{ float: "left" }}
-          >
-            {" "}
-            New Flow{" "}
-          </Button>
-          <Button
-            onClick={onClickExamples}
-            size="sm"
-            variant="filled"
-            color={colorScheme === "light" ? "blue" : "gray"}
-            compact
-            mr="xs"
-            style={{ float: "left" }}
-          >
-            {" "}
-            Example Flows{" "}
-          </Button>
-          <Button
-            onClick={onClickSettings}
-            size="sm"
-            variant={colorScheme === "light" ? "gradient" : "filled"}
-            color={colorScheme === "light" ? "blue" : "gray"}
-            compact
-            style={{ width: "32px", minWidth: "32px", padding: 0 }}
-          >
-            <IconSettings size={18} />
-          </Button>
+            <Button
+              onClick={onClickExamples}
+              size="sm"
+              variant="filled"
+              color={colorScheme === "light" ? "blue" : "gray"}
+              compact
+              mr="xs"
+              style={{ float: "left" }}
+            >
+              {" "}
+              Example Flows{" "}
+            </Button>
+            <Button
+              onClick={onClickSettings}
+              size="sm"
+              variant={colorScheme === "light" ? "gradient" : "filled"}
+              color={colorScheme === "light" ? "blue" : "gray"}
+              compact
+              style={{ width: "32px", minWidth: "32px", padding: 0 }}
+            >
+              <IconSettings size={18} />
+            </Button>
+          </div>
         </div>
         <div
           style={{
