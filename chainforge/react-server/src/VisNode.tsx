@@ -7,6 +7,7 @@ import React, {
   useImperativeHandle,
   useTransition,
 } from "react";
+import { createPortal } from "react-dom";
 import { Handle, Position } from "reactflow";
 import {
   Button,
@@ -165,11 +166,31 @@ const findEvalResKeys = (resps: LLMResponse[]): Set<string> => {
  *  UTIL FUNCTIONS FOR VIS PLOTS
  */
 
-const smallTextStyle: React.CSSProperties = {
-  fontSize: "10pt",
-  margin: "6pt 3pt 0 3pt",
-  fontWeight: "bold",
+const toolbarItemStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  minWidth: 0,
+};
+
+const toolbarLabelStyle: React.CSSProperties = {
+  fontSize: "8.5pt",
+  fontWeight: 600,
   whiteSpace: "nowrap",
+};
+
+// A native select is as wide as its longest option. Capped, so a long
+// variable name can't stretch the toolbar.
+const toolbarSelectStyles = {
+  root: { minWidth: 56, maxWidth: 130 },
+  input: {
+    height: 22,
+    minHeight: 22,
+    lineHeight: "20px",
+    fontSize: "8.5pt",
+    paddingLeft: 6,
+    textOverflow: "ellipsis",
+  },
 };
 
 const splitAndAddBreaks = (s: string, chunkSize: number) => {
@@ -291,6 +312,8 @@ interface VisNodeData {
   title: string;
   /** Show statistics from evalstats under the plot (local ChainForge only). */
   show_stats?: boolean;
+  /** The graph type picked for data that can be shown more than one way. */
+  graph_type?: string;
 }
 
 /** The statistics to compute for the plot currently shown. */
@@ -384,6 +407,11 @@ export interface VisViewProps {
   whenReplotting?: (isReplotting: boolean) => void;
   /** Show statistics from evalstats under the plot, when the backend has it. */
   showStats?: boolean;
+  /**
+   * Where to put the graph type menu, such as a spot in the node's header.
+   * Without one, the menu ends the toolbar.
+   */
+  graphTypeSlot?: HTMLElement | null;
 }
 export interface VisViewRef {
   resetControls: (responses: LLMResponse[]) => void;
@@ -394,7 +422,15 @@ export interface VisViewRef {
  */
 export const VisView = forwardRef<VisViewRef, VisViewProps>(
   function VisViewComponent(
-    { responses, id, data, whenReplotting, wideFormat, showStats },
+    {
+      responses,
+      id,
+      data,
+      whenReplotting,
+      wideFormat,
+      showStats,
+      graphTypeSlot,
+    },
     ref,
   ) {
     // Color scheme
@@ -414,7 +450,11 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const [isPlotRerenderPending, startTransition] = useTransition();
 
     // For some data types, there are multiple graph options available...
-    const [graphType, setGraphType] = useState(GRAPH_OPTIONS[0]);
+    const [graphType, setGraphType] = useState(
+      () =>
+        GRAPH_OPTIONS.find((o) => o.key === data?.graph_type) ??
+        GRAPH_OPTIONS[0],
+    );
     // Called while replotting, to force the graph type some data needs. The
     // replot runs again when the graph type changes, so this must leave state
     // alone when that type is already selected; otherwise the plot redraws in
@@ -704,6 +744,8 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           // Make the plot background transparent
           paper_bgcolor: "rgba(0,0,0,0)",
           plot_bgcolor: "rgba(0,0,0,0)",
+          // Legend and other text, the same color as the axes.
+          font: { color: colorScheme === "light" ? "#444" : "#ddd" },
           xaxis: {
             color: colorScheme === "light" ? "#444" : "#ddd",
           },
@@ -818,6 +860,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         // Statistics: what the plot below compares, and evalstats' results for
         // it once they arrive (drawn over plots of single groupings).
         let stats_entities: Dict<EvalStatsEntity> | undefined;
+        // With statistics on, bar charts of numeric scores show means rather
+        // than sums, so their confidence intervals fit on the same axis.
+        const show_means =
+          !!showStats && statsAvailable && sel_typeof_eval_res === "Numeric";
         let stats_alpha = 0.05;
         if (showStats && statsAvailable) {
           const llm_factor: EvalStatsFactor = {
@@ -1104,13 +1150,14 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 // let user decide:
                 if (graphType.key === "bar") {
                   d.type = "histogram";
-                  d.histfunc = "sum";
+                  d.histfunc = show_means ? "avg" : "sum";
                   d.y = new Array(x_items.length).fill(shortnames[name]);
                   d.textposition = "none"; // hide the text which appears within each bar
                   const xaxis_title =
-                    metric_axes_labels.length > 0
-                      ? "Sum of '" + selectedEvalResVar + "'"
-                      : "Sum of scores";
+                    (show_means ? "Mean of " : "Sum of ") +
+                    (metric_axes_labels.length > 0
+                      ? "'" + selectedEvalResVar + "'"
+                      : "scores");
                   layout.xaxis = {
                     title: { font: { size: 12 }, text: xaxis_title },
                     ...layout.xaxis,
@@ -1138,16 +1185,20 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               spec.push(d);
             }
           }
-          // Intervals of the mean only fit box plots here; bars show sums.
+          // Intervals of the mean, over boxes or bars of means (not of sums).
           if (
             stats_entities &&
             !plotting_categorical_vars &&
             spec.length > 0 &&
-            spec.every((trace: Dict) => trace.type === "box")
+            spec.every(
+              (trace: Dict) =>
+                trace.type === "box" ||
+                (trace.type === "histogram" && trace.histfunc === "avg"),
+            )
           ) {
             // Boxes mark medians; also mark the means the intervals are around.
             spec.forEach((trace: Dict) => {
-              trace.boxmean = true;
+              if (trace.type === "box") trace.boxmean = true;
             });
             spec.push(
               ciOverlayTrace(
@@ -1255,11 +1306,13 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               let xaxis_title = "score";
               if (graphType.key === "bar") {
                 d.type = "bar";
+                d.offsetgroup = llm;
                 d.textposition = "none"; // hide the text which appears within each bar
                 xaxis_title =
-                  metric_axes_labels.length > 0
-                    ? "Sum of '" + selectedEvalResVar + "'"
-                    : "Sum of scores";
+                  (show_means ? "Mean of " : "Sum of ") +
+                  (metric_axes_labels.length > 0
+                    ? "'" + selectedEvalResVar + "'"
+                    : "scores");
 
                 if (sel_typeof_eval_res === "Numeric") {
                   // To make error bars work, we need to sum the numbers, instead of relying
@@ -1269,10 +1322,20 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   const seq_y_items = [];
                   for (const name of Object.values(shortnames)) {
                     seq_y_items.push(name);
+                    // Skip results that aren't scores (errors), so they don't
+                    // count as zeros in a mean.
                     const xs_for_y = x_items
-                      .filter((_, idx) => y_items[idx] === name)
+                      .filter(
+                        (x, idx) =>
+                          y_items[idx] === name &&
+                          (typeof x === "number" || typeof x === "boolean"),
+                      )
                       .map(castEvalScoreToNum);
-                    sum_x_items = sum_x_items.concat(sum(xs_for_y));
+                    sum_x_items = sum_x_items.concat(
+                      show_means && xs_for_y.length > 0
+                        ? mean(xs_for_y)
+                        : sum(xs_for_y),
+                    );
                     // error_bars = error_bars.concat([
                     //   computeErrorBar(xs_for_y, 1.0, sum),
                     // ]);
@@ -1305,11 +1368,12 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             }
           });
           // Confidence intervals for each group and value, beside their bars
-          // (percent true) or boxes. Bars of sums have none.
+          // (of percent true, or of means) or boxes. Bars of sums have none.
           if (
             stats_entities &&
             (sel_typeof_eval_res === "Boolean" ||
-              spec.every((trace: Dict) => trace.type === "box"))
+              spec.every((trace: Dict) => trace.type === "box") ||
+              (show_means && spec.every((trace: Dict) => trace.type === "bar")))
           ) {
             const entities = stats_entities;
             const scale = sel_typeof_eval_res === "Boolean" ? 100 : 1;
@@ -1640,20 +1704,63 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       observer.observe(elem);
       resizeObserverRef.current = observer;
     }, []);
-    useEffect(() => () => resizeObserverRef.current?.disconnect(), []);
+    // No effect cleanup to disconnect it: React calls the ref with null on
+    // unmount, which does. (In development, StrictMode reruns effect cleanups
+    // on mount without rerunning refs, which left plots never resizing.)
+
+    const graphTypeMenu = (
+      <Menu shadow="md" width={200} withArrow disabled={disableGraphTypeOption}>
+        <Menu.Target>
+          <Button
+            variant="outline"
+            size="xs"
+            compact
+            color="gray"
+            className="nodrag"
+            leftIcon={graphType.icon}
+            disabled={disableGraphTypeOption}
+          >
+            {graphType.label}
+          </Button>
+        </Menu.Target>
+
+        <Menu.Dropdown>
+          {GRAPH_OPTIONS.map((option) => (
+            <Menu.Item
+              key={option.key}
+              icon={option.icon}
+              onClick={() => {
+                setGraphType(option);
+                // Remembered, unlike a graph type the data forces.
+                if (id) setDataPropsForNode(id, { graph_type: option.key });
+              }}
+            >
+              {option.label}
+            </Menu.Item>
+          ))}
+        </Menu.Dropdown>
+      </Menu>
+    );
 
     return (
       <>
         <div
+          // Takes the node's width without adding to it, wrapping when the
+          // node is narrow, so the plot alone decides how wide the node is.
           style={{
             display: "flex",
             justifyContent: "center",
+            alignItems: "center",
             flexWrap: "wrap",
+            columnGap: 10,
+            rowGap: 4,
+            width: 0,
+            minWidth: "100%",
             margin: wideFormat ? "6pt 0 6pt 0" : undefined,
           }}
         >
-          <div style={{ display: "inline-flex", maxWidth: "50%" }}>
-            <span style={smallTextStyle}>y-axis:</span>
+          <div style={toolbarItemStyle}>
+            <span style={toolbarLabelStyle}>y-axis:</span>
             <NativeSelect
               ref={multiSelectRef}
               onChange={handleMultiSelectValueChange}
@@ -1662,90 +1769,36 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               placeholder="Pick param to plot"
               size="xs"
               value={multiSelectValue}
-              miw="80px"
+              styles={toolbarSelectStyles}
             />
           </div>
-          <div
-            style={{
-              display: "inline-flex",
-              justifyContent: "space-evenly",
-              maxWidth: "30%",
-              marginLeft: "10pt",
-            }}
-          >
-            <span style={smallTextStyle}>x-axis:</span>
+          <div style={toolbarItemStyle}>
+            <span style={toolbarLabelStyle}>x-axis:</span>
             <NativeSelect
               className="nodrag nowheel"
               data={evalResVars}
               size="xs"
               value={selectedEvalResVar}
               onChange={handleChangeSelectedEvalResVar}
-              miw="80px"
+              styles={toolbarSelectStyles}
             />
           </div>
-          {availableLLMGroups && availableLLMGroups.length > 1 ? (
-            <div
-              style={{
-                display: "inline-flex",
-                justifyContent: "space-evenly",
-                maxWidth: "30%",
-                marginLeft: "10pt",
-              }}
-            >
-              <span style={smallTextStyle}>group by:</span>
+          {availableLLMGroups && availableLLMGroups.length > 1 && (
+            <div style={toolbarItemStyle}>
+              <span style={toolbarLabelStyle}>group by:</span>
               <NativeSelect
                 className="nodrag nowheel"
                 onChange={handleChangeLLMGroup}
                 data={availableLLMGroups}
                 size="xs"
                 value={selectedLLMGroup}
-                miw="80px"
-                disabled={availableLLMGroups.length <= 1}
+                styles={toolbarSelectStyles}
               />
             </div>
-          ) : (
-            <></>
           )}
-          <div
-            style={{
-              display: "inline-flex",
-              justifyContent: "end",
-              maxWidth: "30%",
-              marginLeft: "10pt",
-            }}
-          >
-            <Menu
-              shadow="md"
-              width={200}
-              withArrow
-              disabled={disableGraphTypeOption}
-            >
-              <Menu.Target>
-                <Button
-                  variant="outline"
-                  size="xs"
-                  color="gray"
-                  leftIcon={graphType.icon}
-                  disabled={disableGraphTypeOption}
-                >
-                  {graphType.label}
-                </Button>
-              </Menu.Target>
-
-              <Menu.Dropdown>
-                {GRAPH_OPTIONS.map((option) => (
-                  <Menu.Item
-                    key={option.key}
-                    icon={option.icon}
-                    onClick={() => setGraphType(option)}
-                  >
-                    {option.label}
-                  </Menu.Item>
-                ))}
-              </Menu.Dropdown>
-            </Menu>
-          </div>
+          {!graphTypeSlot && graphTypeMenu}
         </div>
+        {graphTypeSlot && createPortal(graphTypeMenu, graphTypeSlot)}
         {!wideFormat && <hr />}
         <div
           className="nodrag"
@@ -1829,6 +1882,9 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
   const [pastInputs, setPastInputs] = useState<JSONCompatible>([]);
   const [responses, setResponses] = useState<LLMResponse[]>([]);
 
+  // A spot in the header for VisView's graph type menu.
+  const [graphTypeSlot, setGraphTypeSlot] = useState<HTMLElement | null>(null);
+
   // Statistics are switched on from the header, when the backend has evalstats.
   const [statsAvailable, setStatsAvailable] = useState(false);
   useEffect(() => {
@@ -1884,39 +1940,48 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         nodeId={id}
         status={status}
         icon={"📊"}
-        customButtons={
-          statsAvailable
-            ? [
-                <Switch
-                  key="stats"
-                  size="xs"
-                  label="Stats"
-                  title="Confidence intervals and significance tests, from evalstats"
-                  checked={data.show_stats ?? false}
-                  onChange={(event) =>
-                    setDataPropsForNode(id, {
-                      show_stats: event.currentTarget.checked,
-                    })
-                  }
-                  className="nodrag"
-                  styles={{
-                    root: {
-                      display: "inline-flex",
-                      alignItems: "center",
-                      marginRight: 6,
-                    },
-                    label: { paddingLeft: 4, fontSize: "9pt" },
-                  }}
-                />,
-              ]
-            : undefined
-        }
+        customButtons={[
+          // The graph type menu (put here by VisView) and the Stats switch, as
+          // tall as the close button so they line up with it.
+          <span
+            key="vis-header-controls"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              height: 20,
+              marginRight: 6,
+              verticalAlign: "top",
+              // The close button sits lower than the line it's on.
+              position: "relative",
+              top: 4,
+            }}
+          >
+            <span ref={setGraphTypeSlot} style={{ display: "inline-flex" }} />
+            {statsAvailable && (
+              <Switch
+                size="xs"
+                label="Stats"
+                title="Confidence intervals and significance tests, from evalstats"
+                checked={data.show_stats ?? false}
+                onChange={(event) =>
+                  setDataPropsForNode(id, {
+                    show_stats: event.currentTarget.checked,
+                  })
+                }
+                className="nodrag"
+                styles={{ label: { paddingLeft: 4, fontSize: "9pt" } }}
+              />
+            )}
+          </span>,
+        ]}
       />
       <VisView
         ref={visViewRef}
         id={id}
         responses={responses}
         showStats={data.show_stats ?? false}
+        graphTypeSlot={graphTypeSlot}
         data={data}
         whenReplotting={(isReplotting) =>
           setStatus(isReplotting ? Status.LOADING : Status.NONE)
