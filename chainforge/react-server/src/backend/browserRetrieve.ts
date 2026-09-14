@@ -38,6 +38,13 @@ const KEY_SEP = "\u0000";
  */
 export const BROWSER_SEMANTIC_METHOD = "browser_embedding";
 
+/**
+ * The chunkMethod of rows from a server method that loaded an existing index,
+ * which ignores the connected chunks. Matches EXISTING_INDEX_LABEL in
+ * chainforge/rag/retrievers.py.
+ */
+export const EXISTING_INDEX_CHUNK_METHOD = "(existing index)";
+
 /** A retrieval method as the Retrieval node sends it. */
 export interface RetrieveMethodSpec {
   id: string;
@@ -185,34 +192,74 @@ export function rrfFuse(
   return fused;
 }
 
-/** Weighted average of raw scores, ported from rerankers.weighted_avg_fuse. */
+/**
+ * Identifies one chunk across the rankings being fused, as
+ * rerankers.fusion_doc_key does.
+ *
+ * chunkId alone is only unique within a document, so it would fuse chunk 0 of
+ * one document with chunk 0 of another. chunkId leads so ties still sort by it.
+ */
+export function fusionDocKey(row: RetrieveResponseRow): string {
+  return [
+    row.metavars.chunkId ?? "",
+    row.metavars.docTitle ?? "",
+    row.text ?? "",
+  ]
+    .map(String)
+    .join(KEY_SEP);
+}
+
+/**
+ * Rescales one method's scores to [0, 1], as rerankers._min_max_scaled does,
+ * so methods scoring on larger scales don't dominate the sum.
+ */
+function minMaxScaled(scores: Dict<number>): Dict<number> {
+  const values = Object.values(scores);
+  if (values.length === 0) return {};
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const scaled: Dict<number> = {};
+  for (const [doc, s] of Object.entries(scores))
+    scaled[doc] = hi === lo ? 1.0 : (s - lo) / (hi - lo);
+  return scaled;
+}
+
+/**
+ * Weighted sum of each method's scores after scaling each to [0, 1], ported
+ * from rerankers.weighted_avg_fuse.
+ */
 export function weightedAvgFuse(
   methodLists: Dict<StagedHit[]>,
   weightsByMethod: Dict<number> = {},
 ): [string, number, RetrieveResponseRow][] {
   const allDocs = new Set<string>();
-  const rawScore: Dict<Dict<number>> = {};
+  const scaledScore: Dict<Dict<number>> = {};
+  const rankOf: Dict<Dict<number>> = {};
   for (const [mid, items] of Object.entries(methodLists)) {
-    rawScore[mid] = {};
+    const raw: Dict<number> = {};
+    rankOf[mid] = {};
     for (const it of items) {
       allDocs.add(it.doc_id);
-      rawScore[mid][it.doc_id] = Number(it.score);
+      raw[it.doc_id] = Number(it.score);
+      rankOf[mid][it.doc_id] ??= it.rank;
     }
+    scaledScore[mid] = minMaxScaled(raw);
   }
 
   const fused: [string, number, RetrieveResponseRow][] = [];
   for (const doc of allDocs) {
     let sum = 0;
-    for (const [mid, scores] of Object.entries(rawScore))
+    for (const [mid, scores] of Object.entries(scaledScore))
       sum += (weightsByMethod[mid] ?? 1.0) * (scores[doc] ?? 0.0);
 
-    // _best_obj_for_doc: the method ranking this doc highest supplies the row.
+    // _best_obj_for_doc: the method ranking this doc highest supplies the row;
+    // on a tie, the method listed first.
     let bestMid: string | undefined;
-    let bestScore = -Infinity;
-    for (const [mid, scores] of Object.entries(rawScore)) {
-      const s = scores[doc];
-      if (s !== undefined && s > bestScore) {
-        bestScore = s;
+    let bestRank = Infinity;
+    for (const [mid, ranks] of Object.entries(rankOf)) {
+      const r = ranks[doc];
+      if (r !== undefined && r < bestRank) {
+        bestRank = r;
         bestMid = mid;
       }
     }
@@ -377,17 +424,35 @@ export function fusedRows(
     for (const mid of group.methodKeys ?? []) groupByMethodId[mid] = group.id;
   }
 
+  // A loaded index ignores the connected chunks, so its hits fuse with every
+  // chunking method's rankings, as in retrieve() in flask_app.py.
+  const chunkMethods = [
+    ...new Set(
+      (request.chunks ?? []).map(
+        (chunk) => (chunk.fill_history?.chunkMethod as string) ?? "unknown",
+      ),
+    ),
+  ];
+
   // (queryText, chunkMethod) -> methodId -> staged hits
   const staging: Dict<Dict<StagedHit[]>> = {};
   for (const row of rows) {
-    const key = `${row.prompt}${KEY_SEP}${row.vars.chunkMethod}`;
     const item = row.eval_res.items[0];
-    ((staging[key] ??= {})[row.metavars.methodId] ??= []).push({
-      doc_id: row.metavars.chunkId ?? "",
+    const staged: StagedHit = {
+      doc_id: fusionDocKey(row),
       rank: item.rank,
       score: Number(item.similarity ?? 0),
       obj: row,
-    });
+    };
+    const stagedChunkMethods =
+      row.vars.chunkMethod === EXISTING_INDEX_CHUNK_METHOD &&
+      chunkMethods.length > 0
+        ? chunkMethods
+        : [row.vars.chunkMethod];
+    for (const chunkMethod of stagedChunkMethods) {
+      const key = `${row.prompt}${KEY_SEP}${chunkMethod}`;
+      ((staging[key] ??= {})[row.metavars.methodId] ??= []).push(staged);
+    }
   }
 
   const fused: RetrieveResponseRow[] = [];
@@ -426,6 +491,7 @@ export function fusedRows(
         const row: RetrieveResponseRow = JSON.parse(JSON.stringify(baseRow));
         row.eval_res.items = [{ similarity: fusedScore, rank: index + 1 }];
         row.vars.retrievalMethod = label;
+        row.vars.chunkMethod = chunkMethod;
         row.metavars = {
           ...row.metavars,
           methodId: `group:${gid}`,

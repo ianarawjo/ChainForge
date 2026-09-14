@@ -119,17 +119,44 @@ class TestRanking:
 
 
 class TestNoMatchBehaviour:
-    """The two families differ here deliberately; pin the difference down."""
+    """What each method returns when no query word matches; pinned deliberately."""
 
-    @pytest.mark.parametrize("method", SCORING_METHODS)
-    def test_scoring_methods_still_return_chunks_at_zero(self, method, chunks):
-        hits = hits_for(method, chunks, "zzzz qqqq", top_k=2)
+    def test_bm25_still_returns_chunks_at_zero(self, chunks):
+        hits = hits_for("bm25", chunks, "zzzz qqqq", top_k=2)
         assert len(hits) == 2
         assert all(h["similarity"] == pytest.approx(0.0) for h in hits)
 
-    @pytest.mark.parametrize("method", OVERLAP_METHODS)
-    def test_overlap_methods_return_nothing(self, method, chunks):
+    @pytest.mark.parametrize("method", OVERLAP_METHODS + ["tfidf"])
+    def test_methods_return_nothing(self, method, chunks):
+        """Regression for tfidf: it returned the first top_k chunks, each scored 0."""
         assert hits_for(method, chunks, "zzzz qqqq", top_k=2) == []
+
+
+class TestTfidfVocabulary:
+    """Regression: max_features defaulted to 500, dropping the rare words TF-IDF relies on.
+
+    On a novel, "Who is the author?" lost its only content word, so every
+    chunk scored 0.
+    """
+
+    @pytest.fixture
+    def corpus(self):
+        # 600 words that are in every chunk, and one rare word in a single chunk.
+        filler = " ".join(f"filler{i}" for i in range(600))
+        corpus = [{"text": filler, "chunkId": f"c{i}"} for i in range(10)]
+        corpus[7]["text"] += " author conrad"
+        return corpus
+
+    def test_rare_words_are_kept_by_default(self, corpus):
+        assert hits_for("tfidf", corpus, "author", top_k=1)[0]["chunkId"] == "c7"
+
+    @pytest.mark.parametrize("no_cap", [0, "0", "", None])
+    def test_zero_or_blank_means_no_cap(self, corpus, no_cap):
+        assert hits_for("tfidf", corpus, "author", top_k=1, max_features=no_cap)[0]["chunkId"] == "c7"
+
+    def test_a_cap_can_still_be_set(self, corpus):
+        # Capped to the 500 most frequent words, "author" is out of vocabulary.
+        assert hits_for("tfidf", corpus, "author", top_k=1, max_features=500) == []
 
 
 class TestBM25Settings:

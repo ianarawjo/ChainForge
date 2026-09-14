@@ -2,6 +2,15 @@ import sys
 from typing import List, Dict, Any, Callable, Union
 from collections import defaultdict
 import copy
+from functools import lru_cache
+
+
+@lru_cache(maxsize=2)
+def _load_cross_encoder(model_name: str):
+    """Load a cross-encoder once per process rather than on every /rerank call."""
+    from sentence_transformers import CrossEncoder
+    return CrossEncoder(model_name)
+
 
 # === Reranking Registry ===
 class RerankingMethodRegistry:
@@ -72,8 +81,7 @@ def cross_encoder_rerank(documents: List[str], query: str = "", **kwargs: Any) -
     batch_size = int(kwargs.get("batch_size", 32))
     
     try:
-        # Load the cross-encoder model
-        model = CrossEncoder(model_name)
+        model = _load_cross_encoder(model_name)
         
         # Create query-document pairs
         pairs = [(query, doc) for doc in documents]
@@ -110,7 +118,7 @@ def cohere_rerank(documents: List[str], query: str = "", **kwargs: Any) -> List[
         **kwargs: Additional settings including:
             - model: Cohere model name (e.g., 'rerank-v3.5')
             - top_k: Number of top documents to return
-            - max_chunks_per_doc: Maximum chunks per document
+            - max_tokens_per_doc: Longer documents are truncated to this many tokens
             - api_keys: Dictionary containing API keys (optional)
     
     Returns:
@@ -137,42 +145,35 @@ def cohere_rerank(documents: List[str], query: str = "", **kwargs: Any) -> List[
     
     model_name = kwargs.get("model", "rerank-v3.5")
     top_k = int(kwargs.get("top_k", min(5, len(documents))))
-    max_chunks_per_doc = int(kwargs.get("max_chunks_per_doc", 10))
+    max_tokens_per_doc = kwargs.get("max_tokens_per_doc")
     api_keys = kwargs.get("api_keys")
-    
+
     # Get API key from api_keys parameter or environment
     import os
     api_key = api_keys and api_keys.get("Cohere") or os.getenv("COHERE_API_KEY")
     if not api_key:
         raise ValueError("Cohere API key not found in api_keys parameter or COHERE_API_KEY environment variable")
-    
+
     try:
-        # Initialize Cohere client
         co = cohere.ClientV2(api_key)
-        
-        # Limit documents if too many
-        docs_to_rerank = documents[:max_chunks_per_doc * top_k] if len(documents) > max_chunks_per_doc * top_k else documents
-        
-        # Call Cohere rerank API
-        response = co.rerank(
-            model=model_name,
-            query=query,
-            documents=docs_to_rerank,
-            top_n=top_k
-        )
-        
-        # Format results
-        results = []
-        for result in response.results:
-            original_index = result.index
-            results.append({
-                "document": docs_to_rerank[original_index],
+
+        request = {"model": model_name, "query": query, "documents": documents, "top_n": top_k}
+        # Flows saved earlier carry max_chunks_per_doc instead. Cohere's v2 API
+        # has no such parameter, and it was being used to drop every document
+        # past max_chunks_per_doc * top_k before reranking, so it is ignored.
+        if max_tokens_per_doc not in (None, ""):
+            request["max_tokens_per_doc"] = int(max_tokens_per_doc)
+        response = co.rerank(**request)
+
+        return [
+            {
+                "document": documents[result.index],
                 "score": float(result.relevance_score),
-                "index": original_index
-            })
-        
-        return results
-        
+                "index": result.index,
+            }
+            for result in response.results
+        ]
+
     except Exception as e:
         print(f"Error in Cohere reranking: {e}", file=sys.stderr)
         raise
@@ -190,8 +191,35 @@ def _best_obj_for_doc(method_lists, doc_id):
             return it["obj"]
     return None
 
+def fusion_doc_key(chunk_id, doc_title, text):
+    """Identifies one chunk across the rankings being fused.
+
+    chunkId alone is not enough: it is the chunk's position within its own
+    document, so chunk 0 of one document would fuse with chunk 0 of another.
+    chunkId leads so that, when fused scores tie, order still follows it.
+    Mirrored by fusionDocKey in react-server/src/backend/browserRetrieve.ts.
+    """
+    return "\u0000".join((str(chunk_id or ""), str(doc_title or ""), str(text or "")))
+
+
+def _min_max_scaled(scores):
+    """Rescale one method's scores to [0, 1].
+
+    Methods score on unrelated scales -- BM25 relative to its best hit, cosine
+    around 0.5-1, cross-encoders unbounded -- so summing raw scores lets
+    whichever runs largest decide the ranking. If every score is the same,
+    each is that method's best, so each becomes 1.
+    """
+    if not scores:
+        return {}
+    lo, hi = min(scores.values()), max(scores.values())
+    if hi == lo:
+        return {d: 1.0 for d in scores}
+    return {d: (s - lo) / (hi - lo) for d, s in scores.items()}
+
+
 def weighted_avg_fuse(method_lists, weights_by_method=None):
-    """Simple weighted average of raw sccores"""
+    """Weighted sum of each method's scores, after scaling each method to [0, 1]."""
     weights_by_method = weights_by_method or {}
 
     # gather all doc ids present in any method list
@@ -200,9 +228,9 @@ def weighted_avg_fuse(method_lists, weights_by_method=None):
         for it in items:
             all_doc_ids.add(it["doc_id"])
 
-    # index raw scores by method -> doc_id -> score
+    # index scaled scores by method -> doc_id -> score
     raw_score = {
-        mid: {it["doc_id"]: float(it["score"]) for it in items}
+        mid: _min_max_scaled({it["doc_id"]: float(it["score"]) for it in items})
         for mid, items in method_lists.items()
     }
 

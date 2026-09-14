@@ -7,7 +7,7 @@ milliseconds.
 
 import pytest
 
-from chainforge.rag.rerankers import rrf_fuse, weighted_avg_fuse
+from chainforge.rag.rerankers import fusion_doc_key, rrf_fuse, weighted_avg_fuse
 
 
 def item(doc_id, rank, score, text=None):
@@ -22,14 +22,27 @@ def item(doc_id, rank, score, text=None):
 
 class TestWeightedAverageFuse:
 
-    def test_sums_scores_across_methods(self):
+    def test_sums_each_methods_scaled_scores(self):
+        # Each method's scores are min-max scaled to [0, 1] before summing.
         fused = weighted_avg_fuse({
-            "m1": [item("a", 1, 0.9), item("b", 2, 0.5)],
-            "m2": [item("a", 1, 0.7), item("b", 2, 0.1)],
+            "m1": [item("a", 1, 0.9), item("b", 2, 0.5), item("c", 3, 0.7)],
+            "m2": [item("a", 1, 0.7), item("b", 2, 0.1), item("c", 3, 0.1)],
         })
         scores = {doc_id: score for doc_id, score, _ in fused}
-        assert scores["a"] == pytest.approx(1.6)
-        assert scores["b"] == pytest.approx(0.6)
+        assert scores == pytest.approx({"a": 2.0, "b": 0.0, "c": 0.5})
+
+    def test_a_method_scoring_on_a_larger_scale_does_not_dominate(self):
+        """Regression: raw scores were summed, so an unbounded scorer decided alone."""
+        fused = weighted_avg_fuse({
+            "cosine": [item("a", 1, 0.9), item("b", 2, 0.8)],
+            "unbounded": [item("b", 1, 30.0), item("a", 2, 10.0)],
+        })
+        scores = {doc_id: score for doc_id, score, _ in fused}
+        assert scores["a"] == pytest.approx(scores["b"])
+
+    def test_tied_or_single_scores_scale_to_one(self):
+        fused = weighted_avg_fuse({"m1": [item("a", 1, 0.3), item("b", 2, 0.3)]})
+        assert [score for _, score, _ in fused] == pytest.approx([1.0, 1.0])
 
     def test_sorted_by_descending_score(self):
         fused = weighted_avg_fuse({
@@ -38,30 +51,39 @@ class TestWeightedAverageFuse:
         assert [doc_id for doc_id, _, _ in fused] == ["high", "low"]
 
     def test_weights_are_applied_per_method(self):
-        # m2 is weighted to zero, so only m1's score should survive.
+        # m2 is weighted to zero, so only m1's ranking should count.
         fused = weighted_avg_fuse(
             {
-                "m1": [item("a", 1, 0.4)],
-                "m2": [item("a", 1, 100.0)],
+                "m1": [item("a", 1, 0.4), item("b", 2, 0.2)],
+                "m2": [item("b", 1, 100.0), item("a", 2, 0.0)],
             },
             weights_by_method={"m1": 1.0, "m2": 0.0},
         )
-        assert fused[0][1] == pytest.approx(0.4)
+        assert [(d, s) for d, s, _ in fused] == [("a", pytest.approx(1.0)), ("b", pytest.approx(0.0))]
 
     def test_missing_weight_defaults_to_one(self):
         fused = weighted_avg_fuse(
-            {"m1": [item("a", 1, 0.25)], "m2": [item("a", 1, 0.25)]},
+            {"m1": [item("a", 1, 0.25), item("b", 2, 0.1)],
+             "m2": [item("a", 1, 0.25), item("b", 2, 0.1)]},
             weights_by_method={"m1": 2.0},  # m2 unspecified
         )
-        assert fused[0][1] == pytest.approx(2.0 * 0.25 + 1.0 * 0.25)
+        assert fused[0][1] == pytest.approx(2.0 * 1.0 + 1.0 * 1.0)
 
     def test_doc_missing_from_one_method_contributes_zero(self):
         fused = weighted_avg_fuse({
-            "m1": [item("a", 1, 0.6)],
-            "m2": [item("b", 1, 0.5)],
+            "m1": [item("a", 1, 0.6), item("c", 2, 0.2)],
+            "m2": [item("b", 1, 0.5), item("c", 2, 0.1)],
         })
         scores = {doc_id: score for doc_id, score, _ in fused}
-        assert scores == pytest.approx({"a": 0.6, "b": 0.5})
+        assert scores == pytest.approx({"a": 1.0, "b": 1.0, "c": 0.0})
+
+    def test_object_comes_from_the_best_ranking_method(self):
+        fused = weighted_avg_fuse({
+            "m1": [item("a", 5, 0.9, text="from m1")],
+            "m2": [item("a", 1, 0.1, text="from m2")],
+        })
+        _, _, obj = fused[0]
+        assert obj["text"] == "from m2"
 
     def test_carries_through_a_response_object(self):
         fused = weighted_avg_fuse({"m1": [item("a", 1, 0.5, text="hello")]})
@@ -208,3 +230,33 @@ class TestFusionThroughEndpoint:
         body["fusion_enabled"] = False
         sigs = self.signatures(client, body)
         assert not any(str(s).startswith("fusion:") for s in sigs)
+
+    @pytest.mark.parametrize("fmethod", ["reciprocal_rank_fusion", "weighted_average"])
+    def test_chunks_sharing_an_id_across_documents_stay_separate(self, client, fmethod):
+        """Regression: chunkId is a per-document index, and fusion keyed on it alone.
+
+        So chunk 0 of one document fused with chunk 0 of another, and one of
+        them vanished from the fused ranking.
+        """
+        chunks = [
+            {"text": text, "fill_history": {"chunkMethod": "cm"},
+             "metavars": {"docTitle": doc, "chunkId": "0"}}
+            for doc, text in [("a.md", "cats sit on mats"), ("b.md", "dogs chase cats")]
+        ]
+        resp = client.post("/retrieve", json=fusion_request(fmethod, chunks, [{"text": "cats"}]))
+        assert resp.status_code == 200, resp.get_json()
+        fused = [r for r in resp.get_json()
+                 if str(r["metavars"].get("retrievalMethodSignature")).startswith("fusion:")]
+        assert sorted(r["metavars"]["docTitle"] for r in fused) == ["a.md", "b.md"]
+
+
+class TestFusionDocKey:
+
+    def test_same_chunk_id_in_different_documents_differs(self):
+        assert fusion_doc_key("0", "a.md", "text") != fusion_doc_key("0", "b.md", "text")
+
+    def test_same_chunk_from_different_methods_matches(self):
+        assert fusion_doc_key("3", "a.md", "text") == fusion_doc_key("3", "a.md", "text")
+
+    def test_missing_parts_are_empty(self):
+        assert fusion_doc_key(None, None, None) == fusion_doc_key("", "", "")

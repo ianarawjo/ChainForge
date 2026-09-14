@@ -630,7 +630,17 @@ export const RetrievalMethodListContainer = forwardRef<
   const handleSettingsUpdate = useCallback(
     (key: string, newSettings: any) => {
       const newItems = methodItems.map((m) =>
-        m.key === key ? { ...m, settings: newSettings } : m,
+        m.key !== key
+          ? m
+          : {
+              ...m,
+              settings: newSettings,
+              // The form can switch provider, and requests are routed by the
+              // item's own provider, so keep the two in step.
+              ...(m.embeddingProvider && newSettings?.embeddingProvider
+                ? { embeddingProvider: newSettings.embeddingProvider }
+                : {}),
+            },
       );
       setMethodItems(newItems);
       notifyItemsChanged(newItems);

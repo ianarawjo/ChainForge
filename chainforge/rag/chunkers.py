@@ -35,8 +35,10 @@ def overlapping_openai_tiktoken(text: str, **kwargs: Any) -> List[str]:
     import tiktoken
 
     model = kwargs.get("model", "gpt-3.5-turbo")
-    chunk_size = int(kwargs.get("chunk_size", 200))
-    chunk_overlap = int(kwargs.get("chunk_overlap", 50))
+    chunk_size = max(1, int(kwargs.get("chunk_size", 200)))
+    # Clamp the overlap below the size, or the window never advances: with the
+    # default overlap of 50 and a size of 30, each step went back to token 0.
+    chunk_overlap = min(max(0, int(kwargs.get("chunk_overlap", 50))), chunk_size - 1)
 
     # Consider making model name configurable if needed
     enc = None
@@ -90,8 +92,10 @@ def overlapping_huggingface_tokenizers(text: str, **kwargs: Any) -> List[str]:
         print(f"Error loading HuggingFace tokenizer model '{tokenizer}': {e}", file=sys.stderr)
         raise ValueError(f"Failed to load HuggingFace tokenizer model {tokenizer}.") from e
     
-    chunk_size = int(kwargs.get("chunk_size", 200))
-    chunk_overlap = int(kwargs.get("chunk_overlap", 50))
+    chunk_size = max(1, int(kwargs.get("chunk_size", 200)))
+    # Clamp the overlap below the size, or the window never advances: with the
+    # default overlap of 50 and a size of 30, each step went back to token 0.
+    chunk_overlap = min(max(0, int(kwargs.get("chunk_overlap", 50))), chunk_size - 1)
 
     tokens = tokenizer.encode(text, add_special_tokens=False) # Avoid splitting on special tokens
     result = []
@@ -173,11 +177,14 @@ _SIMPLE_EN_STOPWORDS = {
     "s", "t", "can", "will", "just", "don", "should", "now"
 }
 @ChunkingMethodRegistry.register("syntax_texttiling")
-def syntax_texttiling(text: str) -> List[str]:
+def syntax_texttiling(text: str, **kwargs: Any) -> List[str]:
     from nltk.tokenize import TextTilingTokenizer
 
     # Pass our own stopwords to avoid touching nltk.corpus.stopwords
-    ttt = TextTilingTokenizer(stopwords=_SIMPLE_EN_STOPWORDS)
+    # w: pseudo-sentence size; k: block size compared across each gap.
+    w = int(kwargs.get("w", 20))
+    k = int(kwargs.get("k", 10))
+    ttt = TextTilingTokenizer(w=w, k=k, stopwords=_SIMPLE_EN_STOPWORDS)
     chunks = ttt.tokenize(text)
     return chunks if chunks else [text]
 

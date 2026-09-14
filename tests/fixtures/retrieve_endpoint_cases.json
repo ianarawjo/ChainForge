@@ -2009,7 +2009,7 @@
             "items": [
               {
                 "rank": 1,
-                "similarity": 1.0
+                "similarity": 2.0
               }
             ]
           },
@@ -2036,7 +2036,7 @@
             "items": [
               {
                 "rank": 2,
-                "similarity": 0.0
+                "similarity": 1.0
               }
             ]
           },
@@ -2063,7 +2063,7 @@
             "items": [
               {
                 "rank": 1,
-                "similarity": 1.0
+                "similarity": 2.0
               }
             ]
           },
@@ -2090,7 +2090,7 @@
             "items": [
               {
                 "rank": 2,
-                "similarity": 0.0
+                "similarity": 1.0
               }
             ]
           },

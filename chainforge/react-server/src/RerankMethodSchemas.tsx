@@ -122,13 +122,14 @@ export const CohereRerankSchema: ModelSettingsDict = {
         maximum: 100,
         description: "Number of top documents to return after reranking",
       },
-      max_chunks_per_doc: {
+      max_tokens_per_doc: {
         type: "number",
-        default: 10,
-        title: "Max Chunks per Document",
-        minimum: 1,
-        maximum: 100,
-        description: "Maximum number of chunks to consider per document",
+        default: 4096,
+        title: "Max Tokens per Document",
+        minimum: 128,
+        maximum: 4096,
+        description:
+          "Longer documents are truncated to this many tokens before scoring.",
       },
     },
   },
@@ -150,12 +151,12 @@ export const CohereRerankSchema: ModelSettingsDict = {
         step: 1,
       },
     },
-    max_chunks_per_doc: {
+    max_tokens_per_doc: {
       "ui:widget": "range",
       "ui:options": {
-        min: 1,
-        max: 100,
-        step: 1,
+        min: 128,
+        max: 4096,
+        step: 128,
       },
     },
   },
