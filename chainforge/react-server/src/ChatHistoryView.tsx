@@ -2,21 +2,24 @@ import React, { forwardRef } from "react";
 
 export interface ChatHistoryViewProps {
   messages: React.ReactNode[];
-  bgColors?: string[];
+  /** Class names for the bubbles, alternating, e.g. to color the conversation and the new message differently. */
+  bubbleClassNames?: string[];
 }
 
 const ChatHistoryView = forwardRef<HTMLDivElement, ChatHistoryViewProps>(
-  function ChatHistoryView({ messages, bgColors }, ref) {
-    const _bg_color = bgColors !== undefined ? bgColors : ["#333", "#333"];
+  function ChatHistoryView({ messages, bubbleClassNames }, ref) {
     return (
       <div ref={ref} className="chat-history">
         {messages.map((msg, idx) => (
           <div
             key={idx}
             className={
-              "chat-bubble chat-msg-" + (idx % 2 === 0 ? "left" : "right")
+              "chat-bubble chat-msg-" +
+              (idx % 2 === 0 ? "left" : "right") +
+              (bubbleClassNames
+                ? " " + bubbleClassNames[idx % bubbleClassNames.length]
+                : "")
             }
-            style={{ backgroundColor: _bg_color[idx % 2] }}
           >
             {msg}
           </div>

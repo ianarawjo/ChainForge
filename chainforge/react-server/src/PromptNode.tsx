@@ -1675,7 +1675,7 @@ Soft failing by replacing undefined with empty strings.`,
       {node_type === "chat" ? (
         <div ref={setRef}>
           <ChatHistoryView
-            bgColors={["#ccc", "#ceeaf5b1"]}
+            bubbleClassNames={["chat-bubble-past", "chat-bubble-prompt"]}
             messages={[
               "(Past conversation)",
               <Textarea
