@@ -7,7 +7,7 @@
  * the response is graded or annotated. The text is clamped to a few lines;
  * clicking a response opens it in full.
  */
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useState } from "react";
 import { ActionIcon, CopyButton, Tooltip } from "@mantine/core";
 import { IconCheck, IconCopy } from "@tabler/icons-react";
 import {
@@ -18,6 +18,7 @@ import {
   isImageResponseData,
 } from "./backend/typing";
 import { llmResponseDataToString, truncStr } from "./backend/utils";
+import { StringLookup } from "./backend/cache";
 import { formatScore, passFail } from "./backend/responseGrid";
 import { MediaBox } from "./ResponseBoxes";
 
@@ -160,6 +161,47 @@ function groupIdentical(
   );
 }
 
+/** A response's reasoning (a reasoning model's "thinking"), if it has any. */
+function reasoningAt(response: LLMResponse, index: number): string | undefined {
+  const r = response.reasoning?.[index];
+  return (typeof r === "number" ? StringLookup.get(r) : r) || undefined;
+}
+
+/** Marks a response that has reasoning: previews it on hover, and expands it on click. */
+const ReasoningChip: React.FC<{
+  reasoning: string;
+  expanded: boolean;
+  onToggle: () => void;
+}> = ({ reasoning, expanded, onToggle }) => (
+  <Tooltip
+    label={
+      // Keep the reasoning's line breaks, e.g. between steps.
+      <span style={{ whiteSpace: "pre-line" }}>
+        {truncStr(reasoning, 300) ?? reasoning}
+      </span>
+    }
+    multiline
+    width={320}
+    openDelay={400}
+    withArrow
+    withinPortal
+    disabled={expanded}
+  >
+    <button
+      type="button"
+      className="cf-reasoning-chip"
+      aria-expanded={expanded}
+      onClick={(e) => {
+        // Don't also open the full response.
+        e.stopPropagation();
+        onToggle();
+      }}
+    >
+      💭 Reasoning
+    </button>
+  </Tooltip>
+);
+
 export const TableResponseCell: React.FC<TableResponseCellProps> = ({
   responses,
   lines,
@@ -171,96 +213,135 @@ export const TableResponseCell: React.FC<TableResponseCellProps> = ({
   modelColorFor,
   modelNameFor,
   varsFor,
-}) => (
-  <div
-    className="cf-table-cell"
-    style={{ "--cf-lines": lines } as React.CSSProperties}
-  >
-    {responses.flatMap((response) => {
-      const modelColor = modelColorFor?.(response);
-      const modelName = modelNameFor?.(response);
-      const vars = varsFor?.(response);
-      return groupIdentical(response, showText).map(
-        ({ text, data, indices }) => {
-          const score = hideScores
-            ? undefined
-            : response.eval_res?.items?.[indices[0]];
-          const open = () => {
-            // Selecting text to copy it shouldn't open the full view.
-            if (window.getSelection()?.toString()) return;
-            onOpen?.(response, indices[0]);
-          };
-          return (
-            <div
-              key={`${response.uid}-${indices[0]}`}
-              className={
-                modelColor
-                  ? "cf-table-resp"
-                  : "cf-table-resp cf-table-resp-neutral"
-              }
-              style={
-                modelColor
-                  ? ({
-                      "--cf-model-color": modelColor,
-                      "--cf-band-text": readableTextOn(modelColor),
-                    } as React.CSSProperties)
-                  : undefined
-              }
-            >
-              <div className="cf-table-resp-band">
-                {modelName && (
-                  <span className="cf-table-resp-model">{modelName}</span>
-                )}
-                <ScoreChips score={score} />
-                {indices.length > 1 && (
-                  <span
-                    className="cf-table-count"
-                    title={`${indices.length} identical responses`}
-                  >
-                    ×{indices.length}
-                  </span>
-                )}
-                <div className="cf-table-resp-toolbar">
-                  <Suspense>
-                    <ResponseRatingToolbar
-                      uid={response.uid}
-                      innerIdxs={indices}
-                      responseData={text}
-                      revealOnHover
-                      hideCopy
+}) => {
+  // Responses whose reasoning is expanded, by response uid and position.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const toggleExpanded = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+
+  return (
+    <div
+      className="cf-table-cell"
+      style={{ "--cf-lines": lines } as React.CSSProperties}
+    >
+      {responses.flatMap((response) => {
+        const modelColor = modelColorFor?.(response);
+        const modelName = modelNameFor?.(response);
+        const vars = varsFor?.(response);
+        return groupIdentical(response, showText).map(
+          ({ text, data, indices }) => {
+            const score = hideScores
+              ? undefined
+              : response.eval_res?.items?.[indices[0]];
+            const open = () => {
+              // Selecting text to copy it shouldn't open the full view.
+              if (window.getSelection()?.toString()) return;
+              onOpen?.(response, indices[0]);
+            };
+            const cardKey = `${response.uid}-${indices[0]}`;
+            const reasoning = onlyShowScores
+              ? undefined
+              : reasoningAt(response, indices[0]);
+            // Identical responses share a card, but may have reasoned differently.
+            const reasoningDiffers =
+              reasoning !== undefined &&
+              indices.some((i) => reasoningAt(response, i) !== reasoning);
+            const showReasoning =
+              reasoning !== undefined && expanded.has(cardKey);
+            return (
+              <div
+                key={cardKey}
+                className={
+                  modelColor
+                    ? "cf-table-resp"
+                    : "cf-table-resp cf-table-resp-neutral"
+                }
+                style={
+                  modelColor
+                    ? ({
+                        "--cf-model-color": modelColor,
+                        "--cf-band-text": readableTextOn(modelColor),
+                      } as React.CSSProperties)
+                    : undefined
+                }
+              >
+                <div className="cf-table-resp-band">
+                  {modelName && (
+                    <span className="cf-table-resp-model">{modelName}</span>
+                  )}
+                  <ScoreChips score={score} />
+                  {reasoning && (
+                    <ReasoningChip
+                      reasoning={reasoning}
+                      expanded={showReasoning}
+                      onToggle={() => toggleExpanded(cardKey)}
                     />
-                  </Suspense>
-                </div>
-              </div>
-              {vars && Object.keys(vars).length > 0 && (
-                <div className="cf-table-resp-vars">
-                  {Object.entries(vars).map(([name, value]) => (
-                    <span key={name}>
-                      <b>{name}</b> = {value}
+                  )}
+                  {indices.length > 1 && (
+                    <span
+                      className="cf-table-count"
+                      title={`${indices.length} identical responses`}
+                    >
+                      ×{indices.length}
                     </span>
-                  ))}
+                  )}
+                  <div className="cf-table-resp-toolbar">
+                    <Suspense>
+                      <ResponseRatingToolbar
+                        uid={response.uid}
+                        innerIdxs={indices}
+                        responseData={text}
+                        revealOnHover
+                        hideCopy
+                      />
+                    </Suspense>
+                  </div>
                 </div>
-              )}
-              {!onlyShowScores &&
-                (isImageResponseData(data) ? (
-                  <div className="cf-table-resp-image" onClick={open}>
-                    <MediaBox mediaUID={data.d} />
+                {vars && Object.keys(vars).length > 0 && (
+                  <div className="cf-table-resp-vars">
+                    {Object.entries(vars).map(([name, value]) => (
+                      <span key={name}>
+                        <b>{name}</b> = {value}
+                      </span>
+                    ))}
                   </div>
-                ) : (
-                  <div className="cf-table-resp-text" onClick={open}>
-                    {renderText ? renderText(text) : text}
+                )}
+                {showReasoning && (
+                  <div className="cf-table-resp-reasoning">
+                    {reasoningDiffers && (
+                      <div className="cf-table-resp-reasoning-note">
+                        From the first of {indices.length} identical responses;
+                        the others reasoned differently.
+                      </div>
+                    )}
+                    {reasoning}
                   </div>
-                ))}
-              {!onlyShowScores && !isImageResponseData(data) && (
-                <CopyResponseButton text={text} />
-              )}
-            </div>
-          );
-        },
-      );
-    })}
-  </div>
-);
+                )}
+                {!onlyShowScores &&
+                  (isImageResponseData(data) ? (
+                    <div className="cf-table-resp-image" onClick={open}>
+                      <MediaBox mediaUID={data.d} />
+                    </div>
+                  ) : (
+                    <div className="cf-table-resp-text" onClick={open}>
+                      {renderText ? renderText(text) : text}
+                    </div>
+                  ))}
+                {!onlyShowScores && !isImageResponseData(data) && (
+                  <CopyResponseButton text={text} />
+                )}
+              </div>
+            );
+          },
+        );
+      })}
+    </div>
+  );
+};
 
 export interface TextResponseCardProps {
   text: string;
