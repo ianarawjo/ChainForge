@@ -555,6 +555,10 @@ export async function call_chatgpt(
       images,
     );
 
+  // Chat Completions can't take reasoning state back
+  if (params?.chat_history)
+    params.chat_history = strip_reasoning_state(params.chat_history);
+
   // Pass in o3 and GPT-5+ only parameters, removing them if the
   // model name does not correspond to those models:
   // NOTE: Chat Completions passes reasoning_effort instead of a dictionary for 'reasoning'.
@@ -651,6 +655,12 @@ export async function call_deepseek(
     );
 
   console.log(`Querying DeepSeek model '${model}' with prompt '${prompt}'...`);
+
+  if (params?.chat_history)
+    params.chat_history = chat_history_with_reasoning(
+      params.chat_history,
+      LLMProvider.DeepSeek,
+    );
 
   return await call_chatgpt(
     prompt,
@@ -776,7 +786,9 @@ export async function call_openrouter(
   delete settings.reasoning_max_tokens;
   delete settings.reasoning_effort;
 
-  const chat_history: ChatHistory | undefined = settings.chat_history;
+  const chat_history: ChatHistory | undefined = settings.chat_history
+    ? chat_history_with_reasoning(settings.chat_history, LLMProvider.OpenRouter)
+    : undefined;
   const system_msg: string | undefined = settings.system_msg;
   delete settings.chat_history;
   delete settings.system_msg;
@@ -934,28 +946,39 @@ async function call_openai_responses(
     .join("\n\n");
   const input = messages
     .filter((m) => !isSystem(m))
-    .map((m) => ({
-      role: m.role,
-      content:
-        typeof m.content === "string"
-          ? m.content
-          : m.content.map((part: Dict) =>
-              part.type === "image_url"
-                ? {
-                    type: "input_image",
-                    image_url: part.image_url?.url ?? part.image_url,
-                  }
-                : part.type === "text"
+    .flatMap((m) => [
+      // A past turn's own reasoning items go back just before its message
+      ...(own_reasoning_state(m, LLMProvider.OpenAI)?.items ?? []),
+      {
+        role: m.role,
+        content:
+          typeof m.content === "string"
+            ? m.content
+            : m.content.map((part: Dict) =>
+                part.type === "image_url"
                   ? {
-                      type:
-                        m.role === "assistant" ? "output_text" : "input_text",
-                      text: part.text,
+                      type: "input_image",
+                      image_url: part.image_url?.url ?? part.image_url,
                     }
-                  : part,
-            ),
-    }));
+                  : part.type === "text"
+                    ? {
+                        type:
+                          m.role === "assistant" ? "output_text" : "input_text",
+                        text: part.text,
+                      }
+                    : part,
+              ),
+      },
+    ]);
 
-  const query: Dict = { model, input, reasoning: { summary }, store: false };
+  const query: Dict = {
+    model,
+    input,
+    reasoning: { summary },
+    store: false,
+    // So a later Chat Turn can send the reasoning back
+    include: ["reasoning.encrypted_content"],
+  };
   if (instructions) query.instructions = instructions;
   if (settings.reasoning_effort)
     query.reasoning.effort = settings.reasoning_effort;
@@ -1429,7 +1452,11 @@ export async function call_anthropic(
 
   // Carry chat history
   // :: See https://docs.anthropic.com/claude/docs/human-and-assistant-formatting#use-human-and-assistant-to-put-words-in-claudes-mouth
-  let chat_history: ChatHistory | undefined = params?.chat_history;
+  let chat_history: ChatHistory | undefined = params?.chat_history
+    ? use_messages_api
+      ? anthropic_chat_history(params.chat_history)
+      : strip_reasoning_state(params.chat_history)
+    : undefined;
   if (chat_history !== undefined) {
     // FOR OLD TEXT COMPLETIONS API ONLY: Carry chat history by prepending it to the prompt
     if (!use_messages_api) {
@@ -1559,7 +1586,11 @@ export function gemini_thinking_config(
     params?.include_thoughts !== "false"
   )
     config.includeThoughts = true;
-  if (!is_blank_setting(params?.thinking_budget))
+  // Gemini 3 models think by level, and 2.5 models by budget; a request can't have both.
+  const level = params?.thinking_level;
+  if (typeof level === "string" && level && level !== "default")
+    config.thinkingLevel = level.toUpperCase();
+  else if (!is_blank_setting(params?.thinking_budget))
     config.thinkingBudget = Number(params?.thinking_budget);
   return Object.keys(config).length > 0 ? config : undefined;
 }
@@ -1611,6 +1642,7 @@ export async function call_google_ai(
   if (thinking_config) gemini_config.thinkingConfig = thinking_config;
   delete params?.include_thoughts;
   delete params?.thinking_budget;
+  delete params?.thinking_level;
 
   const query: Dict = {
     model: `models/${model}`,
@@ -1633,7 +1665,8 @@ export async function call_google_ai(
 
   Object.entries(casemap).forEach(([key, val]) => {
     if (key in query) {
-      gemini_config[val] = query[key];
+      // (Indexed as a Dict: the SDK's config type is too large for TypeScript to index by key.)
+      (gemini_config as Dict)[val] = query[key];
       query[val as string | number] = query[key];
       delete query[key];
     }
@@ -1674,7 +1707,7 @@ export async function call_google_ai(
       }
       const prompt_part: GeminiChatMessage = {
         role: openai_gemini_role_map[chat_msg.role],
-        parts: [{ text: chat_msg.content }],
+        parts: gemini_history_parts(chat_msg) as GeminiChatMessage["parts"],
       };
       gemini_chat_history.history.push(prompt_part);
     }
@@ -1741,8 +1774,8 @@ export async function call_google_ai(
  * generateContent endpoint. Input images (e.g. from a Media Node) are sent as
  * inline parts, for editing or as references.
  *
- * Calls fetch directly: the installed @google/genai version predates
- * `imageConfig`, which its request conversion would drop.
+ * Calls fetch directly, so the request is exactly the one the REST API
+ * documents (this predates the SDK's support for `imageConfig`).
  *
  * @returns raw query and the list of raw generateContent responses.
  */
@@ -2577,6 +2610,9 @@ export async function call_llm(
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
     );
+  // Past turns' reasoning state is only for the provider that made it, which handles it itself
+  if (params?.chat_history && !PROVIDERS_REPLAYING_REASONING.has(llm_provider))
+    params.chat_history = strip_reasoning_state(params.chat_history);
   return call_api(prompt, llm, n, temperature, params, should_cancel, images);
 }
 
@@ -2885,6 +2921,163 @@ export function extract_reasoning(
 }
 
 /**
+ * Extracts each response's reasoning state: a reasoning model's own record of
+ * its reasoning, which it needs back in later turns of a chat (e.g. Claude's
+ * signed thinking blocks, or OpenAI's encrypted reasoning items). Each is tagged
+ * with its provider, since only that provider can use it. In the same order as
+ * `extract_responses`, with null for a response without any.
+ */
+export function extract_reasoning_state(
+  response: Array<string | Dict> | Dict,
+  llm: LLM | string,
+  provider: LLMProvider,
+): Array<Dict | null> | undefined {
+  const llm_provider = provider ?? getProvider(llm as LLM);
+  const responses: Dict[] = Array.isArray(response)
+    ? (response as Dict[])
+    : [response as Dict];
+  const nonEmpty = (items: unknown) =>
+    Array.isArray(items) && items.length > 0 ? items : undefined;
+  const textIn = (s: unknown) =>
+    typeof s === "string" && s.length > 0 ? s : undefined;
+
+  let states: Array<Dict | null> = [];
+  switch (llm_provider) {
+    case LLMProvider.OpenRouter:
+      // Fields of OpenAI-format assistant messages, as sent back
+      if (!isOpenRouterImageModel(llm))
+        states = responses.flatMap((r) =>
+          (r?.choices ?? []).map((c: Dict) => {
+            const details = nonEmpty(c?.message?.reasoning_details);
+            if (details)
+              return { provider: llm_provider, reasoning_details: details };
+            const text = textIn(c?.message?.reasoning);
+            return text ? { provider: llm_provider, reasoning: text } : null;
+          }),
+        );
+      break;
+    case LLMProvider.DeepSeek:
+      states = responses.flatMap((r) =>
+        (r?.choices ?? []).map((c: Dict) => {
+          const text = textIn(c?.message?.reasoning_content);
+          return text
+            ? { provider: llm_provider, reasoning_content: text }
+            : null;
+        }),
+      );
+      break;
+    case LLMProvider.OpenAI:
+      // Responses aren't stored, so reasoning items only go back with their encrypted content
+      states = responses
+        .filter((r) => Array.isArray(r?.output))
+        .map((r) => {
+          const items = nonEmpty(
+            r.output.filter(
+              (o: Dict) => o?.type === "reasoning" && o.encrypted_content,
+            ),
+          );
+          return items ? { provider: llm_provider, items } : null;
+        });
+      break;
+    case LLMProvider.Anthropic:
+      // Thinking blocks go back unchanged, including ones whose text was omitted
+      states = responses.map((r) => {
+        const blocks = nonEmpty(
+          (Array.isArray(r?.content) ? r.content : []).filter(
+            (c: Dict) =>
+              c?.type === "thinking" || c?.type === "redacted_thinking",
+          ),
+        );
+        return blocks ? { provider: llm_provider, blocks } : null;
+      });
+      break;
+    case LLMProvider.Google:
+      // The model's parts go back whole, keeping their thought signatures
+      if (!isGeminiImageModel(llm.toString()))
+        states = responses.map((r) => {
+          const parts: Dict[] = r?.candidates?.[0]?.content?.parts ?? [];
+          return parts.some((p) => p?.thought || p?.thoughtSignature)
+            ? { provider: llm_provider, parts }
+            : null;
+        });
+      break;
+  }
+  return states.some((s) => s !== null) ? states : undefined;
+}
+
+/** Providers that get their own reasoning state back in later turns of a chat. */
+const PROVIDERS_REPLAYING_REASONING = new Set<LLMProvider>([
+  LLMProvider.OpenRouter,
+  LLMProvider.DeepSeek,
+  LLMProvider.OpenAI,
+  LLMProvider.Anthropic,
+  LLMProvider.Google,
+]);
+
+/** A past assistant turn's reasoning state, if the given provider made it. */
+function own_reasoning_state(
+  message: ChatMessage,
+  provider: LLMProvider,
+): Dict | undefined {
+  return message.role === "assistant" &&
+    message.reasoning_state?.provider === provider
+    ? message.reasoning_state
+    : undefined;
+}
+
+/** A chat history without reasoning state, for requests that can't use it. */
+export function strip_reasoning_state(history: ChatHistory): ChatHistory {
+  return history.map((message) => {
+    if (message.reasoning_state === undefined) return message;
+    const rest = { ...message };
+    delete rest.reasoning_state;
+    return rest;
+  });
+}
+
+/**
+ * A chat history for OpenAI-format chat completions, with a provider's own
+ * reasoning back on its past turns, in that provider's message fields (e.g.
+ * OpenRouter's reasoning_details, or DeepSeek's reasoning_content).
+ */
+export function chat_history_with_reasoning(
+  history: ChatHistory,
+  provider: LLMProvider,
+): ChatHistory {
+  return strip_reasoning_state(history).map((message, i) => {
+    const state = own_reasoning_state(history[i], provider);
+    if (!state) return message;
+    const fields = { ...state };
+    delete fields.provider;
+    return { ...message, ...fields };
+  });
+}
+
+/** A chat history for Claude's Messages API, with Claude's own thinking blocks back at the start of its past turns. */
+export function anthropic_chat_history(history: ChatHistory): ChatHistory {
+  return strip_reasoning_state(history).map((message, i) => {
+    const state = own_reasoning_state(history[i], LLMProvider.Anthropic);
+    if (!state) return message;
+    const text = message.content
+      ? [{ type: "text", text: message.content }]
+      : [];
+    return {
+      ...message,
+      content: [...state.blocks, ...text],
+    } as unknown as ChatMessage;
+  });
+}
+
+/** The parts of a past turn in a Gemini chat: the model's own parts (with thought signatures), or the turn's text. */
+export function gemini_history_parts(message: ChatMessage): Dict[] {
+  return (
+    own_reasoning_state(message, LLMProvider.Google)?.parts ?? [
+      { text: message.content },
+    ]
+  );
+}
+
+/**
  * Given a LLM and a response object from its API, extract the
  * text response(s) part of the response object.
  */
@@ -2981,6 +3174,11 @@ export function merge_response_objs(
     const reasoningOf = (o: RawLLMResponseObject) =>
       o.responses.map((_, i) => o.reasoning?.[i] ?? null);
     res.reasoning = reasoningOf(resp_obj_A).concat(reasoningOf(resp_obj_B));
+  }
+  if (resp_obj_A.reasoning_state || resp_obj_B.reasoning_state) {
+    const stateOf = (o: RawLLMResponseObject) =>
+      o.responses.map((_, i) => o.reasoning_state?.[i] ?? null);
+    res.reasoning_state = stateOf(resp_obj_A).concat(stateOf(resp_obj_B));
   }
   if (resp_obj_B.chat_history !== undefined)
     res.chat_history = resp_obj_B.chat_history;

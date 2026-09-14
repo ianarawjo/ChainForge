@@ -176,6 +176,7 @@ function to_standard_format(r: RawLLMResponseObject | Dict): LLMResponse {
   };
   if ("eval_res" in r) resp_obj.eval_res = r.eval_res;
   if ("reasoning" in r) resp_obj.reasoning = r.reasoning;
+  if ("reasoning_state" in r) resp_obj.reasoning_state = r.reasoning_state;
   if ("chat_history" in r) resp_obj.chat_history = r.chat_history;
   return resp_obj;
 }

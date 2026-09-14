@@ -598,6 +598,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
                     resp_obj,
                     j,
                   ),
+                  reasoning_state: resp_obj.reasoning_state?.[j] ?? undefined,
                   llm: resp_obj.llm,
                   uid: resp_obj.uid,
                 };

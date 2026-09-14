@@ -38,14 +38,19 @@ import { describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
 import {
   REASONING_METAVAR,
+  anthropic_chat_history,
   anthropic_thinking_config,
   call_chatgpt,
+  chat_history_with_reasoning,
   cleanMetavarsFilterFunc,
   extract_reasoning,
+  extract_reasoning_state,
   extract_responses,
+  gemini_history_parts,
   gemini_thinking_config,
   merge_response_objs,
   set_api_keys,
+  strip_reasoning_state,
   withReasoningMetavar,
 } from "../utils";
 // eslint-disable-next-line import/first
@@ -382,5 +387,196 @@ describe("asking providers for reasoning", () => {
       "4",
       "4",
     ]);
+  });
+
+  test("Gemini: a thinking level, for Gemini 3, instead of a budget", () => {
+    expect(
+      gemini_thinking_config("gemini-3.8-flash", {
+        thinking_level: "low",
+        thinking_budget: 512,
+      }),
+    ).toEqual({ includeThoughts: true, thinkingLevel: "LOW" });
+  });
+});
+
+describe("sending reasoning back in later chat turns", () => {
+  test("each provider's reasoning state is kept, tagged with its provider", () => {
+    const claude = [
+      {
+        content: [
+          { type: "thinking", thinking: "", signature: "sig" },
+          { type: "redacted_thinking", data: "opaque" },
+          { type: "text", text: "4" },
+        ],
+      },
+    ];
+    expect(
+      extract_reasoning_state(claude, "claude-opus-5", LLMProvider.Anthropic),
+    ).toEqual([
+      {
+        provider: LLMProvider.Anthropic,
+        blocks: claude[0].content.slice(0, 2),
+      },
+    ]);
+
+    const openai = [
+      {
+        output: [
+          {
+            type: "reasoning",
+            id: "rs_1",
+            summary: [],
+            encrypted_content: "e",
+          },
+          { type: "message", content: [{ type: "output_text", text: "4" }] },
+        ],
+      },
+    ];
+    expect(
+      extract_reasoning_state(openai, "gpt-5", LLMProvider.OpenAI),
+    ).toEqual([{ provider: LLMProvider.OpenAI, items: [openai[0].output[0]] }]);
+
+    const gemini = [
+      {
+        candidates: [
+          { content: { parts: [{ text: "4", thoughtSignature: "sig" }] } },
+        ],
+      },
+    ];
+    expect(
+      extract_reasoning_state(gemini, "gemini-3.8-flash", LLMProvider.Google),
+    ).toEqual([
+      {
+        provider: LLMProvider.Google,
+        parts: gemini[0].candidates[0].content.parts,
+      },
+    ]);
+
+    const openrouter = [
+      chatReply({
+        content: "4",
+        reasoning: "Adding.",
+        reasoning_details: [{ type: "reasoning.text", text: "Adding." }],
+      }),
+      chatReply({ content: "4" }),
+    ];
+    expect(
+      extract_reasoning_state(
+        openrouter,
+        "openrouter/anthropic/claude-sonnet-5",
+        LLMProvider.OpenRouter,
+      ),
+    ).toEqual([
+      {
+        provider: LLMProvider.OpenRouter,
+        reasoning_details: [{ type: "reasoning.text", text: "Adding." }],
+      },
+      null,
+    ]);
+
+    expect(
+      extract_reasoning_state(
+        { choices: [{ message: { content: "4", reasoning_content: "2+2" } }] },
+        "deepseek-reasoner",
+        LLMProvider.DeepSeek,
+      ),
+    ).toEqual([{ provider: LLMProvider.DeepSeek, reasoning_content: "2+2" }]);
+  });
+
+  const history = (provider: LLMProvider, state: Dict) => [
+    { role: "user", content: "What is 2 + 2?" },
+    {
+      role: "assistant",
+      content: "4",
+      reasoning_state: { provider, ...state },
+    },
+  ];
+
+  test("OpenAI-format providers get their own state back as message fields, and nobody else's", () => {
+    const openrouter = history(LLMProvider.OpenRouter, {
+      reasoning_details: [{ type: "reasoning.text", text: "Adding." }],
+    });
+    expect(
+      chat_history_with_reasoning(openrouter, LLMProvider.OpenRouter)[1],
+    ).toEqual({
+      role: "assistant",
+      content: "4",
+      reasoning_details: [{ type: "reasoning.text", text: "Adding." }],
+    });
+    expect(
+      chat_history_with_reasoning(openrouter, LLMProvider.DeepSeek)[1],
+    ).toEqual({ role: "assistant", content: "4" });
+    expect(strip_reasoning_state(openrouter)[1]).toEqual({
+      role: "assistant",
+      content: "4",
+    });
+  });
+
+  test("Claude gets its thinking blocks back before its answer", () => {
+    const blocks = [{ type: "thinking", thinking: "", signature: "sig" }];
+    const turns = anthropic_chat_history(
+      history(LLMProvider.Anthropic, { blocks }),
+    );
+    expect(turns[1]).toEqual({
+      role: "assistant",
+      content: [...blocks, { type: "text", text: "4" }],
+    });
+    // Another provider's turn goes back as plain text
+    expect(
+      anthropic_chat_history(history(LLMProvider.Google, { parts: [] }))[1],
+    ).toEqual({ role: "assistant", content: "4" });
+  });
+
+  test("Gemini gets its own parts back, with their thought signatures", () => {
+    const parts = [{ text: "4", thoughtSignature: "sig" }];
+    expect(
+      gemini_history_parts(history(LLMProvider.Google, { parts })[1] as any),
+    ).toEqual(parts);
+    expect(gemini_history_parts({ role: "assistant", content: "4" })).toEqual([
+      { text: "4" },
+    ]);
+  });
+
+  test("OpenAI gets its reasoning items back just before its answer, through the Responses API", async () => {
+    set_api_keys({ OpenAI: "sk-test" });
+    const calls: { init: RequestInit }[] = [];
+    (globalThis as any).fetch = jest.fn(
+      async (_url: string, init: RequestInit) => {
+        calls.push({ init });
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            status: "completed",
+            output: [
+              {
+                type: "message",
+                content: [{ type: "output_text", text: "8" }],
+              },
+            ],
+          }),
+        };
+      },
+    );
+    const item = {
+      type: "reasoning",
+      id: "rs_1",
+      summary: [],
+      encrypted_content: "e",
+    };
+    await call_chatgpt("And times 2?", "gpt-5", 1, 1, {
+      reasoning_summary: "auto",
+      chat_history: history(LLMProvider.OpenAI, { items: [item] }),
+    });
+    const body = JSON.parse(calls[0].init.body as string);
+    expect(body.include).toEqual(["reasoning.encrypted_content"]);
+    expect(body.input.map((i: Dict) => i.type ?? i.role)).toEqual([
+      "user",
+      "reasoning",
+      "assistant",
+      "user",
+    ]);
+    expect(body.input[1]).toEqual(item);
+    expect(body.input[2]).not.toHaveProperty("reasoning_state");
   });
 });

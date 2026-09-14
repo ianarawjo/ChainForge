@@ -642,7 +642,14 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         // with the prompt and text of the pulled data as the 2nd-to-last, and last, messages:
         const last_messages = [
           { role: "user", content: StringLookup.get(info.prompt) ?? "" },
-          { role: "assistant", content: StringLookup.get(info.text) ?? "" },
+          {
+            role: "assistant",
+            content: StringLookup.get(info.text) ?? "",
+            // The model's own record of its reasoning, which it gets back in later turns
+            ...(info.reasoning_state && {
+              reasoning_state: info.reasoning_state,
+            }),
+          },
         ];
         let updated_chat_hist =
           info.chat_history !== undefined
@@ -1206,6 +1213,9 @@ Soft failing by replacing undefined with empty strings.`,
 
                   // Expose this response's reasoning, if any, as a metavar
                   o.metavars = withReasoningMetavar(o.metavars, resp_obj, j);
+                  // ...and its reasoning state, for a Chat Turn to send back to the model
+                  const reasoning_state = resp_obj.reasoning_state?.[j];
+                  if (reasoning_state) o.reasoning_state = reasoning_state;
 
                   return o;
                 }),

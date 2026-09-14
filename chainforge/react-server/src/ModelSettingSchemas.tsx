@@ -1516,7 +1516,15 @@ const Gemini25Settings: ModelSettingsDict = {
         type: "integer",
         title: "thinking_budget",
         description:
-          "Gemini 2.5 only: how many tokens the model may spend thinking. 0 turns thinking off (not on 2.5 Pro), and -1 lets the model decide. Leave blank for the model's default. (Gemini 3 models set thinking by level, which ChainForge doesn't support yet.)",
+          "Gemini 2.5 only: how many tokens the model may spend thinking. 0 turns thinking off (not on 2.5 Pro), and -1 lets the model decide. Leave blank for the model's default. Ignored when thinking_level is set.",
+      },
+      thinking_level: {
+        type: "string",
+        title: "thinking_level",
+        description:
+          "Gemini 3 only: how much the model thinks. 'default' leaves it to the model. Not every model supports every level (e.g. 'minimal').",
+        enum: ["default", "minimal", "low", "medium", "high"],
+        default: "default",
       },
       system_msg: {
         type: "string",
