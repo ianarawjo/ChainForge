@@ -95,7 +95,8 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
   if (ORIGINAL_CONSOLE_LOG_FUNCS.log) {
     const cl = ORIGINAL_CONSOLE_LOG_FUNCS.log;
     base_window.console.log = function (...args: any[]) {
-      const a = args.map((s) => s.toString());
+      // String(), not .toString(), so logging undefined or null doesn't throw
+      const a = args.map((s) => String(s));
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       cl.apply(this, args);
     };
@@ -104,7 +105,7 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
   if (ORIGINAL_CONSOLE_LOG_FUNCS.warn) {
     const cw = ORIGINAL_CONSOLE_LOG_FUNCS.warn;
     base_window.console.warn = function (...args: any[]) {
-      const a = args.map((s) => `warn: ${s.toString()}`);
+      const a = args.map((s) => `warn: ${String(s)}`);
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       cw.apply(this, args);
     };
@@ -113,7 +114,7 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
   if (ORIGINAL_CONSOLE_LOG_FUNCS.error) {
     const ce = ORIGINAL_CONSOLE_LOG_FUNCS.error;
     base_window.console.error = function (...args: any[]) {
-      const a = args.map((s) => `error: ${s.toString()}`);
+      const a = args.map((s) => `error: ${String(s)}`);
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       ce.apply(this, args);
     };
