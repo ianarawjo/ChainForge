@@ -96,6 +96,7 @@ For detailed Docker documentation including architecture support, environment va
 
 # Supported providers
 
+- [OpenRouter](https://openrouter.ai) (models from many providers, including image models, with one API key)
 - OpenAI
 - Anthropic
 - Google Gemini

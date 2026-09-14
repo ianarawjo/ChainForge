@@ -13,7 +13,7 @@
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@fontsource/geist-mono": "^5.0.1",
-    "@google/genai": "^1.19.0",
+    "@google/genai": "^2.22.0",
     "@huggingface/transformers": "^4.2.0",
     "@mantine/core": "^6.0.9",
     "@mantine/dates": "^6.0.13",

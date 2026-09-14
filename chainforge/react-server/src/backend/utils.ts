@@ -11,6 +11,8 @@ import {
   getProvider,
   isGeminiImageModel,
   isOpenAIImageModel,
+  isOpenRouterImageModel,
+  stripOpenRouterPrefix,
 } from "./models";
 import {
   Dict,
@@ -211,6 +213,7 @@ let AWS_REGION = get_environ("AWS_REGION");
 let TOGETHER_API_KEY = get_environ("TOGETHER_API_KEY");
 let DEEPSEEK_API_KEY = get_environ("DEEPSEEK_API_KEY");
 let MINIMAX_API_KEY = get_environ("MINIMAX_API_KEY");
+let OPENROUTER_API_KEY = get_environ("OPENROUTER_API_KEY");
 
 let _WEBLLM_MODULE_PROMISE: Promise<any> | undefined;
 let _WEBLLM_ENGINE: any;
@@ -295,6 +298,7 @@ export function set_api_keys(api_keys: Dict<string>): void {
   if (key_is_present("Together")) TOGETHER_API_KEY = api_keys.Together;
   if (key_is_present("DeepSeek")) DEEPSEEK_API_KEY = api_keys.DeepSeek;
   if (key_is_present("MiniMax")) MINIMAX_API_KEY = api_keys.MiniMax;
+  if (key_is_present("OpenRouter")) OPENROUTER_API_KEY = api_keys.OpenRouter;
 }
 
 export function get_azure_openai_api_keys(): [
@@ -374,6 +378,40 @@ async function imagesToBase64(images: string[]) {
     return base64_images;
   }
   return [];
+}
+
+/** Removes empty settings from OpenAI-style chat params, in place, so they aren't sent to the API. */
+function strip_empty_chat_params(params?: Dict): void {
+  if (
+    params?.stop !== undefined &&
+    (!Array.isArray(params.stop) || params.stop.length === 0)
+  )
+    delete params.stop;
+  if (params?.seed && params.seed.toString().length === 0) delete params?.seed;
+  if (
+    params?.functions !== undefined &&
+    (!Array.isArray(params.functions) || params.functions.length === 0)
+  )
+    delete params?.functions;
+  if (
+    params?.function_call !== undefined &&
+    (!(typeof params.function_call === "string") ||
+      params.function_call.trim().length === 0)
+  )
+    delete params.function_call;
+  if (
+    params?.tools !== undefined &&
+    (!Array.isArray(params.tools) || params.tools.length === 0)
+  )
+    delete params?.tools;
+  if (
+    params?.tool_choice !== undefined &&
+    (!(typeof params.tool_choice === "string") ||
+      params.tool_choice.trim().length === 0)
+  )
+    delete params.tool_choice;
+  if (params?.tools === undefined && params?.parallel_tool_calls !== undefined)
+    delete params?.parallel_tool_calls;
 }
 
 async function resolve_images_in_user_messages(
@@ -495,37 +533,31 @@ export async function call_chatgpt(
 
   const modelname: string = model.toString();
 
-  // Remove empty params
+  strip_empty_chat_params(params);
+
+  // Reasoning summaries only come from the Responses API, so OpenAI's reasoning
+  // models go through it when a summary is asked for.
+  const reasoning_summary = params?.reasoning_summary;
+  delete params?.reasoning_summary;
   if (
-    params?.stop !== undefined &&
-    (!Array.isArray(params.stop) || params.stop.length === 0)
+    BASE_URL === undefined &&
+    typeof reasoning_summary === "string" &&
+    reasoning_summary !== "off" &&
+    is_openai_reasoning_model(modelname)
   )
-    delete params.stop;
-  if (params?.seed && params.seed.toString().length === 0) delete params?.seed;
-  if (
-    params?.functions !== undefined &&
-    (!Array.isArray(params.functions) || params.functions.length === 0)
-  )
-    delete params?.functions;
-  if (
-    params?.function_call !== undefined &&
-    (!(typeof params.function_call === "string") ||
-      params.function_call.trim().length === 0)
-  )
-    delete params.function_call;
-  if (
-    params?.tools !== undefined &&
-    (!Array.isArray(params.tools) || params.tools.length === 0)
-  )
-    delete params?.tools;
-  if (
-    params?.tool_choice !== undefined &&
-    (!(typeof params.tool_choice === "string") ||
-      params.tool_choice.trim().length === 0)
-  )
-    delete params.tool_choice;
-  if (params?.tools === undefined && params?.parallel_tool_calls !== undefined)
-    delete params?.parallel_tool_calls;
+    return call_openai_responses(
+      prompt,
+      modelname,
+      n,
+      reasoning_summary,
+      params,
+      should_cancel,
+      images,
+    );
+
+  // Chat Completions can't take reasoning state back
+  if (params?.chat_history)
+    params.chat_history = strip_reasoning_state(params.chat_history);
 
   // Pass in o3 and GPT-5+ only parameters, removing them if the
   // model name does not correspond to those models:
@@ -624,6 +656,12 @@ export async function call_deepseek(
 
   console.log(`Querying DeepSeek model '${model}' with prompt '${prompt}'...`);
 
+  if (params?.chat_history)
+    params.chat_history = chat_history_with_reasoning(
+      params.chat_history,
+      LLMProvider.DeepSeek,
+    );
+
   return await call_chatgpt(
     prompt,
     model,
@@ -670,6 +708,371 @@ export async function call_minimax(
     "https://api.minimax.io/v1",
     MINIMAX_API_KEY,
   );
+}
+
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+
+/** POSTs to an OpenRouter endpoint, turning API errors into readable Errors. */
+async function openrouter_request(path: string, body: Dict): Promise<Dict> {
+  const res = await fetch(`${OPENROUTER_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+      // Optional attribution, so requests are credited to ChainForge on openrouter.ai.
+      "HTTP-Referer": "https://chainforge.ai",
+      "X-OpenRouter-Title": "ChainForge",
+    },
+    body: JSON.stringify(body),
+  });
+
+  let payload: Dict | undefined;
+  try {
+    payload = await res.json();
+  } catch {
+    payload = undefined;
+  }
+  // Errors can also arrive with a 200 status, e.g. when the upstream provider fails.
+  if (!res.ok || payload?.error)
+    throw new Error(
+      payload?.error?.message ??
+        `OpenRouter request failed (HTTP ${res.status}).`,
+    );
+  return payload ?? {};
+}
+
+/** Whether a setting was left blank, e.g. an empty number field. */
+function is_blank_setting(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    value === "" ||
+    (typeof value === "number" && isNaN(value))
+  );
+}
+
+/**
+ * Calls a model through OpenRouter's OpenAI-compatible chat completions API.
+ * OpenRouter doesn't support `n`, so each response is its own request.
+ */
+export async function call_openrouter(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  if (!OPENROUTER_API_KEY)
+    throw new Error(
+      "Could not find an OpenRouter API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  const modelname = stripOpenRouterPrefix(model);
+  const settings: Dict = { ...params };
+  strip_empty_chat_params(settings);
+
+  // Reasoning takes either a token budget or an effort level, not both. Models
+  // that don't reason ignore it. See https://openrouter.ai/docs/use-cases/reasoning-tokens
+  const reasoning: Dict = {};
+  // Some models have reasoning off by default (e.g. GPT-5.4 Nano and DeepSeek
+  // V4 Pro), so it's on unless turned off. ("default" is an older name for "on".)
+  const effort = settings.reasoning_effort;
+  if (!is_blank_setting(settings.reasoning_max_tokens))
+    reasoning.max_tokens = settings.reasoning_max_tokens;
+  else if (is_blank_setting(effort) || effort === "on" || effort === "default")
+    reasoning.enabled = true;
+  else if (effort === "off") reasoning.enabled = false;
+  else reasoning.effort = effort;
+  delete settings.reasoning_max_tokens;
+  delete settings.reasoning_effort;
+
+  const chat_history: ChatHistory | undefined = settings.chat_history
+    ? chat_history_with_reasoning(settings.chat_history, LLMProvider.OpenRouter)
+    : undefined;
+  const system_msg: string | undefined = settings.system_msg;
+  delete settings.chat_history;
+  delete settings.system_msg;
+
+  for (const [key, value] of Object.entries(settings))
+    if (is_blank_setting(value)) delete settings[key];
+
+  const query: Dict = { model: modelname, temperature, ...settings };
+  if (Object.keys(reasoning).length > 0) query.reasoning = reasoning;
+  query.messages = await resolve_images_in_user_messages(
+    construct_chat_history(prompt, images, chat_history, system_msg),
+    "openai",
+  );
+
+  console.log(`Querying OpenRouter model '${modelname}' (n=${n})...`);
+
+  const responses: Dict[] = [];
+  while (responses.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+    const payload = await openrouter_request("/chat/completions", query);
+    const choice = payload.choices?.[0];
+    if (!choice) throw new Error("OpenRouter returned no response.");
+    if (choice.error)
+      throw new Error(choice.error.message ?? "The model returned an error.");
+
+    // A reasoning model can spend its whole token budget thinking, leaving no
+    // answer. Say so, rather than recording a blank response.
+    const message = choice.message ?? {};
+    const answered = message.content || message.tool_calls?.length > 0;
+    if (!answered && choice.finish_reason === "length")
+      throw new Error(
+        message.reasoning
+          ? `${modelname} ran out of tokens while reasoning, before it answered. Raise max_tokens, or lower the reasoning effort.`
+          : `${modelname} ran out of tokens before it answered. Raise max_tokens.`,
+      );
+
+    responses.push(payload);
+  }
+
+  return [query, responses];
+}
+
+/** Settings sent to OpenRouter's Image API when set. "auto" leaves them to the model. */
+const OPENROUTER_IMAGE_SETTINGS = [
+  "resolution",
+  "aspect_ratio",
+  "quality",
+  "background",
+  "output_format",
+  "seed",
+];
+
+/**
+ * Generates images through OpenRouter's Image API. Input images (e.g. from a
+ * Media Node) are sent as references, for editing. Image models differ in how
+ * many images they can return per request, so this requests until it has `n`.
+ */
+export async function call_openrouter_image_gen(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature?: number,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  if (!OPENROUTER_API_KEY)
+    throw new Error(
+      "Could not find an OpenRouter API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  const modelname = stripOpenRouterPrefix(model);
+  const query: Dict = { model: modelname, prompt };
+  for (const key of OPENROUTER_IMAGE_SETTINGS) {
+    const value = params?.[key];
+    if (!is_blank_setting(value) && value !== "auto") query[key] = value;
+  }
+
+  const references = await imagesToBase64(images ?? []);
+  const body: Dict =
+    references.length > 0
+      ? {
+          ...query,
+          input_references: references.map((url) => ({
+            type: "image_url",
+            image_url: { url },
+          })),
+        }
+      : query;
+
+  console.log(
+    `Querying OpenRouter image model '${modelname}' (n=${n}, input images=${references.length})...`,
+  );
+
+  const results: Dict[] = [];
+  while (results.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+    const payload = await openrouter_request("/images", body);
+    const data: Dict[] = (
+      Array.isArray(payload.data) ? payload.data : []
+    ).filter((d: Dict) => typeof d?.b64_json === "string");
+    if (data.length === 0)
+      throw new Error("OpenRouter returned no images for this request.");
+    results.push(...data);
+  }
+
+  // Kept with cached responses: record the input image count, not the bytes.
+  return [
+    references.length > 0
+      ? { ...query, input_images: references.length }
+      : query,
+    results.slice(0, n),
+  ];
+}
+
+/** Whether an OpenAI model reasons: the o-series, and GPT-5 and later (but not their chat models). */
+function is_openai_reasoning_model(model: string): boolean {
+  return /^(o\d|gpt-[5-9])/.test(model) && !/-chat/.test(model);
+}
+
+/**
+ * Calls an OpenAI reasoning model through the Responses API, which, unlike
+ * Chat Completions, can return summaries of the model's reasoning. Settings the
+ * Responses API doesn't take (stop, seed, penalties, logit_bias) are left out,
+ * as are temperature and top_p, which reasoning models don't accept.
+ * See https://developers.openai.com/api/docs/guides/reasoning
+ */
+async function call_openai_responses(
+  prompt: string,
+  model: string,
+  n: number,
+  summary: string,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  const settings: Dict = { ...params };
+  const messages = await resolve_images_in_user_messages(
+    construct_chat_history(
+      prompt,
+      images,
+      settings.chat_history,
+      settings.system_msg,
+    ),
+    "openai",
+  );
+
+  // System messages become instructions, and content parts take the Responses API's types.
+  const isSystem = (m: Dict) => m.role === "system" || m.role === "developer";
+  const instructions = messages
+    .filter(isSystem)
+    .map((m) => m.content)
+    .join("\n\n");
+  const input = messages
+    .filter((m) => !isSystem(m))
+    .flatMap((m) => [
+      // A past turn's own reasoning items go back just before its message
+      ...(own_reasoning_state(m, LLMProvider.OpenAI)?.items ?? []),
+      {
+        role: m.role,
+        content:
+          typeof m.content === "string"
+            ? m.content
+            : m.content.map((part: Dict) =>
+                part.type === "image_url"
+                  ? {
+                      type: "input_image",
+                      image_url: part.image_url?.url ?? part.image_url,
+                    }
+                  : part.type === "text"
+                    ? {
+                        type:
+                          m.role === "assistant" ? "output_text" : "input_text",
+                        text: part.text,
+                      }
+                    : part,
+              ),
+      },
+    ]);
+
+  const query: Dict = {
+    model,
+    input,
+    reasoning: { summary },
+    store: false,
+    // So a later Chat Turn can send the reasoning back
+    include: ["reasoning.encrypted_content"],
+  };
+  if (instructions) query.instructions = instructions;
+  if (settings.reasoning_effort)
+    query.reasoning.effort = settings.reasoning_effort;
+  if (settings.verbosity) query.text = { verbosity: settings.verbosity };
+  const format = settings.response_format;
+  if (format && format.type !== "text")
+    query.text = {
+      ...query.text,
+      format:
+        format.type === "json_schema"
+          ? { type: "json_schema", ...format.json_schema }
+          : format,
+    };
+  const max_tokens = settings.max_completion_tokens ?? settings.max_tokens;
+  if (!is_blank_setting(max_tokens)) query.max_output_tokens = max_tokens;
+  if (Array.isArray(settings.tools) && settings.tools.length > 0) {
+    // Function tools are flat: {type: "function", name, parameters}
+    query.tools = settings.tools.map((t: Dict) =>
+      t.function
+        ? { type: "function", ...t.function }
+        : t.type
+          ? t
+          : { type: "function", ...t },
+    );
+    const choice = settings.tool_choice;
+    if (choice)
+      query.tool_choice = choice.function
+        ? { type: "function", name: choice.function.name }
+        : choice;
+    if (settings.parallel_tool_calls !== undefined)
+      query.parallel_tool_calls = settings.parallel_tool_calls;
+  }
+
+  console.log(
+    `Querying OpenAI model '${model}' through the Responses API (n=${n})...`,
+  );
+
+  const base = (OPENAI_BASE_URL || "https://api.openai.com/v1").replace(
+    /\/+$/,
+    "",
+  );
+  const responses: Dict[] = [];
+  while (responses.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+    const res = await fetch(`${base}/responses`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(query),
+    });
+    let payload: Dict | undefined;
+    try {
+      payload = await res.json();
+    } catch {
+      payload = undefined;
+    }
+    if (!res.ok || payload?.error)
+      throw new Error(
+        payload?.error?.message ??
+          `OpenAI request failed (HTTP ${res.status}).`,
+      );
+    // A reasoning model can spend its whole token budget thinking, leaving no answer.
+    if (
+      payload?.status === "incomplete" &&
+      !_extract_openai_responses_api_text(payload)
+    )
+      throw new Error(
+        `${model} stopped before it answered (${payload.incomplete_details?.reason ?? "incomplete"}). Raise max_completion_tokens, or lower the reasoning effort.`,
+      );
+    responses.push(payload as Dict);
+  }
+
+  return [query, responses];
+}
+
+/** The answer in a Responses API result: its output text, or its tool calls. */
+function _extract_openai_responses_api_text(response: Dict): string {
+  const output: Dict[] = Array.isArray(response?.output) ? response.output : [];
+  const calls = output.filter((o) => o?.type === "function_call");
+  if (calls.length > 0)
+    return (
+      "[[TOOLS]] " + calls.map((c) => c.name + " " + c.arguments).join("\n\n")
+    );
+  return output
+    .filter((o) => o?.type === "message")
+    .flatMap((o) => o.content ?? [])
+    .filter((c: Dict) => c?.type === "output_text")
+    .map((c: Dict) => c.text)
+    .join("");
 }
 
 /** The most images OpenAI's Images API returns for one request. */
@@ -923,8 +1326,80 @@ export async function call_azure_openai(
   return [query, response];
 }
 
+/**
+ * Whether a Claude model uses the Messages API: all but the earliest models
+ * (Claude 1, Claude Instant and Claude 2.0), which use text completions.
+ */
 function is_newer_anthropic_model(model: LLM) {
-  return model.startsWith("claude-2.1") || model.startsWith("claude-3");
+  return !/^claude-(v1|instant|2$|2\.0)/.test(model.toString());
+}
+
+/** Claude models that think by default, but leave out the thinking's text unless asked for it. */
+const CLAUDE_THINKS_BY_DEFAULT = /^claude-(opus-5|sonnet-5|fable|mythos)/;
+
+/** Claude models released after Opus 4.6, which reject temperature, top_p and top_k set to anything but their defaults. */
+const CLAUDE_FIXED_SAMPLING =
+  /^claude-(opus-4-[7-9]|sonnet-4-[7-9]|(opus|sonnet|haiku)-[5-9]|fable|mythos)/;
+
+/**
+ * Removes the sampling settings a Claude Messages API request can't have, in
+ * place: ChainForge's -1 ("not set") for top_k and top_p; temperature, top_p and
+ * top_k on models that don't take them; and, while thinking, a temperature
+ * other than 1, top_k, and a top_p below 0.95.
+ * See https://platform.claude.com/docs/en/build-with-claude/thinking
+ */
+export function anthropic_clean_sampling(query: Dict): Dict {
+  for (const key of ["top_k", "top_p"])
+    if (is_blank_setting(query[key]) || Number(query[key]) < 0)
+      delete query[key];
+
+  const model = String(query.model);
+  const thinking =
+    query.thinking?.type === "enabled" ||
+    query.thinking?.type === "adaptive" ||
+    (CLAUDE_THINKS_BY_DEFAULT.test(model) &&
+      query.thinking?.type !== "disabled");
+  if (CLAUDE_FIXED_SAMPLING.test(model)) {
+    delete query.temperature;
+    delete query.top_k;
+    delete query.top_p;
+  } else if (thinking) {
+    if (query.temperature !== 1) delete query.temperature;
+    delete query.top_k;
+    if (query.top_p !== undefined && Number(query.top_p) < 0.95)
+      delete query.top_p;
+  }
+  return query;
+}
+
+/**
+ * The thinking request fields for a Claude model, from ChainForge's settings
+ * (`thinking`, `thinking_budget_tokens` and `effort`). With `thinking` "auto"
+ * (the default), only models that already think are asked for a summary of it,
+ * so other models behave as before.
+ * See https://platform.claude.com/docs/en/build-with-claude/thinking
+ */
+export function anthropic_thinking_config(model: string, params?: Dict): Dict {
+  const mode = params?.thinking ?? "auto";
+  const fields: Dict = {};
+  if (mode === "enabled")
+    fields.thinking = {
+      type: "enabled",
+      budget_tokens: is_blank_setting(params?.thinking_budget_tokens)
+        ? 2048
+        : params?.thinking_budget_tokens,
+    };
+  else if (
+    mode === "adaptive" ||
+    (mode === "auto" && CLAUDE_THINKS_BY_DEFAULT.test(model))
+  )
+    fields.thinking = { type: "adaptive", display: "summarized" };
+  else if (mode === "disabled") fields.thinking = { type: "disabled" };
+
+  const effort = params?.effort;
+  if (typeof effort === "string" && effort && effort !== "default")
+    fields.output_config = { effort };
+  return fields;
 }
 
 /**
@@ -979,6 +1454,13 @@ export async function call_anthropic(
   delete params?.max_tokens_to_sample;
   delete params?.system_msg;
 
+  // Thinking settings become request fields (see anthropic_thinking_config)
+  const thinking_fields = anthropic_thinking_config(model.toString(), params);
+  const thinking_budget: number = thinking_fields.thinking?.budget_tokens ?? 0;
+  delete params?.thinking;
+  delete params?.thinking_budget_tokens;
+  delete params?.effort;
+
   // Tool usage -- remove tool params before passing, if they are empty
   if (
     params?.tools !== undefined &&
@@ -993,7 +1475,11 @@ export async function call_anthropic(
     delete params.tool_choice;
   if (params?.tools === undefined) delete params?.parallel_tool_calls;
   else {
-    if (params?.tool_choice === undefined) params.tool_choice = { type: "any" };
+    // A fixed thinking budget only allows Claude to choose its tools itself.
+    if (params?.tool_choice === undefined)
+      params.tool_choice = {
+        type: thinking_fields.thinking?.type === "enabled" ? "auto" : "any",
+      };
     params.tool_choice.disable_parallel_tool_use = !params.parallel_tool_calls;
     delete params?.parallel_tool_calls;
   }
@@ -1003,7 +1489,11 @@ export async function call_anthropic(
 
   // Carry chat history
   // :: See https://docs.anthropic.com/claude/docs/human-and-assistant-formatting#use-human-and-assistant-to-put-words-in-claudes-mouth
-  let chat_history: ChatHistory | undefined = params?.chat_history;
+  let chat_history: ChatHistory | undefined = params?.chat_history
+    ? use_messages_api
+      ? anthropic_chat_history(params.chat_history)
+      : strip_reasoning_state(params.chat_history)
+    : undefined;
   if (chat_history !== undefined) {
     // FOR OLD TEXT COMPLETIONS API ONLY: Carry chat history by prepending it to the prompt
     if (!use_messages_api) {
@@ -1039,7 +1529,11 @@ export async function call_anthropic(
   };
 
   if (use_messages_api) {
-    query.max_tokens = max_tokens_to_sample; // this goes by a different name than text completions
+    // This goes by a different name than text completions. Thinking counts
+    // toward it, so a thinking budget gets room of its own.
+    query.max_tokens = max_tokens_to_sample + thinking_budget;
+    Object.assign(query, thinking_fields);
+    anthropic_clean_sampling(query);
     query.messages = construct_chat_history(
       prompt,
       images,
@@ -1114,6 +1608,32 @@ export async function call_anthropic(
 }
 
 /**
+ * The thinking config for a Gemini model that thinks (Gemini 2.5 and later),
+ * from ChainForge's settings: thought summaries unless `include_thoughts` is
+ * off, and a `thinking_budget` if one is set. Undefined for other models.
+ * See https://ai.google.dev/gemini-api/docs/generate-content/thinking
+ */
+export function gemini_thinking_config(
+  model: string,
+  params?: Dict,
+): GenerateContentConfig["thinkingConfig"] {
+  if (!/^(models\/)?gemini-(2\.5|[3-9])/.test(model)) return undefined;
+  const config: Dict = {};
+  if (
+    params?.include_thoughts !== false &&
+    params?.include_thoughts !== "false"
+  )
+    config.includeThoughts = true;
+  // Gemini 3 models think by level, and 2.5 models by budget; a request can't have both.
+  const level = params?.thinking_level;
+  if (typeof level === "string" && level && level !== "default")
+    config.thinkingLevel = level.toUpperCase();
+  else if (!is_blank_setting(params?.thinking_budget))
+    config.thinkingBudget = Number(params?.thinking_budget);
+  return Object.keys(config).length > 0 ? config : undefined;
+}
+
+/**
  * Calls a Google Gemini model, based on the model selection from the user.
  * Returns raw query and response JSON dicts.
  */
@@ -1155,6 +1675,13 @@ export async function call_google_ai(
     systemInstruction: system_msg,
   };
 
+  // Thought summaries; the response's text leaves them out.
+  const thinking_config = gemini_thinking_config(model.toString(), params);
+  if (thinking_config) gemini_config.thinkingConfig = thinking_config;
+  delete params?.include_thoughts;
+  delete params?.thinking_budget;
+  delete params?.thinking_level;
+
   const query: Dict = {
     model: `models/${model}`,
     candidate_count: n,
@@ -1176,7 +1703,8 @@ export async function call_google_ai(
 
   Object.entries(casemap).forEach(([key, val]) => {
     if (key in query) {
-      gemini_config[val] = query[key];
+      // (Indexed as a Dict: the SDK's config type is too large for TypeScript to index by key.)
+      (gemini_config as Dict)[val] = query[key];
       query[val as string | number] = query[key];
       delete query[key];
     }
@@ -1217,7 +1745,7 @@ export async function call_google_ai(
       }
       const prompt_part: GeminiChatMessage = {
         role: openai_gemini_role_map[chat_msg.role],
-        parts: [{ text: chat_msg.content }],
+        parts: gemini_history_parts(chat_msg) as GeminiChatMessage["parts"],
       };
       gemini_chat_history.history.push(prompt_part);
     }
@@ -1284,8 +1812,8 @@ export async function call_google_ai(
  * generateContent endpoint. Input images (e.g. from a Media Node) are sent as
  * inline parts, for editing or as references.
  *
- * Calls fetch directly: the installed @google/genai version predates
- * `imageConfig`, which its request conversion would drop.
+ * Calls fetch directly, so the request is exactly the one the REST API
+ * documents (this predates the SDK's support for `imageConfig`).
  *
  * @returns raw query and the list of raw generateContent responses.
  */
@@ -2112,10 +2640,17 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.Together) call_api = call_together;
   else if (llm_provider === LLMProvider.DeepSeek) call_api = call_deepseek;
   else if (llm_provider === LLMProvider.MiniMax) call_api = call_minimax;
+  else if (llm_provider === LLMProvider.OpenRouter)
+    call_api = isOpenRouterImageModel(llm)
+      ? call_openrouter_image_gen
+      : call_openrouter;
   if (call_api === undefined)
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
     );
+  // Past turns' reasoning state is only for the provider that made it, which handles it itself
+  if (params?.chat_history && !PROVIDERS_REPLAYING_REASONING.has(llm_provider))
+    params.chat_history = strip_reasoning_state(params.chat_history);
   return call_api(prompt, llm, n, temperature, params, should_cancel, images);
 }
 
@@ -2199,6 +2734,25 @@ function _extract_openai_responses(response: Dict): Array<string> {
   else return _extract_openai_completion_responses(response);
 }
 
+/**
+ * Extracts the text of OpenRouter chat responses: one request per response,
+ * each in OpenAI's format. A blank answer is kept as "" rather than null.
+ */
+function _extract_openrouter_chat_responses(
+  responses: Array<Dict>,
+): Array<string> {
+  return responses.flatMap((response) =>
+    _extract_chatgpt_responses(response).map((text) => text ?? ""),
+  );
+}
+
+/** Extracts images from OpenRouter Image API results, as base64. */
+function _extract_openrouter_image_responses(
+  data: Array<Dict>,
+): LLMResponseData[] {
+  return data.map((d) => ({ t: "img", d: d.b64_json }));
+}
+
 function _extract_google_ai_responses(
   response: Dict,
   llm: LLM | string,
@@ -2266,12 +2820,16 @@ function _extract_anthropic_chat_responses(
               input: c.input,
             })
           );
+        // Thinking, which extract_reasoning collects instead
+        else if (c?.type === "thinking" || c?.type === "redacted_thinking")
+          return undefined;
         // Unknown type of message
         else
           throw Error(
             `Unknown type '${c?.type}' of message found in Anthropic response. If this is a new type, raise an Issue on the ChainForge Github.`,
           );
       })
+      .filter((s: string | undefined) => s !== undefined)
       .join("\n\n"),
   );
 }
@@ -2308,6 +2866,255 @@ function _extract_ollama_responses(
   return response.map((r: any) => r.generated_text?.trim());
 }
 
+/** The metavar under which a response's reasoning (a reasoning model's "thinking") is exposed. */
+export const REASONING_METAVAR = "reasoning";
+
+/** The readable reasoning in an OpenAI-format chat message from OpenRouter, if any. */
+function _extract_openrouter_message_reasoning(message?: Dict): string | null {
+  const reasoning = message?.reasoning;
+  if (typeof reasoning === "string" && reasoning.trim()) return reasoning;
+  // Some models only return structured details: text, or summaries. (Encrypted details aren't readable.)
+  const rawDetails = message?.reasoning_details;
+  const details: Dict[] = Array.isArray(rawDetails) ? rawDetails : [];
+  const text = details
+    .map((d) => (d?.type === "reasoning.summary" ? d.summary : d?.text))
+    .filter((t) => typeof t === "string" && t.trim().length > 0)
+    .join("\n\n");
+  return text || null;
+}
+
+/**
+ * Extracts each response's reasoning, in the same order as `extract_responses`,
+ * with null for a response without any. Returns undefined when no response has
+ * reasoning, so response objects only carry it when there's something to show.
+ */
+export function extract_reasoning(
+  response: Array<string | Dict> | Dict,
+  llm: LLM | string,
+  provider: LLMProvider,
+): Array<string | null> | undefined {
+  const llm_provider = provider ?? getProvider(llm as LLM);
+  const llm_name = llm.toString();
+  const readable = (s: unknown) =>
+    typeof s === "string" && s.trim().length > 0 ? s : null;
+  const joined = (parts: unknown[]) =>
+    readable(parts.filter((p) => readable(p) !== null).join("\n\n"));
+  const responses: Dict[] = Array.isArray(response)
+    ? (response as Dict[])
+    : [response as Dict];
+
+  let reasoning: Array<string | null> = [];
+  switch (llm_provider) {
+    case LLMProvider.OpenRouter:
+      if (!isOpenRouterImageModel(llm))
+        reasoning = responses.flatMap((r) =>
+          (r?.choices ?? []).map((c: Dict) =>
+            _extract_openrouter_message_reasoning(c?.message),
+          ),
+        );
+      break;
+    case LLMProvider.DeepSeek:
+      // OpenAI-format chat completions, with the reasoning beside the content
+      reasoning = responses.flatMap((r) =>
+        (r?.choices ?? []).map((c: Dict) =>
+          readable(c?.message?.reasoning_content),
+        ),
+      );
+      break;
+    case LLMProvider.OpenAI:
+      // Only Responses API results (see call_openai_responses) have reasoning summaries
+      reasoning = responses
+        .filter((r) => Array.isArray(r?.output))
+        .map((r) =>
+          joined(
+            r.output
+              .filter((o: Dict) => o?.type === "reasoning")
+              .flatMap((o: Dict) =>
+                (o.summary ?? []).map((s: Dict) => s?.text),
+              ),
+          ),
+        );
+      break;
+    case LLMProvider.Anthropic:
+      reasoning = responses.map((r) =>
+        joined(
+          (Array.isArray(r?.content) ? r.content : [])
+            .filter((c: Dict) => c?.type === "thinking")
+            .map((c: Dict) => c.thinking),
+        ),
+      );
+      break;
+    case LLMProvider.Google:
+      if (!isGeminiImageModel(llm_name))
+        reasoning = responses.map((r) =>
+          joined(
+            (r?.candidates?.[0]?.content?.parts ?? [])
+              .filter((p: Dict) => p?.thought)
+              .map((p: Dict) => p.text),
+          ),
+        );
+      break;
+  }
+  return reasoning.some((r) => r !== null) ? reasoning : undefined;
+}
+
+/**
+ * Extracts each response's reasoning state: a reasoning model's own record of
+ * its reasoning, which it needs back in later turns of a chat (e.g. Claude's
+ * signed thinking blocks, or OpenAI's encrypted reasoning items). Each is tagged
+ * with its provider, since only that provider can use it. In the same order as
+ * `extract_responses`, with null for a response without any.
+ */
+export function extract_reasoning_state(
+  response: Array<string | Dict> | Dict,
+  llm: LLM | string,
+  provider: LLMProvider,
+): Array<Dict | null> | undefined {
+  const llm_provider = provider ?? getProvider(llm as LLM);
+  const responses: Dict[] = Array.isArray(response)
+    ? (response as Dict[])
+    : [response as Dict];
+  const nonEmpty = (items: unknown) =>
+    Array.isArray(items) && items.length > 0 ? items : undefined;
+  const textIn = (s: unknown) =>
+    typeof s === "string" && s.length > 0 ? s : undefined;
+
+  let states: Array<Dict | null> = [];
+  switch (llm_provider) {
+    case LLMProvider.OpenRouter:
+      // Fields of OpenAI-format assistant messages, as sent back
+      if (!isOpenRouterImageModel(llm))
+        states = responses.flatMap((r) =>
+          (r?.choices ?? []).map((c: Dict) => {
+            const details = nonEmpty(c?.message?.reasoning_details);
+            if (details)
+              return { provider: llm_provider, reasoning_details: details };
+            const text = textIn(c?.message?.reasoning);
+            return text ? { provider: llm_provider, reasoning: text } : null;
+          }),
+        );
+      break;
+    case LLMProvider.DeepSeek:
+      states = responses.flatMap((r) =>
+        (r?.choices ?? []).map((c: Dict) => {
+          const text = textIn(c?.message?.reasoning_content);
+          return text
+            ? { provider: llm_provider, reasoning_content: text }
+            : null;
+        }),
+      );
+      break;
+    case LLMProvider.OpenAI:
+      // Responses aren't stored, so reasoning items only go back with their encrypted content
+      states = responses
+        .filter((r) => Array.isArray(r?.output))
+        .map((r) => {
+          const items = nonEmpty(
+            r.output.filter(
+              (o: Dict) => o?.type === "reasoning" && o.encrypted_content,
+            ),
+          );
+          return items ? { provider: llm_provider, items } : null;
+        });
+      break;
+    case LLMProvider.Anthropic:
+      // Thinking blocks go back unchanged, including ones whose text was omitted
+      states = responses.map((r) => {
+        const blocks = nonEmpty(
+          (Array.isArray(r?.content) ? r.content : []).filter(
+            (c: Dict) =>
+              c?.type === "thinking" || c?.type === "redacted_thinking",
+          ),
+        );
+        return blocks ? { provider: llm_provider, blocks } : null;
+      });
+      break;
+    case LLMProvider.Google:
+      // The model's parts go back whole, keeping their thought signatures
+      if (!isGeminiImageModel(llm.toString()))
+        states = responses.map((r) => {
+          const parts: Dict[] = r?.candidates?.[0]?.content?.parts ?? [];
+          return parts.some((p) => p?.thought || p?.thoughtSignature)
+            ? { provider: llm_provider, parts }
+            : null;
+        });
+      break;
+  }
+  return states.some((s) => s !== null) ? states : undefined;
+}
+
+/** Providers that get their own reasoning state back in later turns of a chat. */
+const PROVIDERS_REPLAYING_REASONING = new Set<LLMProvider>([
+  LLMProvider.OpenRouter,
+  LLMProvider.DeepSeek,
+  LLMProvider.OpenAI,
+  LLMProvider.Anthropic,
+  LLMProvider.Google,
+]);
+
+/** A past assistant turn's reasoning state, if the given provider made it. */
+function own_reasoning_state(
+  message: ChatMessage,
+  provider: LLMProvider,
+): Dict | undefined {
+  return message.role === "assistant" &&
+    message.reasoning_state?.provider === provider
+    ? message.reasoning_state
+    : undefined;
+}
+
+/** A chat history without reasoning state, for requests that can't use it. */
+export function strip_reasoning_state(history: ChatHistory): ChatHistory {
+  return history.map((message) => {
+    if (message.reasoning_state === undefined) return message;
+    const rest = { ...message };
+    delete rest.reasoning_state;
+    return rest;
+  });
+}
+
+/**
+ * A chat history for OpenAI-format chat completions, with a provider's own
+ * reasoning back on its past turns, in that provider's message fields (e.g.
+ * OpenRouter's reasoning_details, or DeepSeek's reasoning_content).
+ */
+export function chat_history_with_reasoning(
+  history: ChatHistory,
+  provider: LLMProvider,
+): ChatHistory {
+  return strip_reasoning_state(history).map((message, i) => {
+    const state = own_reasoning_state(history[i], provider);
+    if (!state) return message;
+    const fields = { ...state };
+    delete fields.provider;
+    return { ...message, ...fields };
+  });
+}
+
+/** A chat history for Claude's Messages API, with Claude's own thinking blocks back at the start of its past turns. */
+export function anthropic_chat_history(history: ChatHistory): ChatHistory {
+  return strip_reasoning_state(history).map((message, i) => {
+    const state = own_reasoning_state(history[i], LLMProvider.Anthropic);
+    if (!state) return message;
+    const text = message.content
+      ? [{ type: "text", text: message.content }]
+      : [];
+    return {
+      ...message,
+      content: [...state.blocks, ...text],
+    } as unknown as ChatMessage;
+  });
+}
+
+/** The parts of a past turn in a Gemini chat: the model's own parts (with thought signatures), or the turn's text. */
+export function gemini_history_parts(message: ChatMessage): Dict[] {
+  return (
+    own_reasoning_state(message, LLMProvider.Google)?.parts ?? [
+      { text: message.content },
+    ]
+  );
+}
+
 /**
  * Given a LLM and a response object from its API, extract the
  * text response(s) part of the response object.
@@ -2328,6 +3135,9 @@ export function extract_responses(
         );
       else if (llm_name.includes("davinci") || llm_name.includes("instruct"))
         return _extract_openai_completion_responses(response);
+      // Responses API results (see call_openai_responses)
+      else if (Array.isArray(response))
+        return (response as Dict[]).map(_extract_openai_responses_api_text);
       else return _extract_chatgpt_responses(response);
     case LLMProvider.WebLLM:
       return _extract_chatgpt_responses(response);
@@ -2353,6 +3163,10 @@ export function extract_responses(
       return _extract_openai_responses(response as Dict[]);
     case LLMProvider.MiniMax:
       return _extract_openai_responses(response as Dict[]);
+    case LLMProvider.OpenRouter:
+      if (isOpenRouterImageModel(llm))
+        return _extract_openrouter_image_responses(response as Dict[]);
+      return _extract_openrouter_chat_responses(response as Dict[]);
     default:
       if (
         Array.isArray(response) &&
@@ -2393,6 +3207,17 @@ export function merge_response_objs(
     metavars: resp_obj_B.metavars ?? {},
     uid: resp_obj_B.uid,
   };
+  // Reasoning lines up with responses, so a side without it gets nulls.
+  if (resp_obj_A.reasoning || resp_obj_B.reasoning) {
+    const reasoningOf = (o: RawLLMResponseObject) =>
+      o.responses.map((_, i) => o.reasoning?.[i] ?? null);
+    res.reasoning = reasoningOf(resp_obj_A).concat(reasoningOf(resp_obj_B));
+  }
+  if (resp_obj_A.reasoning_state || resp_obj_B.reasoning_state) {
+    const stateOf = (o: RawLLMResponseObject) =>
+      o.responses.map((_, i) => o.reasoning_state?.[i] ?? null);
+    res.reasoning_state = stateOf(resp_obj_A).concat(stateOf(resp_obj_B));
+  }
   if (resp_obj_B.chat_history !== undefined)
     res.chat_history = resp_obj_B.chat_history;
   return res;
@@ -2639,6 +3464,13 @@ export const toStandardResponseFormat = (r: Dict | string) => {
   };
   if (r?.eval_res !== undefined) resp_obj.eval_res = r.eval_res;
   if (r?.chat_history !== undefined) resp_obj.chat_history = r.chat_history;
+  // A single response, e.g. from a Prompt Node's output, whose reasoning
+  // is a metavar: keep it (and its reasoning state) with the response.
+  const reasoning = r?.metavars?.[REASONING_METAVAR];
+  if (reasoning !== undefined && reasoning !== null)
+    resp_obj.reasoning = [reasoning];
+  if (r?.reasoning_state !== undefined)
+    resp_obj.reasoning_state = [r.reasoning_state];
   return resp_obj;
 };
 
@@ -2864,7 +3696,46 @@ export async function retryAsyncFunc<T>(
 // Filters internally used keys LLM_{idx} and __{str} from metavar dictionaries.
 // This method is used to pass around information hidden from the user.
 export function cleanMetavarsFilterFunc(key: string) {
-  return !(key.startsWith("LLM_") || key.startsWith("__pt"));
+  // Reasoning is long text, which isn't useful to group or plot by.
+  return !(
+    key.startsWith("LLM_") ||
+    key.startsWith("__pt") ||
+    key === REASONING_METAVAR
+  );
+}
+
+/** The reasoning of the response at `index` of a response object, if it has any. */
+export function reasoningAt(
+  resp_obj: { reasoning?: (StringOrHash | null)[] },
+  index: number,
+): string | undefined {
+  const r = resp_obj.reasoning?.[index];
+  return (typeof r === "number" ? StringLookup.get(r) : r) || undefined;
+}
+
+/**
+ * The metavars for the response at `index` of a response object, with that
+ * response's reasoning (if any) under REASONING_METAVAR. Without reasoning,
+ * returns `metavars` itself, unchanged.
+ */
+export function withReasoningMetavar<T extends Dict>(
+  metavars: T,
+  resp_obj: { reasoning?: (StringOrHash | null)[] },
+  index: number,
+): T {
+  const text = reasoningAt(resp_obj, index);
+  return text ? { ...metavars, [REASONING_METAVAR]: text } : metavars;
+}
+
+/**
+ * Metavars without REASONING_METAVAR: for a new response, whose metavars would
+ * otherwise carry an earlier model's reasoning as though it were its own.
+ */
+export function withoutReasoningMetavar<T extends Dict>(metavars: T): T {
+  if (!(REASONING_METAVAR in metavars)) return metavars;
+  const rest: Dict = { ...metavars };
+  delete rest[REASONING_METAVAR];
+  return rest as T;
 }
 
 // Verify data integrity: check that uids are present for all responses.

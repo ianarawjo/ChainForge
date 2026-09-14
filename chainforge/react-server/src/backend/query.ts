@@ -12,7 +12,10 @@ import {
   LLMResponseData,
 } from "./typing";
 import {
+  extract_reasoning,
+  extract_reasoning_state,
   extract_responses,
+  withoutReasoningMetavar,
   merge_response_objs,
   call_llm,
   mergeDicts,
@@ -48,6 +51,9 @@ function imageMimeFromBase64(b64: string): string {
   if (b64.startsWith("/9j/")) return "image/jpeg";
   if (b64.startsWith("UklGR")) return "image/webp";
   if (b64.startsWith("R0lGOD")) return "image/gif";
+  // "<svg" or "<?xml ", from vector image models
+  if (b64.startsWith("PHN2Zy") || b64.startsWith("PD94bWwg"))
+    return "image/svg+xml";
   return "image/png";
 }
 
@@ -113,6 +119,8 @@ export class PromptPipeline {
 
     // Extract and format the responses into `LLMResponseData`
     const extracted_resps = extract_responses(response, llm, provider);
+    const reasoning = extract_reasoning(response, llm, provider);
+    const reasoning_state = extract_reasoning_state(response, llm, provider);
 
     // Detect any images and:
     // - Downrez them if the user has approved of automatic compression.
@@ -176,8 +184,14 @@ export class PromptPipeline {
       responses: extracted_resps,
       llm,
       vars: mergeDicts(info, chat_history?.fill_history) ?? {},
-      metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
+      // This response's reasoning is its own (below), not one carried from an earlier model
+      metavars: withoutReasoningMetavar(
+        mergeDicts(metavars, chat_history?.metavars) ?? {},
+      ),
     };
+
+    if (reasoning) resp_obj.reasoning = reasoning;
+    if (reasoning_state) resp_obj.reasoning_state = reasoning_state;
 
     // Carry over the chat history if present:
     if (chat_history !== undefined)
@@ -344,8 +358,14 @@ export class PromptPipeline {
             // We want to use the new info, since 'vars' could have changed even though
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
             vars: mergeDicts(info, chat_history?.fill_history) ?? {},
-            metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
+            metavars: withoutReasoningMetavar(
+              mergeDicts(metavars, chat_history?.metavars) ?? {},
+            ),
           };
+          if (cached_resp.reasoning)
+            resp.reasoning = cached_resp.reasoning.slice(0, n);
+          if (cached_resp.reasoning_state)
+            resp.reasoning_state = cached_resp.reasoning_state.slice(0, n);
           if (chat_history !== undefined)
             resp.chat_history = chat_history.messages;
           yield resp;

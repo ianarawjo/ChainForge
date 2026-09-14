@@ -63,6 +63,8 @@ import {
   batchResponsesByUID,
   cleanMetavarsFilterFunc,
   llmResponseDataToString,
+  REASONING_METAVAR,
+  reasoningAt,
   DebounceRef,
   genDebounceFunc,
   blobOrFileToDataURL,
@@ -178,6 +180,10 @@ function genSpansForHighlightedValue(
   );
 }
 
+/** Excel cells hold at most 32,767 characters, so longer text (e.g. long reasoning) is cut short. */
+const fitExcelCell = (text: string) =>
+  text.length > 32767 ? text.slice(0, 32766) + "…" : text;
+
 // Transform the JSON responses into a table
 export const pulledInputsToTable = (data: string[] | TemplateVarInfo[]) => {
   // The data is the result of pullInputData. We need to transform it into a table.
@@ -201,6 +207,9 @@ export const pulledInputsToTable = (data: string[] | TemplateVarInfo[]) => {
           llmResponseDataToString(info.text);
       }
       if (uid) row["Batch Id"] = uid;
+      const reasoning = metavars[REASONING_METAVAR];
+      if (reasoning !== undefined)
+        row.Reasoning = fitExcelCell(llmResponseDataToString(reasoning));
 
       // Add columns for vars
       Object.entries(vars).forEach(([varname, val]) => {
@@ -260,6 +269,8 @@ export const responsesToTable = async (
           Response: (await _resp_to_string(r)) ?? "",
           "Batch Id": res_obj.uid ?? res_obj_idx,
         };
+        const reasoning = reasoningAt(res_obj, r_idx);
+        if (reasoning) row.Reasoning = fitExcelCell(reasoning);
 
         // Add columns for vars
         for (const [varname, val] of Object.entries(vars)) {

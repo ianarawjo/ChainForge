@@ -29,7 +29,7 @@ import {
   IconChevronRight,
 } from "@tabler/icons-react";
 import { Dict, LLMResponse } from "./backend/typing";
-import { llmResponseDataToString } from "./backend/utils";
+import { llmResponseDataToString, reasoningAt } from "./backend/utils";
 import {
   axisValues,
   buildGrid,
@@ -191,7 +191,11 @@ const TextCard: React.FC<
   <button
     type="button"
     onClick={onOpen}
-    title="Open full response"
+    title={
+      reasoningAt(item.response, item.index)
+        ? "Open full response and reasoning"
+        : "Open full response"
+    }
     className={modelColor ? "cf-grid-card-model" : undefined}
     style={{
       ...(modelColor
@@ -232,6 +236,12 @@ const TextCard: React.FC<
       {item.text}
     </div>
     <ScoreBadge label={badge} outcome={badgeOutcome} />
+    {/* Marks a response with reasoning, which opening it shows */}
+    {reasoningAt(item.response, item.index) && (
+      <span className="cf-grid-reasoning-mark" aria-label="Has reasoning">
+        💭
+      </span>
+    )}
   </button>
 );
 
@@ -275,6 +285,8 @@ export const ResponseLightbox: React.FC<ResponseLightboxProps> = ({
   }, [index, step]);
 
   const response = item?.response;
+  const reasoning =
+    item && response ? reasoningAt(response, item.index) : undefined;
   // Prompt variables with text values; media inputs would only show a file id.
   const vars = response
     ? Object.entries(response.vars ?? {})
@@ -352,6 +364,12 @@ export const ResponseLightbox: React.FC<ResponseLightboxProps> = ({
               <IconChevronRight />
             </ActionIcon>
           </Flex>
+          {reasoning && (
+            <details className="cf-lightbox-reasoning">
+              <summary>💭 Reasoning</summary>
+              <div className="cf-lightbox-reasoning-text">{reasoning}</div>
+            </details>
+          )}
           {scores.map(([metric, value]) => (
             <Text size="sm" key={"score-" + metric}>
               <b>{metric}:</b>{" "}

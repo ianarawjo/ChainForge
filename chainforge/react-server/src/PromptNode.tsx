@@ -60,6 +60,7 @@ import {
   extractSettingsVars,
   genDebounceFunc,
   ensureUniqueName,
+  withReasoningMetavar,
 } from "./backend/utils";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import CancelTracker from "./backend/canceler";
@@ -641,7 +642,14 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         // with the prompt and text of the pulled data as the 2nd-to-last, and last, messages:
         const last_messages = [
           { role: "user", content: StringLookup.get(info.prompt) ?? "" },
-          { role: "assistant", content: StringLookup.get(info.text) ?? "" },
+          {
+            role: "assistant",
+            content: StringLookup.get(info.text) ?? "",
+            // The model's own record of its reasoning, which it gets back in later turns
+            ...(info.reasoning_state && {
+              reasoning_state: info.reasoning_state,
+            }),
+          },
         ];
         let updated_chat_hist =
           info.chat_history !== undefined
@@ -1159,7 +1167,7 @@ Soft failing by replacing undefined with empty strings.`,
           setDataPropsForNode(id, {
             fields: json_responses
               .map((resp_obj) =>
-                resp_obj.responses.map((r) => {
+                resp_obj.responses.map((r, j) => {
                   // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
                   const o: TemplateVarInfo = {
                     text:
@@ -1202,6 +1210,12 @@ Soft failing by replacing undefined with empty strings.`,
                     typeof resp_obj.llm === "number"
                       ? StringLookup.get(resp_obj.llm) ?? "(LLM lookup failed)"
                       : resp_obj.llm.name;
+
+                  // Expose this response's reasoning, if any, as a metavar
+                  o.metavars = withReasoningMetavar(o.metavars, resp_obj, j);
+                  // ...and its reasoning state, for a Chat Turn to send back to the model
+                  const reasoning_state = resp_obj.reasoning_state?.[j];
+                  if (reasoning_state) o.reasoning_state = reasoning_state;
 
                   return o;
                 }),
@@ -1661,7 +1675,7 @@ Soft failing by replacing undefined with empty strings.`,
       {node_type === "chat" ? (
         <div ref={setRef}>
           <ChatHistoryView
-            bgColors={["#ccc", "#ceeaf5b1"]}
+            bubbleClassNames={["chat-bubble-past", "chat-bubble-prompt"]}
             messages={[
               "(Past conversation)",
               <Textarea

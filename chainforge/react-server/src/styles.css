@@ -661,6 +661,74 @@ html[data-mantine-color-scheme="dark"]
 html[data-mantine-color-scheme="dark"] .cf-table-resp-text {
   color: #e9ecef;
 }
+/* Chip in the strip for a response with reasoning, which expands the
+   reasoning above the text; muted and scrollable, so long reasoning doesn't
+   take over the card. */
+.cf-table-resp .cf-table-resp-band .cf-reasoning-chip {
+  font: inherit;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 15px;
+  white-space: nowrap;
+  padding: 0 5px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.15);
+}
+.cf-table-resp .cf-table-resp-band .cf-reasoning-chip:hover,
+.cf-table-resp .cf-table-resp-band .cf-reasoning-chip[aria-expanded="true"] {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+.cf-table-resp-reasoning {
+  margin: 4px 7px 0;
+  padding: 2px 0 2px 7px;
+  max-height: 240px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.92em;
+  opacity: 0.8;
+  border-left: 2px solid
+    color-mix(in srgb, var(--cf-model-color) 75%, transparent);
+}
+html[data-mantine-color-scheme="dark"] .cf-table-resp-reasoning {
+  color: #ced4da;
+}
+.cf-table-resp-reasoning-note {
+  font-size: 10px;
+  font-style: italic;
+  margin-bottom: 2px;
+}
+/* Grid View (ResponseGridView.tsx): a mark on text cards with reasoning, and
+   the reasoning, collapsed, in the full response view. */
+.cf-grid-reasoning-mark {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.8;
+  pointer-events: none;
+}
+.cf-lightbox-reasoning summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.cf-lightbox-reasoning-text {
+  margin-top: 6px;
+  max-height: 35vh;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.8;
+  padding-left: 10px;
+  border-left: 2px solid rgba(128, 128, 128, 0.4);
+}
 /* Copy button in a response's bottom-right corner, shown on hover. */
 .cf-table-resp {
   position: relative;
@@ -1697,6 +1765,35 @@ html[data-mantine-color-scheme="dark"] .chat-bubble textarea {
   gap: 10px;
   font-family: system-ui, sans-serif;
   font-size: 14px;
+}
+/* Chat Turn bubbles (PromptNode.tsx): the past conversation, quiet, and the
+   new message in the accent color, as in the RAG Chat node. */
+.chat-bubble.chat-bubble-past {
+  background: #f1f3f5 border-box;
+  color: #868e96;
+  font-style: italic;
+}
+html[data-mantine-color-scheme="dark"] .chat-bubble.chat-bubble-past {
+  background: #2c2e33 border-box;
+  color: #909296;
+}
+.chat-bubble.chat-bubble-prompt {
+  background: #228be6 border-box;
+  color: #fff;
+}
+html[data-mantine-color-scheme="dark"] .chat-bubble.chat-bubble-prompt {
+  background: #1971c2 border-box;
+}
+.chat-bubble.chat-bubble-prompt textarea,
+html[data-mantine-color-scheme="dark"]
+  .chat-bubble.chat-bubble-prompt
+  textarea {
+  background: transparent !important;
+  border: none;
+  color: #fff !important;
+}
+.chat-bubble.chat-bubble-prompt textarea::placeholder {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .something-changed-circle {

@@ -24,7 +24,11 @@ import ModelSettingsModal, {
   ModelSettingsModalRef,
 } from "./ModelSettingsModal";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
-import { NativeLLM } from "./backend/models";
+import {
+  NativeLLM,
+  OPENROUTER_IMAGE_PREFIX,
+  OPENROUTER_PREFIX,
+} from "./backend/models";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
 import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
@@ -36,6 +40,14 @@ import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 const DEFAULT_INIT_LLMS = [
   initLLMProviders.find((m) => m.model === NativeLLM.WebLLM_Qwen2_5_0_5B)!,
 ];
+
+// Base models whose model names carry a prefix, which tells ChainForge which
+// provider they belong to. The settings form shows the name without it.
+const MODEL_NAME_PREFIXES: Record<string, string> = {
+  together: "together/",
+  openrouter: OPENROUTER_PREFIX,
+  "openrouter-image": OPENROUTER_IMAGE_PREFIX,
+};
 
 // Helper funcs
 /** Get position CSS style below and left-aligned to the input element */
@@ -121,8 +133,9 @@ export function LLMList({
               if (item.base_model.startsWith("__custom"))
                 // Custom models must always have their base name, to avoid name collisions
                 updated_item.model = item.base_model + "/" + formData.model;
-              else if (item.base_model === "together")
-                updated_item.model = ("together/" + formData.model) as string;
+              else if (item.base_model in MODEL_NAME_PREFIXES)
+                updated_item.model =
+                  MODEL_NAME_PREFIXES[item.base_model] + formData.model;
               else updated_item.model = formData.model as string;
             }
             if ("shortname" in formData) {
@@ -379,9 +392,10 @@ export const LLMListContainer = forwardRef<
       item.name = unique_name;
       item.formData = { shortname: unique_name };
 
-      // Together models have a substring "together/" that we need to strip:
-      if (item.base_model === "together")
-        item.formData.model = item.model.substring(9);
+      // Strip any provider prefix (e.g. "together/") from the model name the form shows:
+      const prefix = MODEL_NAME_PREFIXES[item.base_model];
+      if (prefix && item.model.startsWith(prefix))
+        item.formData.model = item.model.substring(prefix.length);
       else item.formData.model = item.model;
 
       // Ollama models use a different format for the model name, that we need to carry over:

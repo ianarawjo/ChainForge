@@ -107,6 +107,8 @@ export interface ChatMessage {
   images?: string[]; // MediaLookup UIDs
   name?: string;
   function_call?: OpenAIFunctionCall;
+  /** On an assistant turn: the model's own record of its reasoning, to send back to it in later turns (see extract_reasoning_state) */
+  reasoning_state?: Dict;
 }
 export type ChatHistory = ChatMessage[];
 
@@ -245,6 +247,10 @@ export interface RawLLMResponseObject extends BaseLLMResponseObject {
   // raw_response: Dict;
   // Extracted responses (1 or more) from raw_response
   responses: LLMResponseData[];
+  // Each response's reasoning (a reasoning model's "thinking"), in the same order as `responses`; null where there is none
+  reasoning?: (StringOrHash | null)[];
+  // Each response's reasoning state, which a Chat Turn sends back to the model (see extract_reasoning_state); null where there is none
+  reasoning_state?: (Dict | null)[];
   // Token lengths (if given)
   tokens?: Dict<number>;
 }
@@ -274,6 +280,10 @@ export type EvaluationResults = {
 export interface LLMResponse extends BaseLLMResponseObject {
   // Extracted responses (1 or more) from raw_response
   responses: LLMResponseData[];
+  // Each response's reasoning, in the same order as `responses`; null where there is none
+  reasoning?: (StringOrHash | null)[];
+  // Each response's reasoning state, in the same order as `responses`; null where there is none
+  reasoning_state?: (Dict | null)[];
   // Evaluation results
   eval_res?: EvaluationResults;
   // Token lengths (if given)
@@ -298,6 +308,7 @@ export interface TemplateVarInfo {
   uid?: ResponseUID;
   llm?: StringOrHash | LLMSpec;
   chat_history?: ChatHistory;
+  reasoning_state?: Dict; // the response's reasoning state, for a Chat Turn to send back
 }
 
 export type LLMResponsesByVarDict = Dict<

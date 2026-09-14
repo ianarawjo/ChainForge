@@ -97,6 +97,12 @@ export enum NativeLLM {
   GEMINI_v1_5_flash_8B = "gemini-1.5-flash-8b",
   GEMINI_v1_5_pro = "gemini-1.5-pro",
 
+  // Google Gemini 3 models
+  GEMINI_v3_8_flash = "gemini-3.8-flash",
+  GEMINI_v3_6_flash = "gemini-3.6-flash",
+  GEMINI_v3_5_flash_lite = "gemini-3.5-flash-lite",
+  GEMINI_v3_1_pro_preview = "gemini-3.1-pro-preview",
+
   // Google image generation models
   GEMINI_v3_1_flash_image = "gemini-3.1-flash-image",
   GEMINI_v3_1_flash_lite_image = "gemini-3.1-flash-lite-image",
@@ -104,6 +110,8 @@ export enum NativeLLM {
   GEMINI_v2_5_flash_image = "gemini-2.5-flash-image", // shuts down 2026-10-02
 
   // DeepSeek
+  DeepSeek_Flash = "deepseek-flash",
+  DeepSeek_V4_Pro = "deepseek-v4-pro",
   DeepSeek_Chat = "deepseek-chat",
   DeepSeek_Reasoner = "deepseek-reasoner",
 
@@ -265,6 +273,7 @@ export enum LLMProvider {
   Together = "together",
   DeepSeek = "deepseek",
   MiniMax = "minimax",
+  OpenRouter = "openrouter",
   Custom = "__custom",
 }
 
@@ -292,9 +301,36 @@ export function isGeminiImageModel(llm: LLM | string): boolean {
   return /^(models\/)?gemini-[\w.-]*image/i.test(llm.toString());
 }
 
+/**
+ * OpenRouter serves hundreds of models, and users can type in any model ID
+ * (e.g. "anthropic/claude-sonnet-5"). ChainForge prefixes those IDs so they map
+ * back to OpenRouter and never collide with other providers' model names.
+ */
+export const OPENROUTER_PREFIX = "openrouter/";
+/** Prefix for OpenRouter image models, which go through its Image API instead of chat completions. */
+export const OPENROUTER_IMAGE_PREFIX = "openrouter-image/";
+
+/** Whether a model is an OpenRouter image model (e.g. "openrouter-image/black-forest-labs/flux.2-pro"). */
+export function isOpenRouterImageModel(llm: LLM | string): boolean {
+  return llm.toString().startsWith(OPENROUTER_IMAGE_PREFIX);
+}
+
+/** The model ID that OpenRouter expects, without ChainForge's prefix. */
+export function stripOpenRouterPrefix(llm: LLM | string): string {
+  const name = llm.toString();
+  for (const prefix of [OPENROUTER_IMAGE_PREFIX, OPENROUTER_PREFIX])
+    if (name.startsWith(prefix)) return name.substring(prefix.length);
+  return name;
+}
+
 export function getProvider(llm: LLM): LLMProvider | undefined {
   const llm_name = getEnumName(NativeLLM, llm.toString());
   if (llm_name?.startsWith("WebLLM")) return LLMProvider.WebLLM;
+  else if (
+    llm.toString().startsWith(OPENROUTER_PREFIX) ||
+    isOpenRouterImageModel(llm)
+  )
+    return LLMProvider.OpenRouter;
   else if (llm_name?.startsWith("OpenAI")) return LLMProvider.OpenAI;
   else if (llm_name?.startsWith("Azure")) return LLMProvider.Azure_OpenAI;
   else if (llm_name?.startsWith("GEMINI")) return LLMProvider.Google;
@@ -371,6 +407,7 @@ export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
   [LLMProvider.Google]: 1000, // RPM for Google Gemini models 1.5 is quite generous; at base it is 1000 RPM. If you are using the free version it's 15 RPM, but we can expect most CF users to be using paid (and anyway you can just re-run prompt node until satisfied).
   [LLMProvider.DeepSeek]: 1000, // DeepSeek does not constrain users atm but they might in the future. To be safe we are limiting it to 1000 queries per minute.
   [LLMProvider.MiniMax]: 1000, // MiniMax API rate limits are generous; 1000 RPM to be safe.
+  [LLMProvider.OpenRouter]: 500, // OpenRouter sets no fixed limit for paid models, but the providers behind it do; 500 RPM to be safe.
 };
 
 // Max concurrent requests. Add to this to further constrain the rate limiter.

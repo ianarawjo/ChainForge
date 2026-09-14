@@ -933,6 +933,15 @@ const App = () => {
     [saveFlow],
   );
 
+  // The autosave interval outlives the render that started it, so it calls the
+  // latest saveFlow through this ref. Calling saveFlow directly kept the state
+  // from when autosaving started, e.g. before a loaded flow's nodes arrived, so
+  // every autosave exported no responses, and they were lost on the next reload.
+  const saveFlowRef = useRef(saveFlow);
+  useEffect(() => {
+    saveFlowRef.current = saveFlow;
+  }, [saveFlow]);
+
   // Initialize auto-saving
   const initAutosaving = useCallback(
     (rf_inst: ReactFlowInstance, reinit?: boolean) => {
@@ -953,7 +962,7 @@ const App = () => {
         const startTime = Date.now();
 
         // Save the flow to localStorage, and (if running locally) a copy to the filesystem
-        saveFlow(rf_inst, "__autosave", true); // surpress error alerts when autosaving
+        saveFlowRef.current(rf_inst, "__autosave", true); // surpress error alerts when autosaving
 
         // Check how long the save took
         const duration = Date.now() - startTime;

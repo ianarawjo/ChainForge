@@ -36,6 +36,7 @@ import {
   extendArrayDict,
   stripWrappingQuotes,
   extractMediaVars,
+  withReasoningMetavar,
 } from "./utils";
 import StorageCache, { MediaLookup, StringLookup } from "./cache";
 import { PromptPipeline } from "./query";
@@ -94,7 +95,8 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
   if (ORIGINAL_CONSOLE_LOG_FUNCS.log) {
     const cl = ORIGINAL_CONSOLE_LOG_FUNCS.log;
     base_window.console.log = function (...args: any[]) {
-      const a = args.map((s) => s.toString());
+      // String(), not .toString(), so logging undefined or null doesn't throw
+      const a = args.map((s) => String(s));
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       cl.apply(this, args);
     };
@@ -103,7 +105,7 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
   if (ORIGINAL_CONSOLE_LOG_FUNCS.warn) {
     const cw = ORIGINAL_CONSOLE_LOG_FUNCS.warn;
     base_window.console.warn = function (...args: any[]) {
-      const a = args.map((s) => `warn: ${s.toString()}`);
+      const a = args.map((s) => `warn: ${String(s)}`);
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       cw.apply(this, args);
     };
@@ -112,7 +114,7 @@ function HIJACK_CONSOLE_LOGGING(id: string, base_window: Dict): void {
   if (ORIGINAL_CONSOLE_LOG_FUNCS.error) {
     const ce = ORIGINAL_CONSOLE_LOG_FUNCS.error;
     base_window.console.error = function (...args: any[]) {
-      const a = args.map((s) => `error: ${s.toString()}`);
+      const a = args.map((s) => `error: ${String(s)}`);
       HIJACKED_CONSOLE_LOGS[id].push(a.length === 1 ? a[0] : a);
       ce.apply(this, args);
     };
@@ -174,6 +176,8 @@ function to_standard_format(r: RawLLMResponseObject | Dict): LLMResponse {
     uid: r.uid ?? uuid(),
   };
   if ("eval_res" in r) resp_obj.eval_res = r.eval_res;
+  if ("reasoning" in r) resp_obj.reasoning = r.reasoning;
+  if ("reasoning_state" in r) resp_obj.reasoning_state = r.reasoning_state;
   if ("chat_history" in r) resp_obj.chat_history = r.chat_history;
   return resp_obj;
 }
@@ -435,12 +439,16 @@ async function run_over_responses(
       // Map the processor func over every individual response text in each response object
       const res = resp_obj.responses;
       const llm_name = extract_llm_nickname(resp_obj.llm);
-      let processed = res.map((r: LLMResponseData) => {
+      let processed = res.map((r: LLMResponseData, j: number) => {
         const r_info = new ResponseInfo(
           cleanEscapedBraces(llmResponseDataToString(r)),
           StringLookup.get(resp_obj.prompt) ?? "",
           StringLookup.concretizeDict(resp_obj.vars),
-          StringLookup.concretizeDict(resp_obj.metavars) || {},
+          withReasoningMetavar(
+            StringLookup.concretizeDict(resp_obj.metavars) || {},
+            resp_obj,
+            j,
+          ),
           llm_name,
         );
 
@@ -1267,7 +1275,12 @@ export async function executepy(
     exec_response = await call_flask_backend("executepy", {
       id,
       code,
-      responses,
+      // Reasoning may be interned; the server needs its text.
+      responses: responses.map((r) =>
+        r.reasoning
+          ? { ...r, reasoning: r.reasoning.map((x) => StringLookup.get(x)) }
+          : r,
+      ),
       scope,
       process_type,
       script_paths,
@@ -1403,7 +1416,7 @@ export async function evalWithLLM(
           image: typeof r === "object" && r.t === "img" ? r.d : undefined,
           fill_history: obj.vars,
           metavars: {
-            ...obj.metavars,
+            ...withReasoningMetavar(obj.metavars, obj, __j),
             __i: __i.toString(),
             __j: __j.toString(),
           },

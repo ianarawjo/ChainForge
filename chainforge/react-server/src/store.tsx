@@ -30,8 +30,16 @@ import {
   JSONCompatible,
   LLMResponse,
 } from "./backend/typing";
-import { TogetherChatSettings } from "./ModelSettingSchemas";
-import { NativeLLM } from "./backend/models";
+import {
+  OpenRouterImageSettings,
+  OpenRouterSettings,
+  TogetherChatSettings,
+} from "./ModelSettingSchemas";
+import {
+  NativeLLM,
+  OPENROUTER_IMAGE_PREFIX,
+  OPENROUTER_PREFIX,
+} from "./backend/models";
 import { StringLookup } from "./backend/cache";
 import { saveGlobalConfig } from "./backend/backend";
 import { ChunkMethodSpec } from "./ChunkMethodListComponent";
@@ -118,6 +126,26 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         base_model: "webllm",
         temp: 0.7,
       },
+    ],
+  },
+  {
+    group: "OpenRouter",
+    emoji: "🔀",
+    items: [
+      ...openRouterMenuItems(
+        OpenRouterSettings,
+        OPENROUTER_PREFIX,
+        "openrouter",
+        "🔀",
+        1.0,
+      ),
+      ...openRouterMenuItems(
+        OpenRouterImageSettings,
+        OPENROUTER_IMAGE_PREFIX,
+        "openrouter-image",
+        "🖼",
+        0.0,
+      ),
     ],
   },
   {
@@ -215,6 +243,27 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "📚",
     items: [
       {
+        name: "Claude Opus 5",
+        emoji: "📚",
+        model: "claude-opus-5",
+        base_model: "claude-v1",
+        temp: 1.0,
+      },
+      {
+        name: "Claude Sonnet 5",
+        emoji: "📘",
+        model: "claude-sonnet-5",
+        base_model: "claude-v1",
+        temp: 1.0,
+      },
+      {
+        name: "Claude Haiku 4.5",
+        emoji: "📗",
+        model: "claude-haiku-4-5",
+        base_model: "claude-v1",
+        temp: 1.0,
+      },
+      {
         name: "Claude 3.7 Sonnet",
         emoji: "📚",
         model: "claude-3-7-sonnet-latest",
@@ -249,30 +298,30 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "♊",
     items: [
       {
-        name: "Gemini 2.5 Pro",
-        emoji: "♊",
-        model: "gemini-2.5-pro",
-        base_model: "gemini-2.5",
-        temp: 0.7,
-      },
-      {
-        name: "Gemini 2.5 Flash",
+        name: "Gemini 3.8 Flash",
         emoji: "⚡️",
-        model: "gemini-2.5-flash",
+        model: "gemini-3.8-flash",
         base_model: "gemini-2.5",
         temp: 0.7,
       },
       {
-        name: "Gemini 2.5 Flash Lite",
+        name: "Gemini 3.6 Flash",
+        emoji: "⚡️",
+        model: "gemini-3.6-flash",
+        base_model: "gemini-2.5",
+        temp: 0.7,
+      },
+      {
+        name: "Gemini 3.5 Flash-Lite",
         emoji: "💨",
-        model: "gemini-2.5-flash-lite",
+        model: "gemini-3.5-flash-lite",
         base_model: "gemini-2.5",
         temp: 0.7,
       },
       {
-        name: "Gemini 2.0 Flash",
-        emoji: "⚡️",
-        model: "gemini-2.0-flash",
+        name: "Gemini 3.1 Pro",
+        emoji: "♊",
+        model: "gemini-3.1-pro-preview",
         base_model: "gemini-2.5",
         temp: 0.7,
       },
@@ -297,16 +346,16 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "🐋",
     items: [
       {
-        name: "DeepSeek Chat",
+        name: "DeepSeek Flash",
         emoji: "🐋",
-        model: "deepseek-chat",
+        model: "deepseek-flash",
         base_model: "deepseek",
         temp: 1.0,
       }, // The base_model designates what settings form will be used, and must be unique.
       {
-        name: "DeepSeek Reasoner",
+        name: "DeepSeek V4 Pro",
         emoji: "🐳",
-        model: "deepseek-reasoner",
+        model: "deepseek-v4-pro",
         base_model: "deepseek",
         temp: 1.0,
       },
@@ -429,6 +478,25 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     ],
   },
 ];
+
+/** Menu items for the models listed in an OpenRouter settings form, so the menu and the form stay in sync. */
+function openRouterMenuItems(
+  settings: typeof OpenRouterSettings,
+  prefix: string,
+  base_model: string,
+  emoji: string,
+  temp: number,
+): LLMSpec[] {
+  const modelSpec = settings.schema.properties.model;
+  const names = modelSpec.shortname_map as Record<string, string>;
+  return (modelSpec.enum as string[]).map((model) => ({
+    name: names[model] ?? model,
+    emoji,
+    model: prefix + model,
+    base_model,
+    temp,
+  }));
+}
 
 const togetherModels = TogetherChatSettings.schema.properties.model
   .enum as string[];
