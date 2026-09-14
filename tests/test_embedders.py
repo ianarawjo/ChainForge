@@ -82,6 +82,40 @@ class TestOpenAIEmbedders:
                 {"Azure_OpenAI": "k", "Azure_OpenAI_Endpoint": "https://example.invalid"})
         assert calls == [(2, "my-deployment")]
 
+    def test_requests_stay_under_the_request_token_limit(self):
+        """Regression: 256 long chunks per request could pass OpenAI's 300k-token cap.
+
+        A token is at least one byte, so batches are bounded by UTF-8 bytes.
+        """
+        calls = []
+        texts = ["x" * 100_000 for _ in range(5)]
+        with patch("openai.OpenAI", return_value=sized_client(calls)):
+            result = embeddings.openai_embedder(texts, "text-embedding-3-small",
+                                                api_keys={"OpenAI": "k"})
+        assert calls == [2, 2, 1]
+        assert len(result) == 5
+
+    def test_azure_sends_at_most_16_inputs_per_request(self):
+        """Regression: older Azure deployments reject more than 16 inputs per request."""
+        calls = []
+        with patch("openai.AzureOpenAI", return_value=sized_client(calls)):
+            embeddings.azure_openai_embedder(
+                ["t"] * 40, "my-deployment", None,
+                {"Azure_OpenAI": "k", "Azure_OpenAI_Endpoint": "https://example.invalid"})
+        assert calls == [16, 16, 8]
+
+
+def sized_client(calls):
+    """An OpenAI-style client recording how many texts each request carried."""
+    def create(input, model):
+        calls.append(len(input))
+        return types.SimpleNamespace(
+            data=[types.SimpleNamespace(index=i, embedding=[0.0]) for i in range(len(input))])
+
+    client = MagicMock()
+    client.embeddings.create.side_effect = create
+    return client
+
 
 class TestCohereEmbedder:
 

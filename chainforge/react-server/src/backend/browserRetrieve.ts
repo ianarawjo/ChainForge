@@ -38,6 +38,13 @@ const KEY_SEP = "\u0000";
  */
 export const BROWSER_SEMANTIC_METHOD = "browser_embedding";
 
+/**
+ * The chunkMethod of rows from a server method that loaded an existing index,
+ * which ignores the connected chunks. Matches EXISTING_INDEX_LABEL in
+ * chainforge/rag/retrievers.py.
+ */
+export const EXISTING_INDEX_CHUNK_METHOD = "(existing index)";
+
 /** A retrieval method as the Retrieval node sends it. */
 export interface RetrieveMethodSpec {
   id: string;
@@ -417,17 +424,35 @@ export function fusedRows(
     for (const mid of group.methodKeys ?? []) groupByMethodId[mid] = group.id;
   }
 
+  // A loaded index ignores the connected chunks, so its hits fuse with every
+  // chunking method's rankings, as in retrieve() in flask_app.py.
+  const chunkMethods = [
+    ...new Set(
+      (request.chunks ?? []).map(
+        (chunk) => (chunk.fill_history?.chunkMethod as string) ?? "unknown",
+      ),
+    ),
+  ];
+
   // (queryText, chunkMethod) -> methodId -> staged hits
   const staging: Dict<Dict<StagedHit[]>> = {};
   for (const row of rows) {
-    const key = `${row.prompt}${KEY_SEP}${row.vars.chunkMethod}`;
     const item = row.eval_res.items[0];
-    ((staging[key] ??= {})[row.metavars.methodId] ??= []).push({
+    const staged: StagedHit = {
       doc_id: fusionDocKey(row),
       rank: item.rank,
       score: Number(item.similarity ?? 0),
       obj: row,
-    });
+    };
+    const stagedChunkMethods =
+      row.vars.chunkMethod === EXISTING_INDEX_CHUNK_METHOD &&
+      chunkMethods.length > 0
+        ? chunkMethods
+        : [row.vars.chunkMethod];
+    for (const chunkMethod of stagedChunkMethods) {
+      const key = `${row.prompt}${KEY_SEP}${chunkMethod}`;
+      ((staging[key] ??= {})[row.metavars.methodId] ??= []).push(staged);
+    }
   }
 
   const fused: RetrieveResponseRow[] = [];
@@ -466,6 +491,7 @@ export function fusedRows(
         const row: RetrieveResponseRow = JSON.parse(JSON.stringify(baseRow));
         row.eval_res.items = [{ similarity: fusedScore, rank: index + 1 }];
         row.vars.retrievalMethod = label;
+        row.vars.chunkMethod = chunkMethod;
         row.metavars = {
           ...row.metavars,
           methodId: `group:${gid}`,

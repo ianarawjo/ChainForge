@@ -398,6 +398,10 @@ _BACKEND_OF_METHOD = {
 
 _MODE_SETTING = {"lancedb": "lancedb_mode", "faiss": "faiss_mode"}
 
+# The chunkMethod of results from a method that loaded an existing index, which
+# ignores the connected chunks. Mirrored in react-server/src/backend/browserRetrieve.ts.
+EXISTING_INDEX_LABEL = "(existing index)"
+
 
 def uses_existing_index(base_method: str, settings: Dict[str, Any]) -> bool:
     """Whether a method searches an index already on disk, ignoring the connected chunks."""
@@ -449,10 +453,16 @@ def _search_method(settings: Dict[str, Any]) -> str:
     return method
 
 
-def _apply_threshold(hits: List[Dict[str, Any]], settings: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Drop hits scoring below `similarity_threshold`, a percentage (0-100)."""
+def _apply_threshold(hits: List[Dict[str, Any]], settings: Dict[str, Any], metric: str) -> List[Dict[str, Any]]:
+    """Drop hits scoring below `similarity_threshold`, a percentage (0-100).
+
+    Only for cosine, whose scores run 0-1 as (1 + cos) / 2. Euclidean and dot
+    product scores have no fixed range -- a typical OpenAI match scores about
+    0.44 and 0.36 under them -- so the settings form offers the threshold only
+    for cosine, and a saved value is ignored for the others.
+    """
     threshold = settings.get("similarity_threshold")
-    if threshold is None or threshold == "":
+    if metric != "cosine" or threshold is None or threshold == "":
         return hits
     cutoff = float(threshold) / 100.0
     return [h for h in hits if h["similarity"] >= cutoff]
@@ -480,7 +490,7 @@ def _search_store(store, query_objs, query_embeddings, settings, metric):
             method=method,
         )
         results.append({'query_object': query_obj,
-                        'retrieved_chunks': _apply_threshold(_attach_chunk_identity(hits), settings)})
+                        'retrieved_chunks': _apply_threshold(_attach_chunk_identity(hits), settings, metric)})
     return results
 
 
@@ -606,10 +616,5 @@ def handle_memory_vector_store(chunk_objs, chunk_embeddings, query_objs, query_e
             "metadata": metadata[i],
         } for i in order[:top_k]]
         results.append({'query_object': query_obj,
-                        'retrieved_chunks': _apply_threshold(_attach_chunk_identity(hits), settings)})
+                        'retrieved_chunks': _apply_threshold(_attach_chunk_identity(hits), settings, metric)})
     return results
-
-
-def cosine_to_similarity_array(cos):
-    """Vectorized form of vector_stores.cosine_to_similarity."""
-    return (1.0 + cos) / 2.0

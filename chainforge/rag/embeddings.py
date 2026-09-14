@@ -167,13 +167,33 @@ def openai_embedder(texts, model_name="text-embedding-3-small", path=None, api_k
         raise ValueError(f"Failed to generate OpenAI embeddings: {str(e)}")
 
 
-def _embed_in_batches(client, model, texts, batch_size=256):
-    """Embed through an OpenAI-style client, many texts per request."""
+# OpenAI caps an embeddings request at 300,000 tokens across its inputs. A token
+# is at least one byte of UTF-8, so a text's byte length bounds its token count
+# without needing a tokenizer; stay a margin under the cap.
+_MAX_REQUEST_BYTES = 280_000
+
+
+def _embed_in_batches(client, model, texts, max_inputs=256):
+    """Embed through an OpenAI-style client, many texts per request.
+
+    Each request holds at most `max_inputs` texts and _MAX_REQUEST_BYTES of
+    text. A single text over that bound goes alone, where the per-input limit
+    applies as it always did.
+    """
     embeddings = []
-    for i in range(0, len(texts), batch_size):
-        resp = client.embeddings.create(input=texts[i:i + batch_size], model=model)
+    start = 0
+    while start < len(texts):
+        end, size = start, 0
+        while end < len(texts) and end - start < max_inputs:
+            text_bytes = len(texts[end].encode("utf-8"))
+            if end > start and size + text_bytes > _MAX_REQUEST_BYTES:
+                break
+            size += text_bytes
+            end += 1
+        resp = client.embeddings.create(input=texts[start:end], model=model)
         # The API documents `index` as each input's position; don't rely on order.
         embeddings.extend(d.embedding for d in sorted(resp.data, key=lambda d: d.index))
+        start = end
     return embeddings
 
 
@@ -275,7 +295,9 @@ def azure_openai_embedder(texts, model_name="text-embedding-3-small", path=None,
             api_version="2023-05-15",
             azure_endpoint=azure_endpoint
         )
-        return _embed_in_batches(client, model_name, texts)
+        # Deployments of older models, such as text-embedding-ada-002 version 1,
+        # reject more than 16 inputs per request on this API version.
+        return _embed_in_batches(client, model_name, texts, max_inputs=16)
     except Exception as e:
         print(f"Azure OpenAI embedder failed: {str(e)}")
         raise ValueError(f"Failed to generate Azure OpenAI embeddings: {str(e)}")

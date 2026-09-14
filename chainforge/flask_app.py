@@ -52,7 +52,7 @@ if _rag_packages_installed():
     # rather than stop ChainForge from starting at all.
     try:
         from chainforge.rag.chunkers import ChunkingMethodRegistry
-        from chainforge.rag.retrievers import RetrievalMethodRegistry, uses_existing_index
+        from chainforge.rag.retrievers import RetrievalMethodRegistry, uses_existing_index, EXISTING_INDEX_LABEL
         from chainforge.rag.rerankers import RerankingMethodRegistry, rrf_fuse, weighted_avg_fuse, fusion_doc_key
         from chainforge.rag.embeddings import EmbeddingMethodRegistry
         RAG_AVAILABLE = True
@@ -1916,7 +1916,7 @@ def retrieve():
                     elif multiple_chunk_groups:
                         method_settings["_index_suffix"] = chunk_method
                     # Hits from an existing index didn't come from the connected chunks.
-                    row_chunk_method = "(existing index)" if loads_existing_index else chunk_method
+                    row_chunk_method = EXISTING_INDEX_LABEL if loads_existing_index else chunk_method
 
                     # A scratch folder for this method's index, used unless the
                     # method's settings name one of their own.
@@ -1975,9 +1975,14 @@ def retrieve():
                                     score = float(chunk.get("similarity", 0.0))
                                     rank = i + 1
                                     query_txt = query_object['text']
-                                    staging[(query_txt, row_chunk_method)][method_id].append({
-                                        "doc_id": doc_id, "rank": rank, "score": score, "obj": response_obj
-                                    })
+                                    # A loaded index ignores the connected chunks, so its hits
+                                    # fuse with every chunking method's rankings.
+                                    staged_chunk_methods = (list(chunks_by_method) if loads_existing_index
+                                                            else [row_chunk_method])
+                                    for staged_chunk_method in staged_chunk_methods:
+                                        staging[(query_txt, staged_chunk_method)][method_id].append({
+                                            "doc_id": doc_id, "rank": rank, "score": score, "obj": response_obj
+                                        })
                                 flat_results.append(response_obj)
                         set_retrieval_progress(method_name, 100)
                     except Exception as e:
@@ -2025,6 +2030,7 @@ def retrieve():
                         obj = copy.deepcopy(base_obj)
                         obj["eval_res"]["items"] = [{"similarity": fused_score, "rank": rank_idx}]
                         obj["vars"]["retrievalMethod"] = fused_label
+                        obj["vars"]["chunkMethod"] = chunk_method
                         obj["metavars"].update({
                             "methodId": f"group:{gid}",
                             "retrievalMethodSignature": fusion_sig,

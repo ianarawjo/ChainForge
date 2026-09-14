@@ -57,3 +57,26 @@ describe("the embedding settings form shows each backend's own fields", () => {
     expect(screen.queryByText(/Hybrid/)).toBeNull();
   });
 });
+
+describe("the similarity threshold", () => {
+  const renderWithMetric = (metric: string) =>
+    render(
+      <Form
+        schema={EmbeddingSimilaritySchema.schema as RJSFSchema}
+        uiSchema={uiSchema}
+        validator={validator}
+        formData={{ storage_backend: "memory", similarity_metric: metric }}
+      />,
+    );
+
+  test("is offered for cosine", () => {
+    renderWithMetric("cosine");
+    expect(screen.queryByText("Similarity Threshold (%)")).not.toBeNull();
+  });
+
+  // Their scores have no fixed range, so a percentage means nothing.
+  test.each(["euclidean", "dot_product"])("is not offered for %s", (metric) => {
+    renderWithMetric(metric);
+    expect(screen.queryByText("Similarity Threshold (%)")).toBeNull();
+  });
+});

@@ -81,3 +81,28 @@ describe("weighted average fusion", () => {
     expect(fused.llm).toBe("from m2");
   });
 });
+
+describe("fusion with a loaded index", () => {
+  test("its hits fuse with each chunking method's rankings", () => {
+    // A server method loading an existing index labels its rows so.
+    const loaded = {
+      ...row("m2", "d", "b", "b", 1, 0.8),
+      vars: {
+        query: "q",
+        retrievalMethod: "m2",
+        chunkMethod: "(existing index)",
+      },
+    };
+    const fused = fusedRows([row("m1", "d", "a", "a", 1, 0.9), loaded], {
+      ...request("reciprocal_rank_fusion"),
+      chunks: [
+        { text: "a", fill_history: { chunkMethod: "cm" }, metavars: {} },
+      ],
+    });
+    expect(fused.map((r) => r.text).sort()).toEqual(["a", "b"]);
+    expect(new Set(fused.map((r) => r.vars.chunkMethod))).toEqual(
+      new Set(["cm"]),
+    );
+    expect(fused[0].vars.retrievalMethod).toBe("Fused (M1 + M2)");
+  });
+});

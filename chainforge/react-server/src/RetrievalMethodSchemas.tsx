@@ -302,12 +302,7 @@ export const EmbeddingSimilaritySchema: ModelSettingsDict = {
     "Retrieves documents using semantic similarity between embeddings",
   schema: {
     type: "object",
-    required: [
-      "top_k",
-      "similarity_threshold",
-      "similarity_metric",
-      "storage_backend",
-    ],
+    required: ["top_k", "similarity_metric", "storage_backend"],
     properties: {
       shortName: {
         type: "string",
@@ -341,18 +336,6 @@ export const EmbeddingSimilaritySchema: ModelSettingsDict = {
         default: 5,
         title: "Top K Results",
         description: "Number of most similar documents to retrieve",
-      },
-      similarity_threshold: {
-        type: "number",
-        default: 50,
-        title: "Similarity Threshold (%)",
-        minimum: 0,
-        maximum: 100,
-        step: 1,
-        description:
-          "Results scoring below this are dropped, so fewer than Top K may come back. " +
-          "Cosine scores map -1..1 onto 0..100%; Euclidean scores are 1 / (1 + squared distance); " +
-          "dot product scores are the raw dot product.",
       },
       similarity_metric: {
         type: "string",
@@ -394,6 +377,33 @@ export const EmbeddingSimilaritySchema: ModelSettingsDict = {
     // Settings that only apply to one storage backend appear only when it is
     // selected. The keys are unchanged, so saved flows keep their values.
     dependencies: {
+      // A percentage only means something for cosine, whose scores have a
+      // fixed range; the backend ignores a saved threshold for other metrics.
+      similarity_metric: {
+        oneOf: [
+          {
+            properties: {
+              similarity_metric: { enum: ["cosine"] },
+              similarity_threshold: {
+                type: "number",
+                default: 50,
+                title: "Similarity Threshold (%)",
+                minimum: 0,
+                maximum: 100,
+                step: 1,
+                description:
+                  "Results scoring below this are dropped, so fewer than Top K may come back. " +
+                  "Scores map cosine similarity from -1..1 onto 0..100%, so 50% keeps anything not pointing away from the query.",
+              },
+            },
+          },
+          {
+            properties: {
+              similarity_metric: { enum: ["euclidean", "dot_product"] },
+            },
+          },
+        ],
+      },
       storage_backend: {
         oneOf: [
           { properties: { storage_backend: { enum: ["memory"] } } },

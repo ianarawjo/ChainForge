@@ -327,3 +327,40 @@ class TestThroughEndpoint:
         assert len(rows) == len(sample_chunks)
         assert {r["vars"]["chunkMethod"] for r in rows} == {"(existing index)"}
         assert "document" not in embed_calls
+
+    def test_a_loaded_index_fuses_with_the_other_methods(self, endpoint, sample_chunks, tmp_path):
+        """Regression: a loaded index's hits were staged under "(existing index)".
+
+        Every other method stages under its chunking method, so a fusion group
+        linking them never combined the two rankings.
+        """
+        endpoint.post("/retrieve", json=self.body(
+            sample_chunks, ["A"], storage_backend="lancedb", lancedb_path=str(tmp_path)))
+
+        body = self.body(sample_chunks, ["A"], storage_backend="lancedb",
+                         lancedb_path=str(tmp_path), lancedb_mode="load")
+        body["methods"].append({"id": "m2", "baseMethod": "bm25", "methodName": "BM25",
+                                "library": "BM25", "settings": {"top_k": 3}})
+        body["fusion_enabled"] = True
+        body["linked_groups"] = [{"id": "g", "methodKeys": ["m1", "m2"],
+                                  "fusionMethod": "reciprocal_rank_fusion", "fusionSettings": {}}]
+        resp = endpoint.post("/retrieve", json=body)
+        assert resp.status_code == 200, resp.get_json()
+        fused = [r for r in resp.get_json() if r["metavars"]["methodId"] == "group:g"]
+        assert fused
+        assert {r["vars"]["retrievalMethod"] for r in fused} == {"Fused (Embeddings + BM25)"}
+        assert {r["vars"]["chunkMethod"] for r in fused} == {"A"}
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+@pytest.mark.parametrize("metric", ["euclidean", "dot_product"])
+def test_the_threshold_only_applies_to_cosine(corpus, temp_db_dir, backend, metric):
+    """Regression: the default 50% threshold dropped nearly every hit for these metrics.
+
+    Their scores have no fixed range -- a typical OpenAI match scores about 0.44
+    under Euclidean and 0.36 as a dot product -- so the form offers the
+    threshold only for cosine, and a saved value is ignored for the others.
+    """
+    results = run_corpus(corpus, temp_db_dir, top_k=3, storage_backend=backend,
+                         similarity_metric=metric, similarity_threshold=99.9)
+    assert len(chunk_ids(results)) == 3
