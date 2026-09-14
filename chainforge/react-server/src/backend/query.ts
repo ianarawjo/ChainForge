@@ -12,6 +12,7 @@ import {
   LLMResponseData,
 } from "./typing";
 import {
+  extract_reasoning,
   extract_responses,
   merge_response_objs,
   call_llm,
@@ -48,6 +49,9 @@ function imageMimeFromBase64(b64: string): string {
   if (b64.startsWith("/9j/")) return "image/jpeg";
   if (b64.startsWith("UklGR")) return "image/webp";
   if (b64.startsWith("R0lGOD")) return "image/gif";
+  // "<svg" or "<?xml ", from vector image models
+  if (b64.startsWith("PHN2Zy") || b64.startsWith("PD94bWwg"))
+    return "image/svg+xml";
   return "image/png";
 }
 
@@ -113,6 +117,7 @@ export class PromptPipeline {
 
     // Extract and format the responses into `LLMResponseData`
     const extracted_resps = extract_responses(response, llm, provider);
+    const reasoning = extract_reasoning(response, llm, provider);
 
     // Detect any images and:
     // - Downrez them if the user has approved of automatic compression.
@@ -178,6 +183,8 @@ export class PromptPipeline {
       vars: mergeDicts(info, chat_history?.fill_history) ?? {},
       metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
     };
+
+    if (reasoning) resp_obj.reasoning = reasoning;
 
     // Carry over the chat history if present:
     if (chat_history !== undefined)
@@ -346,6 +353,8 @@ export class PromptPipeline {
             vars: mergeDicts(info, chat_history?.fill_history) ?? {},
             metavars: mergeDicts(metavars, chat_history?.metavars) ?? {},
           };
+          if (cached_resp.reasoning)
+            resp.reasoning = cached_resp.reasoning.slice(0, n);
           if (chat_history !== undefined)
             resp.chat_history = chat_history.messages;
           yield resp;

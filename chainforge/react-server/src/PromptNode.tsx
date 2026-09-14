@@ -60,6 +60,7 @@ import {
   extractSettingsVars,
   genDebounceFunc,
   ensureUniqueName,
+  withReasoningMetavar,
 } from "./backend/utils";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import CancelTracker from "./backend/canceler";
@@ -1159,7 +1160,7 @@ Soft failing by replacing undefined with empty strings.`,
           setDataPropsForNode(id, {
             fields: json_responses
               .map((resp_obj) =>
-                resp_obj.responses.map((r) => {
+                resp_obj.responses.map((r, j) => {
                   // Carry over the response text, prompt, prompt fill history (vars), and llm nickname:
                   const o: TemplateVarInfo = {
                     text:
@@ -1202,6 +1203,9 @@ Soft failing by replacing undefined with empty strings.`,
                     typeof resp_obj.llm === "number"
                       ? StringLookup.get(resp_obj.llm) ?? "(LLM lookup failed)"
                       : resp_obj.llm.name;
+
+                  // Expose this response's reasoning, if any, as a metavar
+                  o.metavars = withReasoningMetavar(o.metavars, resp_obj, j);
 
                   return o;
                 }),

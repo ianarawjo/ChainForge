@@ -263,6 +263,11 @@ class ResponseInfo:
         md_ast_parser = mistune.create_markdown(renderer='ast')
         return md_ast_parser(self.text)
 
+def with_reasoning_metavar(metavars: dict, reasoning: list, index: int) -> dict:
+    """The metavars for the response at `index`, with that response's reasoning (if any) under 'reasoning'."""
+    text = reasoning[index] if index < len(reasoning) else None
+    return {**metavars, 'reasoning': text} if isinstance(text, str) and text else metavars
+
 def check_typeof_vals(arr: list) -> MetricType:
     if len(arr) == 0: return MetricType.Empty
 
@@ -316,15 +321,18 @@ def run_over_responses(process_func, responses: list, scope: str, process_type: 
     for resp_obj in responses:
         res = resp_obj['responses']
         if scope == 'response':
-            # Run process func over every individual response text
+            # Run process func over every individual response text.
+            # Each response's reasoning, if the model gave any, is in its meta under 'reasoning'.
+            metavars = resp_obj['metavars'] if 'metavars' in resp_obj else {}
+            reasoning = resp_obj.get('reasoning') or []
             proc = [process_func(
                         ResponseInfo(
                             text=r,
                             prompt=resp_obj['prompt'],
                             var=resp_obj['vars'],
-                            meta=resp_obj['metavars'] if 'metavars' in resp_obj else {},
+                            meta=with_reasoning_metavar(metavars, reasoning, j),
                             llm=resp_obj['llm'])
-                    ) for r in res]
+                    ) for j, r in enumerate(res)]
 
             if process_type == 'processor':
                 # Response text was just transformed, not evaluated
@@ -655,6 +663,7 @@ def fetchEnvironAPIKeys():
         'TOGETHER_API_KEY': 'Together',
         'DEEPSEEK_API_KEY': 'DeepSeek',
         'MINIMAX_API_KEY': 'MiniMax',
+        'OPENROUTER_API_KEY': 'OpenRouter',
     }
     d = { alias: os.environ.get(key) for key, alias in keymap.items() }
     ret = jsonify(d)

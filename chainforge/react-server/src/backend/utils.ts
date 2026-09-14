@@ -11,6 +11,8 @@ import {
   getProvider,
   isGeminiImageModel,
   isOpenAIImageModel,
+  isOpenRouterImageModel,
+  stripOpenRouterPrefix,
 } from "./models";
 import {
   Dict,
@@ -211,6 +213,7 @@ let AWS_REGION = get_environ("AWS_REGION");
 let TOGETHER_API_KEY = get_environ("TOGETHER_API_KEY");
 let DEEPSEEK_API_KEY = get_environ("DEEPSEEK_API_KEY");
 let MINIMAX_API_KEY = get_environ("MINIMAX_API_KEY");
+let OPENROUTER_API_KEY = get_environ("OPENROUTER_API_KEY");
 
 let _WEBLLM_MODULE_PROMISE: Promise<any> | undefined;
 let _WEBLLM_ENGINE: any;
@@ -295,6 +298,7 @@ export function set_api_keys(api_keys: Dict<string>): void {
   if (key_is_present("Together")) TOGETHER_API_KEY = api_keys.Together;
   if (key_is_present("DeepSeek")) DEEPSEEK_API_KEY = api_keys.DeepSeek;
   if (key_is_present("MiniMax")) MINIMAX_API_KEY = api_keys.MiniMax;
+  if (key_is_present("OpenRouter")) OPENROUTER_API_KEY = api_keys.OpenRouter;
 }
 
 export function get_azure_openai_api_keys(): [
@@ -374,6 +378,40 @@ async function imagesToBase64(images: string[]) {
     return base64_images;
   }
   return [];
+}
+
+/** Removes empty settings from OpenAI-style chat params, in place, so they aren't sent to the API. */
+function strip_empty_chat_params(params?: Dict): void {
+  if (
+    params?.stop !== undefined &&
+    (!Array.isArray(params.stop) || params.stop.length === 0)
+  )
+    delete params.stop;
+  if (params?.seed && params.seed.toString().length === 0) delete params?.seed;
+  if (
+    params?.functions !== undefined &&
+    (!Array.isArray(params.functions) || params.functions.length === 0)
+  )
+    delete params?.functions;
+  if (
+    params?.function_call !== undefined &&
+    (!(typeof params.function_call === "string") ||
+      params.function_call.trim().length === 0)
+  )
+    delete params.function_call;
+  if (
+    params?.tools !== undefined &&
+    (!Array.isArray(params.tools) || params.tools.length === 0)
+  )
+    delete params?.tools;
+  if (
+    params?.tool_choice !== undefined &&
+    (!(typeof params.tool_choice === "string") ||
+      params.tool_choice.trim().length === 0)
+  )
+    delete params.tool_choice;
+  if (params?.tools === undefined && params?.parallel_tool_calls !== undefined)
+    delete params?.parallel_tool_calls;
 }
 
 async function resolve_images_in_user_messages(
@@ -495,37 +533,7 @@ export async function call_chatgpt(
 
   const modelname: string = model.toString();
 
-  // Remove empty params
-  if (
-    params?.stop !== undefined &&
-    (!Array.isArray(params.stop) || params.stop.length === 0)
-  )
-    delete params.stop;
-  if (params?.seed && params.seed.toString().length === 0) delete params?.seed;
-  if (
-    params?.functions !== undefined &&
-    (!Array.isArray(params.functions) || params.functions.length === 0)
-  )
-    delete params?.functions;
-  if (
-    params?.function_call !== undefined &&
-    (!(typeof params.function_call === "string") ||
-      params.function_call.trim().length === 0)
-  )
-    delete params.function_call;
-  if (
-    params?.tools !== undefined &&
-    (!Array.isArray(params.tools) || params.tools.length === 0)
-  )
-    delete params?.tools;
-  if (
-    params?.tool_choice !== undefined &&
-    (!(typeof params.tool_choice === "string") ||
-      params.tool_choice.trim().length === 0)
-  )
-    delete params.tool_choice;
-  if (params?.tools === undefined && params?.parallel_tool_calls !== undefined)
-    delete params?.parallel_tool_calls;
+  strip_empty_chat_params(params);
 
   // Pass in o3 and GPT-5+ only parameters, removing them if the
   // model name does not correspond to those models:
@@ -670,6 +678,200 @@ export async function call_minimax(
     "https://api.minimax.io/v1",
     MINIMAX_API_KEY,
   );
+}
+
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+
+/** POSTs to an OpenRouter endpoint, turning API errors into readable Errors. */
+async function openrouter_request(path: string, body: Dict): Promise<Dict> {
+  const res = await fetch(`${OPENROUTER_BASE_URL}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+      // Optional attribution, so requests are credited to ChainForge on openrouter.ai.
+      "HTTP-Referer": "https://chainforge.ai",
+      "X-OpenRouter-Title": "ChainForge",
+    },
+    body: JSON.stringify(body),
+  });
+
+  let payload: Dict | undefined;
+  try {
+    payload = await res.json();
+  } catch {
+    payload = undefined;
+  }
+  // Errors can also arrive with a 200 status, e.g. when the upstream provider fails.
+  if (!res.ok || payload?.error)
+    throw new Error(
+      payload?.error?.message ??
+        `OpenRouter request failed (HTTP ${res.status}).`,
+    );
+  return payload ?? {};
+}
+
+/** Whether a setting was left blank, e.g. an empty number field. */
+function is_blank_setting(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    value === "" ||
+    (typeof value === "number" && isNaN(value))
+  );
+}
+
+/**
+ * Calls a model through OpenRouter's OpenAI-compatible chat completions API.
+ * OpenRouter doesn't support `n`, so each response is its own request.
+ */
+export async function call_openrouter(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  if (!OPENROUTER_API_KEY)
+    throw new Error(
+      "Could not find an OpenRouter API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  const modelname = stripOpenRouterPrefix(model);
+  const settings: Dict = { ...params };
+  strip_empty_chat_params(settings);
+
+  // Reasoning takes either a token budget or an effort level, not both. Models
+  // that don't reason ignore it. See https://openrouter.ai/docs/use-cases/reasoning-tokens
+  const reasoning: Dict = {};
+  if (!is_blank_setting(settings.reasoning_max_tokens))
+    reasoning.max_tokens = settings.reasoning_max_tokens;
+  else if (
+    !is_blank_setting(settings.reasoning_effort) &&
+    settings.reasoning_effort !== "default"
+  )
+    reasoning.effort = settings.reasoning_effort;
+  delete settings.reasoning_max_tokens;
+  delete settings.reasoning_effort;
+
+  const chat_history: ChatHistory | undefined = settings.chat_history;
+  const system_msg: string | undefined = settings.system_msg;
+  delete settings.chat_history;
+  delete settings.system_msg;
+
+  for (const [key, value] of Object.entries(settings))
+    if (is_blank_setting(value)) delete settings[key];
+
+  const query: Dict = { model: modelname, temperature, ...settings };
+  if (Object.keys(reasoning).length > 0) query.reasoning = reasoning;
+  query.messages = await resolve_images_in_user_messages(
+    construct_chat_history(prompt, images, chat_history, system_msg),
+    "openai",
+  );
+
+  console.log(`Querying OpenRouter model '${modelname}' (n=${n})...`);
+
+  const responses: Dict[] = [];
+  while (responses.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+    const payload = await openrouter_request("/chat/completions", query);
+    const choice = payload.choices?.[0];
+    if (!choice) throw new Error("OpenRouter returned no response.");
+    if (choice.error)
+      throw new Error(choice.error.message ?? "The model returned an error.");
+
+    // A reasoning model can spend its whole token budget thinking, leaving no
+    // answer. Say so, rather than recording a blank response.
+    const message = choice.message ?? {};
+    const answered = message.content || message.tool_calls?.length > 0;
+    if (!answered && choice.finish_reason === "length")
+      throw new Error(
+        message.reasoning
+          ? `${modelname} ran out of tokens while reasoning, before it answered. Raise max_tokens, or lower the reasoning effort.`
+          : `${modelname} ran out of tokens before it answered. Raise max_tokens.`,
+      );
+
+    responses.push(payload);
+  }
+
+  return [query, responses];
+}
+
+/** Settings sent to OpenRouter's Image API when set. "auto" leaves them to the model. */
+const OPENROUTER_IMAGE_SETTINGS = [
+  "resolution",
+  "aspect_ratio",
+  "quality",
+  "background",
+  "output_format",
+  "seed",
+];
+
+/**
+ * Generates images through OpenRouter's Image API. Input images (e.g. from a
+ * Media Node) are sent as references, for editing. Image models differ in how
+ * many images they can return per request, so this requests until it has `n`.
+ */
+export async function call_openrouter_image_gen(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature?: number,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  if (!OPENROUTER_API_KEY)
+    throw new Error(
+      "Could not find an OpenRouter API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  const modelname = stripOpenRouterPrefix(model);
+  const query: Dict = { model: modelname, prompt };
+  for (const key of OPENROUTER_IMAGE_SETTINGS) {
+    const value = params?.[key];
+    if (!is_blank_setting(value) && value !== "auto") query[key] = value;
+  }
+
+  const references = await imagesToBase64(images ?? []);
+  const body: Dict =
+    references.length > 0
+      ? {
+          ...query,
+          input_references: references.map((url) => ({
+            type: "image_url",
+            image_url: { url },
+          })),
+        }
+      : query;
+
+  console.log(
+    `Querying OpenRouter image model '${modelname}' (n=${n}, input images=${references.length})...`,
+  );
+
+  const results: Dict[] = [];
+  while (results.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+    const payload = await openrouter_request("/images", body);
+    const data: Dict[] = (
+      Array.isArray(payload.data) ? payload.data : []
+    ).filter((d: Dict) => typeof d?.b64_json === "string");
+    if (data.length === 0)
+      throw new Error("OpenRouter returned no images for this request.");
+    results.push(...data);
+  }
+
+  // Kept with cached responses: record the input image count, not the bytes.
+  return [
+    references.length > 0
+      ? { ...query, input_images: references.length }
+      : query,
+    results.slice(0, n),
+  ];
 }
 
 /** The most images OpenAI's Images API returns for one request. */
@@ -2112,6 +2314,10 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.Together) call_api = call_together;
   else if (llm_provider === LLMProvider.DeepSeek) call_api = call_deepseek;
   else if (llm_provider === LLMProvider.MiniMax) call_api = call_minimax;
+  else if (llm_provider === LLMProvider.OpenRouter)
+    call_api = isOpenRouterImageModel(llm)
+      ? call_openrouter_image_gen
+      : call_openrouter;
   if (call_api === undefined)
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
@@ -2197,6 +2403,25 @@ function _extract_openai_responses(response: Dict): Array<string> {
   const first_choice = response.choices[0];
   if ("message" in first_choice) return _extract_chatgpt_responses(response);
   else return _extract_openai_completion_responses(response);
+}
+
+/**
+ * Extracts the text of OpenRouter chat responses: one request per response,
+ * each in OpenAI's format. A blank answer is kept as "" rather than null.
+ */
+function _extract_openrouter_chat_responses(
+  responses: Array<Dict>,
+): Array<string> {
+  return responses.flatMap((response) =>
+    _extract_chatgpt_responses(response).map((text) => text ?? ""),
+  );
+}
+
+/** Extracts images from OpenRouter Image API results, as base64. */
+function _extract_openrouter_image_responses(
+  data: Array<Dict>,
+): LLMResponseData[] {
+  return data.map((d) => ({ t: "img", d: d.b64_json }));
 }
 
 function _extract_google_ai_responses(
@@ -2308,6 +2533,48 @@ function _extract_ollama_responses(
   return response.map((r: any) => r.generated_text?.trim());
 }
 
+/** The metavar under which a response's reasoning (a reasoning model's "thinking") is exposed. */
+export const REASONING_METAVAR = "reasoning";
+
+/** The readable reasoning in an OpenAI-format chat message from OpenRouter, if any. */
+function _extract_openrouter_message_reasoning(message?: Dict): string | null {
+  const reasoning = message?.reasoning;
+  if (typeof reasoning === "string" && reasoning.trim()) return reasoning;
+  // Some models only return structured details: text, or summaries. (Encrypted details aren't readable.)
+  const rawDetails = message?.reasoning_details;
+  const details: Dict[] = Array.isArray(rawDetails) ? rawDetails : [];
+  const text = details
+    .map((d) => (d?.type === "reasoning.summary" ? d.summary : d?.text))
+    .filter((t) => typeof t === "string" && t.trim().length > 0)
+    .join("\n\n");
+  return text || null;
+}
+
+/**
+ * Extracts each response's reasoning, in the same order as `extract_responses`,
+ * with null for a response without any. Returns undefined when no response has
+ * reasoning, so response objects only carry it when there's something to show.
+ */
+export function extract_reasoning(
+  response: Array<string | Dict> | Dict,
+  llm: LLM | string,
+  provider: LLMProvider,
+): Array<string | null> | undefined {
+  const llm_provider = provider ?? getProvider(llm as LLM);
+  let reasoning: Array<string | null> = [];
+  if (
+    llm_provider === LLMProvider.OpenRouter &&
+    !isOpenRouterImageModel(llm) &&
+    Array.isArray(response)
+  )
+    reasoning = (response as Dict[]).flatMap((r) =>
+      (r?.choices ?? []).map((c: Dict) =>
+        _extract_openrouter_message_reasoning(c?.message),
+      ),
+    );
+  return reasoning.some((r) => r !== null) ? reasoning : undefined;
+}
+
 /**
  * Given a LLM and a response object from its API, extract the
  * text response(s) part of the response object.
@@ -2353,6 +2620,10 @@ export function extract_responses(
       return _extract_openai_responses(response as Dict[]);
     case LLMProvider.MiniMax:
       return _extract_openai_responses(response as Dict[]);
+    case LLMProvider.OpenRouter:
+      if (isOpenRouterImageModel(llm))
+        return _extract_openrouter_image_responses(response as Dict[]);
+      return _extract_openrouter_chat_responses(response as Dict[]);
     default:
       if (
         Array.isArray(response) &&
@@ -2393,6 +2664,12 @@ export function merge_response_objs(
     metavars: resp_obj_B.metavars ?? {},
     uid: resp_obj_B.uid,
   };
+  // Reasoning lines up with responses, so a side without it gets nulls.
+  if (resp_obj_A.reasoning || resp_obj_B.reasoning) {
+    const reasoningOf = (o: RawLLMResponseObject) =>
+      o.responses.map((_, i) => o.reasoning?.[i] ?? null);
+    res.reasoning = reasoningOf(resp_obj_A).concat(reasoningOf(resp_obj_B));
+  }
   if (resp_obj_B.chat_history !== undefined)
     res.chat_history = resp_obj_B.chat_history;
   return res;
@@ -2864,7 +3141,27 @@ export async function retryAsyncFunc<T>(
 // Filters internally used keys LLM_{idx} and __{str} from metavar dictionaries.
 // This method is used to pass around information hidden from the user.
 export function cleanMetavarsFilterFunc(key: string) {
-  return !(key.startsWith("LLM_") || key.startsWith("__pt"));
+  // Reasoning is long text, which isn't useful to group or plot by.
+  return !(
+    key.startsWith("LLM_") ||
+    key.startsWith("__pt") ||
+    key === REASONING_METAVAR
+  );
+}
+
+/**
+ * The metavars for the response at `index` of a response object, with that
+ * response's reasoning (if any) under REASONING_METAVAR. Without reasoning,
+ * returns `metavars` itself, unchanged.
+ */
+export function withReasoningMetavar<T extends Dict>(
+  metavars: T,
+  resp_obj: { reasoning?: (StringOrHash | null)[] },
+  index: number,
+): T {
+  const r = resp_obj.reasoning?.[index];
+  const text = typeof r === "number" ? StringLookup.get(r) : r;
+  return text ? { ...metavars, [REASONING_METAVAR]: text } : metavars;
 }
 
 // Verify data integrity: check that uids are present for all responses.

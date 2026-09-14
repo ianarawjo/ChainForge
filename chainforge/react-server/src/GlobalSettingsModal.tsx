@@ -243,6 +243,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         AmazonBedrock: JSON.stringify({ credentials: {}, region: "us-east-1" }),
         Together: "",
         DeepSeek: "",
+        OpenRouter: "",
         Cohere: "",
       },
 
@@ -575,6 +576,14 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 </a>
               </Text>
               <form onSubmit={form.onSubmit(onSubmit)}>
+                <TextInput
+                  label="OpenRouter API Key"
+                  description="One key for models from many providers, including image models."
+                  placeholder="Paste your OpenRouter API key here"
+                  {...form.getInputProps("OpenRouter")}
+                />
+                <br />
+
                 <TextInput
                   label="OpenAI API Key"
                   placeholder="Paste your OpenAI API key here"

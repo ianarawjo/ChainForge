@@ -18,6 +18,7 @@ import {
   getProvider,
   isGeminiImageModel,
   isOpenAIImageModel,
+  isOpenRouterImageModel,
 } from "./backend/models";
 import {
   Dict,
@@ -574,6 +575,315 @@ const MiniMaxSettings: ModelSettingsDict = {
     },
   },
   postprocessors: ChatGPTSettings.postprocessors,
+};
+
+/**
+ * Models reached through OpenRouter's chat completions API. The listed models
+ * fill the model menu; since OpenRouter's catalog changes all the time, any
+ * other model ID can be typed in.
+ */
+export const OpenRouterSettings: ModelSettingsDict = {
+  fullName: "OpenRouter",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "OpenRouter",
+      },
+      model: {
+        type: "string",
+        title: "Model",
+        description:
+          "The OpenRouter model to query. Pick a popular one, or type any model ID listed at https://openrouter.ai/models (e.g. anthropic/claude-sonnet-5).",
+        // A mix of frontier models and cheap ones (e.g. for workshops), grouped by lab.
+        enum: [
+          "anthropic/claude-sonnet-5",
+          "anthropic/claude-haiku-4.5",
+          "openai/gpt-5.5",
+          "openai/gpt-5.4-mini",
+          "openai/gpt-5.4-nano",
+          "google/gemini-3.8-flash",
+          "google/gemini-3.1-flash-lite",
+          "x-ai/grok-4.6",
+          "deepseek/deepseek-v4-pro",
+          "deepseek/deepseek-v4-flash",
+          "qwen/qwen3.8-max-0902",
+          "qwen/qwen3.8-flash",
+          "moonshotai/kimi-k3",
+        ],
+        default: "anthropic/claude-sonnet-5",
+        shortname_map: {
+          "anthropic/claude-sonnet-5": "Claude Sonnet 5",
+          "anthropic/claude-haiku-4.5": "Claude Haiku 4.5",
+          "openai/gpt-5.5": "GPT-5.5",
+          "openai/gpt-5.4-mini": "GPT-5.4 Mini",
+          "openai/gpt-5.4-nano": "GPT-5.4 Nano",
+          "google/gemini-3.8-flash": "Gemini 3.8 Flash",
+          "google/gemini-3.1-flash-lite": "Gemini 3.1 Flash-Lite",
+          "x-ai/grok-4.6": "Grok 4.6",
+          "deepseek/deepseek-v4-pro": "DeepSeek V4 Pro",
+          "deepseek/deepseek-v4-flash": "DeepSeek V4 Flash",
+          "qwen/qwen3.8-max-0902": "Qwen3.8 Max",
+          "qwen/qwen3.8-flash": "Qwen3.8 Flash",
+          "moonshotai/kimi-k3": "Kimi K3",
+        },
+      },
+      system_msg: {
+        type: "string",
+        title: "system_msg",
+        description:
+          "Many conversations begin with a system message to gently instruct the assistant. By default, ChainForge includes the suggested 'You are a helpful assistant.'",
+        default: "You are a helpful assistant.",
+        allow_empty_str: true,
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. Models that don't support temperature (e.g. GPT-5 models) ignore it.",
+        default: 1,
+        minimum: 0,
+        maximum: 2,
+        multipleOf: 0.01,
+      },
+      reasoning_effort: {
+        type: "string",
+        title: "reasoning.effort",
+        description:
+          "How much a reasoning model thinks before it answers. 'default' leaves it to the model, and 'none' turns reasoning off where the model allows it. Not every model supports every level. Models that don't reason ignore this.",
+        enum: [
+          "default",
+          "none",
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max",
+        ],
+        default: "default",
+      },
+      reasoning_max_tokens: {
+        type: "integer",
+        title: "reasoning.max_tokens",
+        description:
+          "A token budget for reasoning, instead of an effort level. Some models (e.g. Claude, Gemini and Qwen) take a budget rather than a level. When set, reasoning.effort is ignored.",
+      },
+      response_format: {
+        type: "string",
+        title: "response_format",
+        description:
+          "An object specifying the format that the model must output. Can be 'text' or 'json_object', or a JSON schema specifying structured outputs. In ChainForge, you should only specify text, json_object, or the verbatim JSON schema---do not add a JSON object with a 'type' parameter surrounding these values. Not every model supports structured outputs. IMPORTANT: when using JSON mode, you must also instruct the model to produce JSON yourself via a system or user message.",
+        default: "text",
+      },
+      tools: {
+        type: "string",
+        title: "tools",
+        description:
+          "A list of JSON schema objects, each with 'name', 'description', and 'parameters' keys, which describe functions the model may generate JSON inputs for. For more info, see https://openrouter.ai/docs/guides/features/tool-calling",
+        default: "",
+      },
+      tool_choice: {
+        type: "string",
+        title: "tool_choice",
+        description:
+          "Controls how the model responds to function calls. 'none' means the model does not call a function, and responds to the end-user. 'auto' means the model can pick between an end-user or calling a function. 'required' means the model must call one or more tools. Specifying a particular function name forces the model to call only that function. Leave blank for default behavior.",
+        default: "",
+      },
+      top_p: {
+        type: "number",
+        title: "top_p",
+        description:
+          "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+        default: 1,
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.005,
+      },
+      stop: {
+        type: "string",
+        title: "stop sequences",
+        description:
+          'Up to 4 sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
+        default: "",
+      },
+      max_tokens: {
+        type: "integer",
+        title: "max_tokens",
+        description:
+          "The maximum number of tokens to generate. Reasoning models may spend much of this on reasoning, so set it generously for them.",
+      },
+      seed: {
+        type: "integer",
+        title: "seed",
+        description:
+          "If specified, supporting models will make a best effort to sample deterministically, so repeated requests with the same seed and parameters return the same result.",
+      },
+      presence_penalty: {
+        type: "number",
+        title: "presence_penalty",
+        description:
+          "Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+        default: 0,
+        minimum: -2,
+        maximum: 2,
+        multipleOf: 0.005,
+      },
+      frequency_penalty: {
+        type: "number",
+        title: "frequency_penalty",
+        description:
+          "Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+        default: 0,
+        minimum: -2,
+        maximum: 2,
+        multipleOf: 0.005,
+      },
+    },
+  },
+  uiSchema: {
+    ...ChatGPTSettings.uiSchema,
+    model: {
+      "ui:help":
+        "Defaults to anthropic/claude-sonnet-5. Type to enter any other OpenRouter model ID.",
+      "ui:widget": "datalist",
+    },
+    reasoning_effort: {
+      "ui:help": "Defaults to the model's own setting.",
+    },
+    reasoning_max_tokens: {
+      "ui:help": "Defaults to blank (use reasoning.effort).",
+    },
+    max_tokens: {
+      "ui:help": "Defaults to the model's limit.",
+    },
+  },
+  postprocessors: ChatGPTSettings.postprocessors,
+};
+
+/** Image models reached through OpenRouter's Image API. Any other image model ID can be typed in. */
+export const OpenRouterImageSettings: ModelSettingsDict = {
+  fullName: "OpenRouter Image Models",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "OpenRouter Image",
+      },
+      model: {
+        type: "string",
+        title: "Model",
+        description:
+          "The OpenRouter image model to use. Pick one, or type any model ID listed at https://openrouter.ai/collections/image-models. Input images (e.g. from a Media Node) are sent along with the prompt, for editing or as references.",
+        // Cheapest first: FLUX.2 Klein 4B costs about $0.014 per 1-megapixel image,
+        // so it's the default (e.g. for workshops or stress-testing image flows).
+        enum: [
+          "black-forest-labs/flux.2-klein-4b",
+          "openai/gpt-image-1-mini",
+          "google/gemini-3.1-flash-image",
+          "bytedance-seed/seedream-5-0-lite",
+          "openai/gpt-image-2.5-flare",
+        ],
+        default: "black-forest-labs/flux.2-klein-4b",
+        shortname_map: {
+          "black-forest-labs/flux.2-klein-4b": "FLUX.2 Klein 4B",
+          "openai/gpt-image-1-mini": "GPT Image 1 Mini",
+          "google/gemini-3.1-flash-image": "Gemini 3.1 Flash Image",
+          "bytedance-seed/seedream-5-0-lite": "Seedream 5.0 Lite",
+          "openai/gpt-image-2.5-flare": "GPT Image 2.5 Flare",
+        },
+      },
+      resolution: {
+        type: "string",
+        title: "resolution",
+        enum: ["auto", "512", "1K", "2K", "4K"],
+        description:
+          "Resolution of the generated images. Models support different resolutions (e.g. Seedream 5.0 Lite only 2K and 4K). auto uses the model's default.",
+        default: "auto",
+      },
+      aspect_ratio: {
+        type: "string",
+        title: "aspect_ratio",
+        enum: [
+          "auto",
+          "1:1",
+          "2:3",
+          "3:2",
+          "3:4",
+          "4:3",
+          "4:5",
+          "5:4",
+          "9:16",
+          "16:9",
+          "21:9",
+        ],
+        description:
+          "Aspect ratio of the generated images. Not every model supports every ratio. auto lets the model decide.",
+        default: "auto",
+      },
+      quality: {
+        type: "string",
+        title: "quality",
+        enum: ["auto", "low", "medium", "high"],
+        description:
+          "Rendering quality, for models that support it (e.g. GPT Image models). Higher quality costs more.",
+        default: "auto",
+      },
+      background: {
+        type: "string",
+        title: "background",
+        enum: ["auto", "transparent", "opaque"],
+        description:
+          "Background of the generated images, for models that support it. Transparent backgrounds need a png or webp output_format.",
+        default: "auto",
+      },
+      output_format: {
+        type: "string",
+        title: "output_format",
+        enum: ["auto", "png", "jpeg", "webp", "svg"],
+        description:
+          "File format of the generated images, for models that support it. svg is only for vector models (e.g. Recraft's vector models).",
+        default: "auto",
+      },
+      seed: {
+        type: "integer",
+        title: "seed",
+        description:
+          "If specified, supporting models (e.g. FLUX and Seedream) generate the same image for the same seed and prompt.",
+      },
+    },
+  },
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    model: {
+      "ui:help":
+        "Defaults to black-forest-labs/flux.2-klein-4b, a cheap model. Type to enter any other OpenRouter image model ID.",
+      "ui:widget": "datalist",
+    },
+    resolution: {
+      "ui:help": "Defaults to auto.",
+    },
+    aspect_ratio: {
+      "ui:help": "Defaults to auto.",
+    },
+    seed: {
+      "ui:help": "Defaults to blank (no seed).",
+    },
+  },
+  postprocessors: {},
 };
 
 const DalleSettings: ModelSettingsDict = {
@@ -2846,6 +3156,8 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   together: TogetherChatSettings,
   deepseek: DeepSeekSettings,
   minimax: MiniMaxSettings,
+  openrouter: OpenRouterSettings,
+  "openrouter-image": OpenRouterImageSettings,
   webllm: WebLLMSettings,
 };
 
@@ -2876,6 +3188,8 @@ export function baseModelToProvider(base_model: string): LLMProvider {
     together: LLMProvider.Together,
     deepseek: LLMProvider.DeepSeek,
     minimax: LLMProvider.MiniMax,
+    openrouter: LLMProvider.OpenRouter,
+    "openrouter-image": LLMProvider.OpenRouter,
     webllm: LLMProvider.WebLLM,
   };
   return lookup[base_model] ?? LLMProvider.Custom;
@@ -2889,6 +3203,7 @@ export function getSettingsSchemaForLLM(
   if (isOpenAIImageModel(llm_name))
     return llm_name.startsWith("dall-e") ? DalleSettings : GPTImageSettings;
   if (isGeminiImageModel(llm_name)) return GeminiImageSettings;
+  if (isOpenRouterImageModel(llm_name)) return OpenRouterImageSettings;
 
   const llm_provider = getProvider(llm_name);
 
@@ -2905,6 +3220,7 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.Together]: TogetherChatSettings,
     [LLMProvider.DeepSeek]: DeepSeekSettings,
     [LLMProvider.MiniMax]: MiniMaxSettings,
+    [LLMProvider.OpenRouter]: OpenRouterSettings,
     [LLMProvider.WebLLM]: WebLLMSettings,
   };
 

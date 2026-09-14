@@ -243,6 +243,8 @@ export interface RawLLMResponseObject extends BaseLLMResponseObject {
   // raw_response: Dict;
   // Extracted responses (1 or more) from raw_response
   responses: LLMResponseData[];
+  // Each response's reasoning (a reasoning model's "thinking"), in the same order as `responses`; null where there is none
+  reasoning?: (StringOrHash | null)[];
   // Token lengths (if given)
   tokens?: Dict<number>;
 }
@@ -272,6 +274,8 @@ export type EvaluationResults = {
 export interface LLMResponse extends BaseLLMResponseObject {
   // Extracted responses (1 or more) from raw_response
   responses: LLMResponseData[];
+  // Each response's reasoning, in the same order as `responses`; null where there is none
+  reasoning?: (StringOrHash | null)[];
   // Evaluation results
   eval_res?: EvaluationResults;
   // Token lengths (if given)

@@ -30,8 +30,16 @@ import {
   JSONCompatible,
   LLMResponse,
 } from "./backend/typing";
-import { TogetherChatSettings } from "./ModelSettingSchemas";
-import { NativeLLM } from "./backend/models";
+import {
+  OpenRouterImageSettings,
+  OpenRouterSettings,
+  TogetherChatSettings,
+} from "./ModelSettingSchemas";
+import {
+  NativeLLM,
+  OPENROUTER_IMAGE_PREFIX,
+  OPENROUTER_PREFIX,
+} from "./backend/models";
 import { StringLookup } from "./backend/cache";
 import { saveGlobalConfig } from "./backend/backend";
 import { ChunkMethodSpec } from "./ChunkMethodListComponent";
@@ -118,6 +126,26 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         base_model: "webllm",
         temp: 0.7,
       },
+    ],
+  },
+  {
+    group: "OpenRouter",
+    emoji: "🔀",
+    items: [
+      ...openRouterMenuItems(
+        OpenRouterSettings,
+        OPENROUTER_PREFIX,
+        "openrouter",
+        "🔀",
+        1.0,
+      ),
+      ...openRouterMenuItems(
+        OpenRouterImageSettings,
+        OPENROUTER_IMAGE_PREFIX,
+        "openrouter-image",
+        "🖼",
+        0.0,
+      ),
     ],
   },
   {
@@ -429,6 +457,25 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     ],
   },
 ];
+
+/** Menu items for the models listed in an OpenRouter settings form, so the menu and the form stay in sync. */
+function openRouterMenuItems(
+  settings: typeof OpenRouterSettings,
+  prefix: string,
+  base_model: string,
+  emoji: string,
+  temp: number,
+): LLMSpec[] {
+  const modelSpec = settings.schema.properties.model;
+  const names = modelSpec.shortname_map as Record<string, string>;
+  return (modelSpec.enum as string[]).map((model) => ({
+    name: names[model] ?? model,
+    emoji,
+    model: prefix + model,
+    base_model,
+    temp,
+  }));
+}
 
 const togetherModels = TogetherChatSettings.schema.properties.model
   .enum as string[];
