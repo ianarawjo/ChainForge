@@ -219,6 +219,26 @@ test("results for different inputs stay unpaired", () => {
   expect(new Set(rows.map((r) => r.item)).size).toBe(4);
 });
 
+test("responses for the same input in a group become more runs", () => {
+  // One prompt's samples stored as separate responses, as in some flows.
+  const resps = ["gpt", "claude"].flatMap((llm) =>
+    ["one", "two"].flatMap((q) =>
+      [0.1, 0.2, 0.3].map((s) => response(llm, { q }, [s])),
+    ),
+  );
+  const { rows } = buildEvalStatsRows(resps, [byLLM], scoresOf);
+  expect(new Set(rows.map((r) => r.item)).size).toBe(2);
+  expect(
+    rows
+      .filter((r) => r.group === "gpt" && r.item === "item0")
+      .map((r) => [r.run, r.score]),
+  ).toEqual([
+    [0, 0.1],
+    [1, 0.2],
+    [2, 0.3],
+  ]);
+});
+
 test("a second factor fills group2", () => {
   const resps = [
     response("gpt", { q: "one", style: "terse" }, [1]),

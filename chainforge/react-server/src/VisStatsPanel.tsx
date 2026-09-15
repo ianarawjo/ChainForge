@@ -14,6 +14,8 @@ export interface VisStatsPanelProps {
   error?: string;
   /** Why statistics can't be shown for the current plot, if they can't. */
   unsupported?: string;
+  /** When there are too few inputs, explains what's counted as one. */
+  hint?: string;
   /** Show means as percentages (for true/false scores). */
   asPercent: boolean;
   nameOf: (entity: EvalStatsEntity) => string;
@@ -49,6 +51,7 @@ const VisStatsPanel: React.FC<VisStatsPanelProps> = ({
   loading,
   error,
   unsupported,
+  hint,
   asPercent,
   nameOf,
   colorOf,
@@ -110,6 +113,9 @@ const VisStatsPanel: React.FC<VisStatsPanelProps> = ({
         <>
           {excluded}
           <p style={note}>{result.message}</p>
+          {result.reason === "too_few_items" && hint && (
+            <p style={note}>{hint}</p>
+          )}
         </>
       );
     else {

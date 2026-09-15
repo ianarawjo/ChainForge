@@ -95,14 +95,20 @@ class TestCompleteness:
         assert result["n_items"] == 14
         assert result["n_excluded"] == 2
         assert result["excluded_items"] == ["Question 3", "item7"]
-        assert "15 items or more" in result["message"]
-        assert "Only 14" in result["message"]
+        assert result["reason"] == "too_few_items"
+        assert result["message"] == ("Statistics need at least 15 inputs with results for every group. "
+                                     "Only 14 inputs have them.")
 
     def test_fewer_than_15_items(self):
         result = stats.compare_eval_results(make_rows(["a", "b"], 14))
         assert result["ok"] is False
         assert result["n_excluded"] == 0
-        assert "This one has 14" in result["message"]
+        assert result["message"].endswith("This eval has 14 inputs.")
+
+    def test_repeated_responses_count_as_one_input(self):
+        result = stats.compare_eval_results(make_rows(["a", "b"], 1, runs=3))
+        assert result["message"] == ("Statistics need at least 15 inputs with results for every group. "
+                                     "This eval has 1 input. Repeated responses to the same input count as one.")
 
     def test_a_missing_run_makes_its_item_incomplete(self):
         result = stats.compare_eval_results(make_rows(["a", "b"], 15, runs=3, missing={("a", None, 0, 2)}))
@@ -120,6 +126,7 @@ class TestCompleteness:
                          missing={("b", "chatty", i, 0) for i in range(20)})
         result = stats.compare_eval_results(rows)
         assert result["ok"] is False
+        assert result["reason"] == "missing_results"
         assert result["message"] == "Statistics need results for every group, but b · chatty has none."
 
         # Comparing a variable within one LLM names the variable's value.
@@ -216,6 +223,7 @@ class TestCompare:
         # ("x / y", "p") and ("x", "y / p") both read "x / y / p".
         result = stats.compare_eval_results(make_rows(["x / y", "x"], 20, group2s=["p", "y / p"]))
         assert result["ok"] is False
+        assert result["reason"] == "ambiguous_labels"
         assert "Rename values" in result["message"]
 
     def test_a_second_factor_with_one_level_is_dropped(self):
@@ -231,17 +239,18 @@ class TestCompare:
         notes = stats.compare_eval_results(rows)["notes"]
         assert any("'always'" in n for n in notes)
 
-    @pytest.mark.parametrize("error, message", [
-        (lambda es: es.MissingCellsError("x", missing=[], n_missing=1), "some results are missing"),
-        (lambda es: es.InsufficientItemsError("x", n_items=12), "15 items or more"),
-        (lambda es: es.TooFewGroupsError("x", n_groups=1), "two groups"),
-        (lambda es: ValueError("something else"), "evalstats couldn't analyse"),
+    @pytest.mark.parametrize("error, reason, message", [
+        (lambda es: es.MissingCellsError("x", missing=[], n_missing=1), "missing_results", "some results are missing"),
+        (lambda es: es.InsufficientItemsError("x", n_items=12), "too_few_items", "This eval has 12 inputs."),
+        (lambda es: es.TooFewGroupsError("x", n_groups=1), "too_few_groups", "two groups"),
+        (lambda es: ValueError("something else"), "analysis_failed", "evalstats couldn't analyse"),
     ])
-    def test_evalstats_errors_become_messages(self, error, message):
+    def test_evalstats_errors_become_messages(self, error, reason, message):
         import evalstats
         with patch.object(evalstats, "compare", side_effect=error(evalstats)):
             result = stats.compare_eval_results(make_rows(["a", "b"], 20))
         assert result["ok"] is False
+        assert result["reason"] == reason
         assert message in result["message"]
 
 
