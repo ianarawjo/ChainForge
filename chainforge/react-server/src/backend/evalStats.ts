@@ -131,9 +131,10 @@ const llmNameOf = (resp: LLMResponse) =>
  *
  * Results are paired across groups by item: what was fed into the prompt,
  * that is, the response's LLM, vars and metavars, minus the groupings being
- * compared. Also left out are values that only ever occur within one group,
- * such as an upstream LLM's response text when comparing upstream LLMs: they
- * describe the group, not the input, and would keep every item unpaired.
+ * compared. Of those, only the ones needed to tell inputs apart are kept.
+ * Values that describe the group or the response rather than the input, such
+ * as an upstream LLM's answer when comparing upstream LLMs, would otherwise
+ * stop results for the same input from pairing up.
  */
 export function buildEvalStatsRows(
   responses: LLMResponse[],
@@ -158,39 +159,45 @@ export function buildEvalStatsRows(
   };
   const allDims = responses.map(dimsOf);
 
-  // Drop dimensions whose values each occur within only one group, checking
-  // each grouping on its own and (with two) their combination. A grouping
-  // with a single group can't tell inputs from groups, so it's skipped.
-  const groupings = factors.map((f) => f.valueOf);
-  if (factors.length > 1) groupings.push(cellOf);
-  const groupSpecific = new Set<string>();
-  groupings.forEach((groupOf) => {
-    const groupsByDimValue: Dict<Dict<Set<string>>> = {};
-    const allGroups = new Set<string>();
-    responses.forEach((resp, i) => {
-      const group = groupOf(resp);
-      allGroups.add(group);
-      Object.entries(allDims[i]).forEach(([k, v]) => {
-        const byValue = (groupsByDimValue[k] ??= {});
-        (byValue[v] ??= new Set()).add(group);
-      });
-    });
-    if (allGroups.size < 2) return;
-    Object.entries(groupsByDimValue).forEach(([k, byValue]) => {
-      if (
-        Object.keys(byValue).length > 1 &&
-        Object.values(byValue).every((groups) => groups.size === 1)
-      )
-        groupSpecific.add(k);
-    });
+  // Keep only the dimensions needed to tell apart the (input, group) pairs the
+  // responses cover. Dropping one that describes the group or the response
+  // leaves as many distinct pairs; dropping a real input dimension merges
+  // some. Dimensions with the most distinct values are tried first, as the
+  // likeliest to describe responses, and prompt variables last on ties, as
+  // they name items best.
+  const cells = responses.map(cellOf);
+  const distinctPairs = (dims: string[]) =>
+    new Set(
+      allDims.map((d, i) =>
+        JSON.stringify([cells[i], dims.map((k) => d[k] ?? null)]),
+      ),
+    ).size;
+  const candidates = Array.from(
+    new Set(allDims.flatMap((d) => Object.keys(d))),
+  );
+  const valueCounts: Dict<number> = {};
+  candidates.forEach((k) => {
+    valueCounts[k] = new Set(allDims.map((d) => d[k])).size;
   });
+  const isVar = (k: string) => k !== "LLM" && !k.startsWith("__meta_");
+  const removalOrder = [...candidates].sort(
+    (a, b) =>
+      valueCounts[b] - valueCounts[a] || Number(isVar(a)) - Number(isVar(b)),
+  );
+  let inputDims = candidates;
+  const distinct = distinctPairs(inputDims);
+  for (const k of removalOrder) {
+    const without = inputDims.filter((d) => d !== k);
+    if (distinctPairs(without) === distinct) inputDims = without;
+  }
+  const kept = new Set(inputDims);
 
   const rows: EvalStatsRow[] = [];
   const itemIds: Dict<string> = {};
   const itemLabels: Dict<string> = {};
   responses.forEach((resp, i) => {
     const dims = Object.entries(allDims[i])
-      .filter(([k]) => !groupSpecific.has(k))
+      .filter(([k]) => kept.has(k))
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
     const itemKey = JSON.stringify(dims);
     let item = itemIds[itemKey];

@@ -136,6 +136,13 @@ def compare_eval_results(rows: List[Dict[str, Any]],
     constant = {c: str(df[c].iloc[0]) for c in ("group", "group2")
                 if c not in factor_cols and (c == "group" or has_group2)}
 
+    # Groups (or combinations of them) without a single score leave no item
+    # complete; they're named rather than just reported as missing results.
+    scored = df[df["score"].notna()]
+    has_scores = set(zip(scored["group"], scored["group2"]))
+    empty_groups = [(g, g2) for g in dict.fromkeys(df["group"]) for g2 in dict.fromkeys(df["group2"])
+                    if (g, g2) not in has_scores]
+
     es_factor = dict(zip(factor_cols, ("model", "prompt")))
     frame = pd.DataFrame({es_factor[c]: df[c] for c in factor_cols})
     frame["item"] = df["item"]
@@ -159,8 +166,9 @@ def compare_eval_results(rows: List[Dict[str, Any]],
                 excluded_items=[item_labels.get(i, i) for i in excluded[:MAX_EXCLUDED_LABELS]],
             )
             if completeness.n_items < es.MIN_ITEMS:
-                return {**report, "ok": False,
-                        "message": _too_few_items(completeness.n_items, bool(excluded), es.MIN_ITEMS)}
+                message = (_no_results_for(empty_groups, factor_cols) if empty_groups
+                           else _too_few_items(completeness.n_items, bool(excluded), es.MIN_ITEMS))
+                return {**report, "ok": False, "message": message}
             result = es.compare(evaldata, factors=factors_arg, design="paired", alpha=ALPHA)
             summary = _summarize(result.to_dict(), factor_cols, constant)
         except es.InsufficientItemsError as e:
@@ -183,6 +191,15 @@ def compare_eval_results(rows: List[Dict[str, Any]],
 
 
 _TOO_FEW_GROUPS = "Statistics need at least two groups to compare."
+
+
+def _no_results_for(groups: List[tuple], factor_cols: List[str]) -> str:
+    """Names the (group, group2) combinations with no scores, by the groupings compared."""
+    names = [" · ".join(level for level, col in zip(pair, ("group", "group2")) if col in factor_cols)
+             for pair in groups]
+    listed = ", ".join(names[:3]) + (f" and {len(names) - 3} more" if len(names) > 3 else "")
+    verb = "has" if len(names) == 1 else "have"
+    return f"Statistics need results for every group, but {listed} {verb} none."
 
 
 def _too_few_items(n_items: int, some_excluded: bool, min_items: int) -> str:

@@ -160,6 +160,65 @@ test("a grouping with a single group doesn't hide the inputs", () => {
   expect(new Set(rows.map((r) => r.item)).size).toBe(2);
 });
 
+const byUpstreamLLM: EvalStatsFactor = {
+  key: "__meta_LLM_0",
+  valueOf: (r) => String(r.metavars.LLM_0),
+};
+
+test("pairs chained results even when upstream answers often match", () => {
+  // The answer describes the response, not the input, however often two
+  // upstream LLMs happen to give the same one.
+  const resps = ["one", "two", "three"].flatMap((q, qi) =>
+    ["gpt", "claude"].map((upstream) =>
+      response(
+        "judge",
+        { q, answer: qi === 0 ? `${upstream} says` : "Paris" },
+        [true],
+        { LLM_0: upstream },
+      ),
+    ),
+  );
+  const { rows, itemLabels } = buildEvalStatsRows(
+    resps,
+    [byUpstreamLLM],
+    scoresOf,
+  );
+  expect(new Set(rows.map((r) => r.item)).size).toBe(3);
+  expect(itemLabels.item0).toBe("q: one");
+});
+
+test("pairs chained results with yes/no answers", () => {
+  const resps = ["one", "two", "three", "four"].flatMap((q, qi) =>
+    ["gpt", "claude"].map((upstream, ui) =>
+      response("judge", { q, answer: (qi + ui) % 2 ? "yes" : "no" }, [true], {
+        LLM_0: upstream,
+      }),
+    ),
+  );
+  const { rows } = buildEvalStatsRows(resps, [byUpstreamLLM], scoresOf);
+  expect(new Set(rows.map((r) => r.item)).size).toBe(4);
+});
+
+test("leaves out values unique to each response", () => {
+  const resps = ["one", "two"].flatMap((q) =>
+    ["gpt", "claude"].map((llm) =>
+      response(llm, { q }, [1], { response_id: `${llm}-${q}` }),
+    ),
+  );
+  const { rows, itemLabels } = buildEvalStatsRows(resps, [byLLM], scoresOf);
+  expect(new Set(rows.map((r) => r.item)).size).toBe(2);
+  expect(itemLabels.item0).toBe("q: one");
+});
+
+test("results for different inputs stay unpaired", () => {
+  // Each LLM answered its own questions, so no item has both.
+  const resps = ["gpt", "claude"].flatMap((llm) =>
+    ["one", "two"].map((q) => response(llm, { q: `${llm}: ${q}` }, [1])),
+  );
+  const { rows } = buildEvalStatsRows(resps, [byLLM], scoresOf);
+  expect(new Set(rows.map((r) => r.item)).size).toBe(4);
+});
+
 test("a second factor fills group2", () => {
   const resps = [
     response("gpt", { q: "one", style: "terse" }, [1]),
