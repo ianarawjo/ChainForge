@@ -62,7 +62,7 @@ setup(
         "rag": rag_deps,
         # Confidence intervals, p-values and rank bands in the Vis Node
         # (chainforge/stats.py).
-        "stats": ["evalstats>=0.3.1"],
+        "stats": ["evalstats>=0.3.2"],
         # NOTE: there is deliberately no "faiss" or "all" extra.
         #
         # FAISS is still supported -- chainforge.rag soft-imports it and the

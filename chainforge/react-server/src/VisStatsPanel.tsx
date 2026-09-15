@@ -29,6 +29,12 @@ const formatValue = (x: number | null, asPercent: boolean, signed = false) => {
   return sign + x.toFixed(digits);
 };
 
+const VERDICTS: Record<string, string> = {
+  likely_best: "Likely best",
+  tied_for_best: "Tied for best",
+  significant_drop_off: "Significant drop-off",
+};
+
 const formatP = (p: number | null) =>
   p === null ? "–" : p < 0.001 ? "<0.001" : p.toFixed(3);
 
@@ -108,15 +114,8 @@ const VisStatsPanel: React.FC<VisStatsPanelProps> = ({
       );
     else {
       const { entities, pairwise } = result;
-      const topBand = entities.filter((e) => e.band === 1).length;
       const verdictOf = (e: EvalStatsEntity) =>
-        e.band === null
-          ? ""
-          : e.band > 1
-            ? "Significant drop-off"
-            : topBand > 1
-              ? "Tied for best"
-              : "Likely best";
+        e.verdict === null ? "" : VERDICTS[e.verdict] ?? e.verdict;
       const sortedPairs = [...pairwise].sort(
         (x, y) => (x.p_value ?? 2) - (y.p_value ?? 2),
       );
@@ -197,7 +196,7 @@ const VisStatsPanel: React.FC<VisStatsPanelProps> = ({
                 <thead style={{ color: muted, textAlign: "left" }}>
                   <tr
                     style={{ borderBottom: rule }}
-                    title="Bold: the confidence interval excludes 0"
+                    title="Bold: a significant difference, by the test the rank bands use"
                   >
                     <th style={cell}>Comparison</th>
                     <th style={{ ...cell, width: "18%" }}>Diff.</th>
@@ -208,11 +207,7 @@ const VisStatsPanel: React.FC<VisStatsPanelProps> = ({
                 <tbody>
                   {sortedPairs.map((pair, i) => {
                     const label = `${nameOf(entities[pair.a])} − ${nameOf(entities[pair.b])}`;
-                    // The same test the rank bands use.
-                    const significant =
-                      pair.ci_low !== null &&
-                      pair.ci_high !== null &&
-                      (pair.ci_low > 0 || pair.ci_high < 0);
+                    const significant = pair.significant;
                     return (
                       <tr
                         key={i}
