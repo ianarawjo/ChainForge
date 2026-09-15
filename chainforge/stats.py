@@ -132,7 +132,7 @@ def compare_eval_results(rows: List[Dict[str, Any]],
     # A grouping with a single value isn't compared; its value is kept on each entity.
     factor_cols = [c for c in ("group", "group2") if df[c].nunique() > 1]
     if not factor_cols:
-        return {**report, "ok": False, "message": _TOO_FEW_GROUPS}
+        return {**report, "ok": False, "reason": "too_few_groups", "message": _TOO_FEW_GROUPS}
     constant = {c: str(df[c].iloc[0]) for c in ("group", "group2")
                 if c not in factor_cols and (c == "group" or has_group2)}
 
@@ -166,26 +166,29 @@ def compare_eval_results(rows: List[Dict[str, Any]],
                 excluded_items=[item_labels.get(i, i) for i in excluded[:MAX_EXCLUDED_LABELS]],
             )
             if completeness.n_items < es.MIN_ITEMS:
-                message = (_no_results_for(empty_groups, factor_cols) if empty_groups
-                           else _too_few_items(completeness.n_items, bool(excluded), es.MIN_ITEMS))
-                return {**report, "ok": False, "message": message}
+                if empty_groups:
+                    return {**report, "ok": False, "reason": "missing_results",
+                            "message": _no_results_for(empty_groups, factor_cols)}
+                return {**report, "ok": False, "reason": "too_few_items",
+                        "message": _too_few_items(completeness.n_items, bool(excluded), es.MIN_ITEMS, n_runs)}
             result = es.compare(evaldata, factors=factors_arg, design="paired", alpha=ALPHA)
             summary = _summarize(result.to_dict(), factor_cols, constant)
         except es.InsufficientItemsError as e:
-            return {**report, "ok": False,
-                    "message": _too_few_items(e.n_items, report["n_excluded"] > 0, e.min_items)}
+            return {**report, "ok": False, "reason": "too_few_items",
+                    "message": _too_few_items(e.n_items, report["n_excluded"] > 0, e.min_items, n_runs)}
         except es.TooFewGroupsError:
-            return {**report, "ok": False, "message": _TOO_FEW_GROUPS}
+            return {**report, "ok": False, "reason": "too_few_groups", "message": _TOO_FEW_GROUPS}
         except es.MissingCellsError:
-            return {**report, "ok": False,
+            return {**report, "ok": False, "reason": "missing_results",
                     "message": "Statistics can't be calculated because some results are missing."}
         except es.AmbiguousLabelsError:
-            return {**report, "ok": False,
+            return {**report, "ok": False, "reason": "ambiguous_labels",
                     "message": "Statistics can't tell some groups apart: different combinations of "
                                "names read the same once joined with \" / \". Rename values that "
                                "contain \" / \"."}
         except ValueError as e:  # includes evalstats' EvalLoadError
-            return {**report, "ok": False, "message": f"evalstats couldn't analyse these results: {e}"}
+            return {**report, "ok": False, "reason": "analysis_failed",
+                    "message": f"evalstats couldn't analyse these results: {e}"}
 
     return {**report, "ok": True, "factors": factor_cols, **summary}
 
@@ -202,10 +205,13 @@ def _no_results_for(groups: List[tuple], factor_cols: List[str]) -> str:
     return f"Statistics need results for every group, but {listed} {verb} none."
 
 
-def _too_few_items(n_items: int, some_excluded: bool, min_items: int) -> str:
-    have = (f"Only {n_items} have results for every group." if some_excluded
-            else f"This one has {n_items}.")
-    return f"Statistics are only available for eval sets of {min_items} items or more. {have}"
+def _too_few_items(n_items: int, some_excluded: bool, min_items: int, n_runs: int) -> str:
+    if some_excluded:
+        have = f"Only {n_items} {'input has' if n_items == 1 else 'inputs have'} them."
+    else:
+        have = f"This eval has {n_items} {'input' if n_items == 1 else 'inputs'}."
+    runs = " Repeated responses to the same input count as one." if n_runs > 1 else ""
+    return f"Statistics need at least {min_items} inputs with results for every group. {have}{runs}"
 
 
 def _summarize(result: Dict[str, Any], factor_cols: List[str],

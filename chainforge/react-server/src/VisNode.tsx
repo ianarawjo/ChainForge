@@ -316,6 +316,22 @@ interface VisNodeData {
   graph_type?: string;
 }
 
+/**
+ * Why a plot with too few inputs for statistics may have fewer than it seems:
+ * the variables being compared are groups, not inputs.
+ */
+const statsHint = (factorKeys?: string[]): string | undefined => {
+  const vars = (factorKeys ?? [])
+    .filter((k) => k !== "LLM")
+    .map((k) => `"${k.replace(/^__meta_/, "")}"`);
+  if (vars.length === 0) return undefined;
+  const compared = vars.join(" and ");
+  const hint = `Each value of ${compared} is compared here, so it doesn't count as an input.`;
+  return factorKeys?.length === 2 && factorKeys[0] === "LLM"
+    ? `${hint} To compare LLMs with ${compared} as the inputs, set the y-axis to LLM (default).`
+    : hint;
+};
+
 /** The statistics to compute for the plot currently shown. */
 interface StatsRequest {
   key: string;
@@ -1843,6 +1859,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 : undefined
             }
             unsupported={statsRequest?.unsupported}
+            hint={statsHint(statsRequest?.factorKeys)}
             asPercent={statsRequest?.asPercent ?? false}
             nameOf={(e) => {
               const factors = statsResponse?.result?.ok

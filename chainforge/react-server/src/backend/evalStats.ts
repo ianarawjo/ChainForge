@@ -67,7 +67,16 @@ export type EvalStatsResult =
       methods: { label: string; value: string }[];
       notes: string[];
     })
-  | (EvalStatsReport & { ok: false; message: string });
+  | (EvalStatsReport & {
+      ok: false;
+      reason:
+        | "too_few_items"
+        | "too_few_groups"
+        | "missing_results"
+        | "ambiguous_labels"
+        | "analysis_failed";
+      message: string;
+    });
 
 let _evalStatsAvailable: Promise<boolean> | undefined;
 
@@ -195,6 +204,9 @@ export function buildEvalStatsRows(
   const rows: EvalStatsRow[] = [];
   const itemIds: Dict<string> = {};
   const itemLabels: Dict<string> = {};
+  // Responses for the same input in the same group, such as one prompt's
+  // samples stored as separate responses, are further runs of that input.
+  const runsSoFar: Dict<number> = {};
   responses.forEach((resp, i) => {
     const dims = Object.entries(allDims[i])
       .filter(([k]) => kept.has(k))
@@ -215,8 +227,17 @@ export function buildEvalStatsRows(
     }
 
     const groups = factors.map((f) => f.valueOf(resp));
-    scoresOf(resp).forEach((score, run) => {
-      const row: EvalStatsRow = { group: groups[0], item, run, score };
+    const scores = scoresOf(resp);
+    const cellItem = JSON.stringify([item, cells[i]]);
+    const firstRun = runsSoFar[cellItem] ?? 0;
+    runsSoFar[cellItem] = firstRun + scores.length;
+    scores.forEach((score, j) => {
+      const row: EvalStatsRow = {
+        group: groups[0],
+        item,
+        run: firstRun + j,
+        score,
+      };
       if (groups.length > 1) row.group2 = groups[1];
       rows.push(row);
     });
