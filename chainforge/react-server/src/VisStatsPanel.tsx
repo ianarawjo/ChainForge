@@ -4,7 +4,7 @@ import { EvalStatsEntity, EvalStatsResult } from "./backend/evalStats";
 
 /**
  * The statistics shown under a Vis Node plot, from evalstats: an executive
- * summary of which groups are tied for best and which drop off, a collapsible
+ * summary of which groups are tied for highest and which are significantly lower, a collapsible
  * table of pairwise differences, which items had to be left out, and what
  * evalstats ran.
  */
@@ -31,10 +31,11 @@ const formatValue = (x: number | null, asPercent: boolean, signed = false) => {
   return sign + x.toFixed(digits);
 };
 
+// Direction-neutral, since a higher score isn't always better (a bias rate, say).
 const VERDICTS: Record<string, string> = {
-  likely_best: "Likely best",
-  tied_for_best: "Tied for best",
-  significant_drop_off: "Significant drop-off",
+  likely_best: "Highest",
+  tied_for_best: "Tied for highest",
+  significant_drop_off: "Significantly lower",
 };
 
 const formatP = (p: number | null) =>

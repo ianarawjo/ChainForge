@@ -83,7 +83,7 @@ slower, which is why it only happens when FAISS is actually present. Set
 ## Statistics in the Vis Node
 
 When ChainForge runs locally, the Vis Node can show confidence intervals,
-pairwise significance tests, and which options are tied for best, computed with
+pairwise significance tests, and which options are tied for highest, computed with
 [evalstats](https://github.com/ianarawjo/evalstats). Install the extra, restart
 ChainForge, and switch on **Stats** in a Vis Node:
 
