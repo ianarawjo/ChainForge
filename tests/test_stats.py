@@ -1,8 +1,7 @@
 """Tests for Vis Node statistics: chainforge/stats.py and the /app/compareEvalStats route.
 
-evalstats is the optional [stats] extra, so tests that run a real comparison
-skip without it. Everything decided before evalstats is called (pairing,
-exclusions, the 15-item floor) needs only pandas.
+evalstats is the optional [stats] extra, so tests that run it skip without it.
+Checking the rows themselves (malformed or unpairable) needs only pandas.
 """
 
 import random
@@ -17,7 +16,7 @@ from chainforge import stats
 needs_pandas = pytest.mark.skipif(find_spec("pandas") is None, reason="pandas not installed")
 needs_evalstats = pytest.mark.skipif(
     stats.evalstats_unavailable_reason() is not None,
-    reason="evalstats not installed (pip install chainforge[stats])",
+    reason="evalstats 0.3.2+ not installed (pip install chainforge[stats])",
 )
 
 
@@ -51,19 +50,43 @@ class TestAvailability:
         assert "chainforge[stats]" in stats.evalstats_unavailable_reason()
 
     def test_too_old(self, monkeypatch):
-        monkeypatch.setattr(stats, "version", lambda name: "0.3.0")
+        monkeypatch.setattr(stats, "version", lambda name: "0.3.1")
         reason = stats.evalstats_unavailable_reason()
-        assert "0.3.1" in reason and "0.3.0 is installed" in reason
+        assert "0.3.2 or newer" in reason and "0.3.1 is installed" in reason
 
-    @pytest.mark.parametrize("installed", ["0.3.1", "0.4.0rc1", "1.0"])
+    @pytest.mark.parametrize("installed", ["0.3.2", "0.4.0rc1", "1.0"])
     def test_recent_enough(self, monkeypatch, installed):
         monkeypatch.setattr(stats, "version", lambda name: installed)
         assert stats.evalstats_unavailable_reason() is None
 
 
 @needs_pandas
-class TestPairing:
-    """What happens before evalstats is called, so none of these need it."""
+class TestRows:
+    """Problems with the rows themselves, found before evalstats runs."""
+
+    def test_needs_two_groups(self):
+        result = stats.compare_eval_results(make_rows(["a"], 20))
+        assert result["ok"] is False
+        assert "two groups" in result["message"]
+
+    def test_duplicate_results_cannot_be_paired(self):
+        with pytest.raises(stats.StatsInputError, match="identical inputs"):
+            stats.compare_eval_results(make_rows(["a", "b"], 20) * 2)
+
+    def test_group2_on_only_some_rows(self):
+        rows = make_rows(["a", "b"], 20)
+        rows[0]["group2"] = "p"
+        with pytest.raises(stats.StatsInputError, match="group2"):
+            stats.compare_eval_results(rows)
+
+    @pytest.mark.parametrize("bad", [[], [{"item": "x", "score": 1}], [{"group": "a", "item": "x", "run": "0"}]])
+    def test_malformed_rows(self, bad):
+        with pytest.raises(stats.StatsInputError):
+            stats.compare_eval_results(bad)
+
+
+@needs_evalstats
+class TestCompleteness:
 
     def test_incomplete_items_are_excluded_and_named(self):
         rows = make_rows(["a", "b"], 16, missing={("b", None, 3, 0), ("a", None, 7, 0)})
@@ -91,25 +114,10 @@ class TestPairing:
         result = stats.compare_eval_results(rows)
         assert (result["n_items"], result["n_excluded"]) == (14, 1)
 
-    def test_needs_two_groups(self):
-        result = stats.compare_eval_results(make_rows(["a"], 20))
-        assert result["ok"] is False
-        assert "two groups" in result["message"]
-
-    def test_duplicate_results_cannot_be_paired(self):
-        with pytest.raises(stats.StatsInputError, match="identical inputs"):
-            stats.compare_eval_results(make_rows(["a", "b"], 20) * 2)
-
-    def test_group2_on_only_some_rows(self):
-        rows = make_rows(["a", "b"], 20)
-        rows[0]["group2"] = "p"
-        with pytest.raises(stats.StatsInputError, match="group2"):
-            stats.compare_eval_results(rows)
-
-    @pytest.mark.parametrize("bad", [[], [{"item": "x", "score": 1}], [{"group": "a", "item": "x", "run": "0"}]])
-    def test_malformed_rows(self, bad):
-        with pytest.raises(stats.StatsInputError):
-            stats.compare_eval_results(bad)
+    def test_exclusions_are_reported_with_the_stats(self):
+        result = stats.compare_eval_results(make_rows(["a", "b"], 20, missing={("a", None, 3, 0)}))
+        assert result["ok"] is True
+        assert (result["n_items"], result["n_excluded"], result["excluded_items"]) == (19, 1, ["item3"])
 
 
 @needs_evalstats
@@ -128,6 +136,7 @@ class TestCompare:
         assert means == sorted(means, reverse=True)
         for e in entities:
             assert e["ci_low"] <= e["mean"] <= e["ci_high"]
+            assert e["verdict"] in {"likely_best", "tied_for_best", "significant_drop_off"}
         assert entities[0]["band"] == 1
         assert [e["band"] for e in entities] == sorted(e["band"] for e in entities)
 
@@ -135,29 +144,15 @@ class TestCompare:
         for pair in result["pairwise"]:
             assert {pair["a"], pair["b"]} <= {0, 1, 2} and pair["a"] != pair["b"]
             assert 0 <= pair["p_value"] <= 1
-
-    def test_methods_say_what_ran(self):
-        methods = {m["label"]: m["value"]
-                   for m in stats.compare_eval_results(make_rows(["low", "mid", "high"], 30))["methods"]}
-        assert methods["Design"] == "paired: every group scored on the same 30 items"
-        assert methods["Scores"] == "true/false (0 or 1)"
-        for label in ("Mean CIs (95%)", "Pairwise difference CIs (95%)", "p-values",
-                      "Omnibus test", "Rank bands", "evalstats"):
-            assert methods[label], label
-        assert "correction" in methods["p-values"]
-
-    def test_one_comparison_needs_no_correction(self):
-        methods = {m["label"]: m["value"]
-                   for m in stats.compare_eval_results(make_rows(["a", "b"], 20, runs=3))["methods"]}
-        assert methods["p-values"].endswith("no correction needed for one comparison")
-        assert methods["Scores"] == "true/false (0 or 1); 3 runs per item"
+            assert isinstance(pair["significant"], bool)
 
     def test_clear_winner_gets_its_own_band(self):
         rows = [{"group": g, "item": f"item{i}", "run": 0,
                  "score": (i >= 2) if g == "good" else (i < 2)}
                 for g in ("good", "bad") for i in range(20)]
         entities = stats.compare_eval_results(rows)["entities"]
-        assert [(e["group"], e["band"]) for e in entities] == [("good", 1), ("bad", 2)]
+        assert [(e["group"], e["band"], e["verdict"]) for e in entities] == [
+            ("good", 1, "likely_best"), ("bad", 2, "significant_drop_off")]
 
     @pytest.mark.parametrize("group2s", [None, ["p1", "p2"]])
     def test_always_uses_the_paired_design(self, group2s):
@@ -166,41 +161,64 @@ class TestCompare:
             stats.compare_eval_results(make_rows(["a", "b"], 20, group2s=group2s))
         assert spy.call_args.kwargs["design"] == "paired"
 
-    def test_exclusions_are_reported_with_the_stats(self):
-        result = stats.compare_eval_results(make_rows(["a", "b"], 20, missing={("a", None, 3, 0)}))
-        assert result["ok"] is True
-        assert (result["n_items"], result["n_excluded"], result["excluded_items"]) == (19, 1, ["item3"])
+    def test_methods_say_what_ran(self):
+        import evalstats
+        methods = {m["label"]: m["value"]
+                   for m in stats.compare_eval_results(make_rows(["low", "mid", "high"], 30))["methods"]}
+        assert methods["Design"] == "paired: every group scored on the same 30 items"
+        assert methods["Scores"] == "Binary (0/1)"
+        for label in ("Mean CIs (95%)", "Pairwise difference CIs (95%)", "p-values",
+                      "Omnibus test", "Rank bands", "Resampling"):
+            assert methods[label], label
+        assert "correction" in methods["p-values"]
+        assert methods["evalstats"] == evalstats.__version__
 
-    def test_two_factors_whatever_the_names(self):
+    def test_one_comparison_needs_no_correction(self):
+        methods = {m["label"]: m["value"]
+                   for m in stats.compare_eval_results(make_rows(["a", "b"], 20, runs=3))["methods"]}
+        assert methods["p-values"].endswith("no correction needed for one comparison")
+        assert methods["Design"].endswith("3 runs per item")
+
+    def test_two_factors_with_slashes_in_names(self):
         # " / " is how evalstats labels (model, prompt) cells.
-        result = stats.compare_eval_results(make_rows(["x / y", "x"], 20, group2s=["p", "y / p"]))
+        result = stats.compare_eval_results(make_rows(["a / b", "c"], 20, group2s=["p", "q / r"]))
         assert result["ok"] is True
         assert result["factors"] == ["group", "group2"]
         assert {(e["group"], e["group2"]) for e in result["entities"]} == {
-            ("x / y", "p"), ("x / y", "y / p"), ("x", "p"), ("x", "y / p")}
+            ("a / b", "p"), ("a / b", "q / r"), ("c", "p"), ("c", "q / r")}
         assert len(result["pairwise"]) == 6
+
+    def test_names_that_join_to_the_same_label(self):
+        # ("x / y", "p") and ("x", "y / p") both read "x / y / p".
+        result = stats.compare_eval_results(make_rows(["x / y", "x"], 20, group2s=["p", "y / p"]))
+        assert result["ok"] is False
+        assert "Rename values" in result["message"]
 
     def test_a_second_factor_with_one_level_is_dropped(self):
         result = stats.compare_eval_results(make_rows(["a", "b"], 20, group2s=["only"]))
         assert result["factors"] == ["group"]
         assert {(e["group"], e["group2"]) for e in result["entities"]} == {("a", "only"), ("b", "only")}
 
-    def test_notes_name_groups_rather_than_evalstats_ids(self):
+    def test_notes_name_groups(self):
         # A group scoring the same on every item draws a zero-variance note.
         rows = [{"group": g, "item": f"item{i}", "run": 0,
                  "score": True if g == "always" else i % 2 == 0}
                 for g in ("always", "sometimes") for i in range(20)]
         notes = stats.compare_eval_results(rows)["notes"]
         assert any("'always'" in n for n in notes)
-        assert not any("'m0'" in n or "'m1'" in n for n in notes)
 
-    def test_missing_cells_error_becomes_a_message(self):
+    @pytest.mark.parametrize("error, message", [
+        (lambda es: es.MissingCellsError("x", missing=[], n_missing=1), "some results are missing"),
+        (lambda es: es.InsufficientItemsError("x", n_items=12), "15 items or more"),
+        (lambda es: es.TooFewGroupsError("x", n_groups=1), "two groups"),
+        (lambda es: ValueError("something else"), "evalstats couldn't analyse"),
+    ])
+    def test_evalstats_errors_become_messages(self, error, message):
         import evalstats
-        error = ValueError("scores contain 4 NaN (missing) cell(s)")
-        with patch.object(evalstats, "compare", side_effect=error):
+        with patch.object(evalstats, "compare", side_effect=error(evalstats)):
             result = stats.compare_eval_results(make_rows(["a", "b"], 20))
         assert result["ok"] is False
-        assert result["message"] == "Statistics can't be calculated because some results are missing."
+        assert message in result["message"]
 
 
 class TestRoutes:

@@ -32,6 +32,7 @@ export interface EvalStatsEntity {
   ci_high: number | null;
   /** evalstats' rank band: 1 is the top entity and all tied with it. null if unknown. */
   band: number | null;
+  verdict: "likely_best" | "tied_for_best" | "significant_drop_off" | null;
 }
 
 export interface EvalStatsPair {
@@ -42,6 +43,8 @@ export interface EvalStatsPair {
   ci_low: number | null;
   ci_high: number | null;
   p_value: number | null;
+  /** Whether the difference is significant, by the test evalstats' rank bands use. */
+  significant: boolean;
 }
 
 interface EvalStatsReport {

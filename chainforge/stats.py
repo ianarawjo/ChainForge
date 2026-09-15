@@ -4,31 +4,27 @@ Backed by the optional `evalstats` package (`pip install chainforge[stats]`).
 
 ChainForge always uses evalstats' paired design, the one that fits AI
 evaluations: every item is scored for every group being compared (and every
-run). Items missing any of those scores are excluded here, before evalstats
-sees the data, and reported back so the page can say which were left out.
+run). Items missing any of those scores are dropped with
+`evalstats.complete_items()` before comparing, and reported back so the page
+can say which were left out.
 """
 
 import itertools
 import math
-import os
-import re
 import threading
 import warnings
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any, Dict, List, Optional
 
-MIN_EVALSTATS_VERSION = (0, 3, 1)
-
-# evalstats reports nothing below this many items per group, and is untested there.
-MIN_ITEMS = 15
+MIN_EVALSTATS_VERSION = (0, 3, 2)
 
 ALPHA = 0.05
 
 # How many excluded items to name in a response. The count is always exact.
 MAX_EXCLUDED_LABELS = 50
 
-# evalstats changes global warning filters and config while it runs, so one
-# comparison at a time.
+# evalstats still wraps some scipy calls in warnings.catch_warnings, which isn't
+# thread-safe, so one comparison at a time.
 _LOCK = threading.Lock()
 
 
@@ -49,8 +45,7 @@ def _version_tuple(v: str) -> tuple:
 def evalstats_unavailable_reason() -> Optional[str]:
     """Why statistics can't run, or None when a recent enough evalstats is installed.
 
-    Reads package metadata only: importing evalstats takes most of a second and
-    loads matplotlib, which ChainForge shouldn't pay for at startup.
+    Reads package metadata only, so ChainForge doesn't import evalstats at startup.
     """
     try:
         installed = version("evalstats")
@@ -89,11 +84,12 @@ def compare_eval_results(rows: List[Dict[str, Any]],
     ``run`` which of several responses to that input it scores. ``item_labels``
     maps item ids to readable names for the excluded-items report.
 
-    Returns ``{"ok": True, ...}`` with per-group means, confidence intervals and
-    rank bands plus pairwise differences, or ``{"ok": False, "message": ...}``
-    when there is too little complete data for statistics. Either way it
-    reports how many items were analysed and which were excluded.
-    Raises StatsInputError for rows that are malformed or can't be paired.
+    Returns ``{"ok": True, ...}`` with per-group means, confidence intervals,
+    rank bands and verdicts, pairwise differences, and the methods evalstats
+    ran; or ``{"ok": False, "message": ...}`` when the results can't support
+    statistics. Either way it reports how many items were analysed and which
+    were excluded. Raises StatsInputError for rows that are malformed or can't
+    be paired.
     """
     import pandas as pd
 
@@ -129,214 +125,174 @@ def compare_eval_results(rows: List[Dict[str, Any]],
         raise StatsInputError("Some results have identical inputs, so ChainForge can't tell "
                               "which results to pair up for statistics.")
 
-    # An item is complete when it has a score for every combination of groups and runs.
-    n_runs = df["run"].nunique()
-    expected = df["group"].nunique() * df["group2"].nunique() * n_runs
-    scored = df[df["score"].notna()]
-    scores_per_item = scored.groupby("item").size()
-    complete = set(scores_per_item[scores_per_item == expected].index)
-    excluded = [i for i in dict.fromkeys(df["item"]) if i not in complete]
-    kept = scored[scored["item"].isin(complete)]
+    n_runs = int(df["run"].nunique())
+    report = {"alpha": ALPHA, "n_items": int(df["item"].nunique()), "n_runs": n_runs,
+              "n_excluded": 0, "excluded_items": []}
 
-    report = {
-        "alpha": ALPHA,
-        "n_items": len(complete),
-        "n_runs": int(n_runs),
-        "n_excluded": len(excluded),
-        "excluded_items": [item_labels.get(i, i) for i in excluded[:MAX_EXCLUDED_LABELS]],
-    }
-
+    # A grouping with a single value isn't compared; its value is kept on each entity.
     factor_cols = [c for c in ("group", "group2") if df[c].nunique() > 1]
     if not factor_cols:
-        return {**report, "ok": False, "message": "Statistics need at least two groups to compare."}
-    if len(complete) < MIN_ITEMS:
-        have = (f"Only {len(complete)} have results for every group." if excluded
-                else f"This one has {len(complete)}.")
-        return {**report, "ok": False,
-                "message": f"Statistics are only available for eval sets of {MIN_ITEMS} items or more. {have}"}
-
-    # evalstats sees short ids rather than group names, so no name (one containing
-    # evalstats' " / " cell separator, say) can change how it reads the data.
-    es_cols = ["model", "prompt"][:len(factor_cols)]
-    frame = pd.DataFrame({"item": kept["item"].values, "score": kept["score"].values})
-    decode: Dict[str, Dict[str, str]] = {}
-    for col, es_col in zip(factor_cols, es_cols):
-        code = {level: f"{es_col[0]}{i}" for i, level in enumerate(dict.fromkeys(kept[col]))}
-        frame[es_col] = kept[col].map(code).values
-        decode[col] = {c: level for level, c in code.items()}
-    if n_runs > 1:
-        frame["run"] = kept["run"].values
-    constant = {c: str(kept[c].iloc[0]) for c in ("group", "group2")
+        return {**report, "ok": False, "message": _TOO_FEW_GROUPS}
+    constant = {c: str(df[c].iloc[0]) for c in ("group", "group2")
                 if c not in factor_cols and (c == "group" or has_group2)}
 
-    # evalstats imports pyplot; it must never pick a GUI backend inside the server.
-    os.environ.setdefault("MPLBACKEND", "Agg")
+    es_factor = dict(zip(factor_cols, ("model", "prompt")))
+    frame = pd.DataFrame({es_factor[c]: df[c] for c in factor_cols})
+    frame["item"] = df["item"]
+    frame["score"] = df["score"].astype(float)
+    if n_runs > 1:
+        frame["run"] = df["run"]
+    factors = [es_factor[c] for c in factor_cols]
+    factors_arg = factors[0] if len(factors) == 1 else factors
+
     import evalstats as es
 
-    with _LOCK, warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
+    with _LOCK, warnings.catch_warnings():
+        # evalstats returns its warnings as result.notes; keep them out of the server log.
+        warnings.simplefilter("ignore")
         try:
-            result = es.compare(es.load_from(frame),
-                                factors=es_cols[0] if len(es_cols) == 1 else es_cols,
-                                design="paired", alpha=ALPHA)
+            evaldata, completeness = es.complete_items(es.load_from(frame), factors_arg)
+            excluded = completeness.excluded_items
+            report.update(
+                n_items=completeness.n_items,
+                n_excluded=completeness.n_excluded,
+                excluded_items=[item_labels.get(i, i) for i in excluded[:MAX_EXCLUDED_LABELS]],
+            )
+            if completeness.n_items < es.MIN_ITEMS:
+                return {**report, "ok": False,
+                        "message": _too_few_items(completeness.n_items, bool(excluded), es.MIN_ITEMS)}
+            result = es.compare(evaldata, factors=factors_arg, design="paired", alpha=ALPHA)
+            summary = _summarize(result.to_dict(), factor_cols, constant)
+        except es.InsufficientItemsError as e:
+            return {**report, "ok": False,
+                    "message": _too_few_items(e.n_items, report["n_excluded"] > 0, e.min_items)}
+        except es.TooFewGroupsError:
+            return {**report, "ok": False, "message": _TOO_FEW_GROUPS}
+        except es.MissingCellsError:
+            return {**report, "ok": False,
+                    "message": "Statistics can't be calculated because some results are missing."}
+        except es.AmbiguousLabelsError:
+            return {**report, "ok": False,
+                    "message": "Statistics can't tell some groups apart: different combinations of "
+                               "names read the same once joined with \" / \". Rename values that "
+                               "contain \" / \"."}
         except ValueError as e:  # includes evalstats' EvalLoadError
-            return {**report, "ok": False, "message": _explain_failure(e, decode)}
-        summary = _summarize(result, factor_cols, decode, constant)
-    notes = list(dict.fromkeys(_with_names(str(w.message), decode)[:400] for w in caught))
+            return {**report, "ok": False, "message": f"evalstats couldn't analyse these results: {e}"}
 
-    return {**report, "ok": True, "factors": factor_cols, **summary, "notes": notes}
+    return {**report, "ok": True, "factors": factor_cols, **summary}
 
 
-def _with_names(message: str, decode: Dict[str, Dict[str, str]]) -> str:
-    """An evalstats message with the ids it was given (m0, p1) replaced by group names."""
-    names = {code: level for codes in decode.values() for code, level in codes.items()}
-    return re.sub(r"\b[mp]\d+\b", lambda m: names.get(m.group(0), m.group(0)), message)
+_TOO_FEW_GROUPS = "Statistics need at least two groups to compare."
 
 
-def _explain_failure(e: Exception, decode: Dict[str, Dict[str, str]]) -> str:
-    message = str(e)
-    if "nan" in message.lower() or "missing" in message.lower():
-        return "Statistics can't be calculated because some results are missing."
-    return f"evalstats couldn't analyse these results: {_with_names(message, decode)}"
+def _too_few_items(n_items: int, some_excluded: bool, min_items: int) -> str:
+    have = (f"Only {n_items} have results for every group." if some_excluded
+            else f"This one has {n_items}.")
+    return f"Statistics are only available for eval sets of {min_items} items or more. {have}"
 
 
-def _summarize(result, factor_cols: List[str], decode: Dict[str, Dict[str, str]],
+def _summarize(result: Dict[str, Any], factor_cols: List[str],
                constant: Dict[str, str]) -> Dict[str, Any]:
-    """Entities best-first with CIs and rank bands, and pairwise differences between them."""
-    bundle = result.full_analysis
-    labels = [str(label) for label in bundle.labels]
-    means = [float(m) for m in bundle.robustness.mean]
-    order = sorted(range(len(labels)), key=lambda i: -means[i])
-    bands = _rank_bands(bundle, [labels[i] for i in order], result.alpha)
-    as_dict = result.to_dict()
+    """Entities best-first and pairwise differences, from evalstats' ``to_dict()``."""
+    col_of = dict(zip(("model", "prompt"), factor_cols))
 
     entities, index_of = [], {}
-    for i in order:
-        label = labels[i]
-        stats = as_dict["entities"][label]
+    for label in result["order"]:
+        e = result["entities"][label]
         entity = dict(constant)
-        for col, code in zip(factor_cols, label.split(" / ")):
-            entity[col] = decode[col][code]
-        entity.update(mean=_finite(stats["mean"]), ci_low=_finite(stats["ci_low"]),
-                      ci_high=_finite(stats["ci_high"]), band=bands.get(label))
+        for factor, level in e["levels"].items():
+            entity[col_of[factor]] = level
+        entity.update(mean=e["mean"], ci_low=e["ci_low"], ci_high=e["ci_high"],
+                      band=e["band"], verdict=e["verdict"])
         index_of[label] = len(entities)
         entities.append(entity)
 
-    pairwise = []
-    for (a, b), pair in bundle.pairwise.results.items():
-        p_value, _ = _display_p_value(pair)
-        pairwise.append({
-            "a": index_of[str(a)],
-            "b": index_of[str(b)],
-            "diff": _finite(pair.point_diff),
-            "ci_low": _finite(pair.ci_low),
-            "ci_high": _finite(pair.ci_high),
-            "p_value": _finite(p_value),
-        })
+    pairwise = [{
+        "a": index_of[p["a"]],
+        "b": index_of[p["b"]],
+        "diff": p["diff"],
+        "ci_low": p["ci_low"],
+        "ci_high": p["ci_high"],
+        "p_value": p.get("p_value"),
+        "significant": p["significant"],
+    } for p in result["pairwise"]]
 
-    return {"entities": entities, "pairwise": pairwise, "methods": _methods(result, bundle)}
-
-
-def _display_p_value(pair) -> tuple:
-    """The pairwise p-value evalstats' own summary shows, and the name of its test.
-
-    That is the Wilcoxon signed-rank p-value where there is one, and otherwise
-    the comparison method's own (an exact test's, say).
-    """
-    try:
-        from evalstats.core.summary import _pairwise_display_pvalue
-    except ImportError:
-        return pair.p_value, pair.test_method
-    return _pairwise_display_pvalue(pair)
+    return {
+        "entities": entities,
+        "pairwise": pairwise,
+        "methods": _methods_lines(result["methods"], n_pairs=len(pairwise)),
+        "notes": [n["message"] for n in result["notes"]],
+    }
 
 
 def _format_p(p: float) -> str:
-    """"p < 0.001" or "p = 0.042", less the leading p."""
+    """"< 0.001" or "= 0.042", to follow a "p"."""
     return "< 0.001" if p < 0.001 else f"= {p:.3f}"
 
 
-def _methods(result, bundle) -> List[Dict[str, str]]:
-    """What evalstats ran, in words, so the results can be reported.
+_RANK_BAND_CRITERIA = {
+    "simultaneous_ci_excludes_zero": "groups are tied when their pairwise CI includes 0",
+    "corrected_p_below_alpha": "groups are tied when their corrected p ≥ {alpha:g}",
+}
 
-    evalstats records these as method codes on the analysis and names them in
-    its terminal summary with the private helpers used here; codes without a
-    display name are shown as they are.
-    """
-    try:
-        from evalstats.core.summary import (
-            _pretty_correction, _pretty_marginal_ci_method, _pretty_simultaneous_ci,
-        )
-    except ImportError:
-        def _pretty_marginal_ci_method(code):
-            return code
 
-        def _pretty_correction(code):
-            return code or "none"
-        _pretty_simultaneous_ci = _pretty_correction
+def _methods_lines(methods: Dict[str, Any], *, n_pairs: int) -> List[Dict[str, str]]:
+    """evalstats' ``methods()`` record, as the label/value lines the panel lists."""
+    alpha = methods["alpha"]
+    ci = f"{100 * (1 - alpha):g}%"
 
-    pw = bundle.pairwise
-    pairs = list(pw.results.values())
-    first = pairs[0]
-    ci = f"{100 * (1 - result.alpha):g}%"
+    design = methods["design"]
+    runs = ""
+    if design["n_runs"] > 1:
+        runs = f"; {design['n_runs']} runs per item"
+        if design.get("runs_averaged"):
+            runs += ", averaged"
 
-    kind = getattr(bundle, "resolved_data_kind", None)
-    scores = {"binary": "true/false (0 or 1)", "bounded_01": "numeric, between 0 and 1",
-              "unbounded": "numeric"}.get(kind, kind or "unknown")
-    if first.n_runs > 1:
-        scores += f"; {first.n_runs} runs per item"
+    kind = methods["data_kind"]
+    scores = kind["name"] or kind["code"]
+    if kind.get("score_range"):
+        low, high = kind["score_range"]
+        scores += f", from {low:g} to {high:g}"
 
-    ci_method = getattr(bundle, "resolved_ci_method", None)
-    diff_method = getattr(bundle, "resolved_method", None)
-    diff_ci = _pretty_marginal_ci_method(diff_method) or first.test_method
-    simultaneous = pw.simultaneous_ci_method
-    if simultaneous and simultaneous != "single":
-        diff_ci += f", simultaneous ({_pretty_simultaneous_ci(simultaneous)})"
+    pairwise_ci = methods["pairwise_ci"]
+    diff_ci = pairwise_ci["name"] or pairwise_ci["code"]
+    simultaneous = pairwise_ci.get("simultaneous") or {}
+    if simultaneous.get("code") not in (None, "single"):
+        diff_ci += f", simultaneous ({simultaneous['name']})"
 
-    _, p_test = _display_p_value(first)
-    if len(pairs) == 1:
-        correction = "no correction needed for one comparison"
-    else:
-        code = pw.correction_method
-        if p_test == "Wilcoxon signed-rank":
-            # Mirrors evalstats: Romano-Wolf needs per-pair resampling, so it
-            # corrects Wilcoxon p-values with Shaffer's method instead, or
-            # Holm's when some pair has no Wilcoxon p-value.
-            if code == "romano_wolf":
-                code = "shaffer"
-            if code == "shaffer" and any(p.wilcoxon_p is None for p in pairs):
-                code = "holm"
-        correction = ("uncorrected" if code in (None, "none")
-                      else f"{_pretty_correction(code)} correction")
-
-    methods = [
-        {"label": "Design", "value": f"paired: every group scored on the same {first.n_inputs} items"},
+    lines = [
+        {"label": "Design", "value": f"paired: every group scored on the same {design['n_items']} items{runs}"},
         {"label": "Scores", "value": scores},
-        {"label": f"Mean CIs ({ci})", "value": _pretty_marginal_ci_method(ci_method) or "unknown"},
+        {"label": f"Mean CIs ({ci})", "value": methods["mean_ci"]["name"] or methods["mean_ci"]["code"]},
         {"label": f"Pairwise difference CIs ({ci})", "value": diff_ci},
-        {"label": "p-values", "value": f"{p_test}, {correction}"},
     ]
-    if pw.friedman is not None:
-        f = pw.friedman
-        methods.append({"label": "Omnibus test",
-                        "value": f"Friedman χ²({f.df}) = {f.statistic:.2f}, p {_format_p(f.p_value)}"})
-    methods.append({"label": "Rank bands", "value": (
-        "groups are tied when their pairwise CI includes 0" if simultaneous is not None
-        else f"groups are tied when their corrected p ≥ {result.alpha:g}")})
-    methods.append({"label": "evalstats", "value": version("evalstats")})
-    return methods
 
+    p_values = methods["p_values"]
+    if p_values["shown"]:
+        correction = p_values["correction"]
+        if correction["code"] in (None, "none"):
+            corrected = "no correction needed for one comparison" if n_pairs == 1 else "uncorrected"
+        else:
+            corrected = f"{correction['name']} correction"
+        lines.append({"label": "p-values", "value": f"{p_values['test']['name']}, {corrected}"})
 
-def _rank_bands(bundle, labels_sorted: List[str], alpha: float) -> Dict[str, int]:
-    """The rank bands of evalstats' executive summary, by label.
+    omnibus = methods.get("omnibus")
+    if omnibus and omnibus.get("statistic") is not None and omnibus.get("p_value") is not None:
+        test = "Friedman" if omnibus["test"] == "friedman" else omnibus["test"]
+        lines.append({"label": "Omnibus test",
+                      "value": f"{test} χ²({omnibus['df']}) = {omnibus['statistic']:.2f}, "
+                               f"p {_format_p(omnibus['p_value'])}"})
 
-    Band 1 holds the top entity and everything statistically tied with it; each
-    later band marks a significant drop-off. evalstats doesn't expose these
-    publicly yet, so this uses its private helper and reports no bands (rather
-    than failing) if that ever moves.
-    """
-    try:
-        from evalstats.core.summary import _assign_significance_groups
-    except ImportError:
-        return {}
-    groups = _assign_significance_groups(bundle.pairwise, labels_sorted, alpha=alpha)
-    return {label: int(group.lstrip("#")) for label, group in groups.items()}
+    criterion = methods["rank_bands"]["criterion"]
+    lines.append({"label": "Rank bands",
+                  "value": _RANK_BAND_CRITERIA.get(criterion, criterion).format(alpha=alpha)})
+
+    resampling = methods.get("resampling") or {}
+    if resampling.get("n_bootstrap"):
+        seed = resampling.get("rng_seed")
+        lines.append({"label": "Resampling",
+                      "value": f"{resampling['n_bootstrap']:,} bootstrap resamples"
+                               + (f", seed {seed}" if seed is not None else "")})
+
+    lines.append({"label": "evalstats", "value": methods["evalstats_version"]})
+    return lines
