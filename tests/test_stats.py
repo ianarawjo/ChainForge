@@ -114,6 +114,30 @@ class TestCompleteness:
         result = stats.compare_eval_results(rows)
         assert (result["n_items"], result["n_excluded"]) == (14, 1)
 
+    def test_groups_without_any_results_are_named(self):
+        # One LLM was never run on "chatty", so no item has every combination.
+        rows = make_rows(["a", "b"], 20, group2s=["terse", "chatty"],
+                         missing={("b", "chatty", i, 0) for i in range(20)})
+        result = stats.compare_eval_results(rows)
+        assert result["ok"] is False
+        assert result["message"] == "Statistics need results for every group, but b · chatty has none."
+
+        # Comparing a variable within one LLM names the variable's value.
+        rows = make_rows(["solo"], 20, group2s=["terse", "chatty"])
+        for row in rows:
+            if row["group2"] == "chatty":
+                row["score"] = "error"
+        assert stats.compare_eval_results(rows)["message"] == \
+            "Statistics need results for every group, but chatty has none."
+
+        # A group whose every result is an error.
+        rows = make_rows(["a", "b", "c"], 20)
+        for row in rows:
+            if row["group"] == "c":
+                row["score"] = "error"
+        assert stats.compare_eval_results(rows)["message"] == \
+            "Statistics need results for every group, but c has none."
+
     def test_exclusions_are_reported_with_the_stats(self):
         result = stats.compare_eval_results(make_rows(["a", "b"], 20, missing={("a", None, 3, 0)}))
         assert result["ok"] is True
