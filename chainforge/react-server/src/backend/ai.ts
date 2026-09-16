@@ -21,23 +21,14 @@ export class AIError extends Error {
 // Input and outputs of autofill are both rows of strings.
 export type Row = string;
 
-// The list of LLMs models that can be used with AI features
+// The list of LLMs models that can be used with AI features.
+// Bedrock was dropped here when its Claude 3 models reached end-of-life on
+// Bedrock; the provider itself is still available for prompt nodes.
 const AIFeaturesLLMs = [
   {
     provider: "OpenAI",
     small: { value: "gpt-4o-mini", label: "OpenAI GPT4o-mini" },
     large: { value: "gpt-4o", label: "OpenAI GPT4o" },
-  },
-  {
-    provider: "Bedrock",
-    small: {
-      value: "anthropic.claude-3-haiku-20240307-v1:0",
-      label: "Claude 3 Haiku",
-    },
-    large: {
-      value: "anthropic.claude-3-sonnet-20240229-v1:0",
-      label: "Claude 3 Sonnet",
-    },
   },
 ];
 

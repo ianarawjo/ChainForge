@@ -162,11 +162,21 @@ export function addSessionTokenToAxios(
     }
     if (!isBackend(url)) return config;
     const token = await getToken();
-    if (token)
-      config.headers = {
-        ...(config.headers ?? {}),
-        [SESSION_TOKEN_HEADER]: token,
-      };
+    // Axios 1.x hands interceptors an AxiosHeaders instance, which has to be
+    // set through its own method; spreading it would flatten its methods into
+    // the headers. Plain objects (as in tests) still work the old way.
+    if (token) {
+      const headers = config.headers as unknown as
+        | { set?: (name: string, value: string) => void }
+        | undefined;
+      if (typeof headers?.set === "function")
+        headers.set(SESSION_TOKEN_HEADER, token);
+      else
+        config.headers = {
+          ...((config.headers ?? {}) as object),
+          [SESSION_TOKEN_HEADER]: token,
+        } as unknown as typeof config.headers;
+    }
     return config;
   });
 }

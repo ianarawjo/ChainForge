@@ -12,7 +12,9 @@ import {
   isGeminiImageModel,
   isOpenAIImageModel,
   isOpenRouterImageModel,
+  stripBedrockPrefix,
   stripHuggingFacePrefix,
+  stripTogetherPrefix,
   stripOpenRouterPrefix,
 } from "./models";
 import {
@@ -43,29 +45,40 @@ import {
 import { v4 as uuid } from "uuid";
 import { StringTemplate } from "./template";
 
-import {
-  Configuration as OpenAIConfig,
-  OpenAIApi,
-  ImagesResponseDataInner,
-} from "openai";
-import {
-  OpenAIClient as AzureOpenAIClient,
-  AzureKeyCredential,
-} from "@azure/openai";
+import OpenAI from "openai";
 import {
   GenerateContentConfig,
   GoogleGenAI,
   PartListUnion,
 } from "@google/genai";
 import { UserForcedPrematureExit } from "./errors";
-import {
-  fromModelId,
-  ChatMessage as BedrockChatMessage,
-} from "@mirai73/bedrock-fm";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import Compressor from "compressorjs";
 import { Annotations } from "plotly.js";
-// import { Models } from "@mirai73/bedrock-fm/lib/bedrock";
+
+/**
+ * ChainForge queries models straight from the browser, which the OpenAI SDK
+ * asks callers to acknowledge. The keys are the user's own and are never sent
+ * anywhere but the provider.
+ */
+const OPENAI_BROWSER_OPTS = { dangerouslyAllowBrowser: true as const };
+
+/** The image fields ChainForge reads back from an OpenAI-shaped image response. */
+interface ImagesResponseDataInner {
+  url?: string;
+  b64_json?: string;
+  revised_prompt?: string;
+}
+
+/** The useful part of an OpenAI SDK error, which nests the API's own message. */
+function openai_error_message(error: any): string {
+  return (
+    error?.error?.message ??
+    error?.response?.data?.error?.message ??
+    error?.message ??
+    String(error)
+  );
+}
 
 const ANTHROPIC_HUMAN_PROMPT = "\n\nHuman:";
 const ANTHROPIC_AI_PROMPT = "\n\nAssistant:";
@@ -217,6 +230,19 @@ let TOGETHER_API_KEY = get_environ("TOGETHER_API_KEY");
 let DEEPSEEK_API_KEY = get_environ("DEEPSEEK_API_KEY");
 let MINIMAX_API_KEY = get_environ("MINIMAX_API_KEY");
 let OPENROUTER_API_KEY = get_environ("OPENROUTER_API_KEY");
+
+/**
+ * The AWS SDK is a heavy dependency that reaches for web-stream globals as soon
+ * as it loads, so it is imported only when a Bedrock model is first queried --
+ * keeping it out of the main bundle, and out of everyone else's way.
+ */
+let _BEDROCK_MODULE_PROMISE: Promise<any> | undefined;
+
+async function get_bedrock_module(): Promise<any> {
+  if (!_BEDROCK_MODULE_PROMISE)
+    _BEDROCK_MODULE_PROMISE = import("@aws-sdk/client-bedrock-runtime");
+  return _BEDROCK_MODULE_PROMISE;
+}
 
 let _WEBLLM_MODULE_PROMISE: Promise<any> | undefined;
 let _WEBLLM_ENGINE: any;
@@ -521,15 +547,11 @@ export async function call_chatgpt(
       "Could not find an OpenAI API key. Double-check that your API key is set in Settings or in your local environment.",
     );
 
-  const configuration = new OpenAIConfig({
+  const openai = new OpenAI({
     apiKey: effectiveKey,
-    basePath: BASE_URL ?? OPENAI_BASE_URL ?? undefined,
+    baseURL: BASE_URL ?? OPENAI_BASE_URL ?? undefined,
+    ...OPENAI_BROWSER_OPTS,
   });
-
-  // Since we are running client-side, we need to remove the user-agent header:
-  delete configuration.baseOptions.headers["User-Agent"];
-
-  const openai = new OpenAIApi(configuration);
 
   const modelname: string = model.toString();
 
@@ -596,11 +618,11 @@ export async function call_chatgpt(
   if (modelname.includes("davinci") || modelname.includes("instruct")) {
     if ("response_format" in query) delete query.response_format;
     // Create call to text completions model
-    openai_call = openai.createCompletion.bind(openai);
+    openai_call = openai.completions.create.bind(openai.completions);
     query.prompt = prompt;
   } else {
     // Create call to chat model
-    openai_call = openai.createChatCompletion.bind(openai);
+    openai_call = openai.chat.completions.create.bind(openai.chat.completions);
 
     // Carry over chat history, if present:
     query.messages = construct_chat_history(
@@ -619,16 +641,9 @@ export async function call_chatgpt(
   // Try to call OpenAI
   let response: Dict = {};
   try {
-    const completion = await openai_call(query);
-    response = completion.data;
+    response = (await openai_call(query)) as Dict;
   } catch (error: any) {
-    if (error?.response) {
-      throw new Error(error.response.data?.error?.message);
-      // throw new Error(error.response.status);
-    } else {
-      console.log(error?.message || error);
-      throw new Error(error?.message || error);
-    }
+    throw new Error(openai_error_message(error));
   }
 
   return [query, response];
@@ -1258,10 +1273,15 @@ export async function call_azure_openai(
       "Could not find a model type specified for an Azure OpenAI model. Double-check that your deployment name is set in Settings or in your local environment.",
     );
 
-  const client = new AzureOpenAIClient(
-    AZURE_OPENAI_ENDPOINT,
-    new AzureKeyCredential(AZURE_OPENAI_KEY),
-  );
+  // Azure's v1 API is OpenAI-shaped and needs no api-version, so the same
+  // client that serves OpenAI serves Azure: the deployment name stands in for
+  // the model, and the endpoint gains Azure's /openai/v1 path.
+  // See https://learn.microsoft.com/en-us/azure/foundry/openai/api-version-lifecycle
+  const client = new OpenAI({
+    apiKey: AZURE_OPENAI_KEY,
+    baseURL: `${AZURE_OPENAI_ENDPOINT.replace(/\/+$/, "")}/openai/v1/`,
+    ...OPENAI_BROWSER_OPTS,
+  });
 
   if (
     params?.stop !== undefined &&
@@ -1292,6 +1312,7 @@ export async function call_azure_openai(
   delete params?.system_msg;
   delete params?.model_type;
   delete params?.deployment_name;
+  delete params?.api_version; // not a parameter of Azure's v1 API
 
   // Setup the args for the query
   const query: Dict = {
@@ -1299,25 +1320,25 @@ export async function call_azure_openai(
     temperature,
     ...params, // 'the rest' of the settings, passed from the front-end settings
   };
-  let arg2: Array<Dict | string>;
+  // The deployment name is what Azure routes on, in the model field.
+  query.model = deployment_name;
   let openai_call: any;
   if (model_type === "text-completion") {
-    openai_call = client.getCompletions.bind(client);
-    arg2 = [prompt];
+    openai_call = client.completions.create.bind(client.completions);
+    query.prompt = prompt;
   } else {
-    openai_call = client.getChatCompletions.bind(client);
-    arg2 = construct_chat_history(prompt, images, chat_history, system_msg);
+    openai_call = client.chat.completions.create.bind(client.chat.completions);
+    query.messages = await resolve_images_in_user_messages(
+      construct_chat_history(prompt, images, chat_history, system_msg),
+      "openai",
+    );
   }
 
   let response: Dict = {};
   try {
-    response = await openai_call(deployment_name, arg2, query);
+    response = (await openai_call(query)) as Dict;
   } catch (error: any) {
-    if (error?.response) {
-      throw new Error(error.response.data?.error?.message);
-    } else {
-      throw new Error(error?.message || error);
-    }
+    throw new Error(openai_error_message(error));
   }
 
   return [query, response];
@@ -2205,32 +2226,59 @@ export async function call_ollama_provider(
   return [query, responses];
 }
 
-/** Convert OpenAI chat history to Bedrock format */
-function to_bedrock_chat_history(
-  chat_history: ChatHistory,
-): BedrockChatMessage[] {
-  const role_map: Dict<string> = {
-    assistant: "ai",
-    user: "human",
-  };
+/**
+ * Turns ChainForge's chat history into Converse API messages. Converse takes
+ * one content block list per message, with images as raw bytes rather than
+ * base64, and carries the system prompt outside the messages.
+ */
+function to_bedrock_messages(history: ChatHistory): Dict[] {
+  const messages: Dict[] = [];
+  for (const msg of history) {
+    if (msg.role === "system") continue; // Converse takes this in `system`
+    const content: Dict[] = [];
+    if (typeof msg.content === "string") {
+      if (msg.content.length > 0) content.push({ text: msg.content });
+    } else if (Array.isArray(msg.content)) {
+      for (const block of msg.content as Dict[]) {
+        if (block.type === "text" && block.text)
+          content.push({ text: block.text });
+        else if (block.type === "image" && block.source?.data) {
+          const media: string = block.source.media_type ?? "image/png";
+          content.push({
+            image: {
+              format: media.split("/")[1]?.replace("jpg", "jpeg") ?? "png",
+              source: { bytes: base64ToBytes(block.source.data) },
+            },
+          });
+        }
+      }
+    }
+    if (content.length === 0) continue;
+    messages.push({
+      role: msg.role === "assistant" ? "assistant" : "user",
+      content,
+    });
+  }
+  return messages;
+}
 
-  // Transform the ChatMessage format in the chat_history array to what is expected by Bedrock
-  return chat_history.map((msg) =>
-    transformDict(
-      msg,
-      undefined,
-      (key) => (key === "content" ? "message" : key),
-      (key: string, val: string): string => {
-        if (key === "role") return val in role_map ? role_map[val] : val;
-        return val;
-      },
-    ),
-  ) as BedrockChatMessage[];
+/** Decodes base64 image data into the byte array Converse wants. */
+function base64ToBytes(data: string): Uint8Array {
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
 }
 
 /**
- * Calls Bedrock models via Bedrock's API.
-   @returns raw query and response JSON dicts.
+ * Calls a model on Amazon Bedrock through the Converse API, which takes the
+ * same request shape for every vendor on Bedrock -- so one code path, and one
+ * settings form, cover Anthropic, Amazon, Meta, Mistral and the rest.
+ *
+ * The model ID is usually a cross-region inference profile (us./eu./global.
+ * and so on) rather than a bare model ID, which most models released since
+ * 2025 reject on on-demand throughput.
+ * See https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html
  */
 export async function call_bedrock(
   prompt: string,
@@ -2241,82 +2289,103 @@ export async function call_bedrock(
   should_cancel?: () => boolean,
   images?: string[],
 ): Promise<[Dict, Dict]> {
-  if (
-    !AWS_ACCESS_KEY_ID ||
-    !AWS_SECRET_ACCESS_KEY ||
-    !AWS_SESSION_TOKEN ||
-    !AWS_REGION
-  ) {
+  // A session token is only issued for temporary credentials, so it is optional.
+  if (!AWS_ACCESS_KEY_ID || !AWS_SECRET_ACCESS_KEY || !AWS_REGION)
     throw new Error(
-      "Could not find credentials value for the Bedrock API. Double-check that your AWS Credentials are set in Settings or in your local environment.",
+      "Could not find credentials for Amazon Bedrock. Double-check that your AWS access key, secret key and region are set in Settings or in your local environment.",
     );
+
+  const modelId = stripBedrockPrefix(model);
+  const settings: Dict = { ...params };
+  strip_empty_chat_params(settings);
+
+  const chat_history: ChatHistory | undefined = settings.chat_history;
+  const system_msg: string | undefined = settings.system_msg;
+  const extra_fields: string | undefined =
+    settings.additional_model_request_fields;
+  delete settings.chat_history;
+  delete settings.system_msg;
+  delete settings.additional_model_request_fields;
+
+  const inferenceConfig: Dict = { temperature };
+  if (!is_blank_setting(settings.max_tokens))
+    inferenceConfig.maxTokens = settings.max_tokens;
+  if (!is_blank_setting(settings.top_p)) inferenceConfig.topP = settings.top_p;
+  if (
+    Array.isArray(settings.stop_sequences) &&
+    settings.stop_sequences.length > 0
+  )
+    inferenceConfig.stopSequences = settings.stop_sequences;
+
+  let additionalModelRequestFields: Dict | undefined;
+  if (!is_blank_setting(extra_fields)) {
+    try {
+      additionalModelRequestFields = JSON.parse(extra_fields as string);
+    } catch (e) {
+      throw new Error(
+        `additionalModelRequestFields must be a JSON object: ${(e as Error).message}`,
+      );
+    }
   }
 
-  const modelName: string = model.toString();
-  let stopWords = [];
-  if (
-    params?.stop_sequences !== undefined &&
-    Array.isArray(params.stop_sequences && params.stop_sequences.length > 0)
-  ) {
-    stopWords = params?.stop_sequences;
-  }
-  const bedrockConfig = {
+  const messages = to_bedrock_messages(
+    await resolve_images_in_user_messages(
+      construct_chat_history(prompt, images, chat_history, undefined),
+      "anthropic",
+    ),
+  );
+
+  const query: Dict = { modelId, messages, inferenceConfig };
+  if (!is_blank_setting(system_msg))
+    query.system = [{ text: system_msg as string }];
+  if (additionalModelRequestFields)
+    query.additionalModelRequestFields = additionalModelRequestFields;
+
+  const { BedrockRuntimeClient, ConverseCommand } = await get_bedrock_module();
+  const client = new BedrockRuntimeClient({
+    region: AWS_REGION,
     credentials: {
       accessKeyId: AWS_ACCESS_KEY_ID,
       secretAccessKey: AWS_SECRET_ACCESS_KEY,
-      sessionToken: AWS_SESSION_TOKEN,
+      ...(AWS_SESSION_TOKEN ? { sessionToken: AWS_SESSION_TOKEN } : {}),
     },
-    region: AWS_REGION,
-  };
-
-  delete params?.stop_sequences;
-
-  const query: Dict = {
-    stopSequences: stopWords,
-    temperature,
-  };
-
-  const fm = fromModelId(modelName, {
-    region: bedrockConfig.region,
-    credentials: bedrockConfig.credentials,
-    ...query,
   });
 
-  const responses: string[] = [];
-  try {
-    // Collect n responses, one at a time
-    while (responses.length < n) {
-      // Abort if the user canceled
-      if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+  console.log(`Querying Bedrock model '${modelId}' (n=${n})...`);
 
-      // Grab the response
-      let response: string;
+  const responses: Dict[] = [];
+  while (responses.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+    let result: Dict;
+    try {
+      result = (await client.send(new ConverseCommand(query as any))) as Dict;
+    } catch (error: any) {
+      // Bedrock's own message is the useful part, but the commonest failure --
+      // a bare model ID where an inference profile is required -- deserves a
+      // pointer to the fix.
+      const detail = error?.message ?? error?.toString?.() ?? "unknown error";
       if (
-        modelName.startsWith("anthropic") ||
-        modelName.startsWith("mistral") ||
-        modelName.startsWith("meta")
-      ) {
-        const chat_history: ChatHistory = construct_chat_history(
-          prompt,
-          images,
-          params?.chat_history,
-          params?.system_msg,
+        /on-demand throughput isn(')?t supported|inference profile/i.test(
+          detail,
+        )
+      )
+        throw new Error(
+          `${detail}\n\nBedrock wants an inference profile for this model: try prefixing the model ID with your geography, e.g. "us.${modelId}".`,
         );
-
-        response = (
-          await fm.chat(to_bedrock_chat_history(chat_history), {
-            modelArgs: { ...(params as Map<string, any>) },
-          })
-        ).message;
-      } else {
-        response = await fm.generate(prompt, {
-          modelArgs: { ...(params as Map<string, any>) },
-        });
-      }
-      responses.push(response);
+      throw new Error(detail);
     }
-  } catch (error: any) {
-    throw new Error(error?.message ?? error.toString());
+
+    const text = (result.output?.message?.content ?? [])
+      .map((block: Dict) => block.text)
+      .filter((t: unknown) => typeof t === "string")
+      .join("");
+    if (!text)
+      throw new Error(
+        `Bedrock returned no text for '${modelId}' (stopReason: ${result.stopReason ?? "unknown"}).`,
+      );
+
+    responses.push({ generated_text: text, raw: result });
   }
 
   return [query, responses];
@@ -2342,19 +2411,14 @@ export async function call_together(
 
   const togetherBaseUrl = "https://api.together.xyz/v1";
 
-  // Together.ai uses OpenAI's API, so we can use the OpenAI API client to make the call:
-  const configuration = new OpenAIConfig({
+  // Together.ai speaks OpenAI's API, so the same client serves it:
+  const together = new OpenAI({
     apiKey: TOGETHER_API_KEY,
-    basePath: togetherBaseUrl,
+    baseURL: togetherBaseUrl,
+    ...OPENAI_BROWSER_OPTS,
   });
 
-  // Since we are running client-side, we need to remove the user-agent header:
-  delete configuration.baseOptions.headers["User-Agent"];
-
-  const together = new OpenAIApi(configuration);
-
-  // Strip the "together/" prefix:
-  const modelname: string = model.toString().substring(9);
+  const modelname: string = stripTogetherPrefix(model);
   if (
     params?.stop !== undefined &&
     (!Array.isArray(params.stop) || params.stop.length === 0)
@@ -2394,7 +2458,9 @@ export async function call_together(
   };
 
   // Create call to chat model
-  const together_call: any = together.createChatCompletion.bind(together);
+  const together_call: any = together.chat.completions.create.bind(
+    together.chat.completions,
+  );
 
   // Carry over chat history, if present:
   query.messages = construct_chat_history(
@@ -2407,16 +2473,9 @@ export async function call_together(
   // Try to call Together
   let response: Dict = {};
   try {
-    const completion = await together_call(query);
-    response = completion.data;
+    response = (await together_call(query)) as Dict;
   } catch (error: any) {
-    if (error?.response) {
-      throw new Error(error.response.data?.error?.message);
-      // throw new Error(error.response.status);
-    } else {
-      console.log(error?.message || error);
-      throw new Error(error?.message || error);
-    }
+    throw new Error(openai_error_message(error));
   }
 
   return [query, response];
@@ -2784,6 +2843,16 @@ function _extract_anthropic_text_responses(
 }
 
 /**
+ * Extracts the text of a Bedrock Converse response. Responses cached before
+ * the move to Converse were stored as plain strings, so both are accepted.
+ */
+function _extract_bedrock_responses(response: Array<Dict>): Array<string> {
+  return response.map((r: Dict | string) =>
+    typeof r === "string" ? r.trim() : (r.generated_text ?? "").trim(),
+  );
+}
+
+/**
  * Extracts the text part of a HuggingFace completion. Responses cached before
  * the move to Inference Providers only have generated_text, so both the stored
  * text and a raw OpenAI-shaped payload are accepted.
@@ -3091,7 +3160,7 @@ export function extract_responses(
     case LLMProvider.Ollama:
       return _extract_ollama_responses(response as Dict[]);
     case LLMProvider.Bedrock:
-      return response as Array<string>;
+      return _extract_bedrock_responses(response as Dict[]);
     case LLMProvider.Together:
       return _extract_openai_responses(response as Dict[]);
     case LLMProvider.DeepSeek:

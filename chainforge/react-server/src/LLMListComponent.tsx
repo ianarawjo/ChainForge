@@ -25,6 +25,8 @@ import ModelSettingsModal, {
 } from "./ModelSettingsModal";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import {
+  BEDROCK_PREFIX,
+  TOGETHER_PREFIX,
   HUGGINGFACE_PREFIX,
   NativeLLM,
   OPENROUTER_IMAGE_PREFIX,
@@ -45,10 +47,11 @@ const DEFAULT_INIT_LLMS = [
 // Base models whose model names carry a prefix, which tells ChainForge which
 // provider they belong to. The settings form shows the name without it.
 const MODEL_NAME_PREFIXES: Record<string, string> = {
-  together: "together/",
+  together: TOGETHER_PREFIX,
   openrouter: OPENROUTER_PREFIX,
   "openrouter-image": OPENROUTER_IMAGE_PREFIX,
   hf: HUGGINGFACE_PREFIX,
+  bedrock: BEDROCK_PREFIX,
 };
 
 // Helper funcs

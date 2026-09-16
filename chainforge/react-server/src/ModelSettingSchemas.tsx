@@ -510,9 +510,10 @@ const MiniMaxSettings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select a MiniMax model to query. For more details, see the MiniMax API documentation at https://platform.minimaxi.com.",
-        enum: ["MiniMax-M2.7", "MiniMax-M2.7-highspeed"],
+        enum: ["MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.7-highspeed"],
         default: "MiniMax-M2.7",
         shortname_map: {
+          "MiniMax-M3": "M3",
           "MiniMax-M2.7": "M2.7",
           "MiniMax-M2.7-highspeed": "M2.7-hs",
         },
@@ -1639,13 +1640,6 @@ const AzureOpenAISettings: ModelSettingsDict = {
         enum: ["chat-completion", "text-completion"],
         default: "chat-completion",
       },
-      api_version: {
-        type: "string",
-        title: "API Version (date)",
-        description:
-          "Used when calling the OpenAI API through Azure services. Normally you don't need to change this setting.",
-        default: "2023-05-15",
-      },
       ...transformDict(
         ChatGPTSettings.schema.properties,
         (key) => key !== "model",
@@ -1973,8 +1967,21 @@ const OllamaSettings: ModelSettingsDict = {
   },
 };
 
-const BedrockClaudeSettings: ModelSettingsDict = {
-  fullName: "Claude (Anthropic) via Amazon Bedrock",
+/**
+ * Amazon Bedrock, through the Converse API -- one request shape for every
+ * vendor on Bedrock, which is why a single form replaces the per-vendor ones
+ * ChainForge used to carry.
+ *
+ * Which models an account can call depends on its region and the access it has
+ * been granted, and most models released since 2025 cannot be called by their
+ * bare ID on on-demand throughput at all: they need a cross-region inference
+ * profile, which is the model ID behind a geography prefix (us., eu., apac.,
+ * jp., au.) or global. So the model here is typed in, and the suggestions use
+ * the US profiles.
+ * See https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html
+ */
+export const BedrockSettings: ModelSettingsDict = {
+  fullName: "Amazon Bedrock",
   schema: {
     type: "object",
     required: ["shortname"],
@@ -1984,89 +1991,87 @@ const BedrockClaudeSettings: ModelSettingsDict = {
         title: "Nickname",
         description:
           "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "Claude",
+        default: "Bedrock",
       },
       model: {
         type: "string",
-        title: "Model Version",
+        title: "Model",
         description:
-          "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
+          "The Bedrock model or inference profile to call. Which models you can use depends on your region and the model access granted to your AWS account, so type in whatever your account serves -- the catalog is in the Bedrock console. Most models released since 2025 reject their bare model ID on on-demand throughput and need an inference profile: the same ID behind a 'us.', 'eu.', 'apac.', 'jp.', 'au.' or 'global.' prefix. Swap the prefix to match your region.",
         enum: [
-          NativeLLM.Bedrock_Claude_3_Opus,
-          NativeLLM.Bedrock_Claude_3_Haiku,
-          NativeLLM.Bedrock_Claude_3_Sonnet,
-          NativeLLM.Bedrock_Claude_Instant_1,
-          NativeLLM.Bedrock_Claude_2,
-          NativeLLM.Bedrock_Claude_2_1,
+          "us.anthropic.claude-sonnet-5",
+          "us.anthropic.claude-opus-4-8",
+          "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+          "us.amazon.nova-2-lite-v1:0",
+          "us.meta.llama4-maverick-17b-instruct-v1:0",
+          "us.meta.llama4-scout-17b-instruct-v1:0",
+          "us.mistral.mistral-large-3-675b-instruct",
+          "us.openai.gpt-oss-120b-1:0",
         ],
-        default: NativeLLM.Bedrock_Claude_3_Haiku,
+        default: "us.anthropic.claude-sonnet-5",
         shortname_map: {
-          "anthropic.claude-3-sonnet-20240229-v1:0": "claude-3-sonnet",
-          "anthropic.claude-3-haiku-20240307-v1:0": "claude-3-haiku",
+          "us.anthropic.claude-sonnet-5": "Claude Sonnet 5",
+          "us.anthropic.claude-opus-4-8": "Claude Opus 4.8",
+          "us.anthropic.claude-haiku-4-5-20251001-v1:0": "Claude Haiku 4.5",
+          "us.amazon.nova-2-lite-v1:0": "Nova 2 Lite",
+          "us.meta.llama4-maverick-17b-instruct-v1:0": "Llama 4 Maverick",
+          "us.meta.llama4-scout-17b-instruct-v1:0": "Llama 4 Scout",
+          "us.mistral.mistral-large-3-675b-instruct": "Mistral Large 3",
+          "us.openai.gpt-oss-120b-1:0": "gpt-oss-120b",
         },
       },
       system_msg: {
         type: "string",
         title: "system_msg",
-        description: "A system message to use with the model",
-        default: "",
+        description:
+          "A prompt giving the model context or a persona. Leave blank to send none.",
+        default: "You are a helpful assistant.",
+        allow_empty_str: true,
       },
       temperature: {
         type: "number",
         title: "temperature",
         description:
-          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
-        default: 1,
+          "Controls the 'creativity' or randomness of the response. Bedrock's accepted range differs by model; most take 0 to 1.",
+        default: 1.0,
         minimum: 0,
-        maximum: 1,
+        maximum: 1.0,
         multipleOf: 0.01,
       },
-      max_tokens_to_sample: {
+      max_tokens: {
         type: "integer",
-        title: "max_tokens_to_sample",
+        title: "maxTokens",
         description:
-          "A maximum number of tokens to generate before stopping. Lower this if you want shorter responses. By default, ChainForge uses the value 1024, although the Anthropic API does not specify a default value.",
+          "The maximum number of tokens to generate. Leave blank for the model's default.",
         default: 1024,
-        minimum: 1,
-      },
-      custom_prompt_wrapper: {
-        type: "string",
-        title: "Prompt Wrapper (ChainForge)",
-        description:
-          // eslint-disable-next-line no-template-curly-in-string
-          'Anthropic models expect prompts in the form "\\n\\nHuman: ${prompt}\\n\\nAssistant:". ChainForge wraps all prompts in this template by default. If you wish to' +
-          // eslint-disable-next-line no-template-curly-in-string
-          "explore custom prompt wrappers that deviate, write a Python template here with a single variable, ${prompt}, where the actual prompt text should go. Otherwise, leave this field blank. (Note that you should enter newlines as newlines, not escape codes like \\n.)",
-        default: "",
-      },
-      stop_sequences: {
-        type: "string",
-        title: "stop_sequences",
-        description:
-          'Anthropic models stop on "\\n\\nHuman:", and may include additional built-in stop sequences in the future. By providing the stop_sequences parameter, you may include additional strings that will cause the model to stop generating.\nEnclose stop sequences in double-quotes "" and use whitespace to separate them.',
-        default: '"\n\nHuman:"',
-      },
-      top_k: {
-        type: "integer",
-        title: "top_k",
-        description:
-          'Only sample from the top K options for each subsequent token. Used to remove "long tail" low probability responses. Defaults to -1, which disables it.',
-        minimum: 1,
-        default: 1,
       },
       top_p: {
         type: "number",
-        title: "top_p",
+        title: "topP",
         description:
-          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
-        default: 0.9,
-        minimum: 0.001,
+          "Nucleus sampling: the cumulative probability of the tokens to sample from. Set to -1 to leave unspecified.",
+        default: -1,
+        minimum: -1,
         maximum: 1,
         multipleOf: 0.001,
       },
+      stop_sequences: {
+        type: "string",
+        title: "stopSequences",
+        description:
+          'Sequences where the model will stop generating. Enclose each in double-quotes "" and separate them with whitespace.',
+        default: "",
+      },
+      additional_model_request_fields: {
+        type: "string",
+        title: "additionalModelRequestFields",
+        description:
+          'Parameters that Converse does not take but the model does, as a JSON object -- for instance {"top_k": 200} for Claude. Leave blank to send none.',
+        default: "",
+        allow_empty_str: true,
+      },
     },
   },
-
   uiSchema: {
     "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
     shortname: {
@@ -2074,605 +2079,38 @@ const BedrockClaudeSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help":
-        "Defaults to claude-2. Note that Anthropic models in particular are subject to change. Model names prior to Claude 2, including 100k context window, are no longer listed on the Anthropic site, so they may or may not work.",
+        "Defaults to us.anthropic.claude-sonnet-5. Any model or inference profile your account can call may be typed in.",
       "ui:widget": "datalist",
+    },
+    system_msg: {
+      "ui:widget": "textarea",
+      "ui:help": "Defaults to 'You are a helpful assistant.'",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
       "ui:widget": "range",
     },
-    max_tokens_to_sample: {
+    max_tokens: {
       "ui:help": "Defaults to 1024.",
-    },
-    top_k: {
-      "ui:help": "Defaults to -1 (none).",
     },
     top_p: {
-      "ui:help": "Defaults to -1 (none).",
+      "ui:help": "Defaults to -1 (unspecified).",
     },
     stop_sequences: {
+      "ui:help": "Defaults to no stop sequences.",
+    },
+    additional_model_request_fields: {
       "ui:widget": "textarea",
-      "ui:help": 'Defaults to one stop sequence, "\\n\\nHuman: "',
-    },
-    custom_prompt_wrapper: {
-      "ui:widget": "textarea",
-      "ui:help":
-        'Defaults to Anthropic\'s internal wrapper "\\n\\nHuman: {prompt}\\n\\nAssistant".',
-    },
-  },
-
-  postprocessors: {
-    stop_sequences: (str) => {
-      if (typeof str !== "string" || str.trim().length === 0) return [];
-      return str
-        .match(/"((?:[^"\\]|\\.)*)"/g)
-        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
-    },
-  },
-};
-
-const BedrockJurassic2Settings: ModelSettingsDict = {
-  fullName: "Jurassic-2 (Ai21) via Amazon Bedrock",
-  schema: {
-    type: "object",
-    required: ["shortname"],
-    properties: {
-      shortname: {
-        type: "string",
-        title: "Nickname",
-        description:
-          "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "Jurassic2",
-      },
-      model: {
-        type: "string",
-        title: "Model Version",
-        description:
-          "Select a version of Jurassic 2 to query. For more details on the differences, see the AI21 API documentation.",
-        enum: [
-          NativeLLM.Bedrock_Jurassic_Mid,
-          NativeLLM.Bedrock_Jurassic_Ultra,
-        ],
-        default: NativeLLM.Bedrock_Jurassic_Ultra,
-      },
-      temperature: {
-        type: "number",
-        title: "temperature",
-        description:
-          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
-        default: 1,
-        minimum: 0,
-        maximum: 1,
-        multipleOf: 0.01,
-      },
-      maxTokens: {
-        type: "integer",
-        title: "maxTokens",
-        description:
-          "The maximum number of tokens to generate for each response.",
-        default: 1024,
-        minimum: 1,
-      },
-      minTokens: {
-        type: "integer",
-        title: "minTokens",
-        description:
-          "The minimum number of tokens to generate for each response.",
-        default: 1,
-        minimum: 1,
-      },
-      numResults: {
-        type: "integer",
-        title: "numResults",
-        description: "The number of responses to generate for a given prompt.",
-        default: 1,
-        minimum: 1,
-      },
-      stop_sequences: {
-        type: "string",
-        title: "stopSequences",
-        description:
-          'Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
-        default: "",
-      },
-      topKReturn: {
-        type: "integer",
-        title: "topKReturn",
-        description:
-          "The number of top-scoring tokens to consider for each generation step.",
-        minimum: 0,
-        default: 0,
-      },
-      topP: {
-        type: "number",
-        title: "topP",
-        description:
-          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
-        default: 1,
-        minimum: 0.01,
-        maximum: 1,
-        multipleOf: 0.001,
-      },
+      "ui:help": "Defaults to none. Must be a JSON object.",
     },
   },
   postprocessors: {
     stop_sequences: (str) => {
-      if (typeof str !== "string" || str.trim().length === 0) return [];
+      if (typeof str !== "string") return str;
+      if (str.trim().length === 0) return [];
       return str
         .match(/"((?:[^"\\]|\\.)*)"/g)
         ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
-    },
-  },
-  uiSchema: {
-    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
-    shortname: {
-      "ui:autofocus": true,
-    },
-    model: {
-      "ui:help": "Defaults to Jurassic 2 Ultra.",
-      "ui:widget": "datalist",
-    },
-    temperature: {
-      "ui:help": "Defaults to 1.0.",
-      "ui:widget": "range",
-    },
-    maxTokens: {
-      "ui:help": "Defaults to 1024.",
-    },
-    minTokens: {
-      "ui:help": "Defaults to 1.",
-    },
-    topKReturn: {
-      "ui:help": "Defaults to 0.",
-    },
-    topP: {
-      "ui:help": "Defaults to 1.",
-    },
-    stop_sequences: {
-      "ui:widget": "textarea",
-      "ui:help": "Defaults to no sequence",
-    },
-  },
-};
-
-const BedrockTitanSettings: ModelSettingsDict = {
-  fullName: "Titan (Amazon) via Amazon Bedrock",
-  schema: {
-    type: "object",
-    required: ["shortname"],
-    properties: {
-      shortname: {
-        type: "string",
-        title: "Nickname",
-        description:
-          "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "Titan",
-      },
-      model: {
-        type: "string",
-        title: "Model Version",
-        description:
-          "Select a version of Amazon Titan to query. For more details on the differences, see the Amazon Titan API documentation.",
-        enum: [
-          NativeLLM.Bedrock_Titan_Large,
-          NativeLLM.Bedrock_Titan_Light,
-          NativeLLM.Bedrock_Titan_Express,
-        ],
-        default: NativeLLM.Bedrock_Titan_Large,
-      },
-      temperature: {
-        type: "number",
-        title: "temperature",
-        description:
-          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
-        default: 1,
-        minimum: 0,
-        maximum: 1,
-        multipleOf: 0.01,
-      },
-      maxTokenCount: {
-        type: "integer",
-        title: "maxTokens",
-        description:
-          "The maximum number of tokens to generate for each response.",
-        default: 1024,
-        minimum: 1,
-      },
-      stop_sequences: {
-        type: "string",
-        title: "stopSequences",
-        description:
-          'Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
-        default: "",
-      },
-      topP: {
-        type: "number",
-        title: "topP",
-        description:
-          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
-        default: 1,
-        minimum: 0.01,
-        maximum: 1,
-        multipleOf: 0.001,
-      },
-    },
-  },
-  postprocessors: {
-    stop_sequences: (str) => {
-      if (typeof str !== "string" || str.trim().length === 0) return [];
-      return str
-        .match(/"((?:[^"\\]|\\.)*)"/g)
-        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
-    },
-  },
-  uiSchema: {
-    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
-    shortname: {
-      "ui:autofocus": true,
-    },
-    model: {
-      "ui:help": "Defaults to Titan Large",
-      "ui:widget": "datalist",
-    },
-    temperature: {
-      "ui:help": "Defaults to 1.0.",
-      "ui:widget": "range",
-    },
-    maxTokenCount: {
-      "ui:help": "Defaults to 1024.",
-    },
-    topP: {
-      "ui:help": "Defaults to 1.",
-    },
-    stop_sequences: {
-      "ui:widget": "textarea",
-      "ui:help": "Defaults to no sequence",
-    },
-  },
-};
-
-const BedrockCommandTextSettings: ModelSettingsDict = {
-  fullName: "Command Text (Cohere) via Amazon Bedrock",
-  schema: {
-    type: "object",
-    required: ["shortname"],
-    properties: {
-      shortname: {
-        type: "string",
-        title: "Nickname",
-        description:
-          "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "CommandText",
-      },
-      model: {
-        type: "string",
-        title: "Model Version",
-        description:
-          "Select a version of Command Cohere to query. For more details on the differences, see the Cohere API documentation.",
-        enum: [
-          NativeLLM.Bedrock_Command_Text,
-          NativeLLM.Bedrock_Command_Text_Light,
-        ],
-        default: NativeLLM.Bedrock_Command_Text,
-      },
-      temperature: {
-        type: "number",
-        title: "temperature",
-        description:
-          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
-        default: 1,
-        minimum: 0,
-        maximum: 1,
-        multipleOf: 0.01,
-      },
-      max_tokens: {
-        type: "integer",
-        title: "max_tokens",
-        description:
-          "The maximum number of tokens to generate for each response.",
-        default: 1024,
-        minimum: 1,
-      },
-      num_generations: {
-        type: "integer",
-        title: "num_generations",
-        description: "The number of responses to generate for a given prompt.",
-        default: 1,
-        minimum: 1,
-      },
-      stop_sequences: {
-        type: "string",
-        title: "stop_sequences",
-        description:
-          'Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
-        default: "",
-      },
-      k: {
-        type: "integer",
-        title: "k",
-        description:
-          "The number of top-scoring tokens to consider for each generation step.",
-        minimum: 0,
-        default: 0,
-      },
-      p: {
-        type: "number",
-        title: "p",
-        description:
-          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
-        default: 1,
-        minimum: 0.01,
-        maximum: 1,
-        multipleOf: 0.001,
-      },
-    },
-  },
-  postprocessors: {
-    stop_sequences: (str) => {
-      if (typeof str !== "string" || str.trim().length === 0) return [];
-      return str
-        .match(/"((?:[^"\\]|\\.)*)"/g)
-        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
-    },
-  },
-
-  uiSchema: {
-    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
-    shortname: {
-      "ui:autofocus": true,
-    },
-    model: {
-      "ui:help": "Defaults to Command Text",
-      "ui:widget": "datalist",
-    },
-    temperature: {
-      "ui:help": "Defaults to 1.0.",
-      "ui:widget": "range",
-    },
-    max_tokens: {
-      "ui:help": "Defaults to 1024.",
-    },
-    num_generations: {
-      "ui:help": "Defaults to 1.",
-    },
-    k: {
-      "ui:help": "Defaults to 0.",
-    },
-    p: {
-      "ui:help": "Defaults to 1.",
-    },
-    stop_sequences: {
-      "ui:widget": "textarea",
-      "ui:help": "Defaults to no sequence",
-    },
-  },
-};
-
-const MistralSettings: ModelSettingsDict = {
-  fullName: "Mistral models via Amazon Bedrock",
-  schema: {
-    type: "object",
-    required: ["shortname"],
-    properties: {
-      shortname: {
-        type: "string",
-        title: "Nickname",
-        description:
-          "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "Mistral",
-      },
-      model: {
-        type: "string",
-        title: "Model Version",
-        description:
-          "Select a version of Mistral model to query. For more details on the differences, see the Mistral API documentation.",
-        enum: [
-          NativeLLM.Bedrock_Mistral_Mistral,
-          NativeLLM.Bedrock_Mistral_Mistral_Large,
-        ],
-        default: NativeLLM.Bedrock_Mistral_Mistral,
-      },
-      temperature: {
-        type: "number",
-        title: "temperature",
-        description:
-          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
-        default: 1,
-        minimum: 0,
-        maximum: 1,
-        multipleOf: 0.01,
-      },
-      max_tokens: {
-        type: "integer",
-        title: "max_tokens",
-        description:
-          "The maximum number of tokens to generate for each response.",
-        default: 1024,
-        minimum: 1,
-      },
-      stop_sequences: {
-        type: "string",
-        title: "stop",
-        description:
-          'Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
-        default: "",
-      },
-      top_k: {
-        type: "integer",
-        title: "top_k",
-        description:
-          "The number of top-scoring tokens to consider for each generation step.",
-        minimum: 0,
-        default: 0,
-      },
-      top_p: {
-        type: "number",
-        title: "top_p",
-        description:
-          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
-        default: 1,
-        minimum: 0.01,
-        maximum: 1,
-        multipleOf: 0.001,
-      },
-    },
-  },
-  postprocessors: {
-    stop_sequences: (str) => {
-      if (typeof str !== "string" || str.trim().length === 0) return [];
-      return str
-        .match(/"((?:[^"\\]|\\.)*)"/g)
-        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
-    },
-  },
-
-  uiSchema: {
-    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
-    shortname: {
-      "ui:autofocus": true,
-    },
-    model: {
-      "ui:help": "Defaults to Mistral",
-      "ui:widget": "datalist",
-    },
-    temperature: {
-      "ui:help": "Defaults to 1.0.",
-      "ui:widget": "range",
-    },
-    max_tokens: {
-      "ui:help": "Defaults to 1024.",
-    },
-    num_generations: {
-      "ui:help": "Defaults to 1.",
-    },
-    k: {
-      "ui:help": "Defaults to 0.",
-    },
-    p: {
-      "ui:help": "Defaults to 1.",
-    },
-    stop_sequences: {
-      "ui:widget": "textarea",
-      "ui:help": "Defaults to no sequence",
-    },
-  },
-};
-
-const MixtralSettings = deepcopy(MistralSettings);
-
-MixtralSettings.schema.properties = {
-  ...deepcopy(MixtralSettings.schema.properties),
-  ...{
-    model: {
-      type: "string",
-      title: "Model Version",
-      description:
-        "Select a version of Mistral model to query. For more details on the differences, see the Mixtral API documentation.",
-      enum: [NativeLLM.Bedrock_Mistral_Mixtral],
-      default: NativeLLM.Bedrock_Mistral_Mixtral,
-    },
-    shortname: {
-      type: "string",
-      title: "Nickname",
-      description: "Unique identifier to appear in ChainForge. Keep it short.",
-      default: "Mixtral",
-    },
-  },
-};
-
-MixtralSettings.uiSchema.model = { "ui:help": "Defaults to Mixtral" };
-
-const BedrockLlama2ChatSettings: ModelSettingsDict = {
-  fullName: "Llama2Chat (Meta) via Amazon Bedrock",
-  schema: {
-    type: "object",
-    required: ["shortname"],
-    properties: {
-      shortname: {
-        type: "string",
-        title: "Nickname",
-        description:
-          "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "LlamaChat",
-      },
-      model: {
-        type: "string",
-        title: "Model Version",
-        description:
-          "Select a version of Meta Llama2 model to query. For more details on the differences, see the Meta Llama API documentation.",
-        enum: [
-          NativeLLM.Bedrock_Meta_LLama2Chat_13b,
-          NativeLLM.Bedrock_Meta_LLama2Chat_70b,
-        ],
-        default: NativeLLM.Bedrock_Meta_LLama2Chat_13b,
-      },
-      temperature: {
-        type: "number",
-        title: "temperature",
-        description:
-          "Amount of randomness injected into the response. Ranges from 0 to 1. Use temp closer to 0 for analytical / multiple choice, and temp closer to 1 for creative and generative tasks.",
-        default: 1,
-        minimum: 0,
-        maximum: 1,
-        multipleOf: 0.01,
-      },
-      max_gen_len: {
-        type: "integer",
-        title: "max_gen_len",
-        description:
-          "The maximum number of tokens to generate for each response.",
-        default: 1024,
-        minimum: 1,
-      },
-      top_p: {
-        type: "number",
-        title: "top_p",
-        description:
-          "Does nucleus sampling, in which we compute the cumulative distribution over all the options for each subsequent token in decreasing probability order and cut it off once it reaches a particular probability specified by top_p. Defaults to -1, which disables it. Note that you should either alter temperature or top_p, but not both.",
-        default: 1,
-        minimum: 0.01,
-        maximum: 1,
-        multipleOf: 0.001,
-      },
-    },
-  },
-  postprocessors: {
-    stop_sequences: (str) => {
-      if (typeof str !== "string" || str.trim().length === 0) return [];
-      return str
-        .match(/"((?:[^"\\]|\\.)*)"/g)
-        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
-    },
-  },
-
-  uiSchema: {
-    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
-    shortname: {
-      "ui:autofocus": true,
-    },
-    model: {
-      "ui:help": "Defaults to LlamaChat 13B",
-      "ui:widget": "datalist",
-    },
-    temperature: {
-      "ui:help": "Defaults to 1.0.",
-      "ui:widget": "range",
-    },
-    max_tokens: {
-      "ui:help": "Defaults to 1024.",
-    },
-    num_generations: {
-      "ui:help": "Defaults to 1.",
-    },
-    k: {
-      "ui:help": "Defaults to 0.",
-    },
-    p: {
-      "ui:help": "Defaults to 1.",
-    },
-    stop_sequences: {
-      "ui:widget": "textarea",
-      "ui:help": "Defaults to no sequence",
     },
   },
 };
@@ -2694,90 +2132,28 @@ export const TogetherChatSettings: ModelSettingsDict = {
         type: "string",
         title: "model",
         description:
-          "Select a version of Together model to query. For more details on the differences, see the Together API documentation.",
+          "The Together model to query. Pick a popular one, or type any model ID from https://docs.together.ai/docs/serverless-models -- Together serves far more than can be listed here.",
         enum: [
-          "zero-one-ai/Yi-34B-Chat",
-          "allenai/OLMo-7B-Instruct",
-          "allenai/OLMo-7B-Twin-2T",
-          "allenai/OLMo-7B",
-          "Austism/chronos-hermes-13b",
-          "cognitivecomputations/dolphin-2.5-mixtral-8x7b",
-          "databricks/dbrx-instruct",
-          "deepseek-ai/DeepSeek-V3",
-          "deepseek-ai/DeepSeek-R1",
-          "deepseek-ai/deepseek-coder-33b-instruct",
-          "deepseek-ai/deepseek-llm-67b-chat",
-          "garage-bAInd/Platypus2-70B-instruct",
-          "google/gemma-2-27b-it",
-          "google/gemma-2-9b-it",
-          "google/gemma-2b-it",
-          "google/gemma-7b-it",
-          "Gryphe/MythoMax-L2-13b",
-          "lmsys/vicuna-13b-v1.5",
-          "lmsys/vicuna-7b-v1.5",
-          "codellama/CodeLlama-13b-Instruct-hf",
-          "codellama/CodeLlama-34b-Instruct-hf",
-          "codellama/CodeLlama-70b-Instruct-hf",
-          "codellama/CodeLlama-7b-Instruct-hf",
+          "openai/gpt-oss-120b",
+          "deepseek-ai/DeepSeek-V4.1-Flash",
+          "Qwen/Qwen3.8-Flash",
+          "Qwen/Qwen3.5-9B",
+          "zai-org/GLM-5.3-Flash",
+          "moonshotai/Kimi-K3",
+          "MiniMaxAI/MiniMax-M3",
           "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-          "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
-          "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
-          "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
-          "meta-llama/Meta-Llama-3-8B-Instruct-Turbo",
-          "meta-llama/Meta-Llama-3-70B-Instruct-Turbo",
-          "meta-llama/Llama-3.2-3B-Instruct-Turbo",
-          "meta-llama/Meta-Llama-3-8B-Instruct-Lite",
-          "meta-llama/Meta-Llama-3-70B-Instruct-Lite",
-          "meta-llama/Llama-2-70b-chat-hf",
-          "meta-llama/Llama-2-13b-chat-hf",
-          "meta-llama/Llama-2-7b-chat-hf",
-          "meta-llama/Llama-3-8b-chat-hf",
-          "meta-llama/Llama-3-70b-chat-hf",
-          "microsoft/WizardLM-2-8x22B",
-          "mistralai/Mistral-7B-Instruct-v0.3",
-          "mistralai/Mistral-7B-Instruct-v0.1",
-          "mistralai/Mistral-7B-Instruct-v0.2",
-          "mistralai/Mixtral-8x7B-Instruct-v0.1",
-          "mistralai/Mixtral-8x22B-Instruct-v0.1",
-          "NousResearch/Nous-Capybara-7B-V1p9",
-          "NousResearch/Nous-Hermes-2-Mistral-7B-DPO",
-          "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO",
-          "NousResearch/Nous-Hermes-2-Mixtral-8x7B-SFT",
-          "NousResearch/Nous-Hermes-llama-2-7b",
-          "NousResearch/Nous-Hermes-Llama2-13b",
-          "NousResearch/Nous-Hermes-2-Yi-34B",
-          "nvidia/Llama-3.1-Nemotron-70B-Instruct-HF",
-          "openchat/openchat-3.5-1210",
-          "Open-Orca/Mistral-7B-OpenOrca",
-          "Qwen/Qwen2.5-7B-Instruct-Turbo",
-          "Qwen/Qwen2.5-72B-Instruct-Turbo",
-          "Qwen/Qwen2-72B-Instruct",
-          "Qwen/Qwen2-VL-72B-Instruct",
-          "Qwen/Qwen2.5-Coder-32B-Instruct",
-          "Qwen/QwQ-32B-Preview",
-          "Qwen/Qwen1.5-0.5B-Chat",
-          "Qwen/Qwen1.5-1.8B-Chat",
-          "Qwen/Qwen1.5-4B-Chat",
-          "Qwen/Qwen1.5-7B-Chat",
-          "Qwen/Qwen1.5-14B-Chat",
-          "Qwen/Qwen1.5-32B-Chat",
-          "Qwen/Qwen1.5-72B-Chat",
-          "Qwen/Qwen1.5-110B-Chat",
-          "snorkelai/Snorkel-Mistral-PairRM-DPO",
-          "Snowflake/snowflake-arctic-instruct",
-          "togethercomputer/alpaca-7b",
-          "teknium/OpenHermes-2-Mistral-7B",
-          "teknium/OpenHermes-2p5-Mistral-7B",
-          "togethercomputer/Llama-2-7B-32K-Instruct",
-          "togethercomputer/RedPajama-INCITE-Chat-3B-v1",
-          "togethercomputer/RedPajama-INCITE-7B-Chat",
-          "togethercomputer/StripedHyena-Nous-7B",
-          "Undi95/ReMM-SLERP-L2-13B",
-          "Undi95/Toppy-M-7B",
-          "WizardLM/WizardLM-13B-V1.2",
-          "upstage/SOLAR-10.7B-Instruct-v1.0",
         ],
-        default: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+        default: "openai/gpt-oss-120b",
+        shortname_map: {
+          "openai/gpt-oss-120b": "gpt-oss-120b",
+          "deepseek-ai/DeepSeek-V4.1-Flash": "DeepSeek V4.1 Flash",
+          "Qwen/Qwen3.8-Flash": "Qwen3.8 Flash",
+          "Qwen/Qwen3.5-9B": "Qwen3.5 9B",
+          "zai-org/GLM-5.3-Flash": "GLM-5.3 Flash",
+          "moonshotai/Kimi-K3": "Kimi K3",
+          "MiniMaxAI/MiniMax-M3": "MiniMax M3",
+          "meta-llama/Llama-3.3-70B-Instruct-Turbo": "Llama 3.3 70B",
+        },
       },
       temperature: {
         type: "number",
@@ -2850,36 +2226,7 @@ export const TogetherChatSettings: ModelSettingsDict = {
   },
 };
 
-const BedrockLlama3Settings = deepcopy(BedrockLlama2ChatSettings);
-
-BedrockLlama3Settings.schema.properties = {
-  ...deepcopy(BedrockLlama3Settings.schema.properties),
-  ...{
-    model: {
-      type: "string",
-      title: "Model Version",
-      description:
-        "Select a version of Meta Llama3 model to query. For more details on the differences, see the Meta Llama3 API documentation.",
-      enum: [
-        NativeLLM.Bedrock_Meta_LLama3Instruct_8b,
-        NativeLLM.Bedrock_Meta_LLama3Instruct_70b,
-      ],
-      default: NativeLLM.Bedrock_Meta_LLama3Instruct_8b,
-    },
-    shortname: {
-      type: "string",
-      title: "Nickname",
-      description: "Unique identifier to appear in ChainForge. Keep it short.",
-      default: "Llama3Instruct8b",
-    },
-  },
-};
-
-BedrockLlama3Settings.uiSchema.model = {
-  "ui:help": "Defaults to Llama3Instruct8b",
-};
-
-const WebLLMSettings: ModelSettingsDict = {
+export const WebLLMSettings: ModelSettingsDict = {
   fullName: "WebLLM (In-browser)",
   schema: {
     type: "object",
@@ -2895,9 +2242,25 @@ const WebLLMSettings: ModelSettingsDict = {
       model: {
         type: "string",
         title: "Model Version",
-        description: "Select a WebLLM model to run fully in-browser (WebGPU).",
-        enum: [NativeLLM.WebLLM_Qwen2_5_0_5B, NativeLLM.WebLLM_SmolLM2_1_7B],
+        description:
+          "The model to run fully in-browser on WebGPU -- no API key, and nothing leaves the machine. Each is downloaded and cached the first time it is used, so the smaller ones start fastest; sizes are given below.",
+        enum: [
+          NativeLLM.WebLLM_Gemma3_1B,
+          NativeLLM.WebLLM_Llama3_2_1B,
+          NativeLLM.WebLLM_Qwen2_5_0_5B,
+          NativeLLM.WebLLM_Qwen3_5_0_8B,
+          NativeLLM.WebLLM_SmolLM2_1_7B,
+          NativeLLM.WebLLM_Qwen3_1_7B,
+        ],
         default: NativeLLM.WebLLM_Qwen2_5_0_5B,
+        shortname_map: {
+          [NativeLLM.WebLLM_Gemma3_1B]: "Gemma 3 1B (711 MB)",
+          [NativeLLM.WebLLM_Llama3_2_1B]: "Llama 3.2 1B (879 MB)",
+          [NativeLLM.WebLLM_Qwen2_5_0_5B]: "Qwen2.5 0.5B (945 MB)",
+          [NativeLLM.WebLLM_Qwen3_5_0_8B]: "Qwen3.5 0.8B (1.6 GB)",
+          [NativeLLM.WebLLM_SmolLM2_1_7B]: "SmolLM2 1.7B (1.8 GB)",
+          [NativeLLM.WebLLM_Qwen3_1_7B]: "Qwen3 1.7B (2 GB)",
+        },
       },
       system_msg: {
         type: "string",
@@ -2967,14 +2330,17 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "azure-openai": AzureOpenAISettings,
   hf: HuggingFaceSettings,
   ollama: OllamaSettings,
-  "br.anthropic.claude": BedrockClaudeSettings,
-  "br.ai21.j2": BedrockJurassic2Settings,
-  "br.amazon.titan": BedrockTitanSettings,
-  "br.cohere.command": BedrockCommandTextSettings,
-  "br.mistral.mistral": MistralSettings,
-  "br.mistral.mixtral": MixtralSettings,
-  "br.meta.llama2": BedrockLlama2ChatSettings,
-  "br.meta.llama3": BedrockLlama3Settings,
+  bedrock: BedrockSettings,
+  // The per-vendor keys flows were saved with before Bedrock's Converse API
+  // let one form cover every vendor. They all open that form now.
+  "br.anthropic.claude": BedrockSettings,
+  "br.ai21.j2": BedrockSettings,
+  "br.amazon.titan": BedrockSettings,
+  "br.cohere.command": BedrockSettings,
+  "br.mistral.mistral": BedrockSettings,
+  "br.mistral.mixtral": BedrockSettings,
+  "br.meta.llama2": BedrockSettings,
+  "br.meta.llama3": BedrockSettings,
   together: TogetherChatSettings,
   deepseek: DeepSeekSettings,
   minimax: MiniMaxSettings,
@@ -2998,6 +2364,7 @@ export function baseModelToProvider(base_model: string): LLMProvider {
     "azure-openai": LLMProvider.Azure_OpenAI,
     hf: LLMProvider.HuggingFace,
     ollama: LLMProvider.Ollama,
+    bedrock: LLMProvider.Bedrock,
     "br.anthropic.claude": LLMProvider.Bedrock,
     "br.ai21.j2": LLMProvider.Bedrock,
     "br.amazon.titan": LLMProvider.Bedrock,
@@ -3036,6 +2403,7 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.Google]: Gemini25Settings,
     [LLMProvider.Azure_OpenAI]: AzureOpenAISettings,
     [LLMProvider.HuggingFace]: HuggingFaceSettings,
+    [LLMProvider.Bedrock]: BedrockSettings,
     [LLMProvider.Ollama]: OllamaSettings,
     [LLMProvider.Together]: TogetherChatSettings,
     [LLMProvider.DeepSeek]: DeepSeekSettings,
@@ -3051,9 +2419,7 @@ export function getSettingsSchemaForLLM(
     );
   } else if (llm_provider && llm_provider in provider_to_settings_schema)
     return provider_to_settings_schema[llm_provider];
-  else if (llm_provider === LLMProvider.Bedrock) {
-    return ModelSettings[llm_name.split("-")[0]];
-  } else {
+  else {
     console.error(`Could not find provider for llm ${llm_name}`);
     return undefined;
   }

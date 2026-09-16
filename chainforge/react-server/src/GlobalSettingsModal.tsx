@@ -768,7 +768,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   />
                   <Select
                     label="LLM Provider"
-                    description="The LLM provider to use for generative AI features. Currently only supports OpenAI and Bedrock (Anthropic). OpenAI will query gpt-4o and gpt-4 models. Bedrock will query Claude-3 models. You must have set the relevant API keys to use the provider."
+                    description="The LLM provider to use for generative AI features. Currently only supports OpenAI, which queries the gpt-4o models. You must have set the relevant API key to use the provider."
                     dropdownPosition="bottom"
                     withinPortal
                     defaultValue={getAIFeaturesModelProviders()[0]}

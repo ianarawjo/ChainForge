@@ -5,9 +5,15 @@ import Bottleneck from "bottleneck";
 import { UserForcedPrematureExit } from "./errors";
 
 export enum NativeLLM {
-  // WebLLM (fully in-browser)
-  WebLLM_Qwen2_5_0_5B = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
-  WebLLM_SmolLM2_1_7B = "SmolLM2-1.7B-Instruct-q4f16_1-MLC",
+  // WebLLM (fully in-browser, no API key). Model IDs come from web-llm's own
+  // prebuilt list; these are the ones small enough to load on a normal laptop,
+  // with their download sizes in the comments.
+  WebLLM_Gemma3_1B = "gemma3-1b-it-q4f16_1-MLC", // 711 MB
+  WebLLM_Llama3_2_1B = "Llama-3.2-1B-Instruct-q4f16_1-MLC", // 879 MB
+  WebLLM_Qwen2_5_0_5B = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", // 945 MB
+  WebLLM_Qwen3_5_0_8B = "Qwen3.5-0.8B-q4f16_1-MLC", // 1629 MB
+  WebLLM_SmolLM2_1_7B = "SmolLM2-1.7B-Instruct-q4f16_1-MLC", // 1774 MB
+  WebLLM_Qwen3_1_7B = "Qwen3-1.7B-q4f16_1-MLC", // 2037 MB
 
   // OpenAI Chat. Models OpenAI still serves, newest first.
   // See https://developers.openai.com/api/docs/models
@@ -162,6 +168,7 @@ export enum NativeLLM {
   DeepSeek_Reasoner = "deepseek-reasoner",
 
   // MiniMax
+  MiniMax_M3 = "MiniMax-M3",
   MiniMax_M2_7 = "MiniMax-M2.7",
   MiniMax_M2_7_highspeed = "MiniMax-M2.7-highspeed",
 
@@ -181,27 +188,6 @@ export enum NativeLLM {
   HF_OTHER = "Other (HuggingFace)",
 
   Ollama = "ollama",
-
-  Bedrock_Claude_2_1 = "anthropic.claude-v2:1",
-  Bedrock_Claude_2 = "anthropic.claude-v2",
-  Bedrock_Claude_3_Sonnet = "anthropic.claude-3-sonnet-20240229-v1:0",
-  Bedrock_Claude_3_Haiku = "anthropic.claude-3-haiku-20240307-v1:0",
-  Bedrock_Claude_3_Opus = "anthropic.claude-3-opus-20240229-v1:0",
-  Bedrock_Claude_Instant_1 = "anthropic.claude-instant-v1",
-  Bedrock_Jurassic_Ultra = "ai21.j2-ultra",
-  Bedrock_Jurassic_Mid = "ai21.j2-mid",
-  Bedrock_Titan_Light = "amazon.titan-text-lite-v1",
-  Bedrock_Titan_Large = "amazon.titan-tg1-large",
-  Bedrock_Titan_Express = "amazon.titan-text-express-v1",
-  Bedrock_Command_Text = "cohere.command-text-v14",
-  Bedrock_Command_Text_Light = "cohere.command-light-text-v14",
-  Bedrock_Meta_LLama2Chat_13b = "meta.llama2-13b-chat-v1",
-  Bedrock_Meta_LLama2Chat_70b = "meta.llama2-70b-chat-v1",
-  Bedrock_Meta_LLama3Instruct_8b = "meta.llama3-8b-instruct-v1:0",
-  Bedrock_Meta_LLama3Instruct_70b = "meta.llama3-70b-instruct-v1:0",
-  Bedrock_Mistral_Mistral = "mistral.mistral-7b-instruct-v0:2",
-  Bedrock_Mistral_Mistral_Large = "mistral.mistral-large-2402-v1:0",
-  Bedrock_Mistral_Mixtral = "mistral.mixtral-8x7b-instruct-v0:1",
 
   // Together.ai
   Together_ZeroOneAI_01ai_Yi_Chat_34B = "together/zero-one-ai/Yi-34B-Chat",
@@ -378,6 +364,33 @@ export function stripHuggingFacePrefix(llm: LLM | string): string {
     : name;
 }
 
+/**
+ * Which models Amazon Bedrock serves depends on the account's region and model
+ * access, and most models since 2025 are called through a cross-region
+ * inference profile rather than a bare model ID. Users therefore type the ID
+ * in, and ChainForge prefixes it so it maps back to Bedrock.
+ */
+export const BEDROCK_PREFIX = "bedrock/";
+
+/** Together serves hundreds of models; its IDs are prefixed the same way. */
+export const TOGETHER_PREFIX = "together/";
+
+/** The model ID Together expects, without ChainForge's prefix. */
+export function stripTogetherPrefix(llm: LLM | string): string {
+  const name = llm.toString();
+  return name.startsWith(TOGETHER_PREFIX)
+    ? name.substring(TOGETHER_PREFIX.length)
+    : name;
+}
+
+/** The model or inference profile ID Bedrock expects, without ChainForge's prefix. */
+export function stripBedrockPrefix(llm: LLM | string): string {
+  const name = llm.toString();
+  return name.startsWith(BEDROCK_PREFIX)
+    ? name.substring(BEDROCK_PREFIX.length)
+    : name;
+}
+
 export function getProvider(llm: LLM): LLMProvider | undefined {
   const llm_name = getEnumName(NativeLLM, llm.toString());
   if (llm_name?.startsWith("WebLLM")) return LLMProvider.WebLLM;
@@ -396,7 +409,8 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
     return LLMProvider.HuggingFace;
   else if (llm.toString().startsWith("claude")) return LLMProvider.Anthropic;
   else if (llm_name?.startsWith("Ollama")) return LLMProvider.Ollama;
-  else if (llm_name?.startsWith("Bedrock")) return LLMProvider.Bedrock;
+  else if (llm.toString().startsWith(BEDROCK_PREFIX))
+    return LLMProvider.Bedrock;
   else if (llm_name?.startsWith("Together")) return LLMProvider.Together;
   else if (llm_name?.startsWith("DeepSeek")) return LLMProvider.DeepSeek;
   else if (llm_name?.startsWith("MiniMax")) return LLMProvider.MiniMax;
@@ -413,8 +427,6 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
 #   If a model is missing from below, it means we must send and receive only 1 request at a time (synchronous).
 #   The following is only a guideline, and a bit on the conservative side.  */
 export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
-  [NativeLLM.WebLLM_Qwen2_5_0_5B]: 120,
-  [NativeLLM.WebLLM_SmolLM2_1_7B]: 120,
   [NativeLLM.OpenAI_ChatGPT]: 1000, // max RPM (API requests per minute)
   [NativeLLM.OpenAI_ChatGPT_0301]: 1000,
   [NativeLLM.OpenAI_ChatGPT_0613]: 1000,
@@ -435,25 +447,6 @@ export const RATE_LIMIT_BY_MODEL: { [key in LLM]?: number } = {
   [NativeLLM.GEMINI_v2_5_pro]: 150,
   [NativeLLM.GEMINI_v2_5_flash]: 1000,
   [NativeLLM.GEMINI_v2_5_flash_lite]: 4000,
-  [NativeLLM.Bedrock_Jurassic_Mid]: 400,
-  [NativeLLM.Bedrock_Jurassic_Ultra]: 25,
-  [NativeLLM.Bedrock_Titan_Light]: 800,
-  [NativeLLM.Bedrock_Titan_Express]: 400, // 400 RPM
-  [NativeLLM.Bedrock_Claude_2]: 500, // 500 RPM
-  [NativeLLM.Bedrock_Claude_2_1]: 500, // 500 RPM
-  [NativeLLM.Bedrock_Claude_3_Haiku]: 1000, // 1000 RPM
-  [NativeLLM.Bedrock_Claude_3_Sonnet]: 100, // 100 RPM
-  [NativeLLM.Bedrock_Claude_3_Opus]: 50, // 50 RPM
-  [NativeLLM.Bedrock_Claude_Instant_1]: 1000, // 1000 RPM
-  [NativeLLM.Bedrock_Command_Text]: 400, // 400 RPM
-  [NativeLLM.Bedrock_Command_Text_Light]: 800, // 800 RPM
-  [NativeLLM.Bedrock_Meta_LLama2Chat_70b]: 400, // 400 RPM
-  [NativeLLM.Bedrock_Meta_LLama2Chat_13b]: 800, // 800 RPM
-  [NativeLLM.Bedrock_Meta_LLama3Instruct_8b]: 400, // 400 RPM
-  [NativeLLM.Bedrock_Meta_LLama3Instruct_70b]: 800, // 800 RPM
-  [NativeLLM.Bedrock_Mistral_Mixtral]: 400, // 400 RPM
-  [NativeLLM.Bedrock_Mistral_Mistral_Large]: 400, // 400 RPM
-  [NativeLLM.Bedrock_Mistral_Mistral]: 800, // 800 RPM
 };
 
 export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
@@ -466,13 +459,17 @@ export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
   [LLMProvider.DeepSeek]: 1000, // DeepSeek does not constrain users atm but they might in the future. To be safe we are limiting it to 1000 queries per minute.
   [LLMProvider.MiniMax]: 1000, // MiniMax API rate limits are generous; 1000 RPM to be safe.
   [LLMProvider.OpenRouter]: 500, // OpenRouter sets no fixed limit for paid models, but the providers behind it do; 500 RPM to be safe.
+  [LLMProvider.Bedrock]: 100, // Bedrock quotas are per account, region and model; a conservative floor.
 };
 
 // Max concurrent requests. Add to this to further constrain the rate limiter.
 export const MAX_CONCURRENT: { [key in string | NativeLLM]?: number } = {};
 
-MAX_CONCURRENT[NativeLLM.WebLLM_Qwen2_5_0_5B] = 1;
-MAX_CONCURRENT[NativeLLM.WebLLM_SmolLM2_1_7B] = 1;
+// In-browser inference runs on the one GPU, so never more than one at a time.
+for (const webllm_model of Object.entries(NativeLLM)
+  .filter(([name]) => name.startsWith("WebLLM"))
+  .map(([, id]) => id))
+  MAX_CONCURRENT[webllm_model] = 1;
 
 const DEFAULT_RATE_LIMIT = 100; // RPM for any models not listed above
 

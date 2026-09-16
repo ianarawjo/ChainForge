@@ -31,14 +31,17 @@ import {
   LLMResponse,
 } from "./backend/typing";
 import {
+  BedrockSettings,
+  WebLLMSettings,
   HuggingFaceSettings,
   OpenRouterImageSettings,
   OpenRouterSettings,
   TogetherChatSettings,
 } from "./ModelSettingSchemas";
 import {
+  BEDROCK_PREFIX,
+  TOGETHER_PREFIX,
   HUGGINGFACE_PREFIX,
-  NativeLLM,
   OPENROUTER_IMAGE_PREFIX,
   OPENROUTER_PREFIX,
 } from "./backend/models";
@@ -113,22 +116,7 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
   {
     group: "In-browser LLMs",
     emoji: "🌐",
-    items: [
-      {
-        name: "Qwen2.5 0.5B",
-        emoji: "🌐",
-        model: NativeLLM.WebLLM_Qwen2_5_0_5B,
-        base_model: "webllm",
-        temp: 0.7,
-      },
-      {
-        name: "SmolLM2 1.7B",
-        emoji: "🌐",
-        model: NativeLLM.WebLLM_SmolLM2_1_7B,
-        base_model: "webllm",
-        temp: 0.7,
-      },
-    ],
+    items: [...prefixedMenuItems(WebLLMSettings, "", "webllm", "🌐", 0.7)],
   },
   {
     group: "OpenRouter",
@@ -404,64 +392,13 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
   {
     group: "Bedrock",
     emoji: "🪨",
-    items: [
-      {
-        name: "Anthropic Claude",
-        emoji: "👨‍🏫",
-        model: NativeLLM.Bedrock_Claude_3_Haiku,
-        base_model: "br.anthropic.claude",
-        temp: 0.9,
-      },
-      {
-        name: "AI21 Jurassic 2",
-        emoji: "🦖",
-        model: NativeLLM.Bedrock_Jurassic_Ultra,
-        base_model: "br.ai21.j2",
-        temp: 0.9,
-      },
-      {
-        name: "Amazon Titan",
-        emoji: "🏛️",
-        model: NativeLLM.Bedrock_Titan_Large,
-        base_model: "br.amazon.titan",
-        temp: 0.9,
-      },
-      {
-        name: "Cohere Command Text 14",
-        emoji: "📚",
-        model: NativeLLM.Bedrock_Command_Text,
-        base_model: "br.cohere.command",
-        temp: 0.9,
-      },
-      {
-        name: "Mistral Mistral",
-        emoji: "💨",
-        model: NativeLLM.Bedrock_Mistral_Mistral,
-        base_model: "br.mistral.mistral",
-        temp: 0.9,
-      },
-      {
-        name: "Mistral Mixtral",
-        emoji: "🌪️",
-        model: NativeLLM.Bedrock_Mistral_Mixtral,
-        base_model: "br.mistral.mixtral",
-        temp: 0.9,
-      },
-      {
-        name: "Meta Llama2 Chat",
-        emoji: "🦙",
-        model: NativeLLM.Bedrock_Meta_LLama2Chat_13b,
-        base_model: "br.meta.llama2",
-        temp: 0.9,
-      },
-      {
-        name: "Meta Llama3 Instruct",
-        emoji: "🦙",
-        model: NativeLLM.Bedrock_Meta_LLama3Instruct_8b,
-        base_model: "br.meta.llama3",
-        temp: 0.9,
-      },
-    ],
+    items: prefixedMenuItems(
+      BedrockSettings,
+      BEDROCK_PREFIX,
+      "bedrock",
+      "🪨",
+      0.9,
+    ),
   },
 ];
 
@@ -488,39 +425,17 @@ function prefixedMenuItems(
   }));
 }
 
-const togetherModels = TogetherChatSettings.schema.properties.model
-  .enum as string[];
-const togetherGroups = () => {
-  const groupNames: string[] = [];
-  const groups: { [key: string]: LLMGroup } = {};
-  togetherModels.forEach((model) => {
-    const [groupName, modelName] = model.split("/");
-    const spec: LLMSpec = {
-      name: modelName,
-      emoji: "🤝",
-      model: "together/" + model,
-      base_model: "together",
-      temp: 0.9,
-    };
-    if (groupName in groups) {
-      (groups[groupName].items as LLMSpec[]).push(spec);
-    } else {
-      groups[groupName] = {
-        group: groupName,
-        emoji: "🤝",
-        items: [spec],
-      };
-      groupNames.push(groupName);
-    }
-  });
-  return groupNames.map((name) => groups[name]);
-};
-const togetherLLMProviderMenu: LLMGroup = {
+initLLMProviderMenu.push({
   group: "Together",
   emoji: "🤝",
-  items: togetherGroups(),
-};
-initLLMProviderMenu.push(togetherLLMProviderMenu);
+  items: prefixedMenuItems(
+    TogetherChatSettings,
+    TOGETHER_PREFIX,
+    "together",
+    "🤝",
+    0.9,
+  ),
+});
 
 // Setup for when the app is running locally
 if (IS_RUNNING_LOCALLY) {
