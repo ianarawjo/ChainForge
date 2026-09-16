@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNodeRunner } from "./useNodeRunner";
+import {
+  runnerFromStatus,
+  useNodeRunner,
+  useTrackedStatus,
+} from "./useNodeRunner";
+import { Status } from "./StatusIndicatorComponent";
 import { Handle, Position } from "reactflow";
 import { v4 as uuid } from "uuid";
 import useStore from "./store";
@@ -99,7 +104,8 @@ const displayJoinedTexts = (
 
 interface JoinedTextsPopoverProps {
   textInfos: (TemplateVarInfo | string)[];
-  onHover: () => void;
+  /** Optional: the preview no longer recomputes the node on hover. */
+  onHover?: () => void;
   onClick: () => void;
   getColorForLLM: (llm_name: string) => string;
 }
@@ -113,7 +119,7 @@ const JoinedTextsPopover: React.FC<JoinedTextsPopoverProps> = ({
   const [opened, { close, open }] = useDisclosure(false);
 
   const _onHover = useCallback(() => {
-    onHover();
+    onHover?.();
     open();
   }, [onHover, open]);
 
@@ -167,13 +173,17 @@ export interface JoinNodeProps {
     selectedGroupVars?: string[];
     groupByLLM: string;
     formatting: JoinFormat;
+    fields?: (TemplateVarInfo | string)[];
   };
   id: string;
 }
 
 const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
+  // Seeded from what the node last wrote, which is saved with the flow. The
+  // node no longer re-joins on mount, so without this its own preview would
+  // read empty after a reload while its output was in fact intact.
   const [joinedTexts, setJoinedTexts] = useState<(TemplateVarInfo | string)[]>(
-    [],
+    data.fields ?? [],
   );
 
   // For an info pop-up that previews all the joined inputs
@@ -181,6 +191,10 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
     useDisclosure(false);
 
   const [pastInputs, setPastInputs] = useState<JSONCompatible>([]);
+
+  // A join is run from its button, like the prompt and evaluator nodes, and
+  // reports how it went through its status indicator.
+  const [status, setStatus, statusRef] = useTrackedStatus();
   const pullInputData = useStore((state) => state.pullInputData);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
@@ -307,12 +321,15 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
     [formatting],
   );
 
-  const handleOnConnect = useCallback(() => {
-    let input_data: LLMResponsesByVarDict = pullInputData(["__input"], id);
-    if (!input_data?.__input) {
-      // soft fail
-      return Promise.resolve(false);
-    }
+  /**
+   * Pulls the attached input and refreshes the group-by dropdown from the
+   * variables it carries. Kept apart from the join itself so that connecting a
+   * node, or an upstream change, can keep the dropdown honest without quietly
+   * producing output the user never asked for.
+   */
+  const refreshInputOptions = useCallback(() => {
+    const input_data: LLMResponsesByVarDict = pullInputData(["__input"], id);
+    if (!input_data?.__input) return null;
 
     // Find all vars and metavars in the input data (if any):
     const { vars, metavars } = getVarsAndMetavars(input_data);
@@ -343,8 +360,21 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
     const numLLMs = countNumLLMs(input_data);
     setInputHasLLMs(numLLMs > 1);
 
+    return { input_data, llm_lookup, numLLMs };
+  }, [pullInputData, id, handleSetAndSave]);
+
+  const runJoin = useCallback(() => {
+    const pulled = refreshInputOptions();
+    if (pulled === null) {
+      // Nothing attached yet; leave the node marked as not-yet-run.
+      setStatus(Status.WARNING);
+      return Promise.resolve(false);
+    }
+    const { llm_lookup, numLLMs } = pulled;
+    setStatus(Status.LOADING);
+
     // Tag all response objects in the input data with a metavar for their LLM (using the llm key as a uid)
-    input_data = tagMetadataWithLLM(input_data);
+    const input_data = tagMetadataWithLLM(pulled.input_data);
 
     // Generate (flatten) the inputs, which could be recursively chained templates
     // and a mix of LLM resp objects, templates, and strings.
@@ -437,39 +467,43 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
             setDataPropsForNode(id, { fields: [joined_texts] });
           }
         }
+        setStatus(Status.READY);
         return true;
       })
       .catch((err) => {
         console.error(err);
+        setStatus(Status.ERROR);
         return false;
       });
   }, [
     formatting,
-    pullInputData,
+    refreshInputOptions,
     selectedGroupVars,
     groupByLLM,
     groupAndJoinByVars,
     id,
     setDataPropsForNode,
-    handleSetAndSave,
+    setStatus,
   ]);
 
-  // Lets a driver, such as a chat box over this flow, run this node without a
-  // click. A join has no run button or status of its own: it succeeds when it
-  // has written its fields. See backend/runGraph.ts.
-  useNodeRunner(id, async () => ((await handleOnConnect()) ? "ok" : "failed"));
+  // Lets a driver ("run all", a chat box over this flow) run this node without
+  // a click. See backend/runGraph.ts.
+  useNodeRunner(id, runnerFromStatus(runJoin, statusRef));
 
   if (data.input) {
-    // If there's a change in inputs...
+    // A new input arrived: keep the group-by options honest, but leave the
+    // join itself for the run button.
     if (data.input !== pastInputs) {
       setPastInputs(data.input);
-      handleOnConnect();
+      refreshInputOptions();
+      setStatus(Status.WARNING);
     }
   }
 
-  // Refresh join output anytime the dropdowns change
+  // Changing how to group or format doesn't re-join on its own: like the
+  // evaluators, the node goes stale and waits to be run.
   useEffect(() => {
-    handleOnConnect();
+    if (joinedTexts.length > 0) setStatus(Status.WARNING);
   }, [selectedGroupVars, groupByLLM, formatting]);
 
   // Store the outputs to the cache whenever they change
@@ -479,11 +513,12 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
 
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
-      // Recreate the visualization:
+      // An upstream node changed: this node's output is stale until it is run.
       setDataPropsForNode(id, { refresh: false });
-      handleOnConnect();
+      refreshInputOptions();
+      setStatus(Status.WARNING);
     }
-  }, [data, id, handleOnConnect, setDataPropsForNode]);
+  }, [data, id, refreshInputOptions, setDataPropsForNode, setStatus]);
 
   return (
     <BaseNode classNames="join-node" nodeId={id}>
@@ -491,11 +526,13 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
         title={data.title || "Join Node"}
         nodeId={id}
         icon={<IconArrowMerge size="12pt" />}
+        status={status}
+        handleRunClick={runJoin}
+        runButtonTooltip="Join the input texts"
         customButtons={[
           <JoinedTextsPopover
             key="joined-text-previews"
             textInfos={joinedTexts}
-            onHover={handleOnConnect}
             onClick={openInfoModal}
             getColorForLLM={getColorForLLMAndSetIfNotFound}
           />,
@@ -584,7 +621,7 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
         id="__input"
         className="grouped-handle"
         style={{ top: "50%" }}
-        onConnect={handleOnConnect}
+        onConnect={() => setStatus(Status.WARNING)}
       />
       <Handle
         type="source"
