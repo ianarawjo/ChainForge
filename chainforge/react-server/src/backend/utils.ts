@@ -564,17 +564,14 @@ export async function call_chatgpt(
   if (params?.chat_history)
     params.chat_history = strip_reasoning_state(params.chat_history);
 
-  // Pass in o3 and GPT-5+ only parameters, removing them if the
+  // Pass in reasoning-model-only parameters, removing them if the
   // model name does not correspond to those models:
   // NOTE: Chat Completions passes reasoning_effort instead of a dictionary for 'reasoning'.
   if (params?.reasoning_effort !== undefined) {
-    if (!(modelname.startsWith("o3") || modelname.startsWith("gpt-5")))
-      delete params?.reasoning_effort;
+    if (!is_openai_reasoning_model(modelname)) delete params?.reasoning_effort;
   }
   if (params?.verbosity !== undefined) {
-    // Only pass verbosity for o3 and GPT-5+ models
-    if (!(modelname.startsWith("o3") || modelname.startsWith("gpt-5")))
-      delete params?.verbosity;
+    if (!is_openai_reasoning_model(modelname)) delete params?.verbosity;
   }
 
   if (!BASE_URL)

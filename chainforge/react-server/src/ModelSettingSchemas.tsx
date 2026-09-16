@@ -57,49 +57,51 @@ const ChatGPTSettings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select an OpenAI model to query. For more details on the differences, see the OpenAI API documentation.",
+        // Models OpenAI still serves, newest first. Ones OpenAI has announced
+        // a shutdown date for are marked; retired models have been removed.
         enum: [
-          "gpt-5",
-          "gpt-5-mini",
+          "gpt-6-astra",
+          "gpt-5.6-sol",
+          "gpt-5.6-terra",
+          "gpt-5.6-luna",
+          "gpt-5.6-cyber",
+          "gpt-5.5",
+          "gpt-5.5-pro",
+          "gpt-5.4",
+          "gpt-5.4-mini",
+          "gpt-5.4-nano",
+          "gpt-5.4-pro",
+          "gpt-5.2",
+          "gpt-5.1",
+          "gpt-5", // snapshot shuts down 2026-12-11
+          "gpt-5-mini", // snapshot shuts down 2026-12-11
           "gpt-5-nano",
-          "gpt-5-chat-latest",
-          "o3",
-          "o3-mini",
+          "gpt-5-pro", // snapshot shuts down 2026-12-11
           "gpt-4.1",
           "gpt-4.1-mini",
-          "gpt-4.1-nano",
+          "gpt-4.1-nano", // shuts down 2026-10-23
           "gpt-4o",
           "gpt-4o-mini",
-          "gpt-4-turbo",
-          "o1",
-          "o1-mini",
-          "o1-pro",
-          "gpt-4.5-preview",
+          "gpt-4o-2024-05-13", // shuts down 2026-10-23
+          "o4-mini",
+          "o3", // snapshot shuts down 2026-12-11
+          "o3-pro", // snapshot shuts down 2026-12-11
+          "o3-mini", // shuts down 2026-10-23
+          "o1", // snapshot shuts down 2026-12-11
+          "o1-pro", // snapshot shuts down 2026-12-11
+          "gpt-4-turbo", // shuts down 2026-10-23
+          "gpt-4-turbo-2024-04-09", // shuts down 2026-10-23
+          "gpt-4", // shuts down 2026-10-23
+          "gpt-4-0613", // shuts down 2026-10-23
+          "gpt-4-1106-preview", // shuts down 2026-10-23
           "gpt-3.5-turbo",
-          "gpt-4o-2024-05-13",
-          "gpt-4o-2024-08-06",
-          "chatgpt-4o-latest",
-          "gpt-4",
-          "gpt-4-turbo-2024-04-09",
-          "gpt-4-turbo-preview",
-          "gpt-4-0125-preview",
-          "gpt-4-1106-preview",
-          "gpt-4-32k",
-          "gpt-4-0613",
-          "gpt-4-0314",
-          "gpt-4-32k-0613",
-          "gpt-4-32k-0314",
           "gpt-3.5-turbo-0125",
-          "gpt-3.5-turbo-1106",
-          "gpt-3.5-turbo-0613",
-          "gpt-3.5-turbo-0301",
-          "gpt-3.5-turbo-16k",
-          "gpt-3.5-turbo-16k-0613",
-          "gpt-3.5-turbo-instruct",
-          "text-davinci-003",
-          "text-davinci-002",
-          "code-davinci-002",
+          "gpt-3.5-turbo-1106", // shuts down 2026-09-28
+          "gpt-3.5-turbo-instruct", // shuts down 2026-09-28
         ],
-        default: "gpt-4o-mini",
+        // The GPT-4+ form (GPT4Settings, below) overrides this with a current
+        // model; this form is the one attached to the GPT-3.5 menu entry.
+        default: "gpt-3.5-turbo",
       },
       system_msg: {
         type: "string",
@@ -350,18 +352,18 @@ const GPT4Settings: ModelSettingsDict = {
         title: "Nickname",
         description:
           "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "GPT-4o-mini",
+        default: "GPT-5.6 Luna",
       },
       model: {
         ...ChatGPTSettings.schema.properties.model,
-        default: "gpt-4o-mini",
+        default: "gpt-5.6-luna",
       },
     },
   },
   uiSchema: {
     ...ChatGPTSettings.uiSchema,
     model: {
-      "ui:help": "Defaults to gpt-4o-mini.",
+      "ui:help": "Defaults to gpt-5.6-luna.",
       "ui:widget": "datalist",
     },
   },
@@ -1226,53 +1228,38 @@ const ClaudeSettings: ModelSettingsDict = {
         title: "Model Version",
         description:
           "Select a version of Claude to query. For more details on the differences, see the Anthropic API documentation.",
+        // Models Anthropic still serves. Everything Claude 3 and older has
+        // been retired, so those have been removed.
         enum: [
           "claude-opus-5",
           "claude-sonnet-5",
           "claude-haiku-4-5",
           "claude-fable-5-1",
-          "claude-3-7-sonnet-latest",
-          "claude-3-7-sonnet-20250219",
-          "claude-3-opus-latest",
-          "claude-3-5-sonnet-latest",
-          "claude-3-5-haiku-latest",
-          "claude-3-opus-20240229",
-          "claude-3-sonnet-20240229",
-          "claude-3-5-sonnet-20240620",
-          "claude-3-haiku-20240307",
-          "claude-2.1",
-          "claude-2",
-          "claude-2.0",
-          "claude-instant-1",
-          "claude-instant-1.1",
-          "claude-instant-1.2",
-          "claude-v1",
-          "claude-v1-100k",
-          "claude-instant-v1",
-          "claude-instant-v1-100k",
-          "claude-v1.3",
-          "claude-v1.3-100k",
-          "claude-v1.2",
-          "claude-v1.0",
-          "claude-instant-v1.1",
-          "claude-instant-v1.1-100k",
-          "claude-instant-v1.0",
+          "claude-fable-5",
+          "claude-opus-4-8",
+          "claude-opus-4-7",
+          "claude-opus-4-6",
+          "claude-opus-4-5",
+          "claude-sonnet-4-6",
+          "claude-sonnet-4-5",
+          "claude-opus-4-0",
+          "claude-sonnet-4-0",
         ],
-        default: "claude-3-5-sonnet-latest",
+        default: "claude-sonnet-5",
         shortname_map: {
-          "claude-3-opus-20240229": "claude-3-opus",
-          "claude-3-opus-latest": "claude-3-opus",
-          "claude-3-sonnet-20240229": "claude-3-sonnet",
-          "claude-3-5-sonnet-20240620": "claude-3.5-sonnet",
-          "claude-3-5-sonnet-latest": "claude-3.5-sonnet",
-          "claude-3-haiku-20240307": "claude-3-haiku",
-          "claude-3-5-haiku-latest": "claude-3.5-haiku",
-          "claude-3-7-sonnet-latest": "claude-3.7-sonnet",
-          "claude-3-7-sonnet-20250219": "claude-3.7-sonnet",
           "claude-opus-5": "Claude Opus 5",
           "claude-sonnet-5": "Claude Sonnet 5",
           "claude-haiku-4-5": "Claude Haiku 4.5",
           "claude-fable-5-1": "Claude Fable 5.1",
+          "claude-fable-5": "Claude Fable 5",
+          "claude-opus-4-8": "Claude Opus 4.8",
+          "claude-opus-4-7": "Claude Opus 4.7",
+          "claude-opus-4-6": "Claude Opus 4.6",
+          "claude-opus-4-5": "Claude Opus 4.5",
+          "claude-sonnet-4-6": "Claude Sonnet 4.6",
+          "claude-sonnet-4-5": "Claude Sonnet 4.5",
+          "claude-opus-4-0": "Claude Opus 4",
+          "claude-sonnet-4-0": "Claude Sonnet 4",
         },
       },
       thinking: {
@@ -1389,7 +1376,7 @@ const ClaudeSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help":
-        "Defaults to claude-2.1. Note that Anthropic models are subject to change. Model names prior to Claude 2, including 100k context window, are no longer listed on the Anthropic site, so they may or may not work.",
+        "Defaults to claude-sonnet-5. Claude 3 and older have all been retired by Anthropic and are no longer queryable. Newer models than those listed here can be typed in by hand.",
       "ui:widget": "datalist",
     },
     system_msg: {
@@ -1472,36 +1459,36 @@ const Gemini25Settings: ModelSettingsDict = {
         title: "Model",
         description:
           "Select a Gemini model to query. For more details on the differences, see the Google Gemini API documentation.",
+        // Models the Gemini API still serves. Gemini 2.0 and 1.5 have been
+        // shut down, as has text-embedding-004, so those have been removed.
         enum: [
           "gemini-3.8-flash",
+          "gemini-3.7-flash",
           "gemini-3.6-flash",
+          "gemini-3.5-flash",
           "gemini-3.5-flash-lite",
+          "gemini-3.1-flash-lite",
           "gemini-3.1-pro-preview",
+          "gemini-3-flash-preview",
           "gemini-2.5-pro",
           "gemini-2.5-flash",
           "gemini-2.5-flash-lite",
-          "gemini-2.0-flash",
-          "gemini-2.0-flash-lite",
           "gemini-embedding-001",
-          "text-embedding-005",
-          "text-embedding-004",
-          "text-multilingual-embedding-002",
         ],
         default: "gemini-3.8-flash",
         shortname_map: {
+          "gemini-3.8-flash": "Gemini 3.8 Flash",
+          "gemini-3.7-flash": "Gemini 3.7 Flash",
+          "gemini-3.6-flash": "Gemini 3.6 Flash",
+          "gemini-3.5-flash": "Gemini 3.5 Flash",
+          "gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite",
+          "gemini-3.1-flash-lite": "Gemini 3.1 Flash-Lite",
+          "gemini-3.1-pro-preview": "Gemini 3.1 Pro",
+          "gemini-3-flash-preview": "Gemini 3 Flash",
           "gemini-2.5-pro": "Gemini 2.5 Pro",
           "gemini-2.5-flash": "Gemini 2.5 Flash",
           "gemini-2.5-flash-lite": "Gemini 2.5 Flash Lite",
-          "gemini-2.0-flash": "Gemini 2.0 Flash",
-          "gemini-2.0-flash-lite": "Gemini 2.0 Flash Lite",
           "gemini-embedding-001": "gemini-embedding-001",
-          "text-embedding-005": "text-embedding-005",
-          "text-embedding-004": "text-embedding-004",
-          "text-multilingual-embedding-002": "text-multilingual-embedding-002",
-          "gemini-3.8-flash": "Gemini 3.8 Flash",
-          "gemini-3.6-flash": "Gemini 3.6 Flash",
-          "gemini-3.5-flash-lite": "Gemini 3.5 Flash-Lite",
-          "gemini-3.1-pro-preview": "Gemini 3.1 Pro",
         },
       },
       include_thoughts: {
@@ -1586,7 +1573,7 @@ const Gemini25Settings: ModelSettingsDict = {
     },
     model: {
       "ui:help":
-        "Defaults to gemini-3.8-flash. Gemini 2.5 and 2.0 models are no longer available to new API keys.",
+        "Defaults to gemini-3.8-flash. Gemini 2.0 and 1.5 models have been shut down and are no longer queryable. Newer models than those listed here can be typed in by hand.",
       "ui:widget": "datalist",
     },
     system_msg: {
