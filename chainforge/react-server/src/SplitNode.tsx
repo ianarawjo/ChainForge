@@ -4,6 +4,12 @@ import { v4 as uuid } from "uuid";
 import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
+import { Status } from "./StatusIndicatorComponent";
+import {
+  runnerFromStatus,
+  useNodeRunner,
+  useTrackedStatus,
+} from "./useNodeRunner";
 import { IconArrowsSplit, IconList } from "@tabler/icons-react";
 import {
   NativeSelect,
@@ -137,7 +143,8 @@ const displaySplitTexts = (
 
 export interface SplitTextsPopoverProps {
   textInfos: (TemplateVarInfo | string)[];
-  onHover: () => void;
+  /** Optional: the preview no longer recomputes the node on hover. */
+  onHover?: () => void;
   onClick: (evt: React.MouseEvent<HTMLButtonElement>) => void;
   getColorForLLM: (llm_name: string) => string;
 }
@@ -151,7 +158,7 @@ const SplitTextsPopover: React.FC<SplitTextsPopoverProps> = ({
   const [opened, { close, open }] = useDisclosure(false);
 
   const _onHover = useCallback(() => {
-    onHover();
+    onHover?.();
     open();
   }, [onHover, open]);
 
@@ -223,13 +230,18 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
     data.splitFormat || "list",
   );
 
-  const handleOnConnect = useCallback(() => {
+  // A split is run from its button, like the prompt and evaluator nodes, and
+  // reports how it went through its status indicator.
+  const [status, setStatus, statusRef] = useTrackedStatus();
+
+  const runSplit = useCallback(() => {
     const formatting = splitOnFormat;
 
     let input_data = pullInputData(["__input"], id);
     if (!input_data?.__input) {
-      // soft fail if no inputs detected
-      return;
+      // Nothing attached yet; leave the node marked as not-yet-run.
+      setStatus(Status.WARNING);
+      return Promise.resolve(false);
     }
 
     // Create lookup table for LLMs in input, indexed by llm key
@@ -243,7 +255,8 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
     // Generate (flatten) the inputs, which could be recursively chained templates
     // and a mix of LLM resp objects, templates, and strings.
     // (We tagged each object with its LLM key so that we can use built-in features to keep track of the LLM associated with each response object)
-    generatePrompts("{__input}", input_data)
+    setStatus(Status.LOADING);
+    return generatePrompts("{__input}", input_data)
       .then((promptTemplates) => {
         // Convert the templates into response objects
         const resp_objs = promptTemplates.map((p) => ({
@@ -281,9 +294,13 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
 
         setSplitTexts(split_objs);
         setDataPropsForNode(id, { fields: split_objs });
+        setStatus(Status.READY);
+        return true;
       })
       .catch((err: Error | string) => {
         console.error(err);
+        setStatus(Status.ERROR);
+        return false;
       });
   }, [
     pullInputData,
@@ -291,11 +308,17 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
     splitText,
     extractLLMLookup,
     tagMetadataWithLLM,
+    setStatus,
   ]);
 
-  // Refresh split output anytime the dropdown changes
+  // Lets a driver ("run all", a chat box over this flow) run this node without
+  // a click, the same as every other node with a run button.
+  useNodeRunner(id, runnerFromStatus(runSplit, statusRef));
+
+  // Changing how to split doesn't re-split on its own: like the evaluators,
+  // the node goes stale and waits to be run.
   useEffect(() => {
-    handleOnConnect();
+    if (splitTexts.length > 0) setStatus(Status.WARNING);
   }, [splitOnFormat]);
 
   // Store the outputs to the cache whenever they change
@@ -311,11 +334,11 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
 
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
-      // Recreate the visualization:
+      // An upstream node changed: this node's output is stale until it is run.
       setDataPropsForNode(id, { refresh: false });
-      handleOnConnect();
+      setStatus(Status.WARNING);
     }
-  }, [data, id, handleOnConnect, setDataPropsForNode]);
+  }, [data, id, setDataPropsForNode, setStatus]);
 
   return (
     <BaseNode classNames="split-node" nodeId={id}>
@@ -323,11 +346,13 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
         title={data.title || "Split Node"}
         nodeId={id}
         icon={<IconArrowsSplit size="12pt" />}
+        status={status}
+        handleRunClick={runSplit}
+        runButtonTooltip="Split the input text"
         customButtons={[
           <SplitTextsPopover
             key="split-text-previews"
             textInfos={splitTexts}
-            onHover={handleOnConnect}
             onClick={openInfoModal}
             getColorForLLM={getColorForLLMAndSetIfNotFound}
           />,
@@ -371,7 +396,7 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
         id="__input"
         className="grouped-handle"
         style={{ top: "50%" }}
-        onConnect={handleOnConnect}
+        onConnect={() => setStatus(Status.WARNING)}
       />
       <Handle
         type="source"
