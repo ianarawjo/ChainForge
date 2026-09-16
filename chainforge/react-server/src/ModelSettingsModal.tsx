@@ -240,7 +240,9 @@ const ModelSettingsModal = forwardRef<
           )
             state.formData.shortname = shortname_map[modelname];
           else state.formData.shortname = modelname?.split("/").at(-1);
-          setInitShortname(shortname);
+          // Remember the nickname we just set, not the one it replaced, so
+          // it keeps following the model until the user edits it.
+          setInitShortname(state.formData.shortname as string | undefined);
         }
 
         setInitModelName(modelname);
