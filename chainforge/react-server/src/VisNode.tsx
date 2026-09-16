@@ -154,7 +154,7 @@ const findEvalResKeys = (resps: LLMResponse[]): Set<string> => {
  */
 
 const smallTextStyle: React.CSSProperties = {
-  fontSize: "10pt",
+  fontSize: "13px",
   margin: "6pt 3pt 0 3pt",
   fontWeight: "bold",
   whiteSpace: "nowrap",
@@ -524,7 +524,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               maxWidth: "220px",
               backgroundColor: "#f0f0aa",
               padding: "10px",
-              fontSize: "10pt",
+              fontSize: "13px",
             }}
           >
             To plot evaluation results, you need to run LLM responses through an
@@ -1183,7 +1183,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         //           maxWidth: "220px",
         //           backgroundColor: "#f0aaaa",
         //           padding: "10px",
-        //           fontSize: "10pt",
+        //           fontSize: "13px",
         //         }}
         //       >
         //         {error_text}

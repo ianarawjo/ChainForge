@@ -370,10 +370,33 @@ export const CodeEvaluatorComponent = forwardRef<
           editorProps={{ $blockScrolling: true }}
           width="100%"
           height="100%"
-          setOptions={{ useWorker: false }}
+          setOptions={{
+            useWorker: false,
+            // The editor lives on the React Flow canvas, which pans and zooms
+            // with a CSS transform on an ancestor. Without this, Ace maps a
+            // click from screen pixels straight through a character width
+            // measured in the editor's own unscaled pixels, so the caret lands
+            // off by the zoom factor -- at 50% zoom, clicking column 20 puts
+            // the caret at column 10. Ace solves for the ancestor transform
+            // when this is on.
+            hasCssTransforms: true,
+          }}
           tabSize={2}
           onLoad={(editorInstance) => {
             aceEditorRef.current = editorInstance;
+            // Ace measures character width once, on init. --font-mono loads
+            // with font-display: swap, so on a cold load Ace can measure the
+            // fallback face and then have the real one swap in underneath it,
+            // leaving the cursor out of step with the text. Re-measure once
+            // the webfont is actually in.
+            document.fonts?.ready
+              .then(() => {
+                editorInstance.renderer.updateFontSize();
+                editorInstance.resize(true);
+              })
+              .catch(() => {
+                /* no webfont support: the fallback Ace measured is what renders */
+              });
           }}
         />
         <ResizeHandle

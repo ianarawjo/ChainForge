@@ -455,7 +455,7 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
                 backgroundColor: "#f0f0f0",
                 color: "#333",
                 fontFamily: "monospace",
-                fontSize: "8pt",
+                fontSize: "11px",
                 padding: "12px",
                 lineHeight: "1.2",
                 width: "calc(100% - 10px)",

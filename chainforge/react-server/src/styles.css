@@ -1,11 +1,42 @@
 :root {
-  --monofont: monospace;
+  /* Typography. Two families and one size scale, used everywhere. Sizes are
+     px only: mixing pt and px produced near-duplicate sizes (13px vs 10pt =
+     13.33px) that read as sloppiness rather than hierarchy. */
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Monaco, Consolas,
+    monospace;
+  /* Kept as an alias: older rules and flows may still reference it. */
+  --monofont: var(--font-mono);
+
+  --fs-xs: 11px; /* metadata, chips, dense previews */
+  --fs-sm: 12px; /* secondary labels, buttons */
+  --fs-md: 13px; /* body: textareas, response cards, node labels */
+  --fs-lg: 14px; /* section headers, top bar */
+  --fs-xl: 16px; /* node and modal titles */
+
   --dark: #1a1b1e;
   --dark-btn-border: #777;
   --dark-btn-border-hover: #fff;
 }
+
+/* Form controls do not inherit font-family from body by default, so every
+   custom button fell through to the browser's default (Helvetica/Arial) while
+   the rest of the app rendered in the UI stack. Mantine's withNormalizeCSS
+   also sets `font-family: sans-serif` on these, and emotion injects it after
+   this file, so the `html` prefix is needed to outrank it on specificity
+   rather than on source order. */
+html button,
+html input,
+html select,
+html textarea,
+html optgroup {
+  font-family: inherit;
+}
+
 .monofont {
-  font-family: var(--monofont);
+  font-family: var(--font-mono);
 }
 .linebreaks {
   white-space: pre-wrap;
@@ -37,22 +68,20 @@ hr {
 }
 
 .small-standard-font {
-  font-size: 10pt;
-  font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  font-size: var(--fs-md);
+  font-family: var(--font-ui);
 }
 
 .status-icon {
   display: inline-block;
-  font-size: 12pt;
+  font-size: var(--fs-xl);
   margin: 0px 0px 0px 4px;
   padding: 0px;
 }
 .status-icon .status-tooltip {
   visibility: hidden;
-  font-size: 10pt;
-  font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  font-size: var(--fs-md);
+  font-family: var(--font-ui);
   width: 150px;
   color: #fff;
   text-align: left;
@@ -136,7 +165,7 @@ hr {
   margin: 6px 0px 6px 6px;
   padding-bottom: 4px;
   text-align: left;
-  font-size: 10pt;
+  font-size: var(--fs-md);
   color: #777;
   display: flex;
   align-items: center;
@@ -186,9 +215,8 @@ html[data-mantine-color-scheme="dark"] .llm-list-backdrop {
 
 .llm-card-header {
   font-weight: 500;
-  font-size: 10pt;
-  font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  font-size: var(--fs-md);
+  font-family: var(--font-ui);
   text-align: start;
   margin: 0;
   white-space: nowrap; /* keep on one line */
@@ -357,8 +385,8 @@ html[data-mantine-color-scheme="dark"] .multi-eval-node {
   position: absolute;
   overflow: scroll;
   white-space: pre-wrap;
-  font-family: "Monaco", Courier, monospace;
-  font-size: 9pt;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
   margin: 6px 8px 6px 8px;
   padding-top: 2px;
   padding-bottom: 0px;
@@ -446,8 +474,8 @@ html[data-mantine-color-scheme="dark"] .eval-inspect-response-footer button {
   overflow: auto;
 }
 .plot-legend {
-  font-size: 11px;
-  font-family: monospace;
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
 }
 .plot-legend-item {
   cursor: pointer;
@@ -464,11 +492,11 @@ g.ytick text {
 }
 
 .response-var-inline > .response-var-name {
-  font-size: 8pt;
+  font-size: var(--fs-xs);
   font-weight: normal;
 }
 .response-var-inline > .response-var-value {
-  font-size: 8pt;
+  font-size: var(--fs-xs);
 }
 
 .grade-resp-var-container {
@@ -476,10 +504,10 @@ g.ytick text {
   line-height: 1;
 }
 .grade-resp-var-container > .response-var-name {
-  font-size: 10pt;
+  font-size: var(--fs-md);
 }
 .grade-resp-var-container > .response-var-value {
-  font-size: 10pt;
+  font-size: var(--fs-md);
 }
 
 .settings-var-inline {
@@ -536,26 +564,26 @@ html[data-mantine-color-scheme="dark"] .settings-var-inline {
   line-height: 1.2;
 }
 .inspect-modal-response-container .response-var-name {
-  font-size: 10pt;
+  font-size: var(--fs-md);
   font-weight: bold;
 }
 .inspect-modal-response-container .response-var-value {
-  font-size: 10pt;
+  font-size: var(--fs-md);
   letter-spacing: -0.5px;
 }
 .inspect-modal-response-container .response-llm-header {
-  font-size: 10pt;
+  font-size: var(--fs-md);
 }
 .inspect-modal-response-container .small-response {
-  font-size: 10pt;
+  font-size: var(--fs-md);
   margin: 6px -1px 8px -1px;
   padding: 8px;
 }
 .inspect-modal-response-container .small-response-metrics {
-  font-size: 12pt;
+  font-size: var(--fs-xl);
 }
 .inspect-modal-response-container .num-same-responses {
-  font-size: 10pt;
+  font-size: var(--fs-md);
 }
 .inspect-table-var {
   background-color: rgb(224, 244, 250);
@@ -645,7 +673,7 @@ html[data-mantine-color-scheme="dark"]
 }
 /* Model name in the strip, where the view doesn't show it elsewhere. */
 .cf-table-resp-model {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   margin-right: 2px;
 }
@@ -655,7 +683,7 @@ html[data-mantine-color-scheme="dark"]
   flex-wrap: wrap;
   gap: 2px 10px;
   padding: 3px 7px 0;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   opacity: 0.75;
 }
 html[data-mantine-color-scheme="dark"] .cf-table-resp-text {
@@ -666,7 +694,7 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp-text {
    take over the card. */
 .cf-table-resp .cf-table-resp-band .cf-reasoning-chip {
   font: inherit;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   line-height: 15px;
   white-space: nowrap;
@@ -697,7 +725,7 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp-reasoning {
   color: #ced4da;
 }
 .cf-table-resp-reasoning-note {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-style: italic;
   margin-bottom: 2px;
 }
@@ -707,14 +735,14 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp-reasoning {
   position: absolute;
   right: 3px;
   bottom: 2px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   line-height: 1;
   opacity: 0.8;
   pointer-events: none;
 }
 .cf-lightbox-reasoning summary {
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--fs-md);
   font-weight: 600;
 }
 .cf-lightbox-reasoning-text {
@@ -723,7 +751,7 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp-reasoning {
   overflow-y: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-size: 13px;
+  font-size: var(--fs-md);
   line-height: 1.5;
   opacity: 0.8;
   padding-left: 10px;
@@ -760,7 +788,7 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp .cf-table-copy {
   object-fit: contain;
 }
 .cf-table-count {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   line-height: 15px;
   padding: 0 4px;
@@ -778,7 +806,7 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp .cf-table-copy {
   gap: 3px;
   max-width: 100%;
   overflow: hidden;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   line-height: 15px;
   white-space: nowrap;
@@ -933,9 +961,8 @@ html [data-mantine-color-scheme="dark"] .response-var-header {
   padding-top: 1px;
 }
 .response-llm-header {
-  font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
-  font-size: 9pt;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
   font-weight: 500;
   padding: 4px 4px 4px 7px;
   border-top-left-radius: 5px;
@@ -955,12 +982,12 @@ html[data-mantine-color-scheme="dark"] .response-llm-header {
   padding: 0px 4px;
 }
 .response-var-name {
-  font-size: 9pt;
+  font-size: var(--fs-sm);
   font-weight: bold;
 }
 .response-var-value {
-  font-family: monospace;
-  font-size: 8pt;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
 }
 .inspect-modal-prompt-box {
   background-color: #eee;
@@ -973,18 +1000,18 @@ html[data-mantine-color-scheme="dark"] .response-llm-header {
   overflow-y: auto;
 }
 .inspect-modal-prompt-text {
-  font-family: monospace;
-  font-size: 11pt;
+  font-family: var(--font-mono);
+  font-size: var(--fs-lg);
   white-space: pre-line;
 }
 .inspect-modal-prompt-prefix {
-  font-size: 10pt;
+  font-size: var(--fs-md);
   font-weight: bold;
 }
 
 .prompt-preview {
-  font-size: 10pt;
-  font-family: var(--monofont), monospace;
+  font-size: var(--fs-md);
+  font-family: var(--font-mono);
   border-radius: 6px;
   padding: 8px;
   margin: 10px 0px 0px 0px;
@@ -1020,8 +1047,8 @@ html[data-mantine-color-scheme="dark"] .prompt-preview-popover {
 }
 
 .small-response {
-  font-size: 8pt;
-  font-family: var(--monofont), monospace;
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
   border-top-style: dashed;
   border-top-width: 0.0625rem;
   border-bottom-style: dashed;
@@ -1042,9 +1069,8 @@ html[data-mantine-color-scheme="dark"] .small-response {
 }
 
 .small-response-metrics {
-  font-size: 9pt;
-  font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  font-size: var(--fs-sm);
+  font-family: var(--font-ui);
   font-weight: 500;
   text-align: center;
   border-top-left-radius: 20px;
@@ -1071,7 +1097,7 @@ html[data-mantine-color-scheme="dark"] .small-response-metrics {
   height: 12pt;
   background-color: #00000033;
   border-radius: 5px;
-  font-size: 9pt;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: white;
   overflow: hidden;
@@ -1079,7 +1105,7 @@ html[data-mantine-color-scheme="dark"] .small-response-metrics {
 
 .llm-group-header {
   font-weight: 400;
-  font-size: 10pt;
+  font-size: var(--fs-md);
   margin: 6px 8px 4px 8px;
   padding-top: 2px;
   padding-bottom: 0px;
@@ -1110,7 +1136,7 @@ html[data-mantine-color-scheme="dark"] .small-response-metrics {
   padding-bottom: 0px;
 }
 .response-item-llm-name-wrapper h1 {
-  font-size: 8pt;
+  font-size: var(--fs-xs);
   font-weight: bold;
   font-style: italic;
   /* mix-blend-mode: color-burn; */
@@ -1130,7 +1156,7 @@ html[data-mantine-color-scheme="dark"] .small-response-metrics {
 }
 
 .response-tag {
-  font-size: 9pt;
+  font-size: var(--fs-sm);
   color: #555;
   margin: 0px 0px 0px 2px;
 }
@@ -1227,7 +1253,7 @@ html[data-mantine-color-scheme="dark"] .comment-node textarea {
   max-height: 150px;
   margin: 6px 0px;
   /* The same font and size as response cards and text fields. */
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   cursor: text;
 }
@@ -1238,7 +1264,7 @@ html[data-mantine-color-scheme="dark"] .comment-node textarea {
 }
 .add-table-row-btn {
   position: absolute;
-  font-size: 10pt;
+  font-size: var(--fs-md);
   width: 100%;
   display: flex;
   align-items: center;
@@ -1284,16 +1310,16 @@ html[data-mantine-color-scheme="dark"] .add-table-row-btn button:active {
   margin-bottom: -30px;
 }
 .var-select-toolbar label {
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 .var-select-toolbar select {
   width: 100px;
-  font-size: 12px;
+  font-size: var(--fs-sm);
 }
 
 .code-style {
   background-color: #ddd;
-  font-family: "Courier New", Courier, monospace;
+  font-family: var(--font-mono);
 }
 
 .hook-tag {
@@ -1302,7 +1328,7 @@ html[data-mantine-color-scheme="dark"] .add-table-row-btn button:active {
 }
 
 .code-mirror-field-header {
-  font-size: 10pt;
+  font-size: var(--fs-md);
   color: #333;
   margin-bottom: 4px;
 }
@@ -1317,7 +1343,7 @@ html[data-mantine-color-scheme="dark"] .code-mirror-field-header {
   overflow-y: auto;
   width: 260px;
   padding: calc(0.5rem / 3);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   border-color: #999;
 }
@@ -1325,7 +1351,7 @@ html[data-mantine-color-scheme="dark"] .code-mirror-field-header {
   resize: vertical;
   overflow-y: auto;
   padding: calc(0.5rem / 3);
-  font-size: 12px;
+  font-size: var(--fs-sm);
   line-height: 1.4;
   border-color: #999;
 }
@@ -1428,7 +1454,7 @@ html[data-mantine-color-scheme="dark"] .add-llm-model-btn:active button {
   margin-right: 3px;
   border-radius: 5px;
   border: 1px solid #999;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   background: rgb(63, 204, 106, 0.2);
   color: #333;
   overflow: hidden;
@@ -1508,7 +1534,7 @@ html[data-mantine-color-scheme="dark"] .AmitSahoo45-button-3:active {
   margin-top: -7px;
   border-radius: 5px;
   border: 1px solid #999;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   background: transparent;
   color: #333;
   overflow: hidden;
@@ -1579,7 +1605,7 @@ html[data-mantine-color-scheme="dark"] .close-button:active {
   margin-right: 3px;
   border-radius: 5px;
   border: 1px solid #999;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   background: transparent;
   color: #333;
   overflow: hidden;
@@ -1644,7 +1670,7 @@ html[data-mantine-color-scheme="dark"] .custom-button:hover {
   margin-right: 3px;
   border-radius: 5px;
   border: 1px solid #999;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: #666;
   overflow: hidden;
   box-shadow: 0 0 0 0 transparent;
@@ -1707,7 +1733,7 @@ html[data-mantine-color-scheme="dark"] .ai-button:active {
 /* Make text blink */
 .text-blink {
   animation: blinker 0.75s linear infinite;
-  font-family: sans-serif;
+  font-family: var(--font-ui);
 }
 @keyframes blinker {
   50% {
@@ -1763,8 +1789,8 @@ html[data-mantine-color-scheme="dark"] .chat-bubble textarea {
   place-content: left;
   width: 100%;
   gap: 10px;
-  font-family: system-ui, sans-serif;
-  font-size: 14px;
+  font-family: var(--font-ui);
+  font-size: var(--fs-lg);
 }
 /* Chat Turn bubbles (PromptNode.tsx): the past conversation, quiet, and the
    new message in the accent color, as in the RAG Chat node. */
@@ -1824,11 +1850,11 @@ html[data-mantine-color-scheme="dark"]
 }
 .rjsf label.control-label {
   font-weight: bold;
-  font-size: 11pt;
+  font-size: var(--fs-lg);
 }
 .rjsf .field-array legend {
   font-weight: bold;
-  font-size: 11pt;
+  font-size: var(--fs-lg);
 }
 
 .rjsf input {
@@ -1851,7 +1877,7 @@ html[data-mantine-color-scheme="dark"]
 .rjsf fieldset .form-group {
   margin-bottom: 30px;
   padding-top: 6px;
-  font-size: 9pt;
+  font-size: var(--fs-sm);
   border-top-style: solid;
   border-top-color: #ddd;
 }
@@ -1884,14 +1910,14 @@ html[data-mantine-color-scheme="dark"]
   position: absolute;
   right: 0px;
   top: -3px;
-  font-size: x-small;
+  font-size: var(--fs-xs);
 }
 
 .gradeDownCount {
   position: absolute;
   right: 0px;
   bottom: 0px;
-  font-size: x-small;
+  font-size: var(--fs-xs);
 }
 
 .criteriaButtons {
@@ -1934,7 +1960,7 @@ html[data-mantine-color-scheme="dark"] .react-flow__attribution {
   color: #8a3e07;
   background-color: #ffe8cc;
   font-size: inherit;
-  font-family: monospace;
+  font-family: var(--font-mono);
   padding: 0.2em 0.4em;
   border: none;
   text-align: center;
@@ -1961,15 +1987,15 @@ html[data-mantine-color-scheme="dark"] .csv-comma {
   width: 290px;
   max-height: 250px;
   overflow-y: auto;
-  font-size: 10pt;
-  font-family: monospace;
+  font-size: var(--fs-md);
+  font-family: var(--font-mono);
 }
 
 .csv-input {
   width: 290px;
   height: 150px;
-  font-size: 10pt;
-  font-family: monospace;
+  font-size: var(--fs-md);
+  font-family: var(--font-mono);
 }
 
 .prompt-list-modal .mantine-Modal-header {
@@ -2091,7 +2117,7 @@ html[data-mantine-color-scheme="dark"] .upload-node-list {
   background-color: rgba(255, 255, 255, 0.5);
   color: black;
   padding: 4px 8px;
-  font-size: 14px;
+  font-size: var(--fs-lg);
   border-radius: 4px;
   pointer-events: none; /* Makes the overlay click-through */
 }
@@ -2310,4 +2336,59 @@ html[data-mantine-color-scheme="dark"] .ragchat-diff-removed {
   display: grid;
   gap: 6px;
   margin-top: 4px;
+}
+
+/* ---- {template variable} highlighting in prompt textareas ----
+   A textarea cannot style its own content, so the text is drawn twice: a
+   backdrop div carries the highlight spans and the textarea sits transparently
+   on top of it. The backdrop copies its metrics off the live textarea (see
+   TemplateHighlightTextarea.tsx), so only the things that cannot be copied --
+   position, wrapping, colour -- are set here. */
+.tpl-highlight-wrap {
+  position: relative;
+}
+.tpl-highlight-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: transparent;
+  pointer-events: none;
+  border-style: solid;
+  border-color: transparent;
+}
+.tpl-highlight-var {
+  /* --tpl-var-bg is set per-mark from the theme palette; see
+     TemplateHighlightTextarea.tsx. */
+  background-color: var(--tpl-var-bg);
+  color: transparent;
+  border-radius: 4px;
+  /* Horizontal padding would shift the backdrop's glyphs out from under the
+     textarea's own. Vertical padding on an inline box paints outside the line
+     box without affecting layout, so the band can be taller for free. */
+  padding: 2px 0;
+}
+
+/* The chat turn's prompt bubble is a saturated blue with white text, so an
+   alpha tint of the indigo used elsewhere lands within a few percent of the
+   bubble's own colour and disappears. Lightening it instead would drop the
+   white text to about 3:1; darkening lifts it to about 7.7:1, so the
+   highlight reads and the text gets easier rather than harder. The
+   indigo/orange split is lost here, but the handle badges below still carry
+   it. */
+.chat-bubble-prompt .tpl-highlight-var {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Ace injects its own font stack for .ace_editor at runtime, so the code
+   editors were the one surface still on a different monospace face than the
+   rest of the app. `html` outranks that rule on specificity rather than
+   relying on which stylesheet lands last. Ace caches character metrics on
+   init, so CodeEvaluatorNode re-measures once the webfont has loaded. */
+html .ace_editor {
+  font-family: var(--font-mono);
 }

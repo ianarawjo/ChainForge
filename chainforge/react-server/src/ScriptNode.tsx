@@ -103,7 +103,7 @@ const ScriptNode: React.FC<ScriptNodeProps> = ({ data, id }) => {
         editable={false}
         icon={<IconSettingsAutomation size="16px" />}
       />
-      <label htmlFor="num-generations" style={{ fontSize: "10pt" }}>
+      <label htmlFor="num-generations" style={{ fontSize: "13px" }}>
         Enter folder paths for external modules you wish to import.
       </label>{" "}
       <br />

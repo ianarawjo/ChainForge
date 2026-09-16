@@ -1590,7 +1590,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           setViewFormat(next);
           onViewFormatChange?.(next);
         }}
-        styles={{ tabLabel: { fontSize: wideFormat ? "12pt" : "9pt" } }}
+        styles={{ tabLabel: { fontSize: wideFormat ? "16px" : "12px" } }}
       >
         <Tabs.List>
           <Tabs.Tab value="hierarchy">

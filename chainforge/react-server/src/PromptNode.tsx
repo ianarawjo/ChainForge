@@ -11,7 +11,6 @@ import { v4 as uuid } from "uuid";
 import {
   Switch,
   Progress,
-  Textarea,
   Text,
   Popover,
   Center,
@@ -92,6 +91,9 @@ import {
 import { MediaLookup, StringLookup } from "./backend/cache";
 import { union } from "./backend/setUtils";
 import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
+import TemplateHighlightTextarea, {
+  setTemplateTextareaValue,
+} from "./TemplateHighlightTextarea";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -122,7 +124,7 @@ const getRootPromptFor = (
 const promptVariantLabelStyle = {
   input: {
     border: "0",
-    fontSize: "10pt",
+    fontSize: "13px",
     padding: "0px 2px 0px 2px !important",
     marginTop: "2px",
     minHeight: "10pt",
@@ -1449,8 +1451,7 @@ Soft failing by replacing undefined with empty strings.`,
 
       if (textAreaRef.current) {
         // We have to force an update here since idxPromptVariantShown might've not changed
-        // @ts-expect-error Mantine has a 'value' property on Textareas, but TypeScript doesn't know this
-        textAreaRef.current.value = prompts[newIdx];
+        setTemplateTextareaValue(textAreaRef.current, prompts[newIdx]);
         // resizeTextarea();
       }
 
@@ -1473,8 +1474,10 @@ Soft failing by replacing undefined with empty strings.`,
   // Whenever idx of prompt variant changes, we need to refresh the Textarea:
   useEffect(() => {
     if (textAreaRef.current && Array.isArray(promptText)) {
-      // @ts-expect-error Mantine has a 'value' property on Textareas, but TypeScript doesn't know this
-      textAreaRef.current.value = promptText[idxPromptVariantShown];
+      setTemplateTextareaValue(
+        textAreaRef.current,
+        promptText[idxPromptVariantShown],
+      );
       // resizeTextarea();
     }
   }, [idxPromptVariantShown]);
@@ -1678,7 +1681,7 @@ Soft failing by replacing undefined with empty strings.`,
             bubbleClassNames={["chat-bubble-past", "chat-bubble-prompt"]}
             messages={[
               "(Past conversation)",
-              <Textarea
+              <TemplateHighlightTextarea
                 key={0}
                 className="prompt-field-fixed nodrag nowheel"
                 minRows={4}
@@ -1703,7 +1706,7 @@ Soft failing by replacing undefined with empty strings.`,
           />
         </div>
       ) : (
-        <Textarea
+        <TemplateHighlightTextarea
           ref={setRef}
           // autosize
           className="prompt-field-fixed nodrag nowheel"
@@ -1743,7 +1746,7 @@ Soft failing by replacing undefined with empty strings.`,
       <div>
         <div style={{ marginBottom: "10px", padding: "4px" }}>
           <Flex align="center">
-            <label htmlFor="num-generations" style={{ fontSize: "10pt" }}>
+            <label htmlFor="num-generations" style={{ fontSize: "13px" }}>
               Num responses per prompt:&nbsp;
             </label>
             <NumberInput

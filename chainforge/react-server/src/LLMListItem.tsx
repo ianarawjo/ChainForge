@@ -52,9 +52,8 @@ const percTemperature = (llm_item: LLMSpec) => {
 
 const CardHeader = styled.div`
   font-weight: 500;
-  font-size: 10pt;
-  font-family: -apple-system, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  font-size: var(--fs-md);
+  font-family: var(--font-ui);
   text-align: start;
   flex: 1;
   margin-top: 1px;
