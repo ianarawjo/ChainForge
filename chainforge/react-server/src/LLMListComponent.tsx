@@ -25,6 +25,7 @@ import ModelSettingsModal, {
 } from "./ModelSettingsModal";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import {
+  HUGGINGFACE_PREFIX,
   NativeLLM,
   OPENROUTER_IMAGE_PREFIX,
   OPENROUTER_PREFIX,
@@ -47,6 +48,7 @@ const MODEL_NAME_PREFIXES: Record<string, string> = {
   together: "together/",
   openrouter: OPENROUTER_PREFIX,
   "openrouter-image": OPENROUTER_IMAGE_PREFIX,
+  hf: HUGGINGFACE_PREFIX,
 };
 
 // Helper funcs

@@ -165,7 +165,9 @@ export enum NativeLLM {
   MiniMax_M2_7 = "MiniMax-M2.7",
   MiniMax_M2_7_highspeed = "MiniMax-M2.7-highspeed",
 
-  // HuggingFace Inference hosted models, suggested to users
+  // HuggingFace models from the retired Inference API. Serving moved to
+  // Inference Providers, whose models carry the HUGGINGFACE_PREFIX below and so
+  // do not need an entry here; these are kept only so old flows still resolve.
   HF_MISTRAL_7B_INSTRUCT = "mistralai/Mistral-7B-Instruct-v0.1",
   HF_ZEPHYR_7B_BETA = "HuggingFaceH4/zephyr-7b-beta",
   HF_FALCON_7B_INSTRUCT = "tiiuae/falcon-7b-instruct",
@@ -360,6 +362,22 @@ export function stripOpenRouterPrefix(llm: LLM | string): string {
   return name;
 }
 
+/**
+ * Hugging Face serves hundreds of models through Inference Providers, and users
+ * can type in any model ID listed at https://router.huggingface.co/v1/models
+ * (e.g. "meta-llama/Llama-3.1-8B-Instruct"). ChainForge prefixes those IDs so
+ * they map back to Hugging Face and never collide with other providers' names.
+ */
+export const HUGGINGFACE_PREFIX = "huggingface/";
+
+/** The model ID Hugging Face expects, without ChainForge's prefix. */
+export function stripHuggingFacePrefix(llm: LLM | string): string {
+  const name = llm.toString();
+  return name.startsWith(HUGGINGFACE_PREFIX)
+    ? name.substring(HUGGINGFACE_PREFIX.length)
+    : name;
+}
+
 export function getProvider(llm: LLM): LLMProvider | undefined {
   const llm_name = getEnumName(NativeLLM, llm.toString());
   if (llm_name?.startsWith("WebLLM")) return LLMProvider.WebLLM;
@@ -371,7 +389,11 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
   else if (llm_name?.startsWith("OpenAI")) return LLMProvider.OpenAI;
   else if (llm_name?.startsWith("Azure")) return LLMProvider.Azure_OpenAI;
   else if (llm_name?.startsWith("GEMINI")) return LLMProvider.Google;
-  else if (llm_name?.startsWith("HF_")) return LLMProvider.HuggingFace;
+  else if (
+    llm.toString().startsWith(HUGGINGFACE_PREFIX) ||
+    llm_name?.startsWith("HF_")
+  )
+    return LLMProvider.HuggingFace;
   else if (llm.toString().startsWith("claude")) return LLMProvider.Anthropic;
   else if (llm_name?.startsWith("Ollama")) return LLMProvider.Ollama;
   else if (llm_name?.startsWith("Bedrock")) return LLMProvider.Bedrock;

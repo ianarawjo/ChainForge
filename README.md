@@ -101,7 +101,7 @@ For detailed Docker documentation including architecture support, environment va
 - Anthropic
 - Google Gemini
 - DeepSeek
-- HuggingFace (Inference and Endpoints)
+- [HuggingFace](https://huggingface.co/docs/inference-providers) (Inference Providers and dedicated Endpoints)
 - Together.ai
 - [Ollama API](https://github.com/jmorganca/ollama) (locally-hosted models)
 - Microsoft Azure OpenAI Endpoints
