@@ -9,48 +9,68 @@ export enum NativeLLM {
   WebLLM_Qwen2_5_0_5B = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
   WebLLM_SmolLM2_1_7B = "SmolLM2-1.7B-Instruct-q4f16_1-MLC",
 
-  // OpenAI Chat
-  OpenAI_ChatGPT = "gpt-3.5-turbo",
-  OpenAI_ChatGPT_16k = "gpt-3.5-turbo-16k",
-  OpenAI_ChatGPT_16k_0613 = "gpt-3.5-turbo-16k-0613",
-  OpenAI_ChatGPT_0301 = "gpt-3.5-turbo-0301",
-  OpenAI_ChatGPT_0613 = "gpt-3.5-turbo-0613",
-  OpenAI_ChatGPT_1106 = "gpt-3.5-turbo-1106",
-  OpenAI_ChatGPT_0125 = "gpt-3.5-turbo-0125",
-  OpenAI_GPT4 = "gpt-4",
-  OpenAI_GPT4_0314 = "gpt-4-0314",
-  OpenAI_GPT4_0613 = "gpt-4-0613",
-  OpenAI_GPT4_1106_Prev = "gpt-4-1106-preview",
-  OpenAI_GPT4_0125_Prev = "gpt-4-0125-preview",
-  OpenAI_GPT4_Turbo_Prev = "gpt-4-turbo-preview",
-  OpenAI_GPT4_Turbo = "gpt-4-turbo",
-  OpenAI_GPT4_Turbo_0409 = "gpt-4-turbo-2024-04-09",
-  OpenAI_GPT4_O = "gpt-4o",
-  OpenAI_GPT4_O_Mini = "gpt-4o-mini",
-  OpenAI_GPT4_O_0513 = "gpt-4o-2024-05-13",
-  OpenAI_GPT4_O_0806 = "gpt-4o-2024-08-06",
-  OpenAO_ChatGPT4_O = "chatgpt-4o-latest",
-  OpenAI_GPT4_32k = "gpt-4-32k",
-  OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314",
-  OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613",
-  OpenAI_o1 = "o1",
-  OpenAI_o1_mini = "o1-mini",
-  OpenAI_o1_pro = "o1-pro",
-  OpenAI_o3_mini = "o3-mini",
-  OpenAI_GPT4_5_Prev = "gpt-4.5-preview",
+  // OpenAI Chat. Models OpenAI still serves, newest first.
+  // See https://developers.openai.com/api/docs/models
+  OpenAI_GPT6_Astra = "gpt-6-astra",
+  OpenAI_GPT5_6_Sol = "gpt-5.6-sol",
+  OpenAI_GPT5_6 = "gpt-5.6", // alias of gpt-5.6-sol
+  OpenAI_GPT5_6_Terra = "gpt-5.6-terra",
+  OpenAI_GPT5_6_Luna = "gpt-5.6-luna",
+  OpenAI_GPT5_6_Cyber = "gpt-5.6-cyber",
+  OpenAI_GPT5_5 = "gpt-5.5",
+  OpenAI_GPT5_5_Pro = "gpt-5.5-pro",
+  OpenAI_GPT5_4 = "gpt-5.4",
+  OpenAI_GPT5_4_mini = "gpt-5.4-mini",
+  OpenAI_GPT5_4_nano = "gpt-5.4-nano",
+  OpenAI_GPT5_4_Pro = "gpt-5.4-pro",
+  OpenAI_GPT5_2 = "gpt-5.2",
+  OpenAI_GPT5_1 = "gpt-5.1",
+  OpenAI_GPT5 = "gpt-5", // snapshot shuts down 2026-12-11
+  OpenAI_GPT5_mini = "gpt-5-mini", // snapshot shuts down 2026-12-11
+  OpenAI_GPT5_nano = "gpt-5-nano", // snapshot shuts down 2026-12-11
+  OpenAI_GPT5_pro = "gpt-5-pro", // snapshot shuts down 2026-12-11
   OpenAI_GPT4_1 = "gpt-4.1",
   OpenAI_GPT4_1_mini = "gpt-4.1-mini",
-  OpenAI_GPT4_1_nano = "gpt-4.1-nano",
-  OpenAI_o3 = "o3",
-  OpenAI_GPT5 = "gpt-5",
-  OpenAI_GPT5_mini = "gpt-5-mini",
-  OpenAI_GPT5_nano = "gpt-5-nano",
-  OpenAI_GPT5_Chat = "gpt-5-chat-latest",
+  OpenAI_GPT4_1_nano = "gpt-4.1-nano", // shuts down 2026-10-23
+  OpenAI_GPT4_O = "gpt-4o",
+  OpenAI_GPT4_O_Mini = "gpt-4o-mini",
+  OpenAI_GPT4_O_0513 = "gpt-4o-2024-05-13", // shuts down 2026-10-23
+  OpenAI_o4_mini = "o4-mini",
+  OpenAI_o3 = "o3", // snapshot shuts down 2026-12-11
+  OpenAI_o3_pro = "o3-pro", // snapshot shuts down 2026-12-11
+  OpenAI_o3_mini = "o3-mini", // shuts down 2026-10-23
+  OpenAI_o1 = "o1", // snapshot shuts down 2026-12-11
+  OpenAI_o1_pro = "o1-pro", // snapshot shuts down 2026-12-11
+  OpenAI_GPT4_Turbo = "gpt-4-turbo", // shuts down 2026-10-23
+  OpenAI_GPT4_Turbo_0409 = "gpt-4-turbo-2024-04-09", // shuts down 2026-10-23
+  OpenAI_GPT4 = "gpt-4", // alias of gpt-4-0613; shuts down 2026-10-23
+  OpenAI_GPT4_0613 = "gpt-4-0613", // shuts down 2026-10-23
+  OpenAI_GPT4_1106_Prev = "gpt-4-1106-preview", // shuts down 2026-10-23
+  OpenAI_ChatGPT = "gpt-3.5-turbo",
+  OpenAI_ChatGPT_0125 = "gpt-3.5-turbo-0125",
+  OpenAI_ChatGPT_1106 = "gpt-3.5-turbo-1106", // shuts down 2026-09-28
 
-  // OpenAI Text Completions (deprecated)
-  OpenAI_Davinci003 = "text-davinci-003",
-  OpenAI_Davinci002 = "text-davinci-002",
-  OpenAI_ChatGPT_Instruct = "gpt-3.5-turbo-instruct",
+  // OpenAI chat models that have shut down. Kept so old flows still load.
+  OpenAI_GPT5_Chat = "gpt-5-chat-latest", // shut down 2026-07-23
+  OpenAO_ChatGPT4_O = "chatgpt-4o-latest", // shut down 2026-02-17
+  OpenAI_GPT4_0125_Prev = "gpt-4-0125-preview", // shut down 2026-03-26
+  OpenAI_GPT4_Turbo_Prev = "gpt-4-turbo-preview", // shut down 2026-03-26
+  OpenAI_o1_mini = "o1-mini", // shut down 2025-10-27
+  OpenAI_GPT4_5_Prev = "gpt-4.5-preview", // shut down 2025-07-14
+  OpenAI_GPT4_32k = "gpt-4-32k", // shut down 2025-06-06
+  OpenAI_GPT4_32k_0314 = "gpt-4-32k-0314", // shut down 2025-06-06
+  OpenAI_GPT4_32k_0613 = "gpt-4-32k-0613", // shut down 2025-06-06
+  OpenAI_GPT4_0314 = "gpt-4-0314", // shut down 2024-06-13
+  OpenAI_GPT4_O_0806 = "gpt-4o-2024-08-06", // no longer listed by OpenAI
+  OpenAI_ChatGPT_16k = "gpt-3.5-turbo-16k", // shut down 2024-09-13
+  OpenAI_ChatGPT_16k_0613 = "gpt-3.5-turbo-16k-0613", // shut down 2024-09-13
+  OpenAI_ChatGPT_0301 = "gpt-3.5-turbo-0301", // shut down 2024-09-13
+  OpenAI_ChatGPT_0613 = "gpt-3.5-turbo-0613", // shut down 2024-09-13
+
+  // OpenAI Text Completions
+  OpenAI_ChatGPT_Instruct = "gpt-3.5-turbo-instruct", // shuts down 2026-09-28
+  OpenAI_Davinci003 = "text-davinci-003", // shut down 2024-01-04
+  OpenAI_Davinci002 = "text-davinci-002", // shut down 2024-01-04
 
   // OpenAI Image models
   OpenAI_GPT_Image_2_5_Flare = "gpt-image-2.5-flare",
@@ -65,19 +85,38 @@ export enum NativeLLM {
   // Azure OpenAI Endpoints
   Azure_OpenAI = "azure-openai",
 
-  // Anthropic
-  Claude_v3_opus_latest = "claude-3-opus-latest",
-  Claude_v3_opus = "claude-3-opus-20240229",
-  Claude_v3_sonnet = "claude-3-sonnet-20240229",
-  Claude_v3_5_sonnet_latest = "claude-3-5-sonnet-latest",
-  Claude_v3_5_sonnet = "claude-3-5-sonnet-20240620",
-  Claude_v3_5_haiku_latest = "claude-3-5-haiku-latest",
-  Claude_v3_7_sonnet_latest = "claude-3-7-sonnet-latest",
-  Claude_v3_7_sonnet_20250219 = "claude-3-7-sonnet-20250219",
-  Claude_v3_haiku = "claude-3-haiku-20240307",
-  Claude_v2_1 = "claude-2.1",
-  Claude_v2 = "claude-2",
-  Claude_v2_0 = "claude-2.0",
+  // Anthropic. Models Anthropic still serves, newest first.
+  // See https://platform.claude.com/docs/en/about-claude/models/overview
+  // NOTE: getProvider() routes anything starting with "claude" to Anthropic,
+  // so models released after this list still work when typed in by hand.
+  Claude_fable_5_1 = "claude-fable-5-1",
+  Claude_fable_5 = "claude-fable-5",
+  Claude_opus_5 = "claude-opus-5",
+  Claude_opus_4_8 = "claude-opus-4-8",
+  Claude_opus_4_7 = "claude-opus-4-7",
+  Claude_opus_4_6 = "claude-opus-4-6",
+  Claude_opus_4_5 = "claude-opus-4-5",
+  Claude_opus_4 = "claude-opus-4-0", // deprecated
+  Claude_sonnet_5 = "claude-sonnet-5",
+  Claude_sonnet_4_6 = "claude-sonnet-4-6",
+  Claude_sonnet_4_5 = "claude-sonnet-4-5",
+  Claude_sonnet_4 = "claude-sonnet-4-0", // deprecated
+  Claude_haiku_4_5 = "claude-haiku-4-5",
+
+  // Anthropic models that have been retired. Kept so old flows still load.
+  Claude_opus_4_1 = "claude-opus-4-1", // retired 2026-08-05
+  Claude_v3_haiku = "claude-3-haiku-20240307", // retired 2026-04-19
+  Claude_v3_7_sonnet_latest = "claude-3-7-sonnet-latest", // retired 2026-02-19
+  Claude_v3_7_sonnet_20250219 = "claude-3-7-sonnet-20250219", // retired 2026-02-19
+  Claude_v3_5_haiku_latest = "claude-3-5-haiku-latest", // retired 2026-02-19
+  Claude_v3_opus_latest = "claude-3-opus-latest", // retired 2026-01-05
+  Claude_v3_opus = "claude-3-opus-20240229", // retired 2026-01-05
+  Claude_v3_5_sonnet_latest = "claude-3-5-sonnet-latest", // retired 2025-10-28
+  Claude_v3_5_sonnet = "claude-3-5-sonnet-20240620", // retired 2025-10-28
+  Claude_v3_sonnet = "claude-3-sonnet-20240229", // retired 2025-07-21
+  Claude_v2_1 = "claude-2.1", // retired 2025-07-21
+  Claude_v2 = "claude-2", // retired 2025-07-21
+  Claude_v2_0 = "claude-2.0", // retired 2025-07-21
   Claude_1_instant = "claude-instant-1",
   Claude_1_instant_1 = "claude-instant-1.1",
   Claude_1_instant_2 = "claude-instant-1.2",
@@ -87,21 +126,28 @@ export enum NativeLLM {
   Claude_v1_3 = "claude-v1.3",
   Claude_v1_instant = "claude-instant-v1",
 
-  // Google models
+  // Google Gemini 3 models
+  // See https://ai.google.dev/gemini-api/docs/models
+  GEMINI_v3_8_flash = "gemini-3.8-flash",
+  GEMINI_v3_7_flash = "gemini-3.7-flash",
+  GEMINI_v3_6_flash = "gemini-3.6-flash",
+  GEMINI_v3_5_flash = "gemini-3.5-flash",
+  GEMINI_v3_5_flash_lite = "gemini-3.5-flash-lite",
+  GEMINI_v3_1_flash_lite = "gemini-3.1-flash-lite",
+  GEMINI_v3_1_pro_preview = "gemini-3.1-pro-preview",
+  GEMINI_v3_flash_preview = "gemini-3-flash-preview",
+
+  // Google Gemini 2.5 models
   GEMINI_v2_5_pro = "gemini-2.5-pro",
   GEMINI_v2_5_flash = "gemini-2.5-flash",
   GEMINI_v2_5_flash_lite = "gemini-2.5-flash-lite",
-  GEMINI_v2_flash = "gemini-2.0-flash",
-  GEMINI_v2_flash_lite = "gemini-2.0-flash-lite",
-  GEMINI_v1_5_flash = "gemini-1.5-flash",
-  GEMINI_v1_5_flash_8B = "gemini-1.5-flash-8b",
-  GEMINI_v1_5_pro = "gemini-1.5-pro",
 
-  // Google Gemini 3 models
-  GEMINI_v3_8_flash = "gemini-3.8-flash",
-  GEMINI_v3_6_flash = "gemini-3.6-flash",
-  GEMINI_v3_5_flash_lite = "gemini-3.5-flash-lite",
-  GEMINI_v3_1_pro_preview = "gemini-3.1-pro-preview",
+  // Google models that have been shut down. Kept so old flows still load.
+  GEMINI_v2_flash = "gemini-2.0-flash", // shut down 2026-06-01
+  GEMINI_v2_flash_lite = "gemini-2.0-flash-lite", // shut down 2026-06-01
+  GEMINI_v1_5_flash = "gemini-1.5-flash", // shut down
+  GEMINI_v1_5_flash_8B = "gemini-1.5-flash-8b", // shut down
+  GEMINI_v1_5_pro = "gemini-1.5-pro", // shut down
 
   // Google image generation models
   GEMINI_v3_1_flash_image = "gemini-3.1-flash-image",
