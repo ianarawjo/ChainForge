@@ -225,9 +225,12 @@ const TemplateHighlightTextarea = forwardRef<
             <span key={i}>{seg.text}</span>
           ),
         )}
-        {/* A trailing newline is not rendered by the browser, so the backdrop
-            would be one line short of the textarea while scrolled to the end. */}
-        {text.endsWith("\n") ? "\n " : null}
+        {/* A textarea gives a trailing newline its own empty line; a pre-wrap
+            div does not, and would come up one line short. A single space is
+            enough to force that last line box -- adding a newline as well
+            makes the backdrop one line too tall instead, which is what this
+            used to do. */}
+        {text.endsWith("\n") ? " " : null}
       </div>
       <Textarea
         {...rest}
