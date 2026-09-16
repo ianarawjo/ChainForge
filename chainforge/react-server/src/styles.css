@@ -2362,12 +2362,24 @@ html[data-mantine-color-scheme="dark"] .ragchat-diff-removed {
   border-color: transparent;
 }
 .tpl-highlight-var {
-  /* background-color is set inline, from the same Mantine theme call the
-     handle badges use. See TemplateHighlightTextarea.tsx. */
+  /* --tpl-var-bg is set per-mark from the theme palette; see
+     TemplateHighlightTextarea.tsx. */
+  background-color: var(--tpl-var-bg);
   color: transparent;
   border-radius: 4px;
   /* Horizontal padding would shift the backdrop's glyphs out from under the
      textarea's own. Vertical padding on an inline box paints outside the line
      box without affecting layout, so the band can be taller for free. */
   padding: 2px 0;
+}
+
+/* The chat turn's prompt bubble is a saturated blue with white text, so an
+   alpha tint of the indigo used elsewhere lands within a few percent of the
+   bubble's own colour and disappears. Lightening it instead would drop the
+   white text to about 3:1; darkening lifts it to about 7.7:1, so the
+   highlight reads and the text gets easier rather than harder. The
+   indigo/orange split is lost here, but the handle badges below still carry
+   it. */
+.chat-bubble-prompt .tpl-highlight-var {
+  background-color: rgba(0, 0, 0, 0.3);
 }

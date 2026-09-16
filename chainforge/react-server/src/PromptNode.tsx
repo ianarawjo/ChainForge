@@ -91,7 +91,9 @@ import {
 import { MediaLookup, StringLookup } from "./backend/cache";
 import { union } from "./backend/setUtils";
 import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
-import TemplateHighlightTextarea from "./TemplateHighlightTextarea";
+import TemplateHighlightTextarea, {
+  setTemplateTextareaValue,
+} from "./TemplateHighlightTextarea";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -1449,8 +1451,7 @@ Soft failing by replacing undefined with empty strings.`,
 
       if (textAreaRef.current) {
         // We have to force an update here since idxPromptVariantShown might've not changed
-        // @ts-expect-error Mantine has a 'value' property on Textareas, but TypeScript doesn't know this
-        textAreaRef.current.value = prompts[newIdx];
+        setTemplateTextareaValue(textAreaRef.current, prompts[newIdx]);
         // resizeTextarea();
       }
 
@@ -1473,8 +1474,10 @@ Soft failing by replacing undefined with empty strings.`,
   // Whenever idx of prompt variant changes, we need to refresh the Textarea:
   useEffect(() => {
     if (textAreaRef.current && Array.isArray(promptText)) {
-      // @ts-expect-error Mantine has a 'value' property on Textareas, but TypeScript doesn't know this
-      textAreaRef.current.value = promptText[idxPromptVariantShown];
+      setTemplateTextareaValue(
+        textAreaRef.current,
+        promptText[idxPromptVariantShown],
+      );
       // resizeTextarea();
     }
   }, [idxPromptVariantShown]);
@@ -1680,7 +1683,6 @@ Soft failing by replacing undefined with empty strings.`,
               "(Past conversation)",
               <TemplateHighlightTextarea
                 key={0}
-                syncKey={idxPromptVariantShown}
                 className="prompt-field-fixed nodrag nowheel"
                 minRows={4}
                 defaultValue={
@@ -1706,7 +1708,6 @@ Soft failing by replacing undefined with empty strings.`,
       ) : (
         <TemplateHighlightTextarea
           ref={setRef}
-          syncKey={idxPromptVariantShown}
           // autosize
           className="prompt-field-fixed nodrag nowheel"
           minRows={5}

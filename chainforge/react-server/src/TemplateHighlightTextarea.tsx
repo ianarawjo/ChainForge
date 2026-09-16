@@ -1,4 +1,5 @@
 import React, {
+  CSSProperties,
   forwardRef,
   useCallback,
   useEffect,
@@ -62,6 +63,26 @@ export function splitTemplateVars(template: string): TemplateSegment[] {
   return segments;
 }
 
+/**
+ * Assigning `.value` to a textarea does not fire an `input` event, so a
+ * highlighted textarea written to from outside React would keep showing the
+ * previous text's highlights. Use this instead of `el.value = ...`.
+ *
+ * A private event rather than a synthetic `input`: an `input` event would also
+ * run React's onChange, and in PromptNode that marks the node's results stale,
+ * which merely switching prompt variants should not do.
+ */
+export const TEMPLATE_TEXTAREA_SYNC_EVENT = "chainforge:template-textarea-sync";
+
+export function setTemplateTextareaValue(
+  el: HTMLTextAreaElement | HTMLDivElement | null | undefined,
+  value: string,
+) {
+  if (!el || !("value" in el)) return;
+  (el as HTMLTextAreaElement).value = value;
+  el.dispatchEvent(new Event(TEMPLATE_TEXTAREA_SYNC_EVENT));
+}
+
 /* Properties that must match for the backdrop's text to land exactly under the
    textarea's own. Copied off the live element rather than duplicated in CSS,
    so this cannot drift out of step with Mantine's input styles. */
@@ -87,11 +108,7 @@ const MIRRORED_PROPS = [
   "tabSize",
 ] as const;
 
-export interface TemplateHighlightTextareaProps extends TextareaProps {
-  /** Change this to re-read the textarea after the value is set imperatively
-      (PromptNode assigns .value directly when the variant changes). */
-  syncKey?: string | number;
-}
+export type TemplateHighlightTextareaProps = TextareaProps;
 
 /**
  * A Textarea that tints {template_variables} behind the text.
@@ -105,7 +122,7 @@ const TemplateHighlightTextarea = forwardRef<
   HTMLTextAreaElement,
   TemplateHighlightTextareaProps
 >(function TemplateHighlightTextarea(props, ref) {
-  const { className, syncKey, onChange, styles, ...rest } = props;
+  const { className, onChange, styles, ...rest } = props;
   const theme = useMantineTheme();
   const areaRef = useRef<HTMLTextAreaElement | null>(null);
   const backdropRef = useRef<HTMLDivElement | null>(null);
@@ -161,7 +178,10 @@ const TemplateHighlightTextarea = forwardRef<
     backdrop.scrollLeft = area.scrollLeft;
   }, []);
 
-  // Typing. A native listener also catches programmatic input events.
+  // Typing, plus any write announced with setTemplateTextareaValue. Reading
+  // the value off the event's own target means the backdrop cannot go stale:
+  // it does not depend on a prop changing, or on this effect running after
+  // whichever effect did the writing.
   useEffect(() => {
     const area = areaRef.current;
     if (!area) return;
@@ -170,13 +190,12 @@ const TemplateHighlightTextarea = forwardRef<
       syncScroll();
     };
     area.addEventListener("input", onInput);
-    return () => area.removeEventListener("input", onInput);
+    area.addEventListener(TEMPLATE_TEXTAREA_SYNC_EVENT, onInput);
+    return () => {
+      area.removeEventListener("input", onInput);
+      area.removeEventListener(TEMPLATE_TEXTAREA_SYNC_EVENT, onInput);
+    };
   }, [syncScroll]);
-
-  // The value can also be assigned straight to the DOM node (prompt variants).
-  useEffect(() => {
-    if (areaRef.current) setText(areaRef.current.value);
-  }, [syncKey]);
 
   const segments = useMemo(() => splitTemplateVars(text), [text]);
 
@@ -207,7 +226,14 @@ const TemplateHighlightTextarea = forwardRef<
             <mark
               className="tpl-highlight-var"
               key={i}
-              style={{ backgroundColor: varBackground(seg.name) }}
+              /* A custom property, not background-color: the colour depends on
+                 the variable so it has to come from here, but leaving the
+                 background-color declaration itself in CSS means a surface
+                 that needs a different treatment can still override it with an
+                 ordinary rule, instead of losing to an inline style. */
+              style={
+                { "--tpl-var-bg": varBackground(seg.name) } as CSSProperties
+              }
             >
               {seg.text}
             </mark>
