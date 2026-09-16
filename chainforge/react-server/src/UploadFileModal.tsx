@@ -251,7 +251,7 @@ const UploadFileModal = forwardRef<UploadFileModalRef, UploadFileModalProps>(
               size={24}
               style={{ position: "relative", marginRight: "8px", top: "4px" }}
             />
-            <span style={{ fontSize: "14pt" }}>{title}</span>
+            <span style={{ fontSize: "19px" }}>{title}</span>
           </div>
         }
       >

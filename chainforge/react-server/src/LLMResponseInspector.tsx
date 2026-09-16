@@ -1577,7 +1577,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           setShowLoadingSpinner(true);
           setViewFormat(val ?? "hierarchy");
         }}
-        styles={{ tabLabel: { fontSize: wideFormat ? "12pt" : "9pt" } }}
+        styles={{ tabLabel: { fontSize: wideFormat ? "16px" : "12px" } }}
       >
         <Tabs.List>
           <Tabs.Tab value="hierarchy">

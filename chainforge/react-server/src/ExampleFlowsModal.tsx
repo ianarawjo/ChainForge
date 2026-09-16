@@ -417,7 +417,7 @@ const ExampleFlowsModal = forwardRef<
             size={24}
             style={{ position: "relative", marginRight: "8px", top: "4px" }}
           />
-          <span style={{ fontSize: "14pt" }}>Example Flows</span>
+          <span style={{ fontSize: "19px" }}>Example Flows</span>
         </div>
       }
       closeOnClickOutside={true}

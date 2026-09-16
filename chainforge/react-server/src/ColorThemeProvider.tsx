@@ -63,7 +63,15 @@ export default function ColorThemeProvider({
       <MantineProvider
         withGlobalStyles
         withNormalizeCSS
-        theme={{ colorScheme }}
+        theme={{
+          colorScheme,
+          // Mantine otherwise uses its own stack, which diverges from the
+          // app's. Sizes stay at Mantine's defaults (12/14/16/18/20px), which
+          // already line up with --fs-sm / --fs-lg / --fs-xl.
+          fontFamily: "var(--font-ui)",
+          fontFamilyMonospace: "var(--font-mono)",
+          headings: { fontFamily: "var(--font-ui)" },
+        }}
       >
         {children}
       </MantineProvider>

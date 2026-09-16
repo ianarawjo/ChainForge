@@ -359,7 +359,7 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
         mt="-6px"
       />
       {!(splitOnFormat?.length <= 2) ? (
-        <Text color="gray" size="8pt" mt="xs" maw="150px">
+        <Text color="gray" size="11px" mt="xs" maw="150px">
           All other parts of the input text will be ignored.
         </Text>
       ) : (
