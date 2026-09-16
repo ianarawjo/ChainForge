@@ -21,10 +21,6 @@ jest.mock("../cache", () => ({
   MediaLookup: { get: async () => undefined },
 }));
 jest.mock("@google/genai", () => ({ GoogleGenAI: jest.fn() }));
-jest.mock("@azure/openai", () => ({
-  AzureKeyCredential: jest.fn(),
-  OpenAIClient: jest.fn(),
-}));
 jest.mock("../pyodide/exec-py", () => ({ execPy: jest.fn() }));
 jest.mock("../../store", () => ({
   __esModule: true,
