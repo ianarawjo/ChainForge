@@ -11,6 +11,7 @@ import {
   OPAQUE_SOURCE_TYPES,
   SCORING_SOURCE_TYPES,
   summarizeScores,
+  UNSPECIFIED_SCORED_PREVIEW,
 } from "./edgePreview";
 
 export type {
@@ -46,10 +47,13 @@ export function useEdgePreview(
     if (sourceData === undefined || !sourceHandle) return null;
 
     // Some nodes never hand anything to output(): their results go to the
-    // response cache, and consumers read them by node id (grabResponses).
-    // There is nothing here to preview, so leave those edges plain rather
-    // than let the card claim they are empty.
-    if (OPAQUE_SOURCE_TYPES.has(sourceType ?? "")) return null;
+    // response cache, and consumers read them by node id (grabResponses). We
+    // still know scores travel along this edge, so mark it as scored with an
+    // unknown count -- the card fills in the number when it reads the cache.
+    // Guessing a count here instead would go stale the moment the evaluator
+    // re-runs, since it never touches node data for us to re-render on.
+    if (OPAQUE_SOURCE_TYPES.has(sourceType ?? ""))
+      return UNSPECIFIED_SCORED_PREVIEW;
 
     // A prompt node's source handle is named "prompt", and the node also keeps
     // its own template text on `data.prompt` — so output()'s generic

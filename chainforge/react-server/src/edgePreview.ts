@@ -43,6 +43,9 @@ export interface EdgePreview {
   sampled: boolean;
   /** Whether these responses carry evaluation scores (see useEdgeScores). */
   scored: boolean;
+  /** True when the source keeps its results out of output() entirely, so the
+   * count is only knowable by reading the cache when the card opens. */
+  countUnknown: boolean;
   /** The name of the node the data comes from. */
   sourceName?: string;
 }
@@ -78,6 +81,16 @@ export const EMPTY_PREVIEW: EdgePreview = {
   llms: [],
   sampled: false,
   scored: false,
+  countUnknown: false,
+};
+
+/** For a source whose results never pass through output(): we know scores flow
+ * along this edge, but not how many until the card reads the cache. */
+export const UNSPECIFIED_SCORED_PREVIEW: EdgePreview = {
+  ...EMPTY_PREVIEW,
+  kind: "response",
+  scored: true,
+  countUnknown: true,
 };
 
 function truncate(s: string | undefined): string | undefined {
@@ -211,6 +224,7 @@ export function describeOutput(out: unknown): EdgePreview {
     ),
     sampled: n < values.length,
     scored: false,
+    countUnknown: false,
   };
 }
 
@@ -223,6 +237,8 @@ export function describeOutput(out: unknown): EdgePreview {
 export interface EdgeScoreSummary {
   /** How many individual scores were found. */
   n: number;
+  /** How many cached responses they came from. */
+  responses: number;
   /** Compact tallies, e.g. ["✓ 18", "✗ 6"] or ["min 41", "med 220"]. */
   parts: string[];
   /** For multi-criteria (KeyValue) results, the criteria names. */
@@ -272,9 +288,12 @@ export function summarizeScores(nodeId: string): EdgeScoreSummary | null {
     if (item !== null && typeof item === "object")
       Object.keys(item).forEach((k) => criteriaNames.add(k));
   });
+  const responses = (cached as LLMResponse[]).length;
+
   if (criteriaNames.size > 0)
     return {
       n: flat.length,
+      responses,
       parts: [],
       criteria: Array.from(criteriaNames),
     };
@@ -284,6 +303,7 @@ export function summarizeScores(nodeId: string): EdgeScoreSummary | null {
     const passed = booleans.filter(Boolean).length;
     return {
       n: flat.length,
+      responses,
       parts: [`✓ ${passed}`, `✗ ${flat.length - passed}`],
     };
   }
@@ -295,6 +315,7 @@ export function summarizeScores(nodeId: string): EdgeScoreSummary | null {
     const sorted = [...numbers].sort((a, b) => a - b);
     return {
       n: flat.length,
+      responses,
       parts: [
         `min ${formatScoreNumber(sorted[0])}`,
         `med ${formatScoreNumber(medianOf(sorted))}`,
@@ -305,6 +326,7 @@ export function summarizeScores(nodeId: string): EdgeScoreSummary | null {
 
   return {
     n: flat.length,
+    responses,
     parts: topTallies(
       flat.map((i) => String(i)),
       3,

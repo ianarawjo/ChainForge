@@ -112,7 +112,10 @@ export const EdgePreviewBadge: React.FC<EdgePreviewBadgeProps> = ({
       }}
     >
       <Icon size={9} stroke={2.2} />
-      <span>{isEmpty ? "–" : formatCount(preview.count)}</span>
+      {/* No number when only the cache knows it; the card fills it in. */}
+      {!preview.countUnknown && (
+        <span>{isEmpty ? "–" : formatCount(preview.count)}</span>
+      )}
     </div>
   );
 };
@@ -219,7 +222,9 @@ export const EdgePreviewCard: React.FC<EdgePreviewCardProps> = ({
         <span style={{ fontSize: 12, fontWeight: 700, color }}>
           {preview.kind === "empty"
             ? "No data yet"
-            : `${formatCount(preview.count)} ${style.label}${preview.count === 1 ? "" : "s"}`}
+            : preview.countUnknown
+              ? "Scored responses"
+              : `${formatCount(preview.count)} ${style.label}${preview.count === 1 ? "" : "s"}`}
         </span>
         <span
           style={{
@@ -274,6 +279,14 @@ export const EdgePreviewCard: React.FC<EdgePreviewCardProps> = ({
   }, [preview, dark, muted, rule]);
 
   const body = useMemo(() => {
+    if (preview.countUnknown)
+      return (
+        <div style={{ padding: "8px 10px", fontSize: 10.5, color: muted }}>
+          This evaluator passes its results through the response cache, so the
+          scores below are all an edge can see. Open the inspector for the
+          responses themselves.
+        </div>
+      );
     if (preview.kind === "empty")
       return (
         <div style={{ padding: "10px", fontSize: 10.5, color: muted }}>
@@ -383,6 +396,9 @@ export const EdgePreviewCard: React.FC<EdgePreviewCardProps> = ({
       >
         <span style={{ fontSize: 9, color: muted }}>
           {formatCount(scores.n)} scored
+          {scores.responses > 0 && scores.responses !== scores.n
+            ? ` · ${formatCount(scores.responses)} responses`
+            : ""}
         </span>
         <span
           style={{

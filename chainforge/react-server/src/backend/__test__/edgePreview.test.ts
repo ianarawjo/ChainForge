@@ -200,7 +200,16 @@ describe("summarizeScores", () => {
 
   test("counts passes and failures for boolean scores", () => {
     seed([[true, false, true], [true]]);
-    expect(summarizeScores(NODE)).toEqual({ n: 4, parts: ["✓ 3", "✗ 1"] });
+    expect(summarizeScores(NODE)).toEqual({
+      n: 4,
+      responses: 2,
+      parts: ["✓ 3", "✗ 1"],
+    });
+  });
+
+  test("reports how many cached responses the scores came from", () => {
+    seed([[1], [2], [3]]);
+    expect(summarizeScores(NODE)?.responses).toBe(3);
   });
 
   test("reports min, median and max for numeric scores", () => {
@@ -237,6 +246,7 @@ describe("summarizeScores", () => {
     seed([[{ relevance: true, tone: false }], [{ relevance: true }]]);
     const scores = summarizeScores(NODE);
     expect(scores?.n).toBe(2);
+    expect(scores?.responses).toBe(2);
     expect(scores?.criteria).toEqual(["relevance", "tone"]);
   });
 
