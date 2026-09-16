@@ -31,11 +31,13 @@ import {
   LLMResponse,
 } from "./backend/typing";
 import {
+  HuggingFaceSettings,
   OpenRouterImageSettings,
   OpenRouterSettings,
   TogetherChatSettings,
 } from "./ModelSettingSchemas";
 import {
+  HUGGINGFACE_PREFIX,
   NativeLLM,
   OPENROUTER_IMAGE_PREFIX,
   OPENROUTER_PREFIX,
@@ -132,14 +134,14 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     group: "OpenRouter",
     emoji: "🔀",
     items: [
-      ...openRouterMenuItems(
+      ...prefixedMenuItems(
         OpenRouterSettings,
         OPENROUTER_PREFIX,
         "openrouter",
         "🔀",
         1.0,
       ),
-      ...openRouterMenuItems(
+      ...prefixedMenuItems(
         OpenRouterImageSettings,
         OPENROUTER_IMAGE_PREFIX,
         "openrouter-image",
@@ -384,22 +386,13 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
   {
     group: "HuggingFace",
     emoji: "🤗",
-    items: [
-      {
-        name: "Mistral.7B",
-        emoji: "🤗",
-        model: "mistralai/Mistral-7B-Instruct-v0.1",
-        base_model: "hf",
-        temp: 1.0,
-      },
-      {
-        name: "Falcon.7B",
-        emoji: "🤗",
-        model: "tiiuae/falcon-7b-instruct",
-        base_model: "hf",
-        temp: 1.0,
-      },
-    ],
+    items: prefixedMenuItems(
+      HuggingFaceSettings,
+      HUGGINGFACE_PREFIX,
+      "hf",
+      "🤗",
+      1.0,
+    ),
   },
   {
     name: "Azure OpenAI",
@@ -472,8 +465,12 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
   },
 ];
 
-/** Menu items for the models listed in an OpenRouter settings form, so the menu and the form stay in sync. */
-function openRouterMenuItems(
+/**
+ * Menu items for a provider whose models are typed in rather than enumerated:
+ * one per suggested model in its settings form, so the menu and the form stay
+ * in sync, each carrying the provider's prefix so ChainForge can route it back.
+ */
+function prefixedMenuItems(
   settings: typeof OpenRouterSettings,
   prefix: string,
   base_model: string,

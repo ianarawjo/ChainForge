@@ -1658,8 +1658,15 @@ const AzureOpenAISettings: ModelSettingsDict = {
   postprocessors: ChatGPTSettings.postprocessors,
 };
 
-const HuggingFaceTextInferenceSettings: ModelSettingsDict = {
-  fullName: "HuggingFace-hosted text generation models",
+/**
+ * Hugging Face Inference Providers, which replaced the old serverless Inference
+ * API. It is an OpenAI-shaped chat endpoint in front of a pool of providers
+ * (Together, Groq, Cerebras, DeepInfra, ...), so the settings below are the
+ * OpenAI ones rather than the old text-generation task's.
+ * See https://huggingface.co/docs/inference-providers
+ */
+export const HuggingFaceSettings: ModelSettingsDict = {
+  fullName: "Hugging Face",
   schema: {
     type: "object",
     required: ["shortname"],
@@ -1669,43 +1676,47 @@ const HuggingFaceTextInferenceSettings: ModelSettingsDict = {
         title: "Nickname",
         description:
           "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "Falcon.7B",
+        default: "HF",
       },
       model: {
         type: "string",
         title: "Model",
         description:
-          "Select a suggested HuggingFace-hosted model to query using the Inference API. For more details, check out https://huggingface.co/inference-api",
+          "The model to query. Pick a popular one, or type any model ID served by Inference Providers -- the full list is at https://router.huggingface.co/v1/models. Every Hugging Face account gets a small monthly credit to spend here, so the cheaper models go furthest.",
+        // Cheap, widely-served open-weights models, so a workshop's free monthly
+        // credit stretches. Blended $/1M at the time of writing in the comments.
         enum: [
-          "mistralai/Mistral-7B-Instruct-v0.1",
-          "HuggingFaceH4/zephyr-7b-beta",
-          "tiiuae/falcon-7b-instruct",
-          "microsoft/DialoGPT-large",
-          "bigscience/bloom-560m",
-          "gpt2",
-          "bigcode/santacoder",
-          "bigcode/starcoder",
-          "Other (HuggingFace)",
+          "meta-llama/Llama-3.1-8B-Instruct", // $0.07
+          "Qwen/Qwen3-4B-Instruct-2507", // $0.04, 262K context
+          "openai/gpt-oss-20b", // $0.17
+          "openai/gpt-oss-120b", // $0.21, served by 11 providers
+          "google/gemma-3-4b-it", // $0.15, takes image input
+          "deepseek-ai/DeepSeek-R1-Distill-Llama-8B", // $0.10, reasoning
         ],
-        default: "tiiuae/falcon-7b-instruct",
+        default: "meta-llama/Llama-3.1-8B-Instruct",
         shortname_map: {
-          "mistralai/Mistral-7B-Instruct-v0.1": "Mistral-7B",
-          "HuggingFaceH4/zephyr-7b-beta": "Zephyr-7B",
-          "tiiuae/falcon-7b-instruct": "Falcon-7B",
-          "microsoft/DialoGPT-large": "DialoGPT",
-          "bigscience/bloom-560m": "Bloom560M",
-          gpt2: "GPT-2",
-          "bigcode/santacoder": "santacoder",
-          "bigcode/starcoder": "starcoder",
+          "meta-llama/Llama-3.1-8B-Instruct": "Llama 3.1 8B",
+          "Qwen/Qwen3-4B-Instruct-2507": "Qwen3 4B",
+          "openai/gpt-oss-20b": "gpt-oss-20b",
+          "openai/gpt-oss-120b": "gpt-oss-120b",
+          "google/gemma-3-4b-it": "Gemma 3 4B",
+          "deepseek-ai/DeepSeek-R1-Distill-Llama-8B": "R1 Distill 8B",
         },
       },
-      model_type: {
+      provider_policy: {
         type: "string",
-        title: "Model Type (Text or Chat)",
+        title: "provider",
         description:
-          "Select the type of model you are querying. You must selected 'chat' if you want to pass conversation history in Chat Turn nodes.",
-        enum: ["text", "chat"],
-        default: "text",
+          "Which of the providers serving this model to route to. 'cheapest' bills the least per token, which is what makes a free monthly credit last; 'fastest' is Hugging Face's own default; 'preferred' follows the order set in your Hugging Face Inference Providers settings. You can also name a provider directly (e.g. groq, together, cerebras).",
+        default: "cheapest",
+      },
+      system_msg: {
+        type: "string",
+        title: "system_msg",
+        description:
+          "A system message to gently instruct the model. Leave blank to send none.",
+        default: "You are a helpful assistant.",
+        allow_empty_str: true,
       },
       temperature: {
         type: "number",
@@ -1713,115 +1724,115 @@ const HuggingFaceTextInferenceSettings: ModelSettingsDict = {
         description: "Controls the 'creativity' or randomness of the response.",
         default: 1.0,
         minimum: 0,
-        maximum: 5.0,
+        maximum: 2.0,
         multipleOf: 0.01,
       },
-      num_continuations: {
+      max_tokens: {
         type: "integer",
-        title: "Number of times to continue generation (ChainForge-specific)",
+        title: "max_tokens",
         description:
-          "The number of times to feed the model response back into the model, to continue generating text past the 250 token limit per API call. Only useful for text completions models like gpt2. Set to 0 to ignore.",
-        default: 0,
-        minimum: 0,
-        maximum: 6,
-      },
-      top_k: {
-        type: "integer",
-        title: "top_k",
-        description:
-          "Sets the maximum number of tokens to sample from on each step. Set to -1 to remain unspecified.",
-        minimum: -1,
-        default: -1,
+          "The maximum number of tokens to generate. Leave blank for the provider's default.",
+        default: 512,
       },
       top_p: {
         type: "number",
         title: "top_p",
         description:
-          "Sets the maximum cumulative probability of tokens to sample from (from 0 to 1.0). Set to -1 to remain unspecified.",
+          "Sets the maximum cumulative probability of tokens to sample from (0 to 1.0). Set to -1 to leave unspecified.",
         default: -1,
         minimum: -1,
         maximum: 1,
         multipleOf: 0.001,
       },
-      repetition_penalty: {
+      frequency_penalty: {
         type: "number",
-        title: "repetition_penalty",
+        title: "frequency_penalty",
         description:
-          "The more a token is used within generation the more it is penalized to not be picked in successive generation passes. Set to -1 to remain unspecified.",
-        minimum: -1,
-        default: -1,
-        maximum: 100,
+          "Penalizes tokens by how often they have appeared so far. Not every provider supports it.",
+        default: 0,
+        minimum: -2,
+        maximum: 2,
         multipleOf: 0.01,
       },
-      max_new_tokens: {
-        type: "integer",
-        title: "max_new_tokens",
+      presence_penalty: {
+        type: "number",
+        title: "presence_penalty",
         description:
-          "The amount of new tokens to be generated. Free HF models only support up to 250 tokens. Set to -1 to remain unspecified.",
-        default: 250,
-        minimum: -1,
-        maximum: 250,
+          "Penalizes tokens that have appeared at all. Not every provider supports it.",
+        default: 0,
+        minimum: -2,
+        maximum: 2,
+        multipleOf: 0.01,
       },
-      do_sample: {
-        type: "boolean",
-        title: "do_sample",
+      stop: {
+        type: "string",
+        title: "stop",
         description:
-          "Whether or not to use sampling. Default is True; uses greedy decoding otherwise.",
-        enum: [true, false],
-        default: true,
+          'Sequences where the model will stop generating. Enclose each in double-quotes "" and separate them with whitespace.',
+        default: "",
       },
-      use_cache: {
-        type: "boolean",
-        title: "use_cache",
+      custom_endpoint: {
+        type: "string",
+        title: "Dedicated Inference Endpoint URL",
         description:
-          "Whether or not to fetch from HF's cache. There is a cache layer on the inference API to speedup requests HF has already seen. Most models can use those results as is as models are deterministic (meaning the results will be the same anyway). However if you use a non-deterministic model, you can set this parameter to prevent the caching mechanism from being used resulting in a real new query.",
-        enum: [true, false],
-        default: false,
+          "Leave blank to go through Inference Providers. To query your own dedicated Inference Endpoint instead, paste its URL here; ChainForge posts the same OpenAI-shaped request to it, with no provider suffix. Set Model above to the model ID the endpoint was deployed with, which newer endpoints check.",
+        default: "",
       },
     },
   },
-
   uiSchema: {
     "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
     shortname: {
       "ui:autofocus": true,
     },
     model: {
-      "ui:help": "Defaults to Falcon.7B.",
+      "ui:help":
+        "Defaults to meta-llama/Llama-3.1-8B-Instruct. Any model on Inference Providers can be typed in.",
       "ui:widget": "datalist",
+    },
+    provider_policy: {
+      "ui:help": "Defaults to cheapest.",
+      "ui:widget": "datalist",
+      "ui:options": {
+        datalist: ["cheapest", "fastest", "preferred"],
+      },
+    },
+    system_msg: {
+      "ui:widget": "textarea",
+      "ui:help": "Defaults to 'You are a helpful assistant.'",
     },
     temperature: {
       "ui:help": "Defaults to 1.0.",
       "ui:widget": "range",
     },
-    top_k: {
-      "ui:help": "Defaults to unspecified (-1)",
+    max_tokens: {
+      "ui:help": "Defaults to 512.",
     },
     top_p: {
-      "ui:help": "Defaults to unspecified (-1)",
-      "ui:widget": "range",
+      "ui:help": "Defaults to -1 (unspecified).",
     },
-    repetition_penalty: {
-      "ui:help": "Defaults to unspecified (-1)",
-      "ui:widget": "range",
+    frequency_penalty: {
+      "ui:help": "Defaults to 0.",
     },
-    max_new_tokens: {
-      "ui:help": "Defaults to 250 (max)",
+    presence_penalty: {
+      "ui:help": "Defaults to 0.",
     },
-    num_continuations: {
-      "ui:widget": "range",
+    stop: {
+      "ui:help": "Defaults to no stop sequences.",
     },
-    do_sample: {
-      "ui:widget": "radio",
-    },
-    use_cache: {
-      "ui:widget": "radio",
-      "ui:help":
-        "Defaults to false in ChainForge. This differs from the HuggingFace docs, as CF's intended use case is evaluation, and for evaluation we want different responses each query.",
+    custom_endpoint: {
+      "ui:help": "Defaults to blank (use Inference Providers).",
     },
   },
-
-  postprocessors: {},
+  postprocessors: {
+    stop: (str) => {
+      if (typeof str !== "string") return str;
+      if (str.trim().length === 0) return [];
+      return str
+        .match(/"((?:[^"\\]|\\.)*)"/g)
+        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
+    },
+  },
 };
 
 const OllamaSettings: ModelSettingsDict = {
@@ -2954,7 +2965,7 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "gemini-2.5": Gemini25Settings,
   "gemini-image": GeminiImageSettings,
   "azure-openai": AzureOpenAISettings,
-  hf: HuggingFaceTextInferenceSettings,
+  hf: HuggingFaceSettings,
   ollama: OllamaSettings,
   "br.anthropic.claude": BedrockClaudeSettings,
   "br.ai21.j2": BedrockJurassic2Settings,
@@ -3024,7 +3035,7 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.Anthropic]: ClaudeSettings,
     [LLMProvider.Google]: Gemini25Settings,
     [LLMProvider.Azure_OpenAI]: AzureOpenAISettings,
-    [LLMProvider.HuggingFace]: HuggingFaceTextInferenceSettings,
+    [LLMProvider.HuggingFace]: HuggingFaceSettings,
     [LLMProvider.Ollama]: OllamaSettings,
     [LLMProvider.Together]: TogetherChatSettings,
     [LLMProvider.DeepSeek]: DeepSeekSettings,

@@ -12,6 +12,7 @@ import {
   isGeminiImageModel,
   isOpenAIImageModel,
   isOpenRouterImageModel,
+  stripHuggingFacePrefix,
   stripOpenRouterPrefix,
 } from "./models";
 import {
@@ -20,7 +21,6 @@ import {
   RawLLMResponseObject,
   ChatHistory,
   ChatMessage,
-  HuggingFaceChatHistory,
   GeminiChatContext,
   GeminiChatMessage,
   LLMResponse,
@@ -1917,6 +1917,19 @@ export async function call_gemini_image_gen(
   return [query, responses];
 }
 
+/** Hugging Face's OpenAI-compatible router for Inference Providers. */
+const HUGGINGFACE_ROUTER_URL = "https://router.huggingface.co/v1";
+
+/**
+ * Calls a model through Hugging Face Inference Providers, which replaced the
+ * serverless Inference API (api-inference.huggingface.co, now gone). It is an
+ * OpenAI-shaped chat endpoint routing to whichever provider serves the model.
+ *
+ * A Hugging Face token is required -- anonymous calls are refused. Every
+ * account gets a small monthly inference credit, so `provider_policy`
+ * defaults to "cheapest" to make that credit go as far as possible.
+ * See https://huggingface.co/docs/inference-providers
+ */
 export async function call_huggingface(
   prompt: string,
   model: LLM,
@@ -1926,147 +1939,138 @@ export async function call_huggingface(
   should_cancel?: () => boolean,
   images?: string[],
 ): Promise<[Dict, Dict]> {
-  // Whether we should notice a given param in 'params'
-  const param_exists = (p: any) =>
-    p !== undefined &&
-    !(
-      (typeof p === "number" && p < 0) ||
-      (typeof p === "string" && p.trim().length === 0)
-    );
-  const set_param_if_exists = (name: string, query: Dict) => {
-    if (!params || params.size === 0) return;
-    const p = params[name];
-    const exists = param_exists(p);
-    if (exists) {
-      // Set the param on the query dict
-      query[name] = p;
-    }
-  };
+  const settings: Dict = { ...params };
+  strip_empty_chat_params(settings);
 
-  let num_continuations = 0;
-  if (
-    params?.num_continuations !== undefined &&
-    typeof params.num_continuations === "number"
+  const chat_history: ChatHistory | undefined = settings.chat_history;
+  const system_msg: string | undefined = settings.system_msg;
+  // "custom_model" is what flows saved before Inference Providers used, for
+  // both a typed-in model name and a dedicated endpoint's URL.
+  const legacy_custom: string | undefined = settings.custom_model;
+  const legacy_is_url =
+    !is_blank_setting(legacy_custom) &&
+    (legacy_custom as string).trim().startsWith("https:");
+  const custom_endpoint: string | undefined = is_blank_setting(
+    settings.custom_endpoint,
   )
-    num_continuations = params.num_continuations;
+    ? legacy_is_url
+      ? legacy_custom
+      : undefined
+    : settings.custom_endpoint;
+  // The provider to route to, appended to the model ID as HF expects. A model
+  // typed in with its own suffix (e.g. "...:groq") keeps it.
+  const provider_policy: string | undefined = settings.provider_policy;
+  delete settings.chat_history;
+  delete settings.system_msg;
+  delete settings.custom_endpoint;
+  delete settings.provider_policy;
 
-  const query: Dict = {
-    temperature,
-  };
-  set_param_if_exists("top_k", query);
-  set_param_if_exists("top_p", query);
-  set_param_if_exists("repetition_penalty", query);
+  // Settings from before Inference Providers, which the chat endpoint doesn't take:
+  const legacy_max_tokens = settings.max_new_tokens;
+  if (settings.max_tokens === undefined && !is_blank_setting(legacy_max_tokens))
+    settings.max_tokens = legacy_max_tokens;
+  for (const key of [
+    "max_new_tokens",
+    "model_type",
+    "num_continuations",
+    "top_k",
+    "repetition_penalty",
+    "do_sample",
+    "use_cache",
+    "custom_model",
+  ])
+    delete settings[key];
 
-  const options = {
-    use_cache: false, // we want it generating fresh each time
-  };
-  set_param_if_exists("use_cache", options);
+  for (const [key, value] of Object.entries(settings))
+    if (is_blank_setting(value)) delete settings[key];
 
-  // Carry over chat history if (a) we're using a chat model and (b) if it exists, converting to HF format.
-  // :: See https://huggingface.co/docs/api-inference/detailed_parameters#conversational-task
-  const model_type: string = params?.model_type;
-  const hf_chat_hist: HuggingFaceChatHistory = {
-    past_user_inputs: [],
-    generated_responses: [],
-  };
-  if (model_type === "chat") {
-    if (params?.chat_history !== undefined) {
-      for (const chat_msg of params.chat_history as ChatHistory) {
-        if (chat_msg.role === "user")
-          hf_chat_hist.past_user_inputs = hf_chat_hist.past_user_inputs.concat(
-            chat_msg.content,
-          );
-        else if (chat_msg.role === "assistant")
-          hf_chat_hist.generated_responses =
-            hf_chat_hist.generated_responses.concat(chat_msg.content);
-        // ignore system messages
-      }
-    }
-  } else {
-    // Text generation-only parameters:
-    set_param_if_exists("max_new_tokens", query);
-    set_param_if_exists("do_sample", options);
-    query.return_full_text = false; // we never want it to include the prompt in the response
-  }
+  let modelname = stripHuggingFacePrefix(model);
+  // An old flow's typed-in model name lived in custom_model, not the model ID.
+  if (!legacy_is_url && !is_blank_setting(legacy_custom))
+    modelname = (legacy_custom as string).trim();
+  if (!is_blank_setting(provider_policy) && !modelname.includes(":"))
+    modelname = `${modelname}:${(provider_policy as string).trim()}`;
 
-  const using_custom_model_endpoint: boolean = param_exists(
-    params?.custom_model,
-  );
+  // A dedicated Inference Endpoint is queried directly, at its own URL; it
+  // speaks the same OpenAI-shaped API, so only the base URL differs.
+  const using_custom_endpoint = !is_blank_setting(custom_endpoint);
+  const base_url = using_custom_endpoint
+    ? (custom_endpoint as string).trim().replace(/\/+$/, "")
+    : HUGGINGFACE_ROUTER_URL;
+  const url = base_url.endsWith("/chat/completions")
+    ? base_url
+    : `${base_url}/chat/completions`;
+
+  if (!HUGGINGFACE_API_KEY && !using_custom_endpoint)
+    throw new Error(
+      "Could not find a HuggingFace API key. Inference Providers refuses anonymous requests, so you need a (free) Hugging Face token: create one at https://huggingface.co/settings/tokens with the 'Make calls to Inference Providers' permission, then set it in Settings.",
+    );
 
   const headers: Dict<string> = { "Content-Type": "application/json" };
-  // For HuggingFace, technically, the API keys are optional.
-  if (HUGGINGFACE_API_KEY !== undefined)
+  if (HUGGINGFACE_API_KEY)
     headers.Authorization = `Bearer ${HUGGINGFACE_API_KEY}`;
 
-  // Inference Endpoints for text completion models has the same call,
-  // except the endpoint is an entire URL. Detect this:
-  const url =
-    using_custom_model_endpoint && params?.custom_model.startsWith("https:")
-      ? params.custom_model
-      : `https://api-inference.huggingface.co/inference-endpoint/${
-          using_custom_model_endpoint ? params?.custom_model.trim() : model
-        }`;
+  // A dedicated endpoint serves one model, so it takes no provider suffix. It
+  // wants the model ID it was deployed with; "tgi" is the documented
+  // placeholder, and all an old flow that only set custom_model can offer.
+  const endpoint_model =
+    stripHuggingFacePrefix(model) === NativeLLM.HF_OTHER
+      ? "tgi"
+      : stripHuggingFacePrefix(model);
 
-  const responses: Array<Dict> = [];
+  const query: Dict = {
+    model: using_custom_endpoint ? endpoint_model : modelname,
+    temperature,
+    ...settings,
+  };
+  query.messages = await resolve_images_in_user_messages(
+    construct_chat_history(prompt, images, chat_history, system_msg),
+    "openai",
+  );
+
+  console.log(`Querying HuggingFace model '${modelname}' (n=${n})...`);
+
+  // Providers behind the router differ on whether they honour n, so ask once
+  // per response, as ChainForge does for other routed providers.
+  const responses: Dict[] = [];
   while (responses.length < n) {
-    const continued_response: Dict = { generated_text: "" };
-    let curr_cont = 0;
-    let curr_text = prompt;
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
-    while (curr_cont <= num_continuations) {
-      // Abort if user canceled the query operation
-      if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+    const response = await fetch(url, {
+      headers,
+      method: "POST",
+      body: JSON.stringify(query),
+    });
+    const result = await response.json().catch(() => undefined);
 
-      const inputs =
-        model_type === "chat"
-          ? {
-              text: curr_text,
-              past_user_inputs: hf_chat_hist.past_user_inputs,
-              generated_responses: hf_chat_hist.generated_responses,
-            }
-          : curr_text;
-
-      // Call HuggingFace inference API
-      const response = await fetch(url, {
-        headers,
-        method: "POST",
-        body: JSON.stringify({
-          inputs,
-          parameters: query,
-          options,
-        }),
-      });
-      const result = await response.json();
-
-      // HuggingFace sometimes gives us an error, for instance if a model is loading.
-      // It returns this as an 'error' key in the response:
-      if (result?.error !== undefined) throw new Error(result.error);
-      else if (
-        (model_type !== "chat" &&
-          (!Array.isArray(result) || result.length !== 1)) ||
-        (model_type === "chat" &&
-          (Array.isArray(result) ||
-            !result ||
-            result?.generated_text === undefined))
-      )
+    // Errors come back as a JSON body rather than a thrown exception.
+    if (!response.ok || result?.error !== undefined) {
+      const detail =
+        result?.error?.message ??
+        result?.error ??
+        `${response.status} ${response.statusText}`;
+      if (response.status === 401 || response.status === 403)
         throw new Error(
-          "Result of HuggingFace API call is in unexpected format:" +
-            JSON.stringify(result),
+          `Hugging Face refused the request (${detail}). Check that your token is set in Settings and has the 'Make calls to Inference Providers' permission.`,
         );
-
-      // Merge responses
-      const resp_text: string =
-        model_type === "chat"
-          ? result.generated_text
-          : result[0].generated_text;
-
-      continued_response.generated_text += resp_text;
-      curr_text += resp_text;
-      curr_cont += 1;
+      if (response.status === 402)
+        throw new Error(
+          `Hugging Face says this account is out of inference credits (${detail}). Free accounts get a small monthly credit; a cheaper model, or the 'cheapest' provider setting, makes it last longer.`,
+        );
+      throw new Error(
+        `HuggingFace API error querying '${modelname}': ${detail}`,
+      );
     }
 
-    // Continue querying
-    responses.push(continued_response);
+    const content = result?.choices?.[0]?.message?.content;
+    if (content === undefined)
+      throw new Error(
+        `HuggingFace returned no completion for '${modelname}'. Check that the model is served by Inference Providers -- the list is at ${HUGGINGFACE_ROUTER_URL}/models.`,
+      );
+
+    // Stored in the shape ChainForge has always stored HuggingFace responses
+    // in, so that runs cached before this change still display.
+    responses.push({ generated_text: content, raw: result });
   }
 
   return [query, responses];
@@ -2780,10 +2784,14 @@ function _extract_anthropic_text_responses(
 }
 
 /**
- * Extracts the text part of a HuggingFace text completion.
+ * Extracts the text part of a HuggingFace completion. Responses cached before
+ * the move to Inference Providers only have generated_text, so both the stored
+ * text and a raw OpenAI-shaped payload are accepted.
  */
 function _extract_huggingface_responses(response: Array<Dict>): Array<string> {
-  return response.map((r: Dict) => r.generated_text?.trim());
+  return response.map((r: Dict) =>
+    (r.generated_text ?? r.choices?.[0]?.message?.content ?? "").trim(),
+  );
 }
 
 /**
