@@ -27,7 +27,7 @@ import {
   ModelSettingsDict,
   LLMSpec,
 } from "./backend/typing";
-import { deepcopy, transformDict } from "./backend/utils";
+import { transformDict } from "./backend/utils";
 import useStore from "./store";
 
 const UI_SUBMIT_BUTTON_SPEC = {

@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Modal, Button, TextInput, Flex, Text } from "@mantine/core";
+import { Modal, Button, TextInput, Flex } from "@mantine/core";
 import { useForm } from "@mantine/form";
 
 export interface RequestClarificationModalProps {

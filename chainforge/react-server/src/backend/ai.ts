@@ -217,7 +217,6 @@ function decodeTable(mdText: string): { cols: string[]; rows: Row[] } {
   }
 
   let cols: string[];
-  let dataLines: string[];
 
   // Check if a proper header exists
   if (/^(\|\s*-+\s*)+\|$/.test(lines[1])) {
@@ -226,7 +225,6 @@ function decodeTable(mdText: string): { cols: string[]; rows: Row[] } {
       .split("|")
       .map((col) => col.trim())
       .filter((col) => col.length > 0);
-    dataLines = lines.slice(2); // Skip header and divider lines
   } else {
     // If no valid header/divider, generate default column names
     const firstRowCells = lines[0]
@@ -236,7 +234,6 @@ function decodeTable(mdText: string): { cols: string[]; rows: Row[] } {
 
     // Generate default column names (col_1, col_2, ...)
     cols = firstRowCells.map((_, idx) => `col_${idx + 1}`);
-    dataLines = lines; // Treat all lines as data rows
   }
 
   // Parse the rows

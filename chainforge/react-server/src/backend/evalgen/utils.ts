@@ -10,13 +10,7 @@ import {
   validEvalCriteriaFormat,
 } from "./typing";
 import { Dict, LLMResponse, LLMSpec } from "../typing";
-import {
-  evalWithLLM,
-  executejs,
-  executepy,
-  queryLLM,
-  simpleQueryLLM,
-} from "../backend";
+import { evalWithLLM, executejs, executepy, simpleQueryLLM } from "../backend";
 import {
   getVarsAndMetavars,
   hashtagTemplateVars,
@@ -298,8 +292,8 @@ export async function execPyFunc(
   evalFunction: EvalFunction,
   llm: string | LLMSpec, // not used, but provided for consistency with the other exec func signature
   example: LLMResponse,
-  positiveExample?: LLMResponse,
-  negativeExample?: LLMResponse,
+  _positiveExample?: LLMResponse,
+  _negativeExample?: LLMResponse,
 ): Promise<EvalFunctionResult> {
   try {
     // We need to replace the function name with "evaluate", which is what is expected by backend:

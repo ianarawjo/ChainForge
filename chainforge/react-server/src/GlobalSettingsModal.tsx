@@ -36,7 +36,7 @@ import {
   IconBook,
 } from "@tabler/icons-react";
 import { Dropzone, FileWithPath } from "@mantine/dropzone";
-import useStore, { initLLMProviderMenu, initLLMProviders } from "./store";
+import useStore, { initLLMProviderMenu } from "./store";
 import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
 import { setCustomProviders } from "./ModelSettingSchemas";
 import { getAIFeaturesModelProviders } from "./backend/ai";
@@ -126,7 +126,6 @@ const CustomProviderScriptDropzone: React.FC<
   const [isLoading, setIsLoading] = useState(false);
   const setCustomChunkers = useStore((state) => state.setCustomChunkers);
   const setCustomRetrievers = useStore((s) => s.setCustomRetrievers);
-  const setAvailableLLMs = useStore((s) => s.setAvailableLLMs);
 
   return (
     <Dropzone

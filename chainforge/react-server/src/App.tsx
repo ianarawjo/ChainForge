@@ -468,7 +468,9 @@ const App = () => {
       // Drop the nodes that cannot run in the current setup, so nobody adds a
       // node that only fails when they press run.
       .filter((item) => (item as any).available !== false)
-      .map(({ available, ...item }: any) => item) as NestedMenuItemProps[];
+      .map(
+        ({ available: _available, ...item }: any) => item,
+      ) as NestedMenuItemProps[];
 
     // Misc nodes
     const miscNodes: NestedMenuItemProps[] = [
@@ -703,7 +705,7 @@ const App = () => {
     else initNodes = [...initNodes, ...miscNodes];
 
     // Add favorite nodes to the menu
-    const favoriteNodes = favorites?.nodes?.map(({ name, value, uid }, idx) => {
+    const favoriteNodes = favorites?.nodes?.map(({ name, value, uid }) => {
       const type = value.type ?? "";
       const emoji =
         type in nodeEmojis ? nodeEmojis[type as keyof typeof nodeEmojis] : "❤️";

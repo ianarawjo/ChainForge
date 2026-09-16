@@ -12,7 +12,6 @@ import {
   EvalFunctionResult,
   EvalFunctionReport,
   EvalFunctionSetReport,
-  EvalCriteriaUID,
 } from "./typing";
 import {
   LLMResponse,
@@ -323,7 +322,7 @@ export default class EvaluationFunctionExecutor {
    * This method is responsible for initializing the evaluation process and managing the asynchronous execution of functions.
    */
   public async generateAndExecuteEvaluationFunctions(
-    onProgress?: (progress: QueryProgress) => void,
+    _onProgress?: (progress: QueryProgress) => void,
   ): Promise<void> {
     // Enter a continuous monitoring loop for new criteria
     while (this.backgroundTaskPromise !== null) {
@@ -768,7 +767,7 @@ export default class EvaluationFunctionExecutor {
    * @returns A filtered set of evaluation functions that each have a false failure rate below the specified threshold and cover as much evaluation criteria as possible.
    */
   public async filterEvaluationFunctions(
-    falseFailureRateThreshold: number,
+    _falseFailureRateThreshold: number,
   ): Promise<EvalFunctionSetReport> {
     const gradedExamples = this.examples.filter((example) =>
       this.grades.has(example.uid),

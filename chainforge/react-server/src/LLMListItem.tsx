@@ -4,7 +4,6 @@ import styled from "styled-components";
 import LLMItemButtonGroup from "./LLMItemButtonGroup";
 import { IconTemperature } from "@tabler/icons-react";
 import { getTemperatureSpecForModel } from "./ModelSettingSchemas";
-import { Tooltip } from "@mantine/core";
 import { LLMSpec, QueryProgress } from "./backend/typing";
 import { DraggableProvided, DraggableStateSnapshot } from "react-beautiful-dnd";
 
@@ -92,7 +91,7 @@ const LLMListItem: React.FC<LLMListItemProps> = ({
   hideTrashIcon,
 }) => {
   // Set color by temperature only on item change (not every render)
-  const [tempColor, setTempColor] = useState(perc2color(50));
+  const [, setTempColor] = useState(perc2color(50));
   const temperature = item.settings?.temperature as number;
 
   useEffect(() => {

@@ -5,12 +5,8 @@ import {
   llmResponseDataToString,
   transformDict,
 } from "../backend/utils";
-import { Box, Button, Center, Flex, Stack, Text, Tooltip } from "@mantine/core";
-import {
-  IconChevronLeft,
-  IconChevronRight,
-  IconSparkles,
-} from "@tabler/icons-react";
+import { Box, Button, Flex, Stack, Text, Tooltip } from "@mantine/core";
+import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import { StringLookup } from "../backend/cache";
 import { cleanEscapedBraces } from "../backend/template";
 

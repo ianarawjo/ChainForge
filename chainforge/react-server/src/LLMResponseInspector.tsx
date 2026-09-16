@@ -67,8 +67,6 @@ import {
   reasoningAt,
   DebounceRef,
   genDebounceFunc,
-  blobOrFileToDataURL,
-  blobToBase64,
 } from "./backend/utils";
 import { MediaBox, ResponseGroup, getEvalResultStr } from "./ResponseBoxes";
 import { getLabelForResponse } from "./ResponseRatingToolbar";
@@ -80,7 +78,7 @@ import {
   TemplateVarInfo,
   isImageResponseData,
 } from "./backend/typing";
-import { MediaLookup, StringLookup } from "./backend/cache";
+import { StringLookup } from "./backend/cache";
 import { VisView } from "./VisNode";
 
 // Helper funcs
@@ -710,7 +708,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
 
       // Functions to associate a color to each LLM in responses
       const color_for_llm = disableBackgroundColor
-        ? (c: string) => "transparent"
+        ? (_c: string) => "transparent"
         : (llm: string) => getColorForLLMAndSetIfNotFound(llm) + "99";
       const header_bg_colors =
         colorScheme === "light"
@@ -975,7 +973,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               getColVal,
             )[0];
 
-            const sel_var_cols = found_sel_var_vals.map((val, idx) => {
+            const sel_var_cols = found_sel_var_vals.map((val) => {
               if (val in resp_objs_by_col_var) {
                 const rs = resp_objs_by_col_var[val];
                 // Return response divs as response box here:

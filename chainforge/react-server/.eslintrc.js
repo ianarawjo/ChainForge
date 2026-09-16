@@ -19,6 +19,18 @@ module.exports = {
     "@typescript-eslint/no-explicit-any": ["off"],
     "@typescript-eslint/no-empty-function": ["off"],
     "no-control-regex": ["off"],
+    // A leading underscore marks something deliberately unused -- a positional
+    // parameter kept for its place in a signature, say. The codebase already
+    // writes them that way (_oldItems, _omitVars); this makes it official.
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        argsIgnorePattern: "^_",
+        varsIgnorePattern: "^_",
+        caughtErrorsIgnorePattern: "^_",
+        destructuredArrayIgnorePattern: "^_",
+      },
+    ],
   },
 
   settings: {

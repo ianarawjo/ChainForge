@@ -194,9 +194,8 @@ export class StringLookup {
   /** Adds a string to the table and returns its index */
   public static intern(str: string): number {
     const s = StringLookup.getInstance();
-    if (s.stringToIndex.has(str)) {
-      return s.stringToIndex.get(str)!; // Return existing index
-    }
+    const existing = s.stringToIndex.get(str);
+    if (existing !== undefined) return existing; // Already interned
 
     // Add new string to the table
     const index = s.indexToString.length;
@@ -508,10 +507,10 @@ export class MediaLookup {
       this.tempCache.size + blob.size > this.MAX_TEMP_CACHE_SIZE &&
       this.tempCache.accessOrder.length > 0
     ) {
-      const oldestUid = this.tempCache.accessOrder.shift()!;
+      const oldestUid = this.tempCache.accessOrder.shift();
       if (oldestUid === undefined) break; // Safety check. This should not happen, but just in case.
-      const oldestBlob = this.tempCache.items.get(oldestUid)!;
-      this.tempCache.size -= oldestBlob.size;
+      const oldestBlob = this.tempCache.items.get(oldestUid);
+      if (oldestBlob) this.tempCache.size -= oldestBlob.size;
       this.tempCache.items.delete(oldestUid);
     }
 
@@ -1080,9 +1079,9 @@ export class MediaLookup {
     mediaLookup.revokeObjectUrl(uid);
 
     // Remove from temp cache if present
-    if (mediaLookup.tempCache.items.has(uid)) {
-      const blob = mediaLookup.tempCache.items.get(uid)!;
-      mediaLookup.tempCache.size -= blob.size;
+    const cachedBlob = mediaLookup.tempCache.items.get(uid);
+    if (cachedBlob) {
+      mediaLookup.tempCache.size -= cachedBlob.size;
       mediaLookup.tempCache.items.delete(uid);
       mediaLookup.tempCache.accessOrder =
         mediaLookup.tempCache.accessOrder.filter((id) => id !== uid);

@@ -33,7 +33,7 @@ const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 export const DatalistWidget = (props: WidgetProps) => {
   const [data, setData] = useState(
     (
-      props.options.enumOptions?.map((option, index) => ({
+      props.options.enumOptions?.map((option) => ({
         value: option.value,
         label: option.value,
       })) ?? []

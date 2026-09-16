@@ -54,12 +54,15 @@ module.exports = {
       };
       excludePdfjsFromBabel(webpackConfig.module?.rules);
 
-      // WebLLM currently publishes sourcemap references to TS sources that are
-      // not included in the npm package. Ignore only those warnings.
+      // Several dependencies (@mlc-ai/web-llm, @google/genai, ...) publish
+      // sourcemap references to TS sources that are not in the npm package,
+      // which source-map-loader reports once per file -- around a hundred lines
+      // of noise per build. Ignore that one message, and only from node_modules,
+      // so sourcemap problems in our own code still surface.
       webpackConfig.ignoreWarnings = [
         ...(webpackConfig.ignoreWarnings ?? []),
         {
-          module: /@mlc-ai\/web-llm/,
+          module: /node_modules/,
           message: /Failed to parse source map/,
         },
       ];
