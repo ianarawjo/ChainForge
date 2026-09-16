@@ -2383,3 +2383,12 @@ html[data-mantine-color-scheme="dark"] .ragchat-diff-removed {
 .chat-bubble-prompt .tpl-highlight-var {
   background-color: rgba(0, 0, 0, 0.3);
 }
+
+/* Ace injects its own font stack for .ace_editor at runtime, so the code
+   editors were the one surface still on a different monospace face than the
+   rest of the app. `html` outranks that rule on specificity rather than
+   relying on which stylesheet lands last. Ace caches character metrics on
+   init, so CodeEvaluatorNode re-measures once the webfont has loaded. */
+html .ace_editor {
+  font-family: var(--font-mono);
+}

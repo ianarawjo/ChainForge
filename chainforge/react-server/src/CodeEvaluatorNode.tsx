@@ -374,6 +374,19 @@ export const CodeEvaluatorComponent = forwardRef<
           tabSize={2}
           onLoad={(editorInstance) => {
             aceEditorRef.current = editorInstance;
+            // Ace measures character width once, on init. --font-mono loads
+            // with font-display: swap, so on a cold load Ace can measure the
+            // fallback face and then have the real one swap in underneath it,
+            // leaving the cursor out of step with the text. Re-measure once
+            // the webfont is actually in.
+            document.fonts?.ready
+              .then(() => {
+                editorInstance.renderer.updateFontSize();
+                editorInstance.resize(true);
+              })
+              .catch(() => {
+                /* no webfont support: the fallback Ace measured is what renders */
+              });
           }}
         />
         <ResizeHandle
