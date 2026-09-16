@@ -1228,15 +1228,6 @@ const App = () => {
     input.click();
   }, [importFlowFromJSON, handleError, safeSetFlowFileName]);
 
-  // Downloads the selected OpenAI eval file (preconverted to a .cforge flow)
-  const importFlowFromOpenAIEval = (evalname: string) => {
-    setIsLoading(true);
-
-    fetchOpenAIEval(evalname)
-      .then((flow) => importFlowFromJSON(flow, "openai-eval"))
-      .catch(handleError);
-  };
-
   const loadFlowFromAutosave = useCallback(
     async (rf_inst: ReactFlowInstance, fromFilesystem?: boolean) => {
       if (fromFilesystem) {
@@ -1309,10 +1300,26 @@ const App = () => {
   );
 
   // loader for example flows
-  const onSelectExampleFlow = async (name: string) => {
+  const onSelectExampleFlow = async (name: string, category?: string) => {
     setIsLoading(true);
     try {
-      const base = FLASK_BASE_URL.replace(/\/$/, "");
+      // OpenAI evals are served from their own directory, not examples/.
+      // The modal tells us which tab the card came from.
+      if (category === "openai-eval") {
+        const flowJSON = await fetchOpenAIEval(name.replace(/\.cforge$/i, ""));
+        importFlowFromJSON(flowJSON, "openai-eval");
+        setFlowFileNameAndCache(`flow-${Date.now()}`);
+        return;
+      }
+
+      // Hosted on a site, the flows sit next to the app itself: PUBLIC_URL is
+      // the path the build was made for ("/play"), and is "" for a local
+      // build. FLASK_BASE_URL is http://localhost:8000/ whenever the app is
+      // NOT running locally, so using it here made the web build fetch the
+      // visitor's own machine, which fails with a bare "Load failed".
+      const base = IS_RUNNING_LOCALLY
+        ? FLASK_BASE_URL.replace(/\/$/, "")
+        : process.env.PUBLIC_URL ?? "";
 
       if (/\.cfzip$/i.test(name)) {
         const file = name.endsWith(".cfzip") ? name : `${name}.cfzip`;
