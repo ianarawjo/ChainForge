@@ -1776,7 +1776,7 @@ const App = () => {
   if (!IS_ACCEPTED_BROWSER) {
     return (
       <Box maw={600} mx="auto" mt="40px">
-        <Text m="xl" size={"11pt"}>
+        <Text m="xl" size={"14px"}>
           {"We're sorry, but it seems like "}
           {isMobile
             ? "you are viewing ChainForge on a mobile device"
@@ -1785,7 +1785,7 @@ const App = () => {
           recommend {isMobile ? "viewing ChainForge on a desktop browser" : ""}{" "}
           using one of our supported browsers listed below:
         </Text>
-        <List m="xl" size={"11pt"}>
+        <List m="xl" size={"14px"}>
           <List.Item>Google Chrome</List.Item>
           <List.Item>Mozilla Firefox</List.Item>
           <List.Item>Microsoft Edge (Chromium)</List.Item>
@@ -1793,12 +1793,12 @@ const App = () => {
           <List.Item>Safari</List.Item>
         </List>
 
-        <Text m="xl" size={"11pt"}>
+        <Text m="xl" size={"14px"}>
           These browsers offer enhanced compatibility with ChainForge&apos;s
           features. Don&apos;t worry, though! We&apos;re working to expand our
           browser support to ensure everyone can enjoy our platform. 😊
         </Text>
-        <Text m="xl" size={"11pt"}>
+        <Text m="xl" size={"14px"}>
           If you have any questions or need assistance, please don&apos;t
           hesitate to reach out on our{" "}
           <a href="https://github.com/ianarawjo/ChainForge/issues">GitHub</a> by{" "}
@@ -2059,7 +2059,7 @@ const App = () => {
           <a
             href="https://forms.gle/qhr7T2Fe8gYJF16fA"
             target="_blank"
-            style={{ color: "#666", fontSize: "11pt" }}
+            style={{ color: "#666", fontSize: "14px" }}
             rel="noreferrer"
           >
             Send us feedback

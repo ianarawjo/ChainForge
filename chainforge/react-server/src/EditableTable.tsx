@@ -32,7 +32,7 @@ const cellTextareaStyle = {
 const headerTextareaStyle = {
   input: {
     border: "0",
-    fontSize: "10pt",
+    fontSize: "13px",
     fontWeight: "bold",
     padding: "2px !important",
     minHeight: "10pt",

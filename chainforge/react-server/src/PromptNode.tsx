@@ -122,7 +122,7 @@ const getRootPromptFor = (
 const promptVariantLabelStyle = {
   input: {
     border: "0",
-    fontSize: "10pt",
+    fontSize: "13px",
     padding: "0px 2px 0px 2px !important",
     marginTop: "2px",
     minHeight: "10pt",
@@ -1743,7 +1743,7 @@ Soft failing by replacing undefined with empty strings.`,
       <div>
         <div style={{ marginBottom: "10px", padding: "4px" }}>
           <Flex align="center">
-            <label htmlFor="num-generations" style={{ fontSize: "10pt" }}>
+            <label htmlFor="num-generations" style={{ fontSize: "13px" }}>
               Num responses per prompt:&nbsp;
             </label>
             <NumberInput

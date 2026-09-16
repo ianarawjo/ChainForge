@@ -280,7 +280,7 @@ const ModelSettingsModal = forwardRef<
                   <Button
                     variant="subtle"
                     compact
-                    style={{ fontSize: "16pt" }}
+                    style={{ fontSize: "21px" }}
                     onClick={() => {
                       setEmojiPickerOpen((o: boolean) => !o);
                     }}

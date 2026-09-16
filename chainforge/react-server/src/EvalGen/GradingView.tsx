@@ -113,7 +113,7 @@ const GradingView: React.FC<GradingViewProps> = ({
             <div className="response-item-llm-name-wrapper">
               <div
                 className="small-response"
-                style={{ fontSize: "11pt", padding: "12pt" }}
+                style={{ fontSize: "14px", padding: "12pt" }}
               >
                 {responseText}
               </div>
@@ -167,7 +167,7 @@ const GradingView: React.FC<GradingViewProps> = ({
               style={{
                 maxHeight: "160px",
                 overflowY: "scroll",
-                fontSize: "10pt",
+                fontSize: "13px",
                 lineHeight: "1.2",
               }}
             >

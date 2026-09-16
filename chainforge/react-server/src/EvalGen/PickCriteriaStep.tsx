@@ -193,7 +193,7 @@ export const CriteriaCard: React.FC<CriteriaCardProps> = function CriteriaCard({
                 padding: "0px",
                 background: "transparent",
                 fontWeight: 500,
-                fontSize: "12pt",
+                fontSize: "16px",
                 margin: "0px",
                 height: "auto",
                 minHeight: "auto",
