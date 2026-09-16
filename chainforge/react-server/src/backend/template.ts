@@ -10,6 +10,61 @@ import {
 } from "./typing";
 import { llmResponseDataToString } from "./utils";
 
+/** Where a {variable} sits in a template string, and what it is called. */
+export interface TemplateVarSpan {
+  /** Index of the opening brace. */
+  start: number;
+  /** Index of the closing brace. */
+  end: number;
+  /** The name between the braces, e.g. "book" in "{book}". */
+  name: string;
+}
+
+/**
+ * Scans a template string and yields the position and name of every
+ * {variable} in it.
+ *
+ * > NOTE: This is the single place in ChainForge that decides what counts as a
+ * > template variable. Everything that needs to know where the variables are --
+ * > extracting names, substituting values, highlighting them in the prompt
+ * > editor -- goes through here, so the answer cannot differ between them.
+ *
+ * The rules: a backslash escapes the brace that follows it, so \{ and \} are
+ * literal; an open group is abandoned at a newline; and {} is ignored.
+ *
+ * This algorithm is O(N) complexity.
+ */
+export function* extractTemplateVarSpans(
+  template: string,
+): Generator<TemplateVarSpan, void, undefined> {
+  let prev_c = "";
+  let group_start_idx = -1;
+
+  for (let i = 0; i < template.length; i += 1) {
+    const c = template.charAt(i);
+    if (prev_c !== "\\") {
+      // Skip escaped braces
+      if (group_start_idx === -1 && c === "{")
+        // Identify the start of a capture {group}
+        group_start_idx = i;
+      else if (group_start_idx > -1 && c === "\n") {
+        // Break captured groups on newlines
+        group_start_idx = -1;
+      } else if (group_start_idx > -1 && c === "}") {
+        // Identify the end of a capture {group}, ignoring {} empty braces
+        if (group_start_idx + 1 < i)
+          yield {
+            start: group_start_idx,
+            end: i,
+            name: template.substring(group_start_idx + 1, i),
+          };
+        group_start_idx = -1;
+      }
+    }
+    prev_c = c;
+  }
+}
+
 /**
  * Given a template string, returns a generator that yields the template variables
  * found in the string, one by one.
@@ -27,46 +82,30 @@ export function* extractTemplateVars(
   // Replace option
   sub_dict?: { [key: string]: string },
 ) {
-  let prev_c = "";
-  let group_start_idx = -1;
-  for (let i = 0; i < template.length; i += 1) {
-    const c = template.charAt(i);
-    if (prev_c !== "\\") {
-      // Skip escaped braces
-      if (group_start_idx === -1 && c === "{")
-        // Identify the start of a capture {group}
-        group_start_idx = i;
-      else if (group_start_idx > -1 && c === "\n") {
-        // Break captured groups on newlines
-        group_start_idx = -1;
-      } else if (group_start_idx > -1 && c === "}") {
-        // Identify the end of a capture {group}
-        if (group_start_idx + 1 < i) {
-          // Ignore {} empty braces
-          // We identified a capture group. First check if its key is in the substitution dict:
-          const varname = template.substring(group_start_idx + 1, i);
-          if (!sub_dict) yield varname;
-          else if (varname in sub_dict) {
-            // Replace '{varname}' with the substitution value:
-            const replacement = sub_dict[varname];
-            let tail = template.substring(i + 1);
-            // Check if the varname is a special settings var (starts with =); if so, look for a newline after it:
-            if (varname.charAt(0) === "=" && /^[ \t]*\n/.test(tail))
-              tail = tail.substring(tail.indexOf("\n") + 1); // remove the whitespace and \n, to vanish the line
-            // Patch the string
-            template =
-              template.substring(0, group_start_idx) + replacement + tail;
-            // Reset the iterator to point to the very next character upon the start of the next loop:
-            i = group_start_idx + replacement.length - 1;
-          }
-        }
-        group_start_idx = -1;
-      }
-    }
-    prev_c = c;
+  if (sub_dict === undefined) {
+    for (const span of extractTemplateVarSpans(template)) yield span.name;
+    return;
   }
 
-  if (sub_dict) return template;
+  // Replace mode. The spans are found on the original string and the result is
+  // rebuilt around them, so a substituted value is never rescanned for
+  // variables of its own -- matching the previous behaviour, which advanced the
+  // cursor past whatever it had just inserted.
+  let out = "";
+  let cursor = 0;
+  for (const { start, end, name } of extractTemplateVarSpans(template)) {
+    if (!(name in sub_dict)) continue; // left in place; copied with the next chunk
+    out += template.substring(cursor, start) + sub_dict[name];
+    cursor = end + 1;
+    // A special settings var (one whose name starts with =) takes its whole
+    // line with it, so the line it sat on vanishes rather than being left blank.
+    const trailing =
+      name.charAt(0) === "="
+        ? /^[ \t]*\n/.exec(template.substring(cursor))
+        : null;
+    if (trailing) cursor += trailing[0].length;
+  }
+  return out + template.substring(cursor);
 }
 
 function len(o: object | string | Array<any>): number {

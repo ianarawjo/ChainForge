@@ -9,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import { Textarea, TextareaProps, useMantineTheme } from "@mantine/core";
+import { extractTemplateVarSpans } from "./backend/template";
 
 export interface TemplateSegment {
   text: string;
@@ -18,47 +19,30 @@ export interface TemplateSegment {
 }
 
 /**
- * Splits a prompt template into plain and {variable} segments.
+ * Splits a prompt template into plain and {variable} segments for rendering.
  *
- * This deliberately mirrors the scanning in extractTemplateVars
- * (backend/template.ts) character for character: braces escaped with a
- * backslash are literal, an open group is abandoned at a newline, and {} is
- * ignored. Highlighting something the engine will not actually substitute is
- * worse than not highlighting at all, so the two must stay in step.
+ * The scanning itself belongs to extractTemplateVarSpans in backend/template.ts
+ * and is not repeated here: what gets highlighted has to be exactly what the
+ * engine will substitute, and a second copy of those rules would eventually
+ * disagree with the first. This only turns the spans into runs of text.
  */
 export function splitTemplateVars(template: string): TemplateSegment[] {
   const segments: TemplateSegment[] = [];
-  let prevChar = "";
-  let groupStartIdx = -1;
-  let plainFrom = 0;
+  let cursor = 0;
 
-  for (let i = 0; i < template.length; i += 1) {
-    const c = template.charAt(i);
-    if (prevChar !== "\\") {
-      if (groupStartIdx === -1 && c === "{") groupStartIdx = i;
-      else if (groupStartIdx > -1 && c === "\n") groupStartIdx = -1;
-      else if (groupStartIdx > -1 && c === "}") {
-        if (groupStartIdx + 1 < i) {
-          if (groupStartIdx > plainFrom)
-            segments.push({
-              text: template.substring(plainFrom, groupStartIdx),
-              isVar: false,
-            });
-          segments.push({
-            text: template.substring(groupStartIdx, i + 1),
-            isVar: true,
-            name: template.substring(groupStartIdx + 1, i),
-          });
-          plainFrom = i + 1;
-        }
-        groupStartIdx = -1;
-      }
-    }
-    prevChar = c;
+  for (const { start, end, name } of extractTemplateVarSpans(template)) {
+    if (start > cursor)
+      segments.push({ text: template.substring(cursor, start), isVar: false });
+    segments.push({
+      text: template.substring(start, end + 1),
+      isVar: true,
+      name,
+    });
+    cursor = end + 1;
   }
 
-  if (plainFrom < template.length)
-    segments.push({ text: template.substring(plainFrom), isVar: false });
+  if (cursor < template.length)
+    segments.push({ text: template.substring(cursor), isVar: false });
 
   return segments;
 }
