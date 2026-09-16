@@ -8,11 +8,7 @@ import {
   IconSparkles,
   IconStack2,
 } from "@tabler/icons-react";
-import {
-  EdgePayloadKind,
-  EdgePreview,
-  EdgeScoreSummary,
-} from "./useEdgePreview";
+import { EdgePayloadKind, EdgePreview, EdgeScoreSummary } from "./edgePreview";
 import { useThumbnailUrl } from "./useMediaUrl";
 
 /** The look of each payload kind, so the badge and the card agree. */
