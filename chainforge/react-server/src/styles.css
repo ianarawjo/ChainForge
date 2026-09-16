@@ -2337,3 +2337,35 @@ html[data-mantine-color-scheme="dark"] .ragchat-diff-removed {
   gap: 6px;
   margin-top: 4px;
 }
+
+/* ---- {template variable} highlighting in prompt textareas ----
+   A textarea cannot style its own content, so the text is drawn twice: a
+   backdrop div carries the highlight spans and the textarea sits transparently
+   on top of it. The backdrop copies its metrics off the live textarea (see
+   TemplateHighlightTextarea.tsx), so only the things that cannot be copied --
+   position, wrapping, colour -- are set here. */
+.tpl-highlight-wrap {
+  position: relative;
+}
+.tpl-highlight-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  margin: 0;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  color: transparent;
+  pointer-events: none;
+  border-style: solid;
+  border-color: transparent;
+}
+.tpl-highlight-var {
+  /* background-color is set inline, from the same Mantine theme call the
+     handle badges use. See TemplateHighlightTextarea.tsx. */
+  color: transparent;
+  border-radius: 4px;
+  /* Padding would shift the text off the textarea's own glyphs. */
+  padding: 0;
+}

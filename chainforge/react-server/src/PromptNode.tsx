@@ -11,7 +11,6 @@ import { v4 as uuid } from "uuid";
 import {
   Switch,
   Progress,
-  Textarea,
   Text,
   Popover,
   Center,
@@ -92,6 +91,7 @@ import {
 import { MediaLookup, StringLookup } from "./backend/cache";
 import { union } from "./backend/setUtils";
 import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
+import TemplateHighlightTextarea from "./TemplateHighlightTextarea";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -1678,8 +1678,9 @@ Soft failing by replacing undefined with empty strings.`,
             bubbleClassNames={["chat-bubble-past", "chat-bubble-prompt"]}
             messages={[
               "(Past conversation)",
-              <Textarea
+              <TemplateHighlightTextarea
                 key={0}
+                syncKey={idxPromptVariantShown}
                 className="prompt-field-fixed nodrag nowheel"
                 minRows={4}
                 defaultValue={
@@ -1703,8 +1704,9 @@ Soft failing by replacing undefined with empty strings.`,
           />
         </div>
       ) : (
-        <Textarea
+        <TemplateHighlightTextarea
           ref={setRef}
+          syncKey={idxPromptVariantShown}
           // autosize
           className="prompt-field-fixed nodrag nowheel"
           minRows={5}
