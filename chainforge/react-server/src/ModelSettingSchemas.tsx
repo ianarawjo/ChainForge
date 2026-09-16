@@ -2296,6 +2296,13 @@ export const WebLLMSettings: ModelSettingsDict = {
       },
     },
   },
+  // Qwen3 and Qwen3.5 reason before answering, which often uses up 512 tokens
+  // before the answer starts. Their 4096-token context window has to hold the
+  // prompt too, so they get half of it.
+  modelDefaults: {
+    [NativeLLM.WebLLM_Qwen3_5_0_8B]: { max_tokens: 2048 },
+    [NativeLLM.WebLLM_Qwen3_1_7B]: { max_tokens: 2048 },
+  },
   uiSchema: {
     "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
     shortname: {
@@ -2636,8 +2643,14 @@ export const postProcessFormData = (
   return new_data;
 };
 
+/**
+ * A settings form's default for each field, for the given model if its
+ * defaults differ (see ModelSettingsDict.modelDefaults), or else for the
+ * form's default model.
+ */
 export const getDefaultModelFormData = (
   settingsSpec: string | ModelSettingsDict,
+  model?: string,
 ) => {
   if (typeof settingsSpec === "string")
     settingsSpec = ModelSettings[settingsSpec];
@@ -2649,10 +2662,45 @@ export const getDefaultModelFormData = (
         ? schema.properties[key].default
         : null;
   });
-  return default_formdata;
+  if (model !== undefined) default_formdata.model = model;
+  return {
+    ...default_formdata,
+    ...modelDefaultsFor(settingsSpec, default_formdata.model),
+  };
 };
 
-export const getDefaultModelSettings = (modelName: string) => {
+/** The defaults a model has in place of the form's (see modelDefaults). */
+export const modelDefaultsFor = (
+  settingsSpec: ModelSettingsDict | undefined,
+  model: JSONCompatible | undefined,
+): Dict<JSONCompatible> =>
+  (typeof model === "string" && settingsSpec?.modelDefaults?.[model]) || {};
+
+/**
+ * When the model is changed in a settings form, the fields still at the old
+ * model's defaults take the new model's; fields the user changed are kept.
+ */
+export const applyModelDefaultsOnModelChange = (
+  settingsSpec: ModelSettingsDict | undefined,
+  formData: Dict<JSONCompatible>,
+  prevModel: string | undefined,
+  nextModel: string | undefined,
+): Dict<JSONCompatible> => {
+  if (!settingsSpec?.modelDefaults || prevModel === nextModel) return formData;
+  const schemaDefault = (key: string) =>
+    settingsSpec.schema.properties[key]?.default;
+  const prev = modelDefaultsFor(settingsSpec, prevModel);
+  const next = modelDefaultsFor(settingsSpec, nextModel);
+  const updated = { ...formData };
+  for (const key of new Set([...Object.keys(prev), ...Object.keys(next)])) {
+    const prevDefault = key in prev ? prev[key] : schemaDefault(key);
+    if (updated[key] === undefined || updated[key] === prevDefault)
+      updated[key] = key in next ? next[key] : schemaDefault(key);
+  }
+  return updated;
+};
+
+export const getDefaultModelSettings = (modelName: string, model?: string) => {
   if (!(modelName in ModelSettings)) {
     console.warn(
       `Model ${modelName} not found in list of available model settings.`,
@@ -2662,6 +2710,6 @@ export const getDefaultModelSettings = (modelName: string) => {
   const settingsSpec = ModelSettings[modelName];
   return postProcessFormData(
     settingsSpec,
-    getDefaultModelFormData(settingsSpec),
+    getDefaultModelFormData(settingsSpec, model),
   );
 };

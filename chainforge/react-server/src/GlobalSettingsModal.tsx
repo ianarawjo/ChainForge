@@ -37,7 +37,12 @@ import {
 } from "@tabler/icons-react";
 import { Dropzone, FileWithPath } from "@mantine/dropzone";
 import useStore, { initLLMProviderMenu } from "./store";
-import { APP_IS_RUNNING_LOCALLY } from "./backend/utils";
+import { APP_IS_RUNNING_LOCALLY, clear_api_keys } from "./backend/utils";
+import {
+  forgetStoredAPIKeys,
+  loadStoredAPIKeys,
+  storeAPIKeys,
+} from "./backend/apiKeyStorage";
 import { setCustomProviders } from "./ModelSettingSchemas";
 import { getAIFeaturesModelProviders } from "./backend/ai";
 import {
@@ -66,6 +71,32 @@ interface GlobalSettingsType {
 
 // The JSON filename in the backend for the global settings
 const SETTINGS_FILENAME = "settings";
+
+// Where the web version keeps the non-sensitive settings (not API keys; see
+// apiKeyStorage), since it has no backend to save them to.
+const WEB_SETTINGS_STORAGE_KEY = "chainforge-settings";
+
+function loadWebSettings(): Partial<GlobalSettingsType> {
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(WEB_SETTINGS_STORAGE_KEY) ?? "{}",
+    );
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveWebSettings(settings: GlobalSettingsType): void {
+  try {
+    window.localStorage.setItem(
+      WEB_SETTINGS_STORAGE_KEY,
+      JSON.stringify(settings),
+    );
+  } catch {
+    /* storage unavailable: settings last until the page reloads */
+  }
+}
 
 // The init function may be called twice, so we need to
 // make sure we only load the settings once.
@@ -240,6 +271,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         AmazonBedrock: JSON.stringify({ credentials: {}, region: "us-east-1" }),
         Together: "",
         DeepSeek: "",
+        MiniMax: "",
         OpenRouter: "",
         Cohere: "",
       },
@@ -377,7 +409,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
               ...form.values,
               ...updated,
             });
-          }
+          } else saveWebSettings(updated);
 
           // Store the non-form settings in the Zustand store global state,
           // so other components can access them and immediately react to the change.
@@ -391,6 +423,9 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
     const [opened, { open, close }] = useDisclosure(false);
     const setAPIKeys = useStore((state) => state.setAPIKeys);
+    const clearAPIKeys = useStore((state) => state.clearAPIKeys);
+    // Web version only: keep keys on this device, rather than for this tab.
+    const [rememberKeys, setRememberKeys] = useState(false);
     const AvailableLLMs = useStore((state) => state.AvailableLLMs);
     const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
     const setAIFeaturesProvider = useStore(
@@ -500,18 +535,64 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       });
     }, []);
 
+    // The web version has no backend to save settings to, so it restores them
+    // from the browser: API keys from this tab (or the device, if the user
+    // chose to remember them), and the other settings from the device.
+    useEffect(() => {
+      if (IS_RUNNING_LOCALLY) return;
+      const { keys, remembered } = loadStoredAPIKeys();
+      Object.entries(keys).forEach(([name, value]) => {
+        if (name in form.values) form.setFieldValue(name, value);
+      });
+      if (Object.keys(keys).length > 0) setAPIKeys(keys);
+      setRememberKeys(remembered);
+
+      const saved = loadWebSettings();
+      setSettings((prev) => {
+        const restored = { ...prev };
+        (Object.keys(prev) as (keyof GlobalSettingsType)[]).forEach((key) => {
+          if (key in saved) (restored as Dict)[key] = saved[key];
+        });
+        // Nodes read these from the store.
+        setGlobalSettingsInZustandStore(restored);
+        return restored;
+      });
+    }, []);
+
     // When the API settings form is submitted
     const onSubmit = (values: Dict<string>) => {
-      // Override existing API keys with any new ones
-      setAPIKeys(values);
+      // Pasted keys often bring a stray space or line break along.
+      const trimmed = Object.fromEntries(
+        Object.entries(values).map(([name, value]) => [
+          name,
+          typeof value === "string" ? value.trim() : value,
+        ]),
+      );
+      form.setValues(trimmed);
 
-      // Save the settings to the backend
+      // Override existing API keys with any new ones
+      setAPIKeys(trimmed);
+
       if (IS_RUNNING_LOCALLY) {
-        saveGlobalConfig(SETTINGS_FILENAME, values); // This fails silently if the backend is not running
+        // Save to the backend along with the other tabs' settings, which share
+        // the file (saving the keys alone dropped them). Fails silently if the
+        // backend is not running.
+        saveGlobalSettingsToBackend({ ...trimmed, ...settings });
+      } else {
+        storeAPIKeys(trimmed, rememberKeys);
       }
 
       // Close the modal
       close();
+    };
+
+    // Web version: forget the keys entered here, stored or not.
+    const forgetKeys = () => {
+      forgetStoredAPIKeys();
+      clearAPIKeys();
+      clear_api_keys();
+      form.reset();
+      setRememberKeys(false);
     };
 
     // This gives the parent access to triggering the modal
@@ -546,32 +627,36 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
             </Tabs.List>
 
             <Tabs.Panel value="api-keys" pt="xs">
-              <Text mb="md" fz="xs" lh={1.15} color="dimmed">
-                Note: <b>We do not store your API keys</b> &mdash;not in a
-                cookie, localStorage, or server. Because of this,{" "}
-                <b>
-                  you must set your API keys every time you load ChainForge.
-                </b>{" "}
-                If you prefer not to worry about it, we recommend{" "}
-                <a
-                  href="https://github.com/ianarawjo/ChainForge"
-                  target="_blank"
-                  style={_LINK_STYLE}
-                  rel="noreferrer"
-                >
-                  installing ChainForge locally
-                </a>{" "}
-                and
-                <a
-                  href="https://github.com/ianarawjo/ChainForge/blob/main/INSTALL_GUIDE.md#2-set-api-keys-openai-anthropic-google-palm"
-                  target="_blank"
-                  style={_LINK_STYLE}
-                  rel="noreferrer"
-                >
-                  {" "}
-                  setting your API keys as environment variables.
-                </a>
-              </Text>
+              {IS_RUNNING_LOCALLY ? (
+                <Text mb="md" fz="xs" lh={1.15} color="dimmed">
+                  Keys entered here are saved with your ChainForge settings on
+                  this machine. You can also{" "}
+                  <a
+                    href="https://github.com/ianarawjo/ChainForge/blob/main/INSTALL_GUIDE.md#2-set-api-keys-openai-anthropic-google-palm"
+                    target="_blank"
+                    style={_LINK_STYLE}
+                    rel="noreferrer"
+                  >
+                    set your API keys as environment variables.
+                  </a>
+                </Text>
+              ) : (
+                <Text mb="md" fz="xs" lh={1.15} color="dimmed">
+                  Your keys are <b>never sent to ChainForge</b>, only to the
+                  providers you query. They are kept in this browser tab, so
+                  they survive a reload and are forgotten when you close it. For
+                  the most control over your keys,{" "}
+                  <a
+                    href="https://github.com/ianarawjo/ChainForge"
+                    target="_blank"
+                    style={_LINK_STYLE}
+                    rel="noreferrer"
+                  >
+                    install ChainForge locally
+                  </a>
+                  .
+                </Text>
+              )}
               <form onSubmit={form.onSubmit(onSubmit)}>
                 <TextInput
                   label="OpenRouter API Key"
@@ -613,6 +698,13 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   label="DeepSeek API Key"
                   placeholder="Paste your DeepSeek API key here"
                   {...form.getInputProps("DeepSeek")}
+                />
+                <br />
+
+                <TextInput
+                  label="MiniMax API Key"
+                  placeholder="Paste your MiniMax API key here"
+                  {...form.getInputProps("MiniMax")}
                 />
                 <br />
 
@@ -726,7 +818,22 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 />
                 <br />
 
+                {!IS_RUNNING_LOCALLY && (
+                  <Checkbox
+                    mt="md"
+                    label="Remember my keys on this device"
+                    description="Keeps them after the tab closes. Only on a device you trust: anyone using this browser profile, or a browser extension, could read them."
+                    checked={rememberKeys}
+                    onChange={(e) => setRememberKeys(e.currentTarget.checked)}
+                  />
+                )}
+
                 <Group position="right" mt="md">
+                  {!IS_RUNNING_LOCALLY && (
+                    <Button variant="subtle" color="red" onClick={forgetKeys}>
+                      Forget my keys
+                    </Button>
+                  )}
                   <Button type="submit">Submit</Button>
                 </Group>
               </form>

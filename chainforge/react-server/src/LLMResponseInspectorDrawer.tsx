@@ -20,15 +20,19 @@ export default function LLMResponseInspectorDrawer({
       style={{ display: showDrawer ? "initial" : "none" }}
     >
       <div
-        ref={containerRef}
-        className="inspect-response-container nowheel nodrag"
+        className="resize-handle-anchor"
         style={{ margin: "0px 10px 10px 12px" }}
       >
-        <LLMResponseInspector
-          jsonResponses={jsonResponses}
-          isOpen={showDrawer}
-          wideFormat={false}
-        />
+        <div
+          ref={containerRef}
+          className="inspect-response-container nowheel nodrag"
+        >
+          <LLMResponseInspector
+            jsonResponses={jsonResponses}
+            isOpen={showDrawer}
+            wideFormat={false}
+          />
+        </div>
         <ResizeHandle targetRef={containerRef} minWidth={150} minHeight={270} />
       </div>
     </div>

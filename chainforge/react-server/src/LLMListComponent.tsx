@@ -386,9 +386,6 @@ export const LLMListContainer = forwardRef<
       // Give it a uid as a unique key (this is needed for the draggable list to support multiple same-model items; keys must be unique)
       const item = { ..._item, key: uuid() };
 
-      // Generate the default settings for this model
-      item.settings = getDefaultModelSettings(item.base_model);
-
       // Repair names to ensure they are unique
       const unique_name = ensureUniqueName(
         item.name,
@@ -402,6 +399,12 @@ export const LLMListContainer = forwardRef<
       if (prefix && item.model.startsWith(prefix))
         item.formData.model = item.model.substring(prefix.length);
       else item.formData.model = item.model;
+
+      // Generate the default settings for this model
+      item.settings = getDefaultModelSettings(
+        item.base_model,
+        item.formData.model as string,
+      );
 
       // Ollama models use a different format for the model name, that we need to carry over:
       if (item.base_model === "ollama") {

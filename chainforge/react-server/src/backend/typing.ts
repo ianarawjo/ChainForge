@@ -219,6 +219,12 @@ export interface ModelSettingsDict {
   };
   uiSchema: Dict<JSONCompatible>;
   postprocessors: Dict<(val: string | number | boolean) => any>;
+  /**
+   * Defaults that differ by model, keyed by the value of the form's `model`
+   * field, e.g. a higher token limit for models that reason before answering.
+   * They take the place of the schema's defaults for that model.
+   */
+  modelDefaults?: Dict<Dict<JSONCompatible>>;
 }
 
 /** Standard properties that every LLM response object must have. */

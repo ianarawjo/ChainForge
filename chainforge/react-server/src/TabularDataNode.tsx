@@ -799,20 +799,22 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
         </Menu.Dropdown>
       </Menu>
 
-      <div
-        ref={setRef}
-        className="tabular-data-container nowheel nodrag"
-        onPointerDown={() => setContextMenuOpened(false)}
-        onContextMenu={handleOpenTableContextMenu}
-      >
-        <EditableTable
-          rows={tableData}
-          columns={tableColumns}
-          handleSaveCell={handleSaveCell}
-          handleRemoveColumn={handleRemoveColumn}
-          handleInsertColumn={handleInsertColumn}
-          handleRenameColumn={openRenameColumnModal}
-        />
+      <div className="resize-handle-anchor">
+        <div
+          ref={setRef}
+          className="tabular-data-container nowheel nodrag"
+          onPointerDown={() => setContextMenuOpened(false)}
+          onContextMenu={handleOpenTableContextMenu}
+        >
+          <EditableTable
+            rows={tableData}
+            columns={tableColumns}
+            handleSaveCell={handleSaveCell}
+            handleRemoveColumn={handleRemoveColumn}
+            handleInsertColumn={handleInsertColumn}
+            handleRenameColumn={openRenameColumnModal}
+          />
+        </div>
         <ResizeHandle targetRef={ref} minWidth={200} minHeight={100} />
       </div>
 

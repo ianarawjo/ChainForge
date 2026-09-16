@@ -5,9 +5,14 @@
  * `transform`-ed parents (which is how ReactFlow positions nodes).
  * This component replaces that native handle with a JS-driven one.
  *
- * Usage:
- *   <div ref={containerRef} style={{ position: "relative", overflow: "auto", width: 300, height: 200 }}>
- *     ...content...
+ * The handle is absolutely positioned at the bottom-right of its parent. If
+ * the element being resized scrolls, put the handle beside it rather than
+ * inside it, or it scrolls away with the content:
+ *
+ *   <div className="resize-handle-anchor">
+ *     <div ref={containerRef} style={{ overflow: "auto", width: 300, height: 200 }}>
+ *       ...content...
+ *     </div>
  *     <ResizeHandle targetRef={containerRef} />
  *   </div>
  */
