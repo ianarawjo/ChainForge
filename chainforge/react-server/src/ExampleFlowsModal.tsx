@@ -586,9 +586,9 @@ const ExampleFlowsModal = forwardRef<
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="Book Q&A over RAG"
-              description="Upload a book and ask questions to retrieve relevant sections using RAG."
-              filename="rag-example-flow.cfzip"
+              title="🪶 Darwin's letters"
+              description="60 of Darwin's letters, one document each. Compare keyword and semantic retrieval, then check what a tiny in-browser model makes of what it retrieved. No server or API key needed."
+              filename="darwin-letters.cfzip"
               onSelect={onSelect}
             />
           </SimpleGrid>

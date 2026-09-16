@@ -372,6 +372,14 @@ export interface LLMResponseInspectorProps {
   ignoreAndHideLLMField?: boolean; // If true, LLM field will not be shown in the table view
   ignoreAndHideEvalResField?: boolean; // If true, "Eval Res" column option will not be shown in the table view
   defaultTableColVar?: string;
+  /**
+   * The tab to open on, when the host remembers which one the user last chose.
+   * Passing it also suppresses the automatic switch to "table" on multi-evals,
+   * so a remembered choice is not overridden the moment responses arrive.
+   */
+  viewFormat?: string;
+  /** Called when the user picks a different tab, so the host can save it. */
+  onViewFormatChange?: (viewFormat: string) => void;
 }
 
 const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
@@ -384,6 +392,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   ignoreAndHideLLMField,
   ignoreAndHideEvalResField,
   defaultTableColVar,
+  viewFormat: rememberedViewFormat,
+  onViewFormatChange,
 }) => {
   // Responses
   const [responseDivs, setResponseDivs] = useState<React.ReactNode>([]);
@@ -402,7 +412,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
 
   // The type of view to use to display responses. Can be either hierarchy or table.
   const [viewFormat, setViewFormat] = useState(
-    wideFormat ? "table" : "hierarchy",
+    rememberedViewFormat ?? (wideFormat ? "table" : "hierarchy"),
   );
 
   // The MultiSelect so people can dynamically set what vars they care about
@@ -658,8 +668,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
 
       // If this is the first time receiving responses, set the multiSelectValue to whatever is the first:
       if (!receivedResponsesOnce) {
-        if (contains_multi_evals)
-          // If multiple evals are detected, default to "table" format:
+        if (contains_multi_evals && rememberedViewFormat === undefined)
+          // If multiple evals are detected, default to "table" format --
+          // unless the host handed us the tab the user last chose.
           setViewFormat("table");
         setMultiSelectValue([msvars[0].value]);
         setReceivedResponsesOnce(true);
@@ -1575,7 +1586,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           if (viewFormat === val) return;
           setResponseDivs([]);
           setShowLoadingSpinner(true);
-          setViewFormat(val ?? "hierarchy");
+          const next = val ?? "hierarchy";
+          setViewFormat(next);
+          onViewFormatChange?.(next);
         }}
         styles={{ tabLabel: { fontSize: wideFormat ? "12pt" : "9pt" } }}
       >
