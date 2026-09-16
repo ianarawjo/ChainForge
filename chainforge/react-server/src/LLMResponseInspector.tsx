@@ -1101,7 +1101,21 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             : undefined,
         );
 
+        // Columns are identified by what they show, not where they are: the
+        // table keeps filters, sorting and widths by column id, so positional
+        // ids would move a filter typed under one model onto whichever value
+        // takes its place when the Columns choice changes.
+        const colIds: string[] = [];
+        colnames.forEach((c, i) => {
+          const base =
+            i < numVarCols ? `var:${c}` : `${effectiveTableColVar}:${c}`;
+          let id = base;
+          for (let n = 2; colIds.includes(id); n++) id = `${base}#${n}`;
+          colIds.push(id);
+        });
+
         const columns = colnames.map((c, i) => ({
+          id: colIds[i],
           accessorKey: `c${i}`,
           accessorFn: (row) => {
             // Get the text for this row. Used when filtering or sorting.
@@ -1255,10 +1269,18 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
 
         setTableRows(rows);
         setTableColumns(columns);
+        // Drop filters and sorting on columns that are gone (e.g. the models,
+        // once Columns is changed to a variable), in the same update, since
+        // left in place they'd be invisible and return with the column.
+        const ids = new Set(colIds);
+        const prune = <T extends { id: string }>(prev: T[]) => {
+          const kept = prev.filter((entry) => ids.has(entry.id));
+          return kept.length === prev.length ? prev : kept;
+        };
+        table.setColumnFilters(prune);
+        table.setSorting(prune);
         setTableColumnPinning({
-          left: wideFormat
-            ? colnames.slice(0, Math.min(2, numVarCols)).map((_, j) => `c${j}`)
-            : [],
+          left: wideFormat ? colIds.slice(0, Math.min(2, numVarCols)) : [],
           right: [],
         });
 

@@ -97,20 +97,21 @@ const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
           </button>,
         ]}
       />
-      <div
-        ref={containerRef}
-        className="inspect-response-container nowheel nodrag"
-        style={{ marginTop: "-8pt" }}
-      >
-        <LLMResponseInspector
-          jsonResponses={jsonResponses ?? []}
-          isOpen={true}
-          wideFormat={false}
-          viewFormat={data.viewFormat}
-          onViewFormatChange={(viewFormat) =>
-            setDataPropsForNode(id, { viewFormat })
-          }
-        />
+      <div className="resize-handle-anchor" style={{ marginTop: "-8pt" }}>
+        <div
+          ref={containerRef}
+          className="inspect-response-container nowheel nodrag"
+        >
+          <LLMResponseInspector
+            jsonResponses={jsonResponses ?? []}
+            isOpen={true}
+            wideFormat={false}
+            viewFormat={data.viewFormat}
+            onViewFormatChange={(viewFormat) =>
+              setDataPropsForNode(id, { viewFormat })
+            }
+          />
+        </div>
         <ResizeHandle targetRef={containerRef} minWidth={150} minHeight={270} />
       </div>
       <Handle

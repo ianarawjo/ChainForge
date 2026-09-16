@@ -543,6 +543,14 @@ html[data-mantine-color-scheme="dark"] .settings-var-inline {
   );
 }
 
+/* Holds a scrolling element and its ResizeHandle, which sits outside the
+   scrolled content so it stays in the corner. As wide as the element. */
+.resize-handle-anchor {
+  position: relative;
+  width: fit-content;
+  min-width: inherit;
+}
+
 .inspector-node {
   background-color: #fff;
   padding: 10px;
