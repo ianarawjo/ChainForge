@@ -15,7 +15,9 @@ import Form from "@rjsf/core";
 import { WidgetProps } from "@rjsf/utils";
 import {
   ModelSettings,
+  applyModelDefaultsOnModelChange,
   getDefaultModelFormData,
+  modelDefaultsFor,
   postProcessFormData,
 } from "./ModelSettingSchemas";
 import {
@@ -133,7 +135,20 @@ const ModelSettingsModal = forwardRef<
 
       // If the user has already saved custom settings...
       if (model.formData) {
-        setFormData(model.formData);
+        // Fields not yet saved start at this model's own defaults, where it
+        // has some, rather than the form's.
+        const ownDefaults = modelDefaultsFor(
+          settingsSpec,
+          model.formData.model,
+        );
+        setFormData({
+          ...Object.fromEntries(
+            Object.entries(ownDefaults).filter(
+              ([key]) => model.formData?.[key] === undefined,
+            ),
+          ),
+          ...model.formData,
+        });
         setInitShortname(model.formData.shortname as string | undefined);
 
         // If the "custom_model" field is set, use that as the initial model name, overriding "model".
@@ -230,6 +245,15 @@ const ModelSettingsModal = forwardRef<
 
         setInitModelName(modelname);
       }
+
+      // Fields still at the previous model's defaults take the new model's.
+      const prevModel = formData?.model as string | undefined;
+      state.formData = applyModelDefaultsOnModelChange(
+        model ? ModelSettings[model.base_model] : undefined,
+        state.formData,
+        prevModel,
+        modelname,
+      );
 
       setFormData(state.formData);
     }
