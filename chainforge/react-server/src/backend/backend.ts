@@ -787,6 +787,9 @@ export async function saveFlowToLocalFilesystem(
 export async function ensureUniqueFlowFilename(
   filename: string,
 ): Promise<string> {
+  // Only a local install keeps flows as files on disk that could collide.
+  // In the browser this would query the visitor's own localhost and fail.
+  if (!APP_IS_RUNNING_LOCALLY()) return filename;
   try {
     const response = await axios.put(
       `${FLASK_BASE_URL}api/getUniqueFlowFilename`,

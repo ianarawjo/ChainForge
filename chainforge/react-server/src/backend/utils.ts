@@ -123,6 +123,11 @@ export let RAG_AVAILABLE: boolean | undefined;
 let _RAG_CHECK_PROMISE: Promise<boolean> | undefined;
 
 async function checkRagAvailabilityFromBackend(): Promise<boolean> {
+  // Hosted in a browser there is no Flask server to ask: FLASK_BASE_URL still
+  // points at http://localhost:8000, i.e. the visitor's own machine, so the
+  // request just fails (slowly) and warns. Server-side RAG is unavailable
+  // there by definition, which is the same answer the failed call produced.
+  if (!APP_IS_RUNNING_LOCALLY()) return false;
   try {
     const response = await call_flask_backend("checkRagAvailable", {});
     return response.rag_available === true;
