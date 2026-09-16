@@ -205,13 +205,17 @@ export interface SplitNodeProps {
     title: string;
     splitFormat: string;
     refresh: boolean;
+    fields?: (TemplateVarInfo | string)[];
   };
   id: string;
 }
 
 const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
+  // Seeded from what the node last wrote, which is saved with the flow. The
+  // node no longer re-splits on mount, so without this its own preview would
+  // read empty after a reload while its output was in fact intact.
   const [splitTexts, setSplitTexts] = useState<(TemplateVarInfo | string)[]>(
-    [],
+    data.fields ?? [],
   );
 
   // For an info pop-up that previews all the joined inputs
