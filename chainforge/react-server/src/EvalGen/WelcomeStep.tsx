@@ -1,11 +1,11 @@
 import React from "react";
-import { Anchor, Button, List, Stack, Text, Title } from "@mantine/core";
+import { Anchor, List, Stack, Text, Title } from "@mantine/core";
 
 interface WelcomeStepProps {
   setOnNextCallback: React.Dispatch<React.SetStateAction<() => unknown>>;
 }
 
-const WelcomeStep: React.FC<WelcomeStepProps> = ({ setOnNextCallback }) => (
+const WelcomeStep: React.FC<WelcomeStepProps> = () => (
   <Stack spacing="md" m="lg" p="lg" mb={120}>
     <Title order={2}>Welcome to the EvalGen Wizard</Title>
     <Text>

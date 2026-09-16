@@ -19,7 +19,6 @@ import {
   Tooltip,
 } from "@mantine/core";
 import GradingView from "./GradingView";
-import { useDisclosure } from "@mantine/hooks";
 import { v4 as uuid } from "uuid";
 import {
   IconRobot,
@@ -104,13 +103,10 @@ const CriteriaCard: React.FC<CriteriaCardProps> = ({
   criterion,
   onChange,
   onDelete,
-  initiallyOpen,
   grade,
   getGradeCount,
   onChangeGrade,
-  getStateValue,
 }) => {
-  const [opened, { toggle }] = useDisclosure(initiallyOpen ?? false);
   const [title, setTitle] = useState(criterion.shortname ?? "New Criteria");
 
   return (
@@ -245,9 +241,6 @@ interface GradingResponsesStepProps {
 }
 
 const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
-  onNext,
-  onPrevious,
-  executor,
   logs,
   genAIModelNames,
   numCallsMade,
@@ -256,20 +249,16 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
   setCriteria,
   grades,
   setPerCriteriaGrade,
-  setOnNextCallback,
 }) => {
   const apiKeys = useStore((state) => state.apiKeys);
   const [shownResponse, setShownResponse] = useState<LLMResponse | undefined>(
     undefined,
   );
-  const [pastShownResponses, setPastShownResponses] = useState<LLMResponse[]>(
-    [],
-  );
   const [shownResponseIdx, setShownResponseIdx] = useState(0);
 
   const [newCriteriaDesc, setNewCriteriaDesc] = useState("");
 
-  const getStateValue = (stateId: number) => {
+  const getStateValue = (_stateId: number) => {
     return Math.floor(Math.random() * 30 + 6);
   };
   const getGradeCount = (criteriaUID: string, grade: boolean | undefined) => {
@@ -302,12 +291,6 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
   }, [shownResponseIdx, responses]);
 
   // Add a criterion
-  const handleAddCriteria = (newCrit: EvalCriteria) => {
-    setCriteria((cs) => {
-      if (!newCrit.uid) newCrit.uid = uuid();
-      return [...cs, newCrit];
-    });
-  };
 
   // Modify an existing criterion
   const handleChangeCriteria = (newCrit: EvalCriteria, uid: string) => {
@@ -331,70 +314,6 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
 
   // Synthesize a new criteria according to the feedback given for the shown response
   const [isLoadingCriteria, setIsLoadingCriteria] = useState(0);
-  const synthNewCriteriaWithLLM = (
-    response: string,
-    feedback: string,
-    grade: "good" | "bad" | "unknown",
-  ) => {
-    // Add a loading Skeleton
-    setIsLoadingCriteria((num) => num + 1);
-    // Make async LLM call to expand criteria only if the feedback contains some idea of a constraint on the output and isn't covered by existing criteria
-    const prettyCriteria = criteria
-      .map((crit) => {
-        return `${crit.shortname}: ${crit.criteria}`;
-      })
-      .join("\n");
-
-    generateLLMEvaluationCriteria(
-      "",
-      genAIModelNames.large,
-      apiKeys,
-      `I've given some feedback on some text output. Use this feedback to decide on a single new evaluation criteria with a yes/no answer, only if the feedback isn't encompassed by existing criteria. I want you to take the criteria and output a JSON object in the format below. 
-  
-  TEXT OUTPUT: 
-  \`\`\`
-  ${response}
-  \`\`\`
-  
-  EXISTING CRITERIA:
-  \`\`\`
-  ${prettyCriteria}
-  \`\`\`
-  
-  GRADE (whether text was good or bad):
-  \`\`\`
-  ${grade}
-  \`\`\`
-  
-  FEEDBACK: 
-  \`\`\`
-  ${feedback}
-  \`\`\`
-  
-  If you determine the feedback corresponds to a new criteria, your response should contain a short title for the criteria ("shortname"), a description of the criteria in 2 sentences ("criteria"), and whether it should be evaluated with "code", or by an "expert" if the criteria is difficult to evaluate ("eval_method"). Your answer should be JSON within a \`\`\`json \`\`\` marker, with the following three fields: "criteria", "shortname", and "eval_method" (code or expert). The "criteria" should expand upon the user's input, the "shortname" should be a very brief title for the criteria, and this list should contain as many evaluation criteria as you can think of. Each evaluation criteria should test a unit concept that should evaluate to "true" in the ideal case. Only output JSON, nothing else. Output an empty list if there is no new evaluation criteria`, // prompt
-      "gpt-4o", // llm
-    )
-      .then((evalCrits) => {
-        // Take only the first if evalCrits has a nonempty list
-        if (evalCrits[0]) {
-          setCriteria((crit) =>
-            crit.concat([
-              {
-                ...evalCrits[0],
-                uid: uuid(),
-              },
-            ]),
-          );
-        }
-        // Remove a loading Skeleton
-        setIsLoadingCriteria((num) => num - 1);
-        // setNumGPT4Calls((num) => num + 1);
-      })
-      .catch((err) => {
-        console.error(err);
-        setIsLoadingCriteria((num) => num - 1);
-      });
-  };
 
   const addCriteria = (desc: string) => {
     // Add a loading Skeleton

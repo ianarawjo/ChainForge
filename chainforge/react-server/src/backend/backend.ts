@@ -18,7 +18,6 @@ import {
   LLMResponseData,
   PromptVarType,
   StringOrHash,
-  ChatHistory,
   JSONCompatible,
 } from "./typing";
 import { LLM, LLMProvider, getEnumName, getProvider } from "./models";
@@ -775,7 +774,7 @@ export async function saveFlowToLocalFilesystem(
   try {
     await axios.put(`${FLASK_BASE_URL}api/flows/${filename}`, {
       flow: flowJSON,
-      alsoAutosave: alsoAutosave,
+      alsoAutosave,
     });
   } catch (error) {
     throw new Error(
@@ -1851,7 +1850,9 @@ export async function importFlowBundle(
     MediaLookup.clear();
 
     for (const path of mediaFiles) {
-      const fileBlob = await zip.file(path)!.async("blob");
+      const entry = zip.file(path);
+      if (!entry) continue; // Listed in the zip but unreadable; skip it.
+      const fileBlob = await entry.async("blob");
       const filename = path.substring("media/".length); // remove folder prefix
       // Here we manually set the cache data for the media file
       // NOTE: We aren't checking integrity of the media files here, so backend

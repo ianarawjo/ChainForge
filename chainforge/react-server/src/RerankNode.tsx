@@ -298,11 +298,6 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
             }
 
             // Process reranked results
-            const methodSafe = method.methodType.replace(/\W+/g, "_");
-            const querySafe = query
-              ? query.slice(0, 20).replace(/\W+/g, "_")
-              : "no_query";
-
             rerankedResults.forEach((result: any, index: number) => {
               const rId = uuid();
 

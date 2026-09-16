@@ -19,11 +19,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  EvalCriteria,
-  EvalFunctionSetReport,
-  EvalGenReport,
-} from "../backend/evalgen/typing";
+import { EvalCriteria, EvalFunctionSetReport } from "../backend/evalgen/typing";
 import { Dict, LLMResponse, RatingDict } from "../backend/typing";
 import useStore from "../store";
 import { escapeBraces } from "../backend/template";
@@ -92,13 +88,12 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
 
   // Criteria the user defines across the stages
   const [criteria, setCriteria] = useState<EvalCriteria[]>([]);
-  const [onNextCallback, setOnNextCallback] = useState(() => () => {});
+  const [, setOnNextCallback] = useState(() => () => {});
 
   // Per-criteria grades (indexed by uid of response, then uid of criteria)
   const [perCriteriaGrades, setPerCriteriaGrades] = useState<
     Dict<Dict<boolean | undefined>>
   >({});
-  const [annotation, setAnnotation] = useState<string | undefined>(undefined);
   const setPerCriteriaGrade = (
     responseUID: string,
     criteriaUID: string,
@@ -142,7 +137,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
   // Logs and state from the EvalGen backend
   const [logs, setLogs] = useState<{ date: Date; message: string }[]>([]);
   const [numCallsMade, setNumCallsMade] = useState({ strong: 0, weak: 0 });
-  const [execProgress, setExecProgress] = useState(0);
+  const [, setExecProgress] = useState(0);
 
   // The samples to pass the executor / grading responses features. This will be bounded
   // by maxNumSamplesForExecutor, instead of the whole dataset.

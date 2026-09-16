@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  Table,
-  Textarea,
-  Menu,
-  TextInputStylesNames,
-  Styles,
-} from "@mantine/core";
+import { Table, Menu } from "@mantine/core";
 import {
   IconDots,
   IconPencil,
@@ -15,35 +9,6 @@ import {
 } from "@tabler/icons-react";
 import { TabularDataColType, TabularDataRowType } from "./backend/typing";
 
-const cellTextareaStyle = {
-  input: {
-    border: "0",
-    fontSize: "12px",
-    padding: "2px !important",
-    minHeight: "10pt",
-    lineHeight: "1.4",
-    whiteSpace: "pre-wrap",
-    background: "transparent",
-  },
-  root: {
-    width: "inherit",
-  },
-} satisfies Styles<TextInputStylesNames>;
-const headerTextareaStyle = {
-  input: {
-    border: "0",
-    fontSize: "13px",
-    fontWeight: "bold",
-    padding: "2px !important",
-    minHeight: "10pt",
-    lineHeight: "1.2",
-    whiteSpace: "pre-wrap",
-    background: "transparent",
-  },
-  root: {
-    width: "inherit",
-  },
-} satisfies Styles<TextInputStylesNames>;
 const tableHeaderStyle = {
   paddingBottom: "4px",
 };
@@ -68,44 +33,6 @@ const forceFocusContentEditable = (
       selection.addRange(range);
     }
   }
-};
-
-interface CellTextareaProps {
-  initialValue: string;
-  rowIdx: number;
-  column: TabularDataColType;
-  handleSaveCell: (rowIdx: number, colKey: string, text: string) => void;
-}
-
-const CellTextarea: React.FC<CellTextareaProps> = ({
-  initialValue,
-  rowIdx,
-  column,
-  handleSaveCell,
-  // onContextMenu,
-}) => {
-  const [value, setValue] = useState(initialValue);
-
-  useEffect(() => {
-    setValue(initialValue);
-  }, [initialValue]);
-
-  return (
-    <Textarea
-      autosize={true}
-      autoComplete="off"
-      autoCapitalize="off"
-      autoCorrect="off"
-      aria-autocomplete="none"
-      value={value}
-      placeholder={column.header}
-      onChange={(e) => setValue(e.currentTarget.value)}
-      onBlur={(e) => handleSaveCell(rowIdx, column.key, e.currentTarget.value)}
-      minRows={1}
-      maxRows={6}
-      styles={rowIdx > -1 ? cellTextareaStyle : headerTextareaStyle}
-    />
-  );
 };
 
 export interface EditableTableProps {

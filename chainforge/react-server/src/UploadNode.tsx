@@ -100,7 +100,7 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
 
           // Add filename + text content as a new TemplateVarInfo
           updatedFields.push({
-            text: text,
+            text,
             prompt: "",
             fill_history: {},
             llm: undefined,

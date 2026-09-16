@@ -340,11 +340,11 @@ function construct_text_payload(
 ): Dict {
   switch (variant) {
     case "openai":
-      return { type: "text", text: text };
+      return { type: "text", text };
     case "gemini":
-      return { text: text };
+      return { text };
     case "anthropic":
-      return { type: "text", text: text };
+      return { type: "text", text };
     default:
       throw new Error(`Unknown variant: ${variant}`);
   }

@@ -6,7 +6,6 @@ import React, {
   useContext,
 } from "react";
 import {
-  Badge,
   Button,
   Flex,
   Menu,
@@ -23,8 +22,6 @@ import {
   IconX,
   IconArrowBarToUp,
   IconArrowBarToDown,
-  IconLoader,
-  IconSquareArrowRight,
   IconArrowBarUp,
 } from "@tabler/icons-react";
 import TemplateHooks from "./TemplateHooksComponent";
@@ -491,7 +488,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
 
   const [isLoading, setIsLoading] = useState(false);
 
-  const [rowValues, setRowValues] = useState<string[]>(
+  const [, setRowValues] = useState<string[]>(
     tableData.map((row) => StringLookup.get(row.value) ?? ""),
   );
 

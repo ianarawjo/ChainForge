@@ -33,7 +33,6 @@ import {
   IconArrowRight,
   IconEraser,
   IconList,
-  IconMessageChatbot,
   IconMessageCircle,
   IconPlus,
   IconTrash,
@@ -1174,7 +1173,7 @@ Soft failing by replacing undefined with empty strings.`,
                   const o: TemplateVarInfo = {
                     text:
                       typeof r === "number"
-                        ? escapeBraces(StringLookup.get(r)!)
+                        ? escapeBraces(StringLookup.get(r) ?? "")
                         : typeof r === "string"
                           ? escapeBraces(r)
                           : undefined,
@@ -1369,15 +1368,6 @@ Soft failing by replacing undefined with empty strings.`,
 
   // Dynamically update the textareas and position of the template hooks
   const textAreaRef = useRef<HTMLTextAreaElement | HTMLDivElement | null>(null);
-  const resizeTextarea = () => {
-    const textarea = textAreaRef.current;
-
-    if (textarea) {
-      textarea.style.height = "auto"; // Reset height to shrink if needed
-      const newHeight = Math.min(textarea.scrollHeight, 600);
-      textarea.style.height = `${newHeight}px`;
-    }
-  };
 
   const [hooksY, setHooksY] = useState(138);
   const setRef = useCallback(
@@ -1536,11 +1526,11 @@ Soft failing by replacing undefined with empty strings.`,
                 });
                 setStatus(Status.WARNING);
               }}
-              onBlur={(e) => {
+              onBlur={() => {
                 // On blur, save the state of the variant label array
                 if (idxPromptVariantShown >= promptVariantLabel.length) return;
                 setDataPropsForNode(id, {
-                  promptVariantLabel: promptVariantLabel,
+                  promptVariantLabel,
                 });
               }}
               className="nopan nodrag"

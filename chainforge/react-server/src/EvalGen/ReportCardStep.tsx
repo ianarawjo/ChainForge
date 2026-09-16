@@ -23,7 +23,6 @@ interface ReportCardStepProps {
 const ReportCardStep: React.FC<ReportCardStepProps> = ({
   report,
   onFinish,
-  onPrevious,
 }) => {
   const cards = useMemo(() => {
     if (!report) return null;

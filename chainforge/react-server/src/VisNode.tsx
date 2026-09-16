@@ -14,7 +14,7 @@ import {
   NativeSelect,
   useMantineColorScheme,
 } from "@mantine/core";
-import useStore, { colorPalettes } from "./store";
+import useStore from "./store";
 import Plot from "react-plotly.js";
 // The Plotly bundle react-plotly.js renders with (importing "plotly.js" would
 // add a second copy), for resizing plots ourselves. It has no type declarations.
@@ -23,7 +23,6 @@ import Plotly from "plotly.js/dist/plotly";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import ResizeHandle from "./ResizeHandle";
-import PlotLegend from "./PlotLegend";
 import {
   cleanMetavarsFilterFunc,
   llmResponseDataToString,
@@ -45,13 +44,7 @@ import { IconChartBar, IconChartHistogram } from "@tabler/icons-react";
 /**
  * STATS
  */
-import {
-  sampleWithReplacement,
-  mean,
-  quantile,
-  standardDeviation,
-  sum,
-} from "simple-statistics";
+import { sum } from "simple-statistics";
 // import * as jStat from "jstat"; // jStat is a pure JS library without types
 
 // FUTURE: Including in-progress error bar computation for future use.
@@ -197,19 +190,6 @@ const getUniqueKeysInResponses = (
   return Array.from(ukeys);
 };
 
-const extractEvalResultsForMetric = (
-  metric: string,
-  responses: LLMResponse[],
-) => {
-  return responses
-    .map((resp_obj) =>
-      resp_obj?.eval_res?.items?.map((item) =>
-        typeof item === "object" ? item[metric] : undefined,
-      ),
-    )
-    .flat();
-};
-
 const areSetsEqual = (xs: Set<any>, ys: Set<any>) =>
   xs.size === ys.size && [...xs].every((x) => ys.has(x));
 
@@ -350,9 +330,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const [placeholderText, setPlaceholderText] = useState(<></>);
 
     const [plotLegend, setPlotLegend] = useState<React.ReactNode>(null);
-    const [selectedLegendItems, setSelectedLegendItems] = useState<
-      string[] | null
-    >(null);
+    const [selectedLegendItems] = useState<string[] | null>(null);
 
     // The MultiSelect so people can dynamically set what vars they care about
     const [multiSelectVars, setMultiSelectVars] = useState(data?.vars ?? []);
@@ -567,7 +545,6 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           multiSelectValue !== "LLM (default)" && multiSelectValue !== undefined
             ? [multiSelectValue]
             : [];
-        const varcolors = colorPalettes.var; // ['#44d044', '#f1b933', '#e46161', '#8888f9', '#33bef0', '#bb55f9', '#cadefc', '#f8f398'];
         let spec: Dict[] | Dict = [];
         const layout: Dict = {
           autosize: true,
@@ -657,13 +634,11 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
         const plot_legend: React.ReactNode | null = null;
         let metric_axes_labels: string[] = [];
-        let num_metrics = 1;
         if (
           typeof_eval_res.includes("KeyValue") &&
           responses.some((r) => r.eval_res !== undefined)
         ) {
           metric_axes_labels = Array.from(findEvalResKeys(responses));
-          num_metrics = metric_axes_labels.length;
         }
 
         const get_var = (

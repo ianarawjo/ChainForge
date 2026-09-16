@@ -8,7 +8,6 @@ import {
   Code,
   Divider,
   Flex,
-  Group,
   Popover,
   RingProgress,
   ScrollArea,
@@ -375,8 +374,6 @@ export const CriteriaCard: React.FC<CriteriaCardProps> = function CriteriaCard({
 };
 
 const PickCriteriaStep: React.FC<PickCriteriaStepProps> = ({
-  onNext,
-  onPrevious,
   criteria,
   setCriteria,
   genCriteriaFromContext,
@@ -390,16 +387,6 @@ const PickCriteriaStep: React.FC<PickCriteriaStepProps> = ({
   const apiKeys = useStore((state) => state.apiKeys);
 
   // An estimate of many requests the implementation executor will require (upper bound).
-  const estimatedLLMRequestsToImplement = useMemo(() => {
-    return 0; // TODO
-    // const num_llm_evals = criteria.reduce(
-    //   (acc, crit) => acc + (crit.eval_method === "expert" ? 1 : 0),
-    //   0,
-    // );
-    // // The executor sends off one query per criteria to generate 3-5 candidates each.
-    // // Each candidate LLM eval prompt will be run over all candidates.
-    // return criteria.length + num_llm_evals * 5 * samples.length;
-  }, [criteria]);
 
   const addCriteria = () => {
     // Add a loading Skeleton
@@ -442,11 +429,6 @@ const PickCriteriaStep: React.FC<PickCriteriaStepProps> = ({
         crit[critIdx][propName] = newValue;
       return [...crit];
     });
-  };
-
-  const handleSubmit = () => {
-    // setCriteriaData(criteria);
-    onNext();
   };
 
   return (

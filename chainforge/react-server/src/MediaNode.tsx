@@ -10,7 +10,6 @@ import { useDisclosure } from "@mantine/hooks";
 import {
   Text,
   Tooltip,
-  Group,
   ActionIcon,
   Box,
   Image,
@@ -32,8 +31,6 @@ import {
   IconInfoCircle,
   IconPlus,
   IconPencil,
-  IconTrash,
-  IconSearch,
   IconImageInPicture,
 } from "@tabler/icons-react";
 import { Position } from "reactflow";
@@ -219,13 +216,6 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
   const [statusMessage, setStatusMessage] = useState("");
 
   // Add a handler for the "Remove ALL" button
-  const handleRemoveAll = useCallback(() => {
-    // Clear all data
-    setTableData([]);
-    setTableColumns([]);
-    setMetadataRows({});
-    setCurrentRowIndex(0);
-  }, [id, setDataPropsForNode, pingOutputNodes]);
 
   // called on the change of a textarea field
   const handleSaveCell = useCallback(
@@ -692,7 +682,7 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
 
         new_metadata[rowWithImage.__uid] = {
           source: file.name,
-          coming_from: coming_from,
+          coming_from,
           timestamp: file.lastModified?.toString(),
           size: file.size?.toString(),
         };

@@ -9,14 +9,10 @@ import React, {
   useEffect,
 } from "react";
 import {
-  Menu,
   Button,
-  Card,
-  Group,
   Text,
   ActionIcon,
   Modal,
-  Divider,
   Box,
   Badge,
   Stack,
@@ -24,10 +20,8 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
-  IconPlus,
   IconTrash,
   IconSettings,
-  IconChevronRight,
   IconLink,
   IconUnlink,
   IconGitMerge,

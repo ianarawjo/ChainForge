@@ -608,7 +608,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
                 const o: TemplateVarInfo = {
                   text:
                     typeof r === "number"
-                      ? escapeBraces(StringLookup.get(r)!)
+                      ? escapeBraces(StringLookup.get(r) ?? "")
                       : typeof r === "string"
                         ? escapeBraces(r)
                         : undefined,

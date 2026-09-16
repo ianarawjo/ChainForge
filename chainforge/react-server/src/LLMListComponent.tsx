@@ -40,9 +40,9 @@ import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to an in-browser Qwen 2.5 model.
-const DEFAULT_INIT_LLMS = [
-  initLLMProviders.find((m) => m.model === NativeLLM.WebLLM_Qwen2_5_0_5B)!,
-];
+const DEFAULT_INIT_LLMS = initLLMProviders.filter(
+  (m) => m.model === NativeLLM.WebLLM_Qwen2_5_0_5B,
+);
 
 // Base models whose model names carry a prefix, which tells ChainForge which
 // provider they belong to. The settings form shows the name without it.

@@ -15,7 +15,6 @@ import { v4 as uuid } from "uuid";
 import { RerankMethodSchemas, rerankMethodGroups } from "./RerankMethodSchemas";
 import { canRunNow } from "./backend/ragCapabilities";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
-import useStore from "./store";
 import { DatalistWidget } from "./ModelSettingsModal";
 
 export interface RerankMethodSpec {

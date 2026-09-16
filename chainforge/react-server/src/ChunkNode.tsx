@@ -184,8 +184,6 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
             }
 
             // We'll build chunk IDs for each doc
-            const methodSafe = method.methodType.replace(/\W+/g, "_");
-            const libSafe = name.replace(/\W+/g, "_");
 
             chunks.forEach((cText, index) => {
               const cId = uuid(); // `${methodSafe}_${index}_${libSafe}`;

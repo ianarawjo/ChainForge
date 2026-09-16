@@ -14,7 +14,6 @@ import GradingView from "./GradingView";
 import { IconThumbDown, IconThumbUp } from "@tabler/icons-react";
 import { getRatingKeyForResponse } from "../ResponseRatingToolbar";
 import useStore from "../store";
-import { deepcopy } from "../backend/utils";
 import StorageCache from "../backend/cache";
 
 interface FeedbackStepProps {
@@ -24,12 +23,7 @@ interface FeedbackStepProps {
   setOnNextCallback: React.Dispatch<React.SetStateAction<() => unknown>>;
 }
 
-const FeedbackStep: React.FC<FeedbackStepProps> = ({
-  onNext,
-  onPrevious,
-  responses,
-  setOnNextCallback,
-}) => {
+const FeedbackStep: React.FC<FeedbackStepProps> = ({ responses }) => {
   const [shownResponse, setShownResponse] = useState<LLMResponse | undefined>(
     undefined,
   );

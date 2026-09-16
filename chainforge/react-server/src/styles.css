@@ -953,7 +953,7 @@ html [data-mantine-color-scheme="dark"] .response-var-header {
 }
 .response-var-inline-container {
   display: flex;
-  align-items: start;
+  align-items: flex-start;
   flex-wrap: wrap;
   justify-content: left;
   /* font-style: italic; */
@@ -1753,8 +1753,8 @@ html[data-mantine-color-scheme="dark"] .ai-button:active {
       100% / calc(100% - var(--r)) var(--t) no-repeat,
     conic-gradient(at var(--r) var(--r), #000 75%, #0000 0) calc(var(--r) / -2)
       calc(var(--r) / -2) padding-box,
-    radial-gradient(50% 50%, #000 98%, #0000 101%) 0 0 / var(--r) var(--r) space
-      padding-box;
+    radial-gradient(50% 50% at center, #000 98%, #0000 101%) 0 0 / var(--r)
+      var(--r) space padding-box;
   background: #333 border-box;
   color: #fff;
 }
