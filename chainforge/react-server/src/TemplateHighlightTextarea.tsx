@@ -180,17 +180,22 @@ const TemplateHighlightTextarea = forwardRef<
 
   const segments = useMemo(() => splitTemplateVars(text), [text]);
 
-  /* Take the tint straight from Mantine rather than restating it in CSS:
-     theme.fn.variant is the same call Badge makes for its light variant, so a
-     highlighted {var} and its handle badge below the textarea cannot drift
-     apart, in either colour scheme. The indigo/orange split follows the same
-     settings-variable rule as genTemplateHooks in TemplateHooksComponent. */
+  /* Drawn from the same palette as the handle badges below the textarea --
+     the indigo/orange split follows the same settings-variable rule as
+     genTemplateHooks in TemplateHooksComponent -- but one step stronger than
+     Badge's light variant, which uses shade 0 (light) and shade 9 at 20%
+     (dark). A badge carries coloured text and padding to read its tint from;
+     this sits behind ordinary body-coloured text at glyph height, so the
+     identical colour reads weaker in place, noticeably so on dark. Only the
+     shade index is ours: the hues still follow the theme. */
   const varBackground = useCallback(
-    (name?: string) =>
-      theme.fn.variant({
-        variant: "light",
-        color: name?.charAt(0) === "=" ? "orange" : "indigo",
-      }).background,
+    (name?: string) => {
+      const shades =
+        theme.colors[name?.charAt(0) === "=" ? "orange" : "indigo"];
+      return theme.colorScheme === "dark"
+        ? theme.fn.rgba(shades[9], 0.45)
+        : shades[1];
+    },
     [theme],
   );
 

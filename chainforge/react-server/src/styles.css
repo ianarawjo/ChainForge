@@ -2366,6 +2366,8 @@ html[data-mantine-color-scheme="dark"] .ragchat-diff-removed {
      handle badges use. See TemplateHighlightTextarea.tsx. */
   color: transparent;
   border-radius: 4px;
-  /* Padding would shift the text off the textarea's own glyphs. */
-  padding: 0;
+  /* Horizontal padding would shift the backdrop's glyphs out from under the
+     textarea's own. Vertical padding on an inline box paints outside the line
+     box without affecting layout, so the band can be taller for free. */
+  padding: 2px 0;
 }
