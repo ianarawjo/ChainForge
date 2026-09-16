@@ -17,6 +17,7 @@ import {
   listMedia,
   putMedia,
 } from "./mediaStore";
+import { requestStorageProtection } from "./storagePersistence";
 
 // NOTE: call APP_IS_RUNNING_LOCALLY() where it is needed rather than caching it
 // at module scope. cache.ts and utils.ts import each other, so evaluating it
@@ -725,6 +726,8 @@ export class MediaLookup {
     const uid =
       `cache__${uuid()}__cache` + ("name" in file ? `__${file.name}` : "");
     mediaLookup.add(uid, file);
+    // Work is now saved in the browser, so ask it not to clear the storage.
+    requestStorageProtection();
     return uid;
   }
 
