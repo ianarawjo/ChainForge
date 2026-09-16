@@ -370,7 +370,17 @@ export const CodeEvaluatorComponent = forwardRef<
           editorProps={{ $blockScrolling: true }}
           width="100%"
           height="100%"
-          setOptions={{ useWorker: false }}
+          setOptions={{
+            useWorker: false,
+            // The editor lives on the React Flow canvas, which pans and zooms
+            // with a CSS transform on an ancestor. Without this, Ace maps a
+            // click from screen pixels straight through a character width
+            // measured in the editor's own unscaled pixels, so the caret lands
+            // off by the zoom factor -- at 50% zoom, clicking column 20 puts
+            // the caret at column 10. Ace solves for the ancestor transform
+            // when this is on.
+            hasCssTransforms: true,
+          }}
           tabSize={2}
           onLoad={(editorInstance) => {
             aceEditorRef.current = editorInstance;
