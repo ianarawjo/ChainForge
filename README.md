@@ -105,7 +105,6 @@ For detailed Docker documentation including architecture support, environment va
 - Together.ai
 - [Ollama API](https://github.com/jmorganca/ollama) (locally-hosted models)
 - Microsoft Azure OpenAI Endpoints
-- [Aleph Alpha](https://docs.aleph-alpha.com/docs/introduction)
 - Amazon Bedrock-hosted on-demand inference, including Anthropic Claude 3
 - ...and any other provider through [custom provider scripts](https://chainforge.ai/docs/custom_providers/)!
 

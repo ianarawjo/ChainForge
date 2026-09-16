@@ -402,13 +402,6 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     ],
   },
   {
-    name: "Aleph Alpha",
-    emoji: "💡",
-    model: "luminous-base",
-    base_model: "luminous-base",
-    temp: 0.0,
-  },
-  {
     name: "Azure OpenAI",
     emoji: "🔷",
     model: "azure-openai",
