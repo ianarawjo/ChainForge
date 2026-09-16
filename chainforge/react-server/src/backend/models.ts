@@ -165,14 +165,6 @@ export enum NativeLLM {
   MiniMax_M2_7 = "MiniMax-M2.7",
   MiniMax_M2_7_highspeed = "MiniMax-M2.7-highspeed",
 
-  // Aleph Alpha
-  Aleph_Alpha_Luminous_Extended = "luminous-extended",
-  Aleph_Alpha_Luminous_ExtendedControl = "luminous-extended-control",
-  Aleph_Alpha_Luminous_BaseControl = "luminous-base-control",
-  Aleph_Alpha_Luminous_Base = "luminous-base",
-  Aleph_Alpha_Luminous_Supreme = "luminous-supreme",
-  Aleph_Alpha_Luminous_SupremeControl = "luminous-supreme-control",
-
   // HuggingFace Inference hosted models, suggested to users
   HF_MISTRAL_7B_INSTRUCT = "mistralai/Mistral-7B-Instruct-v0.1",
   HF_ZEPHYR_7B_BETA = "HuggingFaceH4/zephyr-7b-beta",
@@ -313,7 +305,6 @@ export enum LLMProvider {
   Anthropic = "anthropic",
   Google = "google",
   HuggingFace = "hf",
-  Aleph_Alpha = "alephalpha",
   Ollama = "ollama",
   Bedrock = "bedrock",
   Together = "together",
@@ -382,7 +373,6 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
   else if (llm_name?.startsWith("GEMINI")) return LLMProvider.Google;
   else if (llm_name?.startsWith("HF_")) return LLMProvider.HuggingFace;
   else if (llm.toString().startsWith("claude")) return LLMProvider.Anthropic;
-  else if (llm_name?.startsWith("Aleph_Alpha")) return LLMProvider.Aleph_Alpha;
   else if (llm_name?.startsWith("Ollama")) return LLMProvider.Ollama;
   else if (llm_name?.startsWith("Bedrock")) return LLMProvider.Bedrock;
   else if (llm_name?.startsWith("Together")) return LLMProvider.Together;

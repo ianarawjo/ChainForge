@@ -233,8 +233,6 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         Azure_OpenAI: "",
         Azure_OpenAI_Endpoint: "",
         HuggingFace: "",
-        AlephAlpha: "",
-        AlephAlpha_BaseURL: "",
         Ollama_BaseURL: "",
         AWS_Access_Key_ID: "",
         AWS_Secret_Access_Key: "",
@@ -728,19 +726,6 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   {...form.getInputProps("Azure_OpenAI_Endpoint")}
                 />
                 <br />
-                <Divider my="xs" label="Aleph Alpha" labelPosition="center" />
-
-                <TextInput
-                  label="Aleph Alpha API Key"
-                  placeholder="Paste your Aleph Alpha API Key here"
-                  {...form.getInputProps("AlephAlpha")}
-                  style={{ marginBottom: "8pt" }}
-                />
-                <TextInput
-                  label="Pharia AI Inference Base URL"
-                  placeholder="Paste your Pharia AI Inference URL here"
-                  {...form.getInputProps("AlephAlpha_BaseURL")}
-                />
 
                 <Group position="right" mt="md">
                   <Button type="submit">Submit</Button>

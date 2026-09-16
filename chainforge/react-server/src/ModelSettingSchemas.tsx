@@ -1824,250 +1824,6 @@ const HuggingFaceTextInferenceSettings: ModelSettingsDict = {
   postprocessors: {},
 };
 
-const AlephAlphaLuminousSettings: ModelSettingsDict = {
-  fullName: "Aleph Alpha Luminous",
-  schema: {
-    type: "object",
-    required: ["shortname"],
-    properties: {
-      shortname: {
-        type: "string",
-        title: "Nickname",
-        description:
-          "Unique identifier to appear in ChainForge. Keep it short.",
-        default: "Luminous",
-      },
-      model: {
-        type: "string",
-        title: "Model",
-        description:
-          "Select a suggested Aleph Alpha model to query using the Aleph Alpha API. For more details, check out https://docs.aleph-alpha.com/api/available-models/",
-        enum: [
-          "luminous-extended",
-          "luminous-extended-control",
-          "luminous-base-control",
-          "luminous-base",
-          "luminous-supreme",
-          "luminous-supreme-control",
-        ],
-        default: "luminous-base",
-        shortname_map: {
-          "luminous-extended": "luminous-ext",
-          "luminous-extended-control": "luminous-ext-ctrl",
-          "luminous-base-control": "luminous-base-ctrl",
-          "luminous-base": "luminous-base",
-          "luminous-supreme": "luminous-supr",
-          "luminous-supreme-control": "luminous-supr-ctrl",
-        },
-      },
-      chat_model: {
-        type: "boolean",
-        title: "chat_model",
-        description: "Specifies whether the model is a chat model.",
-        enum: [true, false],
-        default: false,
-      },
-      system_msg: {
-        type: "string",
-        title: "System Message (chat models only)",
-        description:
-          "Enter your system message here. Note that the type of model must be set to 'chat' for this to be passed.",
-        default: "You are a helpful assistant.",
-        allow_empty_str: true,
-      },
-      temperature: {
-        type: "number",
-        title: "temperature",
-        description: "Controls the 'creativity' or randomness of the response.",
-        default: 0.0,
-        minimum: 0,
-        maximum: 1.0,
-        multipleOf: 0.01,
-      },
-      maximum_tokens: {
-        type: "integer",
-        title: "Maximum Tokens",
-        description:
-          "The maximum number of tokens to generate in the chat completion.",
-        default: 64,
-      },
-      stop_sequences: {
-        type: "string",
-        title: "stop_sequences",
-        description:
-          'Sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
-        default: "",
-      },
-      best_of: {
-        type: "integer",
-        maximum: 100,
-        minimum: 1,
-        description:
-          "best_of number of completions will be generated on server side. The completion with the highest log probability per token is returned, must be strictly greater than n",
-        default: null,
-      },
-      log_probs: {
-        type: "boolean",
-        title: "log_probs",
-        description:
-          "Number of top log probabilities for each token generated.",
-        enum: [true, false],
-        default: false,
-      },
-      top_k: {
-        type: "integer",
-        title: "top_k",
-        description:
-          "Introduces random sampling for generated tokens by randomly selecting the next token from the k most likely options.",
-        default: 0,
-      },
-      top_p: {
-        type: "number",
-        title: "top_p",
-        description:
-          "Introduces random sampling for generated tokens by randomly selecting the next token from the smallest possible set of tokens whose cumulative probability exceeds the probability top_p.",
-        default: 0,
-        minimum: 0,
-        maximum: 1.0,
-        multipleOf: 0.01,
-      },
-      sequence_penalty_min_length: {
-        type: "integer",
-        title: "sequence_penalty_min_length",
-        description: "Minimal number of tokens to be considered as sequence.",
-        default: 2,
-      },
-    },
-  },
-  uiSchema: {
-    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
-    shortname: {
-      "ui:autofocus": true,
-    },
-    model: {
-      "ui:help": "Defaults to Luminous Base.",
-      "ui:widget": "datalist",
-    },
-    chat_model: {
-      "ui:widget": "radio",
-      "ui:help":
-        "Defaults to false. Set to true if you're using a chat-capable model.",
-    },
-    system_msg: {
-      "ui:widget": "textarea",
-      "ui:help": "Defaults to 'You are a helpful assistant.'",
-    },
-    temperature: {
-      "ui:help": "Defaults to 0.0.",
-      "ui:widget": "range",
-    },
-    maximum_tokens: {
-      "ui:help": "Defaults to 64.",
-    },
-    top_k: {
-      "ui:help": "Defaults to 0",
-    },
-    top_p: {
-      "ui:help": "Defaults to 0",
-    },
-    presence_penalty: {
-      "ui:help": "Defaults to 0",
-    },
-    frequency_penalty: {
-      "ui:help": "Defaults to 0",
-    },
-    sequence_penalty: {
-      "ui:help": "Defaults to 0",
-    },
-    sequence_penalty_min_length: {
-      "ui:help": "Defaults to 2",
-    },
-    repetition_penalties_include_prompt: {
-      "ui:help": "Defaults to false",
-      "ui:widget": "radio",
-    },
-    repetition_penalties_include_completion: {
-      "ui:help": "Defaults to true",
-      "ui:widget": "radio",
-    },
-    use_multiplicative_presence_penalty: {
-      "ui:help": "Defaults to false",
-      "ui:widget": "radio",
-    },
-    use_multiplicative_frequency_penalty: {
-      "ui:help": "Defaults to false",
-      "ui:widget": "radio",
-    },
-    use_multiplicative_sequence_penalty: {
-      "ui:help": "Defaults to false",
-      "ui:widget": "radio",
-    },
-    penalty_exceptions: {
-      "ui:help": "Defaults to null",
-    },
-    penalty_exceptions_include_stop_sequences: {
-      "ui:help": "Defaults to true",
-      "ui:widget": "radio",
-    },
-    best_of: {
-      "ui:help": "Defaults to 1 (max. 100)",
-    },
-    logit_bias: {
-      "ui:help": "Defaults to null, type object",
-    },
-    log_probs: {
-      "ui:widget": "radio",
-    },
-    stop_sequences: {
-      "ui:help": "Defaults to null, string[]",
-    },
-    tokens: {
-      "ui:help": "Defaults to false, nullable, boolean",
-    },
-    raw_completion: {
-      "ui:help": "Defaults to false",
-    },
-    disable_optimizations: {
-      "ui:help": "Defaults to false",
-    },
-    completion_bias_inclusion: {
-      "ui:help": "Defaults to [], string[]",
-    },
-    completion_bias_inclusion_first_token_only: {
-      "ui:help": "Defaults to false",
-    },
-    completion_bias_exclusion: {
-      "ui:help": "Defaults to []",
-    },
-    completion_bias_exclusion_first_token_only: {
-      "ui:help": "Defaults to false",
-    },
-    contextual_control_threshold: {
-      "ui:help": "Defaults to null, is number",
-    },
-    control_log_additive: {
-      "ui:help": "Defaults to true",
-    },
-  },
-  postprocessors: {
-    stop_sequences: (str) => {
-      if (typeof str !== "string") return str;
-      if (str.trim().length === 0) return [];
-      return str
-        .match(/"((?:[^"\\]|\\.)*)"/g)
-        ?.map((s) => s.substring(1, s.length - 1)); // split on double-quotes but exclude escaped double-quotes inside the group
-    },
-    log_probs: (bool) => {
-      if (typeof bool !== "boolean") return bool;
-      return bool ? 3 : null;
-    },
-    best_of: (a) => {
-      if (typeof a !== "number") return a;
-      return a === 1 ? null : a;
-    },
-  },
-};
-
 const OllamaSettings: ModelSettingsDict = {
   fullName: "Ollama",
   schema: {
@@ -3199,7 +2955,6 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "gemini-image": GeminiImageSettings,
   "azure-openai": AzureOpenAISettings,
   hf: HuggingFaceTextInferenceSettings,
-  "luminous-base": AlephAlphaLuminousSettings,
   ollama: OllamaSettings,
   "br.anthropic.claude": BedrockClaudeSettings,
   "br.ai21.j2": BedrockJurassic2Settings,
@@ -3231,7 +2986,6 @@ export function baseModelToProvider(base_model: string): LLMProvider {
     "gemini-image": LLMProvider.Google,
     "azure-openai": LLMProvider.Azure_OpenAI,
     hf: LLMProvider.HuggingFace,
-    "luminous-base": LLMProvider.Aleph_Alpha,
     ollama: LLMProvider.Ollama,
     "br.anthropic.claude": LLMProvider.Bedrock,
     "br.ai21.j2": LLMProvider.Bedrock,
@@ -3271,7 +3025,6 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.Google]: Gemini25Settings,
     [LLMProvider.Azure_OpenAI]: AzureOpenAISettings,
     [LLMProvider.HuggingFace]: HuggingFaceTextInferenceSettings,
-    [LLMProvider.Aleph_Alpha]: AlephAlphaLuminousSettings,
     [LLMProvider.Ollama]: OllamaSettings,
     [LLMProvider.Together]: TogetherChatSettings,
     [LLMProvider.DeepSeek]: DeepSeekSettings,
