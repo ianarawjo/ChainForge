@@ -502,6 +502,8 @@ export interface StoreHandles {
   // API keys to LLM providers
   apiKeys: Dict<string>;
   setAPIKeys: (apiKeys: Dict<string>) => void;
+  /** Forgets every API key set in the app. */
+  clearAPIKeys: () => void;
 
   // Provider for genAI features
   aiFeaturesProvider: string;
@@ -640,6 +642,7 @@ const useStore = create<StoreHandles>((set, get) => ({
     // Only update API keys present in the new array; don't delete existing ones:
     set({ apiKeys: { ...get().apiKeys, ...new_keys } });
   },
+  clearAPIKeys: () => set({ apiKeys: {} }),
 
   // Favorites (nodes, models, etc)
   favorites: {

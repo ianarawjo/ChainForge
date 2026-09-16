@@ -256,13 +256,24 @@ async function get_webllm_module(): Promise<any> {
   return _WEBLLM_MODULE_PROMISE;
 }
 
+/**
+ * Per-model options for WebLLM, where a model's published config won't load
+ * as is. Gemma 3's sets both a context window and a sliding window, which
+ * WebLLM refuses ("Only one of context_window_size and sliding_window_size can
+ * be positive"); full attention over the context window is used instead.
+ */
+const WEBLLM_CHAT_OPTIONS: Dict<Dict> = {
+  "gemma3-1b-it-q4f16_1-MLC": { sliding_window_size: -1 },
+};
+
 async function get_webllm_engine(model: string): Promise<any> {
+  const chat_opts = WEBLLM_CHAT_OPTIONS[model];
   if (_WEBLLM_LOAD_PROMISE) await _WEBLLM_LOAD_PROMISE;
 
   if (_WEBLLM_ENGINE && _WEBLLM_MODEL === model) return _WEBLLM_ENGINE;
 
   if (_WEBLLM_ENGINE && typeof _WEBLLM_ENGINE.reload === "function") {
-    _WEBLLM_LOAD_PROMISE = _WEBLLM_ENGINE.reload(model);
+    _WEBLLM_LOAD_PROMISE = _WEBLLM_ENGINE.reload(model, chat_opts);
     try {
       await _WEBLLM_LOAD_PROMISE;
       _WEBLLM_MODEL = model;
@@ -273,11 +284,15 @@ async function get_webllm_engine(model: string): Promise<any> {
   }
 
   const webllm = await get_webllm_module();
-  _WEBLLM_LOAD_PROMISE = webllm.CreateMLCEngine(model, {
-    initProgressCallback: (report: Dict) => {
-      if (report?.text) console.log(`[WebLLM] ${report.text}`);
+  _WEBLLM_LOAD_PROMISE = webllm.CreateMLCEngine(
+    model,
+    {
+      initProgressCallback: (report: Dict) => {
+        if (report?.text) console.log(`[WebLLM] ${report.text}`);
+      },
     },
-  });
+    chat_opts,
+  );
 
   try {
     _WEBLLM_ENGINE = await _WEBLLM_LOAD_PROMISE;
@@ -293,9 +308,39 @@ async function get_webllm_engine(model: string): Promise<any> {
 }
 
 /**
+ * Resets the API keys to those from the environment, e.g. once the user asks
+ * for the keys they entered in Settings to be forgotten.
+ */
+export function clear_api_keys(): void {
+  OPENAI_API_KEY = get_environ("OPENAI_API_KEY");
+  OPENAI_BASE_URL = get_environ("OPENAI_BASE_URL");
+  ANTHROPIC_API_KEY = get_environ("ANTHROPIC_API_KEY");
+  GOOGLE_PALM_API_KEY = get_environ("PALM_API_KEY");
+  AZURE_OPENAI_KEY = get_environ("AZURE_OPENAI_KEY");
+  AZURE_OPENAI_ENDPOINT = get_environ("AZURE_OPENAI_ENDPOINT");
+  HUGGINGFACE_API_KEY = get_environ("HUGGINGFACE_API_KEY");
+  AWS_ACCESS_KEY_ID = get_environ("AWS_ACCESS_KEY_ID");
+  AWS_SECRET_ACCESS_KEY = get_environ("AWS_SECRET_ACCESS_KEY");
+  AWS_SESSION_TOKEN = get_environ("AWS_SESSION_TOKEN");
+  AWS_REGION = get_environ("AWS_REGION");
+  TOGETHER_API_KEY = get_environ("TOGETHER_API_KEY");
+  DEEPSEEK_API_KEY = get_environ("DEEPSEEK_API_KEY");
+  MINIMAX_API_KEY = get_environ("MINIMAX_API_KEY");
+  OPENROUTER_API_KEY = get_environ("OPENROUTER_API_KEY");
+}
+
+/**
  * Sets the local API keys for the revelant LLM API(s).
  */
-export function set_api_keys(api_keys: Dict<string>): void {
+export function set_api_keys(given_keys: Dict<string>): void {
+  // A pasted key often brings a space or line break along. Sent as is, the
+  // provider rejects it as malformed, which looks like a wrong key.
+  const api_keys: Dict<string> = Object.fromEntries(
+    Object.entries(given_keys).map(([name, value]) => [
+      name,
+      typeof value === "string" ? value.trim() : value,
+    ]),
+  );
   function key_is_present(name: string): boolean {
     return (
       (name in api_keys &&
@@ -744,6 +789,12 @@ async function openrouter_request(path: string, body: Dict): Promise<Dict> {
   } catch {
     payload = undefined;
   }
+  // OpenRouter answers a key that isn't shaped like one of its keys with
+  // "Missing Authentication header", which reads as though no key was sent.
+  if (res.status === 401 && !OPENROUTER_API_KEY?.startsWith("sk-or-"))
+    throw new Error(
+      'OpenRouter did not recognize the API key. OpenRouter keys start with "sk-or-"; check the key in Settings.',
+    );
   // Errors can also arrive with a 200 status, e.g. when the upstream provider fails.
   if (!res.ok || payload?.error)
     throw new Error(
@@ -2537,6 +2588,28 @@ async function call_custom_provider(
   return [query, responses];
 }
 
+/**
+ * Reasoning models run in the browser (e.g. Qwen3) write their reasoning into
+ * the reply, in a leading <think> block. Moves it to `reasoning_content`, as
+ * DeepSeek sends it, so the response is just the answer. A block that never
+ * closes (the model ran out of tokens while reasoning) is all reasoning.
+ */
+export function split_webllm_thinking(choice: Dict): Dict {
+  const content = choice?.message?.content;
+  if (typeof content !== "string") return choice;
+  const match = content.match(/^\s*<think>([\s\S]*?)(?:<\/think>|$)/);
+  if (!match) return choice;
+  const reasoning = match[1].trim();
+  return {
+    ...choice,
+    message: {
+      ...choice.message,
+      content: content.slice(match[0].length).trim(),
+      ...(reasoning ? { reasoning_content: reasoning } : {}),
+    },
+  };
+}
+
 async function call_webllm(
   prompt: string,
   model: LLM,
@@ -2595,7 +2668,7 @@ async function call_webllm(
     });
 
     if (completion?.choices && completion.choices.length > 0)
-      choices.push(...completion.choices);
+      choices.push(...completion.choices.map(split_webllm_thinking));
     else throw new Error("WebLLM returned no choices.");
   }
 
@@ -2920,6 +2993,7 @@ export function extract_reasoning(
         );
       break;
     case LLMProvider.DeepSeek:
+    case LLMProvider.WebLLM: // see split_webllm_thinking
       // OpenAI-format chat completions, with the reasoning beside the content
       reasoning = responses.flatMap((r) =>
         (r?.choices ?? []).map((c: Dict) =>

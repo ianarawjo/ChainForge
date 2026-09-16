@@ -82,7 +82,7 @@ const chatReply = (message: Dict, finish_reason = "stop") => ({
 });
 
 beforeAll(() => {
-  set_api_keys({ OpenRouter: "or-test" });
+  set_api_keys({ OpenRouter: "sk-or-test" });
 });
 
 describe("recognizing OpenRouter models", () => {
@@ -160,7 +160,7 @@ describe("OpenRouter chat completions", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://openrouter.ai/api/v1/chat/completions");
-    expect(headers(calls[0]).Authorization).toBe("Bearer or-test");
+    expect(headers(calls[0]).Authorization).toBe("Bearer sk-or-test");
     expect(headers(calls[0])["X-OpenRouter-Title"]).toBe("ChainForge");
 
     const body = jsonBody(calls[0]);
@@ -281,6 +281,33 @@ describe("OpenRouter chat completions", () => {
       call_openrouter("Q", "openrouter/openai/gpt-5.5"),
     ).rejects.toThrow("Provider down");
   });
+
+  test("a key that isn't an OpenRouter key is named as the problem", async () => {
+    // OpenRouter's own message reads as though no key was sent.
+    set_api_keys({ OpenRouter: "sk-proj-an-openai-key" });
+    mockFetch({
+      status: 401,
+      body: { error: { message: "Missing Authentication header" } },
+    });
+    try {
+      await expect(
+        call_openrouter("Q", "openrouter/openai/gpt-5.5"),
+      ).rejects.toThrow('OpenRouter keys start with "sk-or-"');
+    } finally {
+      set_api_keys({ OpenRouter: "sk-or-test" });
+    }
+  });
+
+  test("a pasted key's surrounding whitespace is not sent", async () => {
+    set_api_keys({ OpenRouter: "  sk-or-pasted\n" });
+    mockFetch({ body: chatReply({ content: "Hi!" }) });
+    try {
+      await call_openrouter("Q", "openrouter/openai/gpt-5.5");
+      expect(headers(calls[0]).Authorization).toBe("Bearer sk-or-pasted");
+    } finally {
+      set_api_keys({ OpenRouter: "sk-or-test" });
+    }
+  });
 });
 
 describe("OpenRouter reasoning settings", () => {
@@ -335,7 +362,7 @@ describe("OpenRouter image generation", () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://openrouter.ai/api/v1/images");
-    expect(headers(calls[0]).Authorization).toBe("Bearer or-test");
+    expect(headers(calls[0]).Authorization).toBe("Bearer sk-or-test");
     expect(jsonBody(calls[0])).toEqual({
       model: "black-forest-labs/flux.2-pro",
       prompt: "a cat",
