@@ -14,6 +14,13 @@ export interface InspectorNodeProps {
     title: string;
     input: string;
     refresh: boolean;
+    /**
+     * The inspector tab this node was last left on. Kept in node data rather
+     * than component state so that it survives a reload and travels with an
+     * exported flow -- someone sharing a flow can hand it over already showing
+     * the view that makes their point.
+     */
+    viewFormat?: string;
   };
   id: string;
 }
@@ -99,6 +106,10 @@ const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
           jsonResponses={jsonResponses ?? []}
           isOpen={true}
           wideFormat={false}
+          viewFormat={data.viewFormat}
+          onViewFormatChange={(viewFormat) =>
+            setDataPropsForNode(id, { viewFormat })
+          }
         />
         <ResizeHandle targetRef={containerRef} minWidth={150} minHeight={270} />
       </div>
