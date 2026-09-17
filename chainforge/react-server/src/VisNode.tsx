@@ -7,14 +7,16 @@ import React, {
   useImperativeHandle,
   useTransition,
 } from "react";
+import { createPortal } from "react-dom";
 import { Handle, Position } from "reactflow";
 import {
   Button,
   Menu,
   NativeSelect,
+  Switch,
   useMantineColorScheme,
 } from "@mantine/core";
-import useStore from "./store";
+import useStore, { colorPalettes } from "./store";
 import Plot from "react-plotly.js";
 // The Plotly bundle react-plotly.js renders with (importing "plotly.js" would
 // add a second copy), for resizing plots ourselves. It has no type declarations.
@@ -23,6 +25,17 @@ import Plotly from "plotly.js/dist/plotly";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import ResizeHandle from "./ResizeHandle";
+import VisStatsPanel from "./VisStatsPanel";
+import {
+  buildEvalStatsRows,
+  compareEvalStats,
+  EvalStatsEntity,
+  EvalStatsFactor,
+  EvalStatsResult,
+  EvalStatsRow,
+  isEvalStatsAvailable,
+  toStatsScore,
+} from "./backend/evalStats";
 import {
   cleanMetavarsFilterFunc,
   llmResponseDataToString,
@@ -50,7 +63,7 @@ import { AIPlot } from "./backend/aiPlots";
 /**
  * STATS
  */
-import { sum } from "simple-statistics";
+import { mean } from "simple-statistics";
 // import * as jStat from "jstat"; // jStat is a pure JS library without types
 
 // FUTURE: Including in-progress error bar computation for future use.
@@ -131,6 +144,94 @@ const castEvalScoreToNum = (score: EvaluationScore): number => {
   else return 0; // unknown, soft fail
 };
 
+/**
+ * The mean of the scores in `items` and how many there are, leaving out
+ * results that aren't scores (errors), so they don't count as zeros.
+ */
+const meanAndCount = (
+  items: EvaluationScore[],
+): { mean: number | null; n: number } => {
+  const nums = items
+    .filter(
+      (x) =>
+        (typeof x === "number" && Number.isFinite(x)) || typeof x === "boolean",
+    )
+    .map(castEvalScoreToNum);
+  return { mean: nums.length > 0 ? mean(nums) : null, n: nums.length };
+};
+
+/** A bar in a 100%-stacked chart of categorical scores. */
+interface CategoryShareRow {
+  /** The bar's label, or its [outer, inner] labels on a two-level axis. */
+  y: string | [string, string];
+  items: EvaluationScore[];
+}
+
+/**
+ * 100%-stacked bars for categorical scores: one trace per category, splitting
+ * each row into the share of its scores in that category, with the count and
+ * n on hover.
+ */
+const categoryShareTraces = (
+  rows: CategoryShareRow[],
+  palette: string[],
+): Dict[] => {
+  const counts = rows.map((row) => {
+    const byCategory: Dict<number> = {};
+    row.items.forEach((item) => {
+      if (item === undefined || item === null) return;
+      const category = String(item);
+      byCategory[category] = (byCategory[category] ?? 0) + 1;
+    });
+    return byCategory;
+  });
+  const ns = counts.map((c) => Object.values(c).reduce((a, b) => a + b, 0));
+  const categories = Array.from(
+    new Set(counts.flatMap((c) => Object.keys(c))),
+  ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const twoLevel = rows.some((row) => Array.isArray(row.y));
+  const y = twoLevel
+    ? [
+        rows.map((row) => (row.y as [string, string])[0]),
+        rows.map((row) => (row.y as [string, string])[1]),
+      ]
+    : rows.map((row) => row.y);
+  return categories.map((category, i) => ({
+    type: "bar",
+    orientation: "h",
+    name: category,
+    y,
+    x: counts.map((c, r) =>
+      ns[r] > 0 ? (100 * (c[category] ?? 0)) / ns[r] : 0,
+    ),
+    customdata: counts.map((c, r) => [c[category] ?? 0, ns[r]]),
+    marker: { color: palette[i % palette.length] },
+    hovertemplate:
+      "%{fullData.name}: %{x:.1f}%<br>%{customdata[0]} of n = %{customdata[1]}<extra></extra>",
+  }));
+};
+
+/** The layout for categoryShareTraces: stacked to 100%, with a legend of categories. */
+const applyCategoryShareLayout = (
+  layout: Dict,
+  twoLevel: boolean,
+  xTitle: string,
+) => {
+  layout.barmode = "stack";
+  layout.showlegend = true;
+  layout.hovermode = "closest";
+  layout.xaxis = {
+    ...layout.xaxis,
+    title: { font: { size: 12 }, text: xTitle },
+    range: [0, 100],
+  };
+  layout.yaxis = {
+    ...layout.yaxis,
+    type: twoLevel ? "multicategory" : "category",
+    showgrid: true,
+  };
+};
+
 const findEvalResKeys = (resps: LLMResponse[]): Set<string> => {
   const eval_res_keys = new Set<string>();
   resps.forEach((resp_obj) => {
@@ -152,11 +253,31 @@ const findEvalResKeys = (resps: LLMResponse[]): Set<string> => {
  *  UTIL FUNCTIONS FOR VIS PLOTS
  */
 
-const smallTextStyle: React.CSSProperties = {
-  fontSize: "13px",
-  margin: "6pt 3pt 0 3pt",
-  fontWeight: "bold",
+const toolbarItemStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  minWidth: 0,
+};
+
+const toolbarLabelStyle: React.CSSProperties = {
+  fontSize: "var(--fs-xs)",
+  fontWeight: 600,
   whiteSpace: "nowrap",
+};
+
+// A native select is as wide as its longest option. Capped, so a long
+// variable name can't stretch the toolbar.
+const toolbarSelectStyles = {
+  root: { minWidth: 56, maxWidth: 130 },
+  input: {
+    height: 22,
+    minHeight: 22,
+    lineHeight: "20px",
+    fontSize: "var(--fs-xs)",
+    paddingLeft: 6,
+    textOverflow: "ellipsis",
+  },
 };
 
 const splitAndAddBreaks = (s: string, chunkSize: number) => {
@@ -265,7 +386,93 @@ interface VisNodeData {
   title: string;
   // A plot the AI made, shown instead of the default plot until the user goes back
   aiPlot?: AIPlot | null;
+  /** Show statistics from evalstats under the plot (local ChainForge only). */
+  show_stats?: boolean;
+  /** The graph type picked for data that can be shown more than one way. */
+  graph_type?: string;
 }
+
+/**
+ * Why a plot with too few inputs for statistics may have fewer than it seems:
+ * the variables being compared are groups, not inputs.
+ */
+const statsHint = (factorKeys?: string[]): string | undefined => {
+  const vars = (factorKeys ?? [])
+    .filter((k) => k !== "LLM")
+    .map((k) => `"${k.replace(/^__meta_/, "")}"`);
+  if (vars.length === 0) return undefined;
+  const compared = vars.join(" and ");
+  const hint = `Each value of ${compared} is compared here, so it doesn't count as an input.`;
+  return factorKeys?.length === 2 && factorKeys[0] === "LLM"
+    ? `${hint} To compare LLMs with ${compared} as the inputs, set the y-axis to LLM (default).`
+    : hint;
+};
+
+/** The statistics to compute for the plot currently shown. */
+interface StatsRequest {
+  key: string;
+  rows: EvalStatsRow[];
+  itemLabels: Dict<string>;
+  /** The Vis Node keys of the groupings compared: "LLM", a var, or `__meta_<name>`. */
+  factorKeys: string[];
+  asPercent: boolean;
+  /** Why this plot can't have statistics, in place of rows to compare. */
+  unsupported?: string;
+}
+
+/**
+ * Confidence intervals drawn over a plot, as diamonds at the mean with
+ * whiskers, one per group. `names` and `shortnames` are the plot's own, so
+ * each interval lands on its group's row.
+ */
+const ciOverlayTrace = (
+  names: Iterable<string>,
+  shortnames: Dict<string>,
+  entityByName: Dict<EvalStatsEntity>,
+  scale: number,
+  alpha: number,
+  colorScheme: string,
+): Dict => {
+  const x: number[] = [];
+  const y: string[] = [];
+  const plus: number[] = [];
+  const minus: number[] = [];
+  const bounds: number[][] = [];
+  for (const name of names) {
+    const e = entityByName[name];
+    if (!e || e.mean === null || e.ci_low === null || e.ci_high === null)
+      continue;
+    x.push(e.mean * scale);
+    y.push(shortnames[name]);
+    plus.push((e.ci_high - e.mean) * scale);
+    minus.push((e.mean - e.ci_low) * scale);
+    bounds.push([e.ci_low * scale, e.ci_high * scale]);
+  }
+  const ink = colorScheme === "light" ? "#222" : "#eee";
+  const fmt = scale === 100 ? ":.1f" : ":.3g";
+  const ciPct = Math.round((1 - alpha) * 100);
+  return {
+    type: "scatter",
+    mode: "markers",
+    // Horizontal, so that in grouped plots it can sit beside its bar or box.
+    orientation: "h",
+    x,
+    y,
+    customdata: bounds,
+    marker: { symbol: "diamond", size: 7, color: ink },
+    error_x: {
+      type: "data",
+      symmetric: false,
+      array: plus,
+      arrayminus: minus,
+      color: ink,
+      thickness: 1.5,
+      width: 4,
+    },
+    hovertemplate: `mean %{x${fmt}} [%{customdata[0]${fmt}}, %{customdata[1]${fmt}}]<extra>${ciPct}% CI</extra>`,
+    showlegend: false,
+  };
+};
 
 /**
  * Graph types to choose between, for data that can be shown either way.
@@ -290,6 +497,13 @@ export interface VisViewProps {
   id?: string;
   data?: VisNodeData;
   whenReplotting?: (isReplotting: boolean) => void;
+  /** Show statistics from evalstats under the plot, when the backend has it. */
+  showStats?: boolean;
+  /**
+   * Where to put the graph type menu, such as a spot in the node's header.
+   * Without one, the menu ends the toolbar.
+   */
+  graphTypeSlot?: HTMLElement | null;
 }
 export interface VisViewRef {
   resetControls: (responses: LLMResponse[]) => void;
@@ -300,7 +514,15 @@ export interface VisViewRef {
  */
 export const VisView = forwardRef<VisViewRef, VisViewProps>(
   function VisViewComponent(
-    { responses, id, data, whenReplotting, wideFormat },
+    {
+      responses,
+      id,
+      data,
+      whenReplotting,
+      wideFormat,
+      showStats,
+      graphTypeSlot,
+    },
     ref,
   ) {
     // Color scheme
@@ -320,7 +542,11 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const [isPlotRerenderPending, startTransition] = useTransition();
 
     // For some data types, there are multiple graph options available...
-    const [graphType, setGraphType] = useState(GRAPH_OPTIONS[0]);
+    const [graphType, setGraphType] = useState(
+      () =>
+        GRAPH_OPTIONS.find((o) => o.key === data?.graph_type) ??
+        GRAPH_OPTIONS[0],
+    );
     // Called while replotting, to force the graph type some data needs. The
     // replot runs again when the graph type changes, so this must leave state
     // alone when that type is already selected; otherwise the plot redraws in
@@ -383,6 +609,40 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       },
       [id, setDataPropsForNode],
     );
+
+    // Statistics from evalstats, when ChainForge runs locally with the [stats] extra.
+    const getColorForLLM = useStore((state) => state.getColorForLLM);
+    const [statsAvailable, setStatsAvailable] = useState(false);
+    useEffect(() => {
+      isEvalStatsAvailable().then(setStatsAvailable);
+    }, []);
+    // What to compute for the current plot, set while replotting. It is only
+    // replaced when its key changes, so replotting the same data doesn't refetch.
+    const [statsRequest, setStatsRequest] = useState<StatsRequest | null>(null);
+    const [statsResponse, setStatsResponse] = useState<{
+      key: string;
+      result?: EvalStatsResult;
+      error?: string;
+    } | null>(null);
+    useEffect(() => {
+      if (!statsRequest || statsRequest.unsupported) return;
+      const { key, rows, itemLabels } = statsRequest;
+      let cancelled = false;
+      // Wait for settings to stop changing before asking the backend.
+      const timer = setTimeout(() => {
+        compareEvalStats(rows, itemLabels)
+          .then((result) => {
+            if (!cancelled) setStatsResponse({ key, result });
+          })
+          .catch((err: Error) => {
+            if (!cancelled) setStatsResponse({ key, error: err.message });
+          });
+      }, 300);
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
+    }, [statsRequest]);
 
     // When the user clicks an item in the drop-down,
     // we want to autoclose the multiselect drop-down:
@@ -517,6 +777,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             Evaluator Node or LLM Scorer Node first.
           </p>,
         );
+        setStatsRequest(null);
         return;
       }
 
@@ -572,6 +833,8 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           // Make the plot background transparent
           paper_bgcolor: "rgba(0,0,0,0)",
           plot_bgcolor: "rgba(0,0,0,0)",
+          // Legend and other text, the same color as the axes.
+          font: { color: colorScheme === "light" ? "#444" : "#ddd" },
           xaxis: {
             color: colorScheme === "light" ? "#444" : "#ddd",
           },
@@ -623,11 +886,13 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           if (is_all_bools) {
             typeof_eval_res = "Boolean";
             sel_typeof_eval_res = "Boolean";
-            setDisableGraphTypeOption(true);
           }
-        } else {
-          setDisableGraphTypeOption(false);
         }
+        // True/false and categorical scores are always plotted as bars.
+        setDisableGraphTypeOption(
+          sel_typeof_eval_res === "Boolean" ||
+            sel_typeof_eval_res === "Categorical",
+        );
 
         // Check the max length of eval results, as if it's only 1 score per item (num of generations per prompt n=1),
         // we might want to plot the result differently:
@@ -680,6 +945,84 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             );
           return eval_res_obj.items;
         };
+
+        // Statistics: what the plot below compares, and evalstats' results for
+        // it once they arrive (drawn over plots of single groupings).
+        let stats_entities: Dict<EvalStatsEntity> | undefined;
+        let stats_alpha = 0.05;
+        if (showStats && statsAvailable) {
+          const llm_factor: EvalStatsFactor = {
+            key: selectedLLMGroup,
+            valueOf: get_llm,
+          };
+          let stats_factors: EvalStatsFactor[] = [];
+          let unsupported: string | undefined;
+          if (
+            sel_typeof_eval_res !== "Boolean" &&
+            sel_typeof_eval_res !== "Numeric"
+          )
+            unsupported = "Statistics need numeric or true/false scores.";
+          else if (varnames.length === 0) stats_factors = [llm_factor];
+          else if (varnames.length === 1) {
+            const var_factor: EvalStatsFactor = {
+              key: varnames[0],
+              valueOf: (r) => get_var_and_trim(r, varnames[0], true),
+            };
+            stats_factors =
+              llm_names.length === 1 || selectedLLMGroup === varnames[0]
+                ? [var_factor]
+                : [llm_factor, var_factor];
+          } else
+            unsupported =
+              "Statistics aren't available for plots of two variables.";
+
+          let request: StatsRequest;
+          if (unsupported)
+            request = {
+              key: unsupported,
+              rows: [],
+              itemLabels: {},
+              factorKeys: [],
+              asPercent: false,
+              unsupported,
+            };
+          else {
+            const { rows, itemLabels } = buildEvalStatsRows(
+              responses,
+              stats_factors,
+              (r) => get_items(r.eval_res).map(toStatsScore),
+            );
+            const factorKeys = stats_factors.map((f) => f.key);
+            request = {
+              key: JSON.stringify([factorKeys, rows]),
+              rows,
+              itemLabels,
+              factorKeys,
+              asPercent: sel_typeof_eval_res === "Boolean",
+            };
+          }
+          setStatsRequest((prev) =>
+            prev?.key === request.key ? prev : request,
+          );
+
+          const result =
+            statsResponse?.key === request.key
+              ? statsResponse.result
+              : undefined;
+          if (result?.ok) {
+            stats_alpha = result.alpha;
+            // By group, or by [group, value of the variable] when comparing both.
+            const by_name: Dict<EvalStatsEntity> = {};
+            result.entities.forEach((e) => {
+              const key =
+                request.factorKeys.length === 1
+                  ? e.group
+                  : JSON.stringify([e.group, e.group2]);
+              by_name[key] = e;
+            });
+            stats_entities = by_name;
+          }
+        } else setStatsRequest(null);
 
         // Only for Boolean data
         const plot_accuracy = (
@@ -752,6 +1095,20 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               orientation: "h",
             },
           ];
+          if (stats_entities) {
+            spec.push(
+              ciOverlayTrace(
+                names,
+                shortnames,
+                stats_entities,
+                100,
+                stats_alpha,
+                colorScheme,
+              ),
+            );
+            // A second trace would otherwise bring up Plotly's legend.
+            layout.showlegend = false;
+          }
           layout.xaxis = {
             range: [0, 100],
             tickmode: "linear",
@@ -778,139 +1135,119 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           resp_to_x: (r: LLMResponse) => string,
           group_type: "var" | "llm",
         ) => {
-          let names = new Set<string>();
-          const plotting_categorical_vars =
-            group_type === "var" && sel_typeof_eval_res === "Categorical";
+          const names = new Set(responses.map(resp_to_x));
+          const shortnames = genUniqueShortnames(names);
 
-          // When we're plotting vars, we want the stacked bar colors to be the *categories*,
-          // and the x_items to be the names of vars, so that the left axis is a vertical list of varnames.
-          if (plotting_categorical_vars) {
-            // Get all categories present in the evaluation results
-            responses.forEach((r) =>
-              get_items(r.eval_res).forEach((i) => names.add(i.toString())),
+          // Categorical scores: a bar for each group, split into the share of
+          // its responses in each category.
+          if (sel_typeof_eval_res === "Categorical") {
+            spec = categoryShareTraces(
+              [...names].map((name) => ({
+                y: shortnames[name],
+                items: responses
+                  .filter((r) => resp_to_x(r) === name)
+                  .flatMap((r) => get_items(r.eval_res)),
+              })),
+              colorPalettes.var,
             );
-          } else {
-            // Get all possible values of the single variable response ('name' vals)
-            names = new Set(responses.map(resp_to_x));
+            setForcedGraphType("bar");
+            applyCategoryShareLayout(
+              layout,
+              false,
+              metric_axes_labels.length > 0
+                ? `% of responses ('${selectedEvalResVar}')`
+                : "% of responses",
+            );
+            layout.margin.l = calcLeftPaddingForYLabels(
+              Object.values(shortnames),
+            );
+            return;
           }
 
-          const shortnames = genUniqueShortnames(names);
-          const yLabelShortnames = genUniqueShortnames(
-            new Set(responses.map(resp_to_x)),
-          );
           for (const name of names) {
             let x_items: EvaluationScore[] = [];
             let text_items: string[] = [];
-
-            if (plotting_categorical_vars) {
-              responses.forEach((r) => {
-                // Get all evaluation results for this response which match the category 'name':
-                const eval_res = get_items(r.eval_res).filter(
-                  (i) => i === name,
-                );
-                const rawLabel = resp_to_x(r);
-                const yLabel = yLabelShortnames[rawLabel] ?? rawLabel;
-                x_items = x_items.concat(
-                  new Array(eval_res.length).fill(yLabel),
-                );
-              });
-            } else {
-              responses.forEach((r) => {
-                if (resp_to_x(r) !== name) return;
-                x_items = x_items.concat(get_items(r.eval_res));
-                text_items = text_items.concat(
-                  createHoverTexts(r.responses.map(castData)),
-                );
-              });
-            }
+            responses.forEach((r) => {
+              if (resp_to_x(r) !== name) return;
+              x_items = x_items.concat(get_items(r.eval_res));
+              text_items = text_items.concat(
+                createHoverTexts(r.responses.map(castData)),
+              );
+            });
 
             // Lookup the color per LLM when displaying LLM differences,
             // otherwise use the palette for displaying variables.
             const color =
               group_type === "llm"
                 ? getColorForLLMAndSetIfNotFound(name)
-                : // :   varcolors[name_idx % varcolors.length];
-                  getColorForLLMAndSetIfNotFound(get_llm(responses[0]));
+                : getColorForLLMAndSetIfNotFound(get_llm(responses[0]));
 
-            if (
-              sel_typeof_eval_res === "Boolean" ||
-              sel_typeof_eval_res === "Categorical"
-            ) {
-              // Plot a histogram for categorical or boolean data.
-              spec.push({
-                type: "histogram",
-                histfunc: "sum",
-                name: shortnames[name],
-                marker: { color },
-                y: x_items,
-                orientation: "h",
-              });
-              layout.barmode = "stack";
-              layout.yaxis = {
-                showticklabels: true,
-                dtick: 1,
-                type: "category",
-                showgrid: true,
-              };
+            // Plot bar or boxplots for all other cases.
+            const d: Dict = {
+              name: shortnames[name],
+              x: x_items,
+              text: text_items,
+              hovertemplate: "%{text}",
+              orientation: "h",
+              marker: { color },
+            };
+
+            // Bars show each group's mean score, with its n on hover. A
+            // single result can only be a bar; otherwise the user picks.
+            if (x_items.length === 1) setForcedGraphType("bar");
+            if (x_items.length === 1 || graphType.key === "bar") {
+              const { mean: bar_mean, n } = meanAndCount(x_items);
+              d.type = "bar";
+              d.x = bar_mean === null ? [] : [bar_mean];
+              d.y = bar_mean === null ? [] : [shortnames[name]];
+              d.customdata = [n];
+              d.hovertemplate =
+                "%{y}<br>mean %{x:.3g}<br>n = %{customdata}<extra></extra>";
+              d.textposition = "none"; // hide the text which appears within each bar
+              delete d.text;
+              // One bar per row, so bars needn't make room for each other.
+              layout.barmode = "overlay";
               layout.xaxis = {
-                title: { font: { size: 12 }, text: "Number of 'true' values" },
+                title: {
+                  font: { size: 12 },
+                  text:
+                    "Mean of " +
+                    (metric_axes_labels.length > 0
+                      ? `'${selectedEvalResVar}'`
+                      : "scores"),
+                },
                 ...layout.xaxis,
               };
             } else {
-              // Plot bar or boxplots for all other cases.
-              const d: Dict = {
-                name: shortnames[name],
-                x: x_items,
-                text: text_items,
-                hovertemplate: "%{text}",
-                orientation: "h",
-                marker: { color },
-              };
-
-              // If only one result, plot a bar chart:
-              if (x_items.length === 1) {
-                d.type = "bar";
-                d.textposition = "none"; // hide the text which appears within each bar
-                d.y = new Array(x_items.length).fill(shortnames[name]);
-                setForcedGraphType("bar");
-              } else {
-                // If multiple eval results per response object (num generations per prompt n > 1),
-                // let user decide:
-                if (graphType.key === "bar") {
-                  d.type = "histogram";
-                  d.histfunc = "sum";
-                  d.y = new Array(x_items.length).fill(shortnames[name]);
-                  d.textposition = "none"; // hide the text which appears within each bar
-                  const xaxis_title =
-                    metric_axes_labels.length > 0
-                      ? "Sum of '" + selectedEvalResVar + "'"
-                      : "Sum of scores";
-                  layout.xaxis = {
-                    title: { font: { size: 12 }, text: xaxis_title },
-                    ...layout.xaxis,
-                  };
-
-                  // Compute error bars if present
-                  // const error_values = [
-                  //   computeErrorBar(x_items.map(castEvalScoreToNum), 1.0, sum),
-                  // ];
-                  // if (error_values.length > 0)
-                  //   d.error_x = {
-                  //     type: "data",
-                  //     // Asymmetric errors bars, since we're using bootstrapping to determine the 95% CI
-                  //     array: error_values.map((e) => e[1]), // Upper bound
-                  //     arrayminus: error_values.map((e) => e[0]), // Lower bound
-                  //     visible: true,
-                  //   };
-                } else {
-                  // Box-and-whiskers plot
-                  d.type = "box";
-                  d.boxpoints = "all";
-                }
-              }
-
-              spec.push(d);
+              // Box-and-whiskers plot
+              d.type = "box";
+              d.boxpoints = "all";
             }
+
+            spec.push(d);
+          }
+          // Intervals of the mean, over boxes or bars of means.
+          if (
+            stats_entities &&
+            spec.length > 0 &&
+            spec.every(
+              (trace: Dict) => trace.type === "box" || trace.type === "bar",
+            )
+          ) {
+            // Boxes mark medians; also mark the means the intervals are around.
+            spec.forEach((trace: Dict) => {
+              if (trace.type === "box") trace.boxmean = true;
+            });
+            spec.push(
+              ciOverlayTrace(
+                names,
+                shortnames,
+                stats_entities,
+                1,
+                stats_alpha,
+                colorScheme,
+              ),
+            );
           }
           layout.hovermode = "closest";
           layout.showlegend = false;
@@ -933,6 +1270,33 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           // Get all possible values of the single variable response ('name' vals)
           const names = new Set(responses.map(resp_to_x));
           const shortnames = genUniqueShortnames(names);
+
+          // Categorical scores: a bar for each value of the variable and LLM,
+          // split into the share of its responses in each category.
+          if (sel_typeof_eval_res === "Categorical") {
+            const rows: CategoryShareRow[] = [];
+            for (const name of names)
+              for (const llm of llm_names) {
+                const items = responses_by_llm[llm]
+                  .filter((r) => resp_to_x(r) === name)
+                  .flatMap((r) => get_items(r.eval_res));
+                if (items.length > 0)
+                  rows.push({ y: [shortnames[name], llm], items });
+              }
+            spec = categoryShareTraces(rows, colorPalettes.var);
+            setForcedGraphType("bar");
+            applyCategoryShareLayout(
+              layout,
+              true,
+              metric_axes_labels.length > 0
+                ? `% of responses ('${selectedEvalResVar}')`
+                : "% of responses",
+            );
+            layout.margin.l =
+              calcLeftPaddingForYLabels(Object.values(shortnames)) +
+              calcLeftPaddingForYLabels(llm_names);
+            return;
+          }
 
           llm_names.forEach((llm) => {
             // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
@@ -957,19 +1321,35 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             }
 
             if (sel_typeof_eval_res === "Boolean") {
-              // Plot a histogram for boolean (true/false) categorical data.
+              // Percent true for each value of the variable, one bar per group
+              // side by side (not stacked), so each bar can carry its own
+              // confidence interval.
+              const bar_x: number[] = [];
+              const bar_y: string[] = [];
+              for (const name of names) {
+                const vals = x_items.filter(
+                  (_, idx) => y_items[idx] === shortnames[name],
+                );
+                if (vals.length === 0) continue;
+                bar_y.push(shortnames[name]);
+                bar_x.push(
+                  (100 * vals.filter((v) => v === true).length) / vals.length,
+                );
+              }
               spec.push({
-                type: "histogram",
-                histfunc: "sum",
+                type: "bar",
                 name: llm,
+                offsetgroup: llm,
                 marker: { color: getColorForLLMAndSetIfNotFound(llm) },
-                x: x_items.map((i) => (i === true ? "1" : "0")),
-                y: y_items,
+                x: bar_x,
+                y: bar_y,
                 orientation: "h",
+                hovertemplate: "%{x:.1f}%<extra>%{fullData.name}</extra>",
               });
-              layout.barmode = "stack";
+              layout.barmode = "group";
               layout.xaxis = {
-                title: { font: { size: 12 }, text: "Number of 'true' values" },
+                title: { font: { size: 12 }, text: "% percent true" },
+                range: [0, 100],
                 ...layout.xaxis,
               };
               setForcedGraphType("bar");
@@ -991,31 +1371,34 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               let xaxis_title = "score";
               if (graphType.key === "bar") {
                 d.type = "bar";
+                d.offsetgroup = llm;
                 d.textposition = "none"; // hide the text which appears within each bar
-                xaxis_title =
-                  metric_axes_labels.length > 0
-                    ? "Sum of '" + selectedEvalResVar + "'"
-                    : "Sum of scores";
 
                 if (sel_typeof_eval_res === "Numeric") {
-                  // To make error bars work, we need to sum the numbers, instead of relying
-                  // upon the stacked bar chart:
-                  let sum_x_items: number[] = [];
-                  // let error_bars: number[][] = [];
-                  const seq_y_items = [];
+                  // A bar for each value at the mean of this group's scores
+                  // for it, with n on hover.
+                  xaxis_title =
+                    "Mean of " +
+                    (metric_axes_labels.length > 0
+                      ? "'" + selectedEvalResVar + "'"
+                      : "scores");
+                  const bar_x: number[] = [];
+                  const bar_y: string[] = [];
+                  const bar_n: number[] = [];
                   for (const name of Object.values(shortnames)) {
-                    seq_y_items.push(name);
-                    const xs_for_y = x_items
-                      .filter((_, idx) => y_items[idx] === name)
-                      .map(castEvalScoreToNum);
-                    sum_x_items = sum_x_items.concat(sum(xs_for_y));
-                    // error_bars = error_bars.concat([
-                    //   computeErrorBar(xs_for_y, 1.0, sum),
-                    // ]);
+                    const { mean: bar_mean, n } = meanAndCount(
+                      x_items.filter((_, idx) => y_items[idx] === name),
+                    );
+                    if (bar_mean === null) continue;
+                    bar_x.push(bar_mean);
+                    bar_y.push(name);
+                    bar_n.push(n);
                   }
-                  d.x = sum_x_items;
-                  d.y = seq_y_items;
-                  d.hovertemplate = llm;
+                  d.x = bar_x;
+                  d.y = bar_y;
+                  d.customdata = bar_n;
+                  d.hovertemplate =
+                    "%{y}<br>mean %{x:.3g}<br>n = %{customdata}<extra>%{fullData.name}</extra>";
                   delete d.text;
 
                   // Add error bars to plot
@@ -1030,6 +1413,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               } else {
                 // Box-and-whiskers plot
                 d.type = "box";
+                d.offsetgroup = llm;
               }
 
               spec.push(d);
@@ -1039,6 +1423,41 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               };
             }
           });
+          // Confidence intervals for each group and value, beside their bars
+          // (of percent true, or of means) or boxes.
+          if (
+            stats_entities &&
+            (sel_typeof_eval_res === "Boolean" ||
+              spec.every((trace: Dict) => trace.type === "box") ||
+              (sel_typeof_eval_res === "Numeric" &&
+                spec.every((trace: Dict) => trace.type === "bar")))
+          ) {
+            const entities = stats_entities;
+            const scale = sel_typeof_eval_res === "Boolean" ? 100 : 1;
+            llm_names.forEach((llm) => {
+              const by_name: Dict<EvalStatsEntity> = {};
+              for (const name of names) {
+                const e = entities[JSON.stringify([llm, name])];
+                if (e) by_name[name] = e;
+              }
+              spec.push({
+                ...ciOverlayTrace(
+                  names,
+                  shortnames,
+                  by_name,
+                  scale,
+                  stats_alpha,
+                  colorScheme,
+                ),
+                offsetgroup: llm,
+              });
+            });
+            // Boxes mark medians; also mark the means the intervals are around.
+            spec.forEach((trace: Dict) => {
+              if (trace.type === "box") trace.boxmean = true;
+            });
+            layout.scattermode = "group";
+          }
           layout.boxmode = "group";
           layout.bargap = 0.5;
 
@@ -1267,6 +1686,21 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
         if (!Array.isArray(spec)) spec = [spec];
 
+        // Plotly derives grid lines from the axis color, which in dark mode
+        // makes them bright enough to crowd out the data. Keep them faint.
+        if (colorScheme !== "light") {
+          layout.xaxis = {
+            gridcolor: "rgba(255, 255, 255, 0.1)",
+            zerolinecolor: "rgba(255, 255, 255, 0.25)",
+            ...layout.xaxis,
+          };
+          layout.yaxis = {
+            gridcolor: "rgba(255, 255, 255, 0.1)",
+            zerolinecolor: "rgba(255, 255, 255, 0.25)",
+            ...layout.yaxis,
+          };
+        }
+
         setPlotLegend(plot_legend);
         setPlotlySpec(spec as Dict[]);
         setPlotlyLayout(layout);
@@ -1287,6 +1721,9 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       // By key, so only a real change of graph type replots.
       graphType.key,
       colorScheme,
+      showStats,
+      statsAvailable,
+      statsResponse,
     ]);
 
     // Resize the plot when the div around it is resized (e.g. with the resize
@@ -1324,20 +1761,63 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       observer.observe(elem);
       resizeObserverRef.current = observer;
     }, []);
-    useEffect(() => () => resizeObserverRef.current?.disconnect(), []);
+    // No effect cleanup to disconnect it: React calls the ref with null on
+    // unmount, which does. (In development, StrictMode reruns effect cleanups
+    // on mount without rerunning refs, which left plots never resizing.)
+
+    const graphTypeMenu = (
+      <Menu shadow="md" width={200} withArrow disabled={disableGraphTypeOption}>
+        <Menu.Target>
+          <Button
+            variant="outline"
+            size="xs"
+            compact
+            color="gray"
+            className="nodrag"
+            leftIcon={graphType.icon}
+            disabled={disableGraphTypeOption}
+          >
+            {graphType.label}
+          </Button>
+        </Menu.Target>
+
+        <Menu.Dropdown>
+          {GRAPH_OPTIONS.map((option) => (
+            <Menu.Item
+              key={option.key}
+              icon={option.icon}
+              onClick={() => {
+                setGraphType(option);
+                // Remembered, unlike a graph type the data forces.
+                if (id) setDataPropsForNode(id, { graph_type: option.key });
+              }}
+            >
+              {option.label}
+            </Menu.Item>
+          ))}
+        </Menu.Dropdown>
+      </Menu>
+    );
 
     return (
       <>
         <div
+          // Takes the node's width without adding to it, wrapping when the
+          // node is narrow, so the plot alone decides how wide the node is.
           style={{
             display: "flex",
             justifyContent: "center",
+            alignItems: "center",
             flexWrap: "wrap",
+            columnGap: 10,
+            rowGap: 4,
+            width: 0,
+            minWidth: "100%",
             margin: wideFormat ? "6pt 0 6pt 0" : undefined,
           }}
         >
-          <div style={{ display: "inline-flex", maxWidth: "50%" }}>
-            <span style={smallTextStyle}>y-axis:</span>
+          <div style={toolbarItemStyle}>
+            <span style={toolbarLabelStyle}>y-axis:</span>
             <NativeSelect
               ref={multiSelectRef}
               onChange={handleMultiSelectValueChange}
@@ -1346,90 +1826,36 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               placeholder="Pick param to plot"
               size="xs"
               value={multiSelectValue}
-              miw="80px"
+              styles={toolbarSelectStyles}
             />
           </div>
-          <div
-            style={{
-              display: "inline-flex",
-              justifyContent: "space-evenly",
-              maxWidth: "30%",
-              marginLeft: "10pt",
-            }}
-          >
-            <span style={smallTextStyle}>x-axis:</span>
+          <div style={toolbarItemStyle}>
+            <span style={toolbarLabelStyle}>x-axis:</span>
             <NativeSelect
               className="nodrag nowheel"
               data={evalResVars}
               size="xs"
               value={selectedEvalResVar}
               onChange={handleChangeSelectedEvalResVar}
-              miw="80px"
+              styles={toolbarSelectStyles}
             />
           </div>
-          {availableLLMGroups && availableLLMGroups.length > 1 ? (
-            <div
-              style={{
-                display: "inline-flex",
-                justifyContent: "space-evenly",
-                maxWidth: "30%",
-                marginLeft: "10pt",
-              }}
-            >
-              <span style={smallTextStyle}>group by:</span>
+          {availableLLMGroups && availableLLMGroups.length > 1 && (
+            <div style={toolbarItemStyle}>
+              <span style={toolbarLabelStyle}>group by:</span>
               <NativeSelect
                 className="nodrag nowheel"
                 onChange={handleChangeLLMGroup}
                 data={availableLLMGroups}
                 size="xs"
                 value={selectedLLMGroup}
-                miw="80px"
-                disabled={availableLLMGroups.length <= 1}
+                styles={toolbarSelectStyles}
               />
             </div>
-          ) : (
-            <></>
           )}
-          <div
-            style={{
-              display: "inline-flex",
-              justifyContent: "end",
-              maxWidth: "30%",
-              marginLeft: "10pt",
-            }}
-          >
-            <Menu
-              shadow="md"
-              width={200}
-              withArrow
-              disabled={disableGraphTypeOption}
-            >
-              <Menu.Target>
-                <Button
-                  variant="outline"
-                  size="xs"
-                  color="gray"
-                  leftIcon={graphType.icon}
-                  disabled={disableGraphTypeOption}
-                >
-                  {graphType.label}
-                </Button>
-              </Menu.Target>
-
-              <Menu.Dropdown>
-                {GRAPH_OPTIONS.map((option) => (
-                  <Menu.Item
-                    key={option.key}
-                    icon={option.icon}
-                    onClick={() => setGraphType(option)}
-                  >
-                    {option.label}
-                  </Menu.Item>
-                ))}
-              </Menu.Dropdown>
-            </Menu>
-          </div>
+          {!graphTypeSlot && graphTypeMenu}
         </div>
+        {graphTypeSlot && createPortal(graphTypeMenu, graphTypeSlot)}
         {!wideFormat && <hr />}
         <div
           className="nodrag"
@@ -1459,6 +1885,38 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           {plotLegend ?? <></>}
           <ResizeHandle targetRef={plotDivRef} minWidth={150} minHeight={100} />
         </div>
+        {statsAvailable && showStats && (
+          <VisStatsPanel
+            // While new statistics load, the last ones stay up (marked updating).
+            result={statsResponse?.result}
+            loading={
+              !!statsRequest &&
+              !statsRequest.unsupported &&
+              statsResponse?.key !== statsRequest.key
+            }
+            error={
+              statsRequest && statsResponse?.key === statsRequest.key
+                ? statsResponse.error
+                : undefined
+            }
+            unsupported={statsRequest?.unsupported}
+            hint={statsHint(statsRequest?.factorKeys)}
+            asPercent={statsRequest?.asPercent ?? false}
+            nameOf={(e) => {
+              const factors = statsResponse?.result?.ok
+                ? statsResponse.result.factors
+                : ["group" as const];
+              return factors.map((f) => e[f] ?? "").join(" · ");
+            }}
+            colorOf={
+              // LLMs (or whatever the plot groups by) have colors in the plot.
+              statsRequest?.factorKeys[0] === selectedLLMGroup
+                ? (e) => getColorForLLM(e.group)
+                : undefined
+            }
+            colorScheme={colorScheme}
+          />
+        )}
       </>
     );
   },
@@ -1482,6 +1940,15 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
   const [status, setStatus] = useState<Status>(Status.NONE);
   const [pastInputs, setPastInputs] = useState<JSONCompatible>([]);
   const [responses, setResponses] = useState<LLMResponse[]>([]);
+
+  // A spot in the header for VisView's graph type menu.
+  const [graphTypeSlot, setGraphTypeSlot] = useState<HTMLElement | null>(null);
+
+  // Statistics are switched on from the header, when the backend has evalstats.
+  const [statsAvailable, setStatsAvailable] = useState(false);
+  useEffect(() => {
+    isEvalStatsAvailable().then(setStatsAvailable);
+  }, []);
 
   // On load of vis view
   // const setVisViewRef = useCallback((elem: VisViewRef) => {
@@ -1560,6 +2027,49 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
                 />,
               ]
             : []),
+          // The graph type menu (put here by VisView) and the Stats switch, as
+          // tall as the close button so they line up with it. They belong to
+          // the default plot, so they're hidden while an AI plot shows.
+          ...(data.aiPlot?.code
+            ? []
+            : [
+                <span
+                  key="vis-header-controls"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    height: 20,
+                    marginRight: 6,
+                    verticalAlign: "top",
+                    // The close button sits lower than the line it's on.
+                    position: "relative",
+                    top: 4,
+                  }}
+                >
+                  <span
+                    ref={setGraphTypeSlot}
+                    style={{ display: "inline-flex" }}
+                  />
+                  {statsAvailable && (
+                    <Switch
+                      size="xs"
+                      label="Stats"
+                      title="Confidence intervals and significance tests, from evalstats"
+                      checked={data.show_stats ?? false}
+                      onChange={(event) =>
+                        setDataPropsForNode(id, {
+                          show_stats: event.currentTarget.checked,
+                        })
+                      }
+                      className="nodrag"
+                      styles={{
+                        label: { paddingLeft: 4, fontSize: "var(--fs-sm)" },
+                      }}
+                    />
+                  )}
+                </span>,
+              ]),
         ]}
       />
       {data.aiPlot?.code && (
@@ -1571,6 +2081,8 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
           ref={visViewRef}
           id={id}
           responses={responses}
+          showStats={data.show_stats ?? false}
+          graphTypeSlot={graphTypeSlot}
           data={data}
           whenReplotting={(isReplotting) =>
             setStatus(isReplotting ? Status.LOADING : Status.NONE)

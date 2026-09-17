@@ -46,6 +46,10 @@ jobs:
       run: |
         pip install -e .[rag]
 
+    - name: Install with stats extras
+      run: |
+        pip install -e .[stats]
+
     - name: Install pytest
       run: |
         pip install pytest
