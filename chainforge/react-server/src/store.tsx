@@ -44,6 +44,8 @@ import {
   HUGGINGFACE_PREFIX,
   OPENROUTER_IMAGE_PREFIX,
   OPENROUTER_PREFIX,
+  OPENROUTER_EMOJI,
+  openRouterEmoji,
 } from "./backend/models";
 import { StringLookup } from "./backend/cache";
 import { saveGlobalConfig } from "./backend/backend";
@@ -120,13 +122,13 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
   },
   {
     group: "OpenRouter",
-    emoji: "🔀",
+    emoji: OPENROUTER_EMOJI,
     items: [
       ...prefixedMenuItems(
         OpenRouterSettings,
         OPENROUTER_PREFIX,
         "openrouter",
-        "🔀",
+        openRouterEmoji,
         1.0,
       ),
       ...prefixedMenuItems(
@@ -411,14 +413,15 @@ function prefixedMenuItems(
   settings: typeof OpenRouterSettings,
   prefix: string,
   base_model: string,
-  emoji: string,
+  /** One emoji for every model, or one per model (e.g. by the lab behind it). */
+  emoji: string | ((model: string) => string),
   temp: number,
 ): LLMSpec[] {
   const modelSpec = settings.schema.properties.model;
   const names = modelSpec.shortname_map as Record<string, string>;
   return (modelSpec.enum as string[]).map((model) => ({
     name: names[model] ?? model,
-    emoji,
+    emoji: typeof emoji === "function" ? emoji(model) : emoji,
     model: prefix + model,
     base_model,
     temp,

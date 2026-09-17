@@ -16,7 +16,7 @@ export const EXAMPLEFLOW_1 = {
             {
               key: "67b1b7c0-1594-4dac-b705-d6804ad0b96f",
               name: "Llama 3.2 1B",
-              emoji: "🔀",
+              emoji: "🦙",
               model: "openrouter/meta-llama/llama-3.2-1b-instruct",
               base_model: "openrouter",
               temp: 1,
@@ -58,7 +58,7 @@ export const EXAMPLEFLOW_1 = {
             {
               key: "f7d40da2-ae54-4bc1-8c2b-8cc9c4596f1f",
               name: "Ministral 8B",
-              emoji: "🔀",
+              emoji: "🌬️",
               model: "openrouter/mistralai/ministral-8b-2512",
               base_model: "openrouter",
               temp: 1,
@@ -100,7 +100,7 @@ export const EXAMPLEFLOW_1 = {
             {
               key: "bf327375-57f3-4683-8162-7db973c9aec1",
               name: "Qwen3 8B",
-              emoji: "🔀",
+              emoji: "🐉",
               model: "openrouter/qwen/qwen3-8b",
               base_model: "openrouter",
               temp: 1,
@@ -142,7 +142,7 @@ export const EXAMPLEFLOW_1 = {
             {
               key: "db5f451f-16e2-4681-ad1d-6c7a421df309",
               name: "Gemma 4 31B",
-              emoji: "🔀",
+              emoji: "♊",
               model: "openrouter/google/gemma-4-31b-it",
               base_model: "openrouter",
               temp: 1,
@@ -194,7 +194,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "67b1b7c0-1594-4dac-b705-d6804ad0b96f",
                 name: "Llama 3.2 1B",
-                emoji: "🔀",
+                emoji: "🦙",
                 model: "openrouter/meta-llama/llama-3.2-1b-instruct",
                 base_model: "openrouter",
                 temp: 1,
@@ -255,7 +255,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "f7d40da2-ae54-4bc1-8c2b-8cc9c4596f1f",
                 name: "Ministral 8B",
-                emoji: "🔀",
+                emoji: "🌬️",
                 model: "openrouter/mistralai/ministral-8b-2512",
                 base_model: "openrouter",
                 temp: 1,
@@ -316,7 +316,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "bf327375-57f3-4683-8162-7db973c9aec1",
                 name: "Qwen3 8B",
-                emoji: "🔀",
+                emoji: "🐉",
                 model: "openrouter/qwen/qwen3-8b",
                 base_model: "openrouter",
                 temp: 1,
@@ -377,7 +377,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "db5f451f-16e2-4681-ad1d-6c7a421df309",
                 name: "Gemma 4 31B",
-                emoji: "🔀",
+                emoji: "♊",
                 model: "openrouter/google/gemma-4-31b-it",
                 base_model: "openrouter",
                 temp: 1,
@@ -438,7 +438,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "67b1b7c0-1594-4dac-b705-d6804ad0b96f",
                 name: "Llama 3.2 1B",
-                emoji: "🔀",
+                emoji: "🦙",
                 model: "openrouter/meta-llama/llama-3.2-1b-instruct",
                 base_model: "openrouter",
                 temp: 1,
@@ -499,7 +499,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "f7d40da2-ae54-4bc1-8c2b-8cc9c4596f1f",
                 name: "Ministral 8B",
-                emoji: "🔀",
+                emoji: "🌬️",
                 model: "openrouter/mistralai/ministral-8b-2512",
                 base_model: "openrouter",
                 temp: 1,
@@ -560,7 +560,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "bf327375-57f3-4683-8162-7db973c9aec1",
                 name: "Qwen3 8B",
-                emoji: "🔀",
+                emoji: "🐉",
                 model: "openrouter/qwen/qwen3-8b",
                 base_model: "openrouter",
                 temp: 1,
@@ -621,7 +621,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "db5f451f-16e2-4681-ad1d-6c7a421df309",
                 name: "Gemma 4 31B",
-                emoji: "🔀",
+                emoji: "♊",
                 model: "openrouter/google/gemma-4-31b-it",
                 base_model: "openrouter",
                 temp: 1,
@@ -682,7 +682,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "67b1b7c0-1594-4dac-b705-d6804ad0b96f",
                 name: "Llama 3.2 1B",
-                emoji: "🔀",
+                emoji: "🦙",
                 model: "openrouter/meta-llama/llama-3.2-1b-instruct",
                 base_model: "openrouter",
                 temp: 1,
@@ -743,7 +743,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "f7d40da2-ae54-4bc1-8c2b-8cc9c4596f1f",
                 name: "Ministral 8B",
-                emoji: "🔀",
+                emoji: "🌬️",
                 model: "openrouter/mistralai/ministral-8b-2512",
                 base_model: "openrouter",
                 temp: 1,
@@ -804,7 +804,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "bf327375-57f3-4683-8162-7db973c9aec1",
                 name: "Qwen3 8B",
-                emoji: "🔀",
+                emoji: "🐉",
                 model: "openrouter/qwen/qwen3-8b",
                 base_model: "openrouter",
                 temp: 1,
@@ -865,7 +865,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "db5f451f-16e2-4681-ad1d-6c7a421df309",
                 name: "Gemma 4 31B",
-                emoji: "🔀",
+                emoji: "♊",
                 model: "openrouter/google/gemma-4-31b-it",
                 base_model: "openrouter",
                 temp: 1,
@@ -926,7 +926,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "67b1b7c0-1594-4dac-b705-d6804ad0b96f",
                 name: "Llama 3.2 1B",
-                emoji: "🔀",
+                emoji: "🦙",
                 model: "openrouter/meta-llama/llama-3.2-1b-instruct",
                 base_model: "openrouter",
                 temp: 1,
@@ -987,7 +987,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "f7d40da2-ae54-4bc1-8c2b-8cc9c4596f1f",
                 name: "Ministral 8B",
-                emoji: "🔀",
+                emoji: "🌬️",
                 model: "openrouter/mistralai/ministral-8b-2512",
                 base_model: "openrouter",
                 temp: 1,
@@ -1048,7 +1048,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "bf327375-57f3-4683-8162-7db973c9aec1",
                 name: "Qwen3 8B",
-                emoji: "🔀",
+                emoji: "🐉",
                 model: "openrouter/qwen/qwen3-8b",
                 base_model: "openrouter",
                 temp: 1,
@@ -1109,7 +1109,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "db5f451f-16e2-4681-ad1d-6c7a421df309",
                 name: "Gemma 4 31B",
-                emoji: "🔀",
+                emoji: "♊",
                 model: "openrouter/google/gemma-4-31b-it",
                 base_model: "openrouter",
                 temp: 1,
@@ -1170,7 +1170,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "67b1b7c0-1594-4dac-b705-d6804ad0b96f",
                 name: "Llama 3.2 1B",
-                emoji: "🔀",
+                emoji: "🦙",
                 model: "openrouter/meta-llama/llama-3.2-1b-instruct",
                 base_model: "openrouter",
                 temp: 1,
@@ -1231,7 +1231,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "f7d40da2-ae54-4bc1-8c2b-8cc9c4596f1f",
                 name: "Ministral 8B",
-                emoji: "🔀",
+                emoji: "🌬️",
                 model: "openrouter/mistralai/ministral-8b-2512",
                 base_model: "openrouter",
                 temp: 1,
@@ -1292,7 +1292,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "bf327375-57f3-4683-8162-7db973c9aec1",
                 name: "Qwen3 8B",
-                emoji: "🔀",
+                emoji: "🐉",
                 model: "openrouter/qwen/qwen3-8b",
                 base_model: "openrouter",
                 temp: 1,
@@ -1353,7 +1353,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "db5f451f-16e2-4681-ad1d-6c7a421df309",
                 name: "Gemma 4 31B",
-                emoji: "🔀",
+                emoji: "♊",
                 model: "openrouter/google/gemma-4-31b-it",
                 base_model: "openrouter",
                 temp: 1,
@@ -1414,7 +1414,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "67b1b7c0-1594-4dac-b705-d6804ad0b96f",
                 name: "Llama 3.2 1B",
-                emoji: "🔀",
+                emoji: "🦙",
                 model: "openrouter/meta-llama/llama-3.2-1b-instruct",
                 base_model: "openrouter",
                 temp: 1,
@@ -1475,7 +1475,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "f7d40da2-ae54-4bc1-8c2b-8cc9c4596f1f",
                 name: "Ministral 8B",
-                emoji: "🔀",
+                emoji: "🌬️",
                 model: "openrouter/mistralai/ministral-8b-2512",
                 base_model: "openrouter",
                 temp: 1,
@@ -1536,7 +1536,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "bf327375-57f3-4683-8162-7db973c9aec1",
                 name: "Qwen3 8B",
-                emoji: "🔀",
+                emoji: "🐉",
                 model: "openrouter/qwen/qwen3-8b",
                 base_model: "openrouter",
                 temp: 1,
@@ -1597,7 +1597,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "db5f451f-16e2-4681-ad1d-6c7a421df309",
                 name: "Gemma 4 31B",
-                emoji: "🔀",
+                emoji: "♊",
                 model: "openrouter/google/gemma-4-31b-it",
                 base_model: "openrouter",
                 temp: 1,
@@ -1658,7 +1658,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "67b1b7c0-1594-4dac-b705-d6804ad0b96f",
                 name: "Llama 3.2 1B",
-                emoji: "🔀",
+                emoji: "🦙",
                 model: "openrouter/meta-llama/llama-3.2-1b-instruct",
                 base_model: "openrouter",
                 temp: 1,
@@ -1719,7 +1719,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "f7d40da2-ae54-4bc1-8c2b-8cc9c4596f1f",
                 name: "Ministral 8B",
-                emoji: "🔀",
+                emoji: "🌬️",
                 model: "openrouter/mistralai/ministral-8b-2512",
                 base_model: "openrouter",
                 temp: 1,
@@ -1780,7 +1780,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "bf327375-57f3-4683-8162-7db973c9aec1",
                 name: "Qwen3 8B",
-                emoji: "🔀",
+                emoji: "🐉",
                 model: "openrouter/qwen/qwen3-8b",
                 base_model: "openrouter",
                 temp: 1,
@@ -1841,7 +1841,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "db5f451f-16e2-4681-ad1d-6c7a421df309",
                 name: "Gemma 4 31B",
-                emoji: "🔀",
+                emoji: "♊",
                 model: "openrouter/google/gemma-4-31b-it",
                 base_model: "openrouter",
                 temp: 1,
@@ -1902,7 +1902,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "67b1b7c0-1594-4dac-b705-d6804ad0b96f",
                 name: "Llama 3.2 1B",
-                emoji: "🔀",
+                emoji: "🦙",
                 model: "openrouter/meta-llama/llama-3.2-1b-instruct",
                 base_model: "openrouter",
                 temp: 1,
@@ -1963,7 +1963,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "f7d40da2-ae54-4bc1-8c2b-8cc9c4596f1f",
                 name: "Ministral 8B",
-                emoji: "🔀",
+                emoji: "🌬️",
                 model: "openrouter/mistralai/ministral-8b-2512",
                 base_model: "openrouter",
                 temp: 1,
@@ -2024,7 +2024,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "bf327375-57f3-4683-8162-7db973c9aec1",
                 name: "Qwen3 8B",
-                emoji: "🔀",
+                emoji: "🐉",
                 model: "openrouter/qwen/qwen3-8b",
                 base_model: "openrouter",
                 temp: 1,
@@ -2085,7 +2085,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "db5f451f-16e2-4681-ad1d-6c7a421df309",
                 name: "Gemma 4 31B",
-                emoji: "🔀",
+                emoji: "♊",
                 model: "openrouter/google/gemma-4-31b-it",
                 base_model: "openrouter",
                 temp: 1,
@@ -2146,7 +2146,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "67b1b7c0-1594-4dac-b705-d6804ad0b96f",
                 name: "Llama 3.2 1B",
-                emoji: "🔀",
+                emoji: "🦙",
                 model: "openrouter/meta-llama/llama-3.2-1b-instruct",
                 base_model: "openrouter",
                 temp: 1,
@@ -2207,7 +2207,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "f7d40da2-ae54-4bc1-8c2b-8cc9c4596f1f",
                 name: "Ministral 8B",
-                emoji: "🔀",
+                emoji: "🌬️",
                 model: "openrouter/mistralai/ministral-8b-2512",
                 base_model: "openrouter",
                 temp: 1,
@@ -2268,7 +2268,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "bf327375-57f3-4683-8162-7db973c9aec1",
                 name: "Qwen3 8B",
-                emoji: "🔀",
+                emoji: "🐉",
                 model: "openrouter/qwen/qwen3-8b",
                 base_model: "openrouter",
                 temp: 1,
@@ -2329,7 +2329,7 @@ export const EXAMPLEFLOW_1 = {
               llm: {
                 key: "db5f451f-16e2-4681-ad1d-6c7a421df309",
                 name: "Gemma 4 31B",
-                emoji: "🔀",
+                emoji: "♊",
                 model: "openrouter/google/gemma-4-31b-it",
                 base_model: "openrouter",
                 temp: 1,
@@ -3205,7 +3205,7 @@ export const EXAMPLEFLOW_1 = {
         "prompt-1687991312103_0.json": {
           key: "67b1b7c0-1594-4dac-b705-d6804ad0b96f",
           name: "Llama 3.2 1B",
-          emoji: "🔀",
+          emoji: "🦙",
           model: "openrouter/meta-llama/llama-3.2-1b-instruct",
           base_model: "openrouter",
           temp: 1,
@@ -3251,7 +3251,7 @@ export const EXAMPLEFLOW_1 = {
         "prompt-1687991312103_1.json": {
           key: "f7d40da2-ae54-4bc1-8c2b-8cc9c4596f1f",
           name: "Ministral 8B",
-          emoji: "🔀",
+          emoji: "🌬️",
           model: "openrouter/mistralai/ministral-8b-2512",
           base_model: "openrouter",
           temp: 1,
@@ -3297,7 +3297,7 @@ export const EXAMPLEFLOW_1 = {
         "prompt-1687991312103_2.json": {
           key: "bf327375-57f3-4683-8162-7db973c9aec1",
           name: "Qwen3 8B",
-          emoji: "🔀",
+          emoji: "🐉",
           model: "openrouter/qwen/qwen3-8b",
           base_model: "openrouter",
           temp: 1,
@@ -3343,7 +3343,7 @@ export const EXAMPLEFLOW_1 = {
         "prompt-1687991312103_3.json": {
           key: "db5f451f-16e2-4681-ad1d-6c7a421df309",
           name: "Gemma 4 31B",
-          emoji: "🔀",
+          emoji: "♊",
           model: "openrouter/google/gemma-4-31b-it",
           base_model: "openrouter",
           temp: 1,

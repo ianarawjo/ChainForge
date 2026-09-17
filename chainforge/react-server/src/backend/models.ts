@@ -340,6 +340,32 @@ export function isOpenRouterImageModel(llm: LLM | string): boolean {
   return llm.toString().startsWith(OPENROUTER_IMAGE_PREFIX);
 }
 
+/**
+ * Emoji for the lab behind an OpenRouter model, so models from different labs
+ * are told apart at a glance. Uses ChainForge's emoji for labs it also reaches
+ * directly (e.g. Claude, OpenAI, Gemini). Unknown labs get OpenRouter's own.
+ */
+const OPENROUTER_LAB_EMOJIS: Record<string, string> = {
+  anthropic: "📚",
+  openai: "🤖",
+  google: "♊",
+  deepseek: "🐋",
+  minimax: "🔮",
+  "x-ai": "✖️",
+  qwen: "🐉",
+  moonshotai: "🌙",
+  "meta-llama": "🦙",
+  mistralai: "🌬️",
+  cohere: "🖇️",
+  microsoft: "🪟",
+  nvidia: "🟩",
+};
+export const OPENROUTER_EMOJI = "🔀";
+export function openRouterEmoji(llm: LLM | string): string {
+  const lab = stripOpenRouterPrefix(llm).split("/")[0].toLowerCase();
+  return OPENROUTER_LAB_EMOJIS[lab] ?? OPENROUTER_EMOJI;
+}
+
 /** The model ID that OpenRouter expects, without ChainForge's prefix. */
 export function stripOpenRouterPrefix(llm: LLM | string): string {
   const name = llm.toString();

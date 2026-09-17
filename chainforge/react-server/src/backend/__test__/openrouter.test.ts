@@ -52,6 +52,7 @@ import {
   RATE_LIMIT_BY_PROVIDER,
   getProvider,
   isOpenRouterImageModel,
+  openRouterEmoji,
   stripOpenRouterPrefix,
 } from "../models";
 // eslint-disable-next-line import/first
@@ -121,6 +122,17 @@ describe("recognizing OpenRouter models", () => {
     expect(
       stripOpenRouterPrefix("openrouter-image/google/gemini-3.1-flash-image"),
     ).toBe("google/gemini-3.1-flash-image");
+  });
+
+  test("models take the emoji of the lab behind them", () => {
+    expect(openRouterEmoji("openrouter/anthropic/claude-haiku-4.5")).toBe("📚");
+    expect(openRouterEmoji("openrouter/openai/gpt-5.4-mini")).toBe("🤖");
+    expect(openRouterEmoji("openrouter/google/gemini-3.1-flash-lite")).toBe(
+      "♊",
+    );
+    expect(openRouterEmoji("deepseek/deepseek-v4-flash")).toBe("🐋");
+    // Labs without one of their own keep OpenRouter's.
+    expect(openRouterEmoji("openrouter/some-lab/brand-new-model")).toBe("🔀");
   });
 
   test("base models, settings forms, and rate limit", () => {

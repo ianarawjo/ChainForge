@@ -9,7 +9,7 @@
             {
               "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
               "name": "Claude Haiku 4.5",
-              "emoji": "🔀",
+              "emoji": "📚",
               "model": "openrouter/anthropic/claude-haiku-4.5",
               "base_model": "openrouter",
               "temp": 1,
@@ -51,7 +51,7 @@
             {
               "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
               "name": "GPT-5.4 Mini",
-              "emoji": "🔀",
+              "emoji": "🤖",
               "model": "openrouter/openai/gpt-5.4-mini",
               "base_model": "openrouter",
               "temp": 1,
@@ -93,7 +93,7 @@
             {
               "key": "8557d088-4031-4d74-8334-a57d57824ba3",
               "name": "Gemini 3.1 Flash-Lite",
-              "emoji": "🔀",
+              "emoji": "♊",
               "model": "openrouter/google/gemini-3.1-flash-lite",
               "base_model": "openrouter",
               "temp": 1,
@@ -135,7 +135,7 @@
             {
               "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
               "name": "DeepSeek V4 Flash",
-              "emoji": "🔀",
+              "emoji": "🐋",
               "model": "openrouter/deepseek/deepseek-v4-flash",
               "base_model": "openrouter",
               "temp": 1,
@@ -188,7 +188,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -247,7 +247,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -306,7 +306,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -365,7 +365,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -424,7 +424,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -494,7 +494,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -564,7 +564,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -623,7 +623,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -682,7 +682,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -741,7 +741,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -800,7 +800,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -859,7 +859,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -918,7 +918,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -988,7 +988,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1058,7 +1058,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1117,7 +1117,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1176,7 +1176,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1235,7 +1235,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1294,7 +1294,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1353,7 +1353,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1412,7 +1412,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1482,7 +1482,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1552,7 +1552,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1611,7 +1611,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1670,7 +1670,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1729,7 +1729,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1788,7 +1788,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1847,7 +1847,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1906,7 +1906,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -1976,7 +1976,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2046,7 +2046,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2105,7 +2105,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2164,7 +2164,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2223,7 +2223,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2282,7 +2282,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2341,7 +2341,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2400,7 +2400,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2470,7 +2470,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2540,7 +2540,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2599,7 +2599,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2658,7 +2658,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2717,7 +2717,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2776,7 +2776,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2835,7 +2835,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2894,7 +2894,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -2964,7 +2964,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3034,7 +3034,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3093,7 +3093,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3152,7 +3152,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3211,7 +3211,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3270,7 +3270,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3329,7 +3329,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3388,7 +3388,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3458,7 +3458,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3528,7 +3528,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3587,7 +3587,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3646,7 +3646,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3705,7 +3705,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3764,7 +3764,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3823,7 +3823,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3882,7 +3882,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -3952,7 +3952,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4022,7 +4022,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4081,7 +4081,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4140,7 +4140,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4199,7 +4199,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4258,7 +4258,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4317,7 +4317,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4376,7 +4376,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4446,7 +4446,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4516,7 +4516,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4575,7 +4575,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4634,7 +4634,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4693,7 +4693,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4752,7 +4752,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4811,7 +4811,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4870,7 +4870,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -4940,7 +4940,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5010,7 +5010,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5069,7 +5069,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5128,7 +5128,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5187,7 +5187,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5246,7 +5246,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5305,7 +5305,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5364,7 +5364,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5434,7 +5434,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5504,7 +5504,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5563,7 +5563,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5622,7 +5622,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5681,7 +5681,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5740,7 +5740,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5799,7 +5799,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5858,7 +5858,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5928,7 +5928,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -5998,7 +5998,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6057,7 +6057,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6116,7 +6116,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6175,7 +6175,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6234,7 +6234,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6293,7 +6293,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6352,7 +6352,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6422,7 +6422,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6492,7 +6492,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6551,7 +6551,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6610,7 +6610,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6669,7 +6669,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6728,7 +6728,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6787,7 +6787,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6846,7 +6846,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6916,7 +6916,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -6986,7 +6986,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7045,7 +7045,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7104,7 +7104,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7163,7 +7163,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7222,7 +7222,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7281,7 +7281,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7340,7 +7340,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7410,7 +7410,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7480,7 +7480,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7539,7 +7539,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7598,7 +7598,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7657,7 +7657,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7716,7 +7716,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7775,7 +7775,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7834,7 +7834,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7904,7 +7904,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -7974,7 +7974,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8033,7 +8033,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8092,7 +8092,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8151,7 +8151,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8210,7 +8210,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8269,7 +8269,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8328,7 +8328,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8398,7 +8398,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8468,7 +8468,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8527,7 +8527,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8586,7 +8586,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8645,7 +8645,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8704,7 +8704,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8763,7 +8763,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8822,7 +8822,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8892,7 +8892,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -8962,7 +8962,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9021,7 +9021,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9080,7 +9080,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9139,7 +9139,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9198,7 +9198,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9257,7 +9257,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9316,7 +9316,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9386,7 +9386,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9456,7 +9456,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9515,7 +9515,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9574,7 +9574,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9633,7 +9633,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9692,7 +9692,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9751,7 +9751,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9810,7 +9810,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9880,7 +9880,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -9950,7 +9950,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10009,7 +10009,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10068,7 +10068,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10127,7 +10127,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10186,7 +10186,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10245,7 +10245,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10304,7 +10304,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10374,7 +10374,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10444,7 +10444,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10503,7 +10503,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10562,7 +10562,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10621,7 +10621,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10680,7 +10680,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10739,7 +10739,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10798,7 +10798,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10868,7 +10868,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10938,7 +10938,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -10997,7 +10997,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11056,7 +11056,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11115,7 +11115,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11174,7 +11174,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11233,7 +11233,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11292,7 +11292,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11362,7 +11362,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11432,7 +11432,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11491,7 +11491,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11550,7 +11550,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11609,7 +11609,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11668,7 +11668,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11727,7 +11727,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11786,7 +11786,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11856,7 +11856,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11926,7 +11926,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -11985,7 +11985,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -12044,7 +12044,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -12103,7 +12103,7 @@
               "llm": {
                 "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
                 "name": "Claude Haiku 4.5",
-                "emoji": "🔀",
+                "emoji": "📚",
                 "model": "openrouter/anthropic/claude-haiku-4.5",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -12162,7 +12162,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -12221,7 +12221,7 @@
               "llm": {
                 "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
                 "name": "GPT-5.4 Mini",
-                "emoji": "🔀",
+                "emoji": "🤖",
                 "model": "openrouter/openai/gpt-5.4-mini",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -12280,7 +12280,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -12350,7 +12350,7 @@
               "llm": {
                 "key": "8557d088-4031-4d74-8334-a57d57824ba3",
                 "name": "Gemini 3.1 Flash-Lite",
-                "emoji": "🔀",
+                "emoji": "♊",
                 "model": "openrouter/google/gemini-3.1-flash-lite",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -12420,7 +12420,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -12479,7 +12479,7 @@
               "llm": {
                 "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
                 "name": "DeepSeek V4 Flash",
-                "emoji": "🔀",
+                "emoji": "🐋",
                 "model": "openrouter/deepseek/deepseek-v4-flash",
                 "base_model": "openrouter",
                 "temp": 1,
@@ -15285,7 +15285,7 @@
         "prompt-1684763114547_0.json": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -15331,7 +15331,7 @@
         "prompt-1684763114547_1.json": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -15377,7 +15377,7 @@
         "prompt-1684763114547_2.json": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -15423,7 +15423,7 @@
         "prompt-1684763114547_3.json": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -17788,7 +17788,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -17856,7 +17856,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -17924,7 +17924,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -17992,7 +17992,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -18060,7 +18060,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -18141,7 +18141,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -18222,7 +18222,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -18290,7 +18290,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -18358,7 +18358,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -18426,7 +18426,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -18494,7 +18494,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -18562,7 +18562,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -18630,7 +18630,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -18711,7 +18711,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -18792,7 +18792,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -18860,7 +18860,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -18928,7 +18928,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -18996,7 +18996,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -19064,7 +19064,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -19132,7 +19132,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -19200,7 +19200,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -19281,7 +19281,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -19362,7 +19362,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -19430,7 +19430,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -19498,7 +19498,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -19566,7 +19566,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -19634,7 +19634,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -19702,7 +19702,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -19770,7 +19770,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -19851,7 +19851,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -19932,7 +19932,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -20000,7 +20000,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -20068,7 +20068,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -20136,7 +20136,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -20204,7 +20204,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -20272,7 +20272,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -20340,7 +20340,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -20421,7 +20421,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -20502,7 +20502,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -20570,7 +20570,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -20638,7 +20638,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -20706,7 +20706,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -20774,7 +20774,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -20842,7 +20842,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -20910,7 +20910,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -20991,7 +20991,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -21072,7 +21072,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -21140,7 +21140,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -21208,7 +21208,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -21276,7 +21276,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -21344,7 +21344,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -21412,7 +21412,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -21480,7 +21480,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -21561,7 +21561,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -21642,7 +21642,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -21710,7 +21710,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -21778,7 +21778,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -21846,7 +21846,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -21914,7 +21914,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -21982,7 +21982,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -22050,7 +22050,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -22131,7 +22131,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -22212,7 +22212,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -22280,7 +22280,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -22348,7 +22348,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -22416,7 +22416,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -22484,7 +22484,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -22552,7 +22552,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -22620,7 +22620,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -22701,7 +22701,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -22782,7 +22782,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -22850,7 +22850,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -22918,7 +22918,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -22986,7 +22986,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -23054,7 +23054,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -23122,7 +23122,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -23190,7 +23190,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -23271,7 +23271,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -23352,7 +23352,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -23420,7 +23420,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -23488,7 +23488,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -23556,7 +23556,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -23624,7 +23624,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -23692,7 +23692,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -23760,7 +23760,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -23841,7 +23841,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -23922,7 +23922,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -23990,7 +23990,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -24058,7 +24058,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -24126,7 +24126,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -24194,7 +24194,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -24262,7 +24262,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -24330,7 +24330,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -24411,7 +24411,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -24492,7 +24492,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -24560,7 +24560,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -24628,7 +24628,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -24696,7 +24696,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -24764,7 +24764,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -24832,7 +24832,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -24900,7 +24900,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -24981,7 +24981,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -25062,7 +25062,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -25130,7 +25130,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -25198,7 +25198,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -25266,7 +25266,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -25334,7 +25334,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -25402,7 +25402,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -25470,7 +25470,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -25551,7 +25551,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -25632,7 +25632,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -25700,7 +25700,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -25768,7 +25768,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -25836,7 +25836,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -25904,7 +25904,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -25972,7 +25972,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -26040,7 +26040,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -26121,7 +26121,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -26202,7 +26202,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -26270,7 +26270,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -26338,7 +26338,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -26406,7 +26406,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -26474,7 +26474,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -26542,7 +26542,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -26610,7 +26610,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -26691,7 +26691,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -26772,7 +26772,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -26840,7 +26840,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -26908,7 +26908,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -26976,7 +26976,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -27044,7 +27044,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -27112,7 +27112,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -27180,7 +27180,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -27261,7 +27261,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -27342,7 +27342,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -27410,7 +27410,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -27478,7 +27478,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -27546,7 +27546,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -27614,7 +27614,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -27682,7 +27682,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -27750,7 +27750,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -27831,7 +27831,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -27912,7 +27912,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -27980,7 +27980,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -28048,7 +28048,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -28116,7 +28116,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -28184,7 +28184,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -28252,7 +28252,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -28320,7 +28320,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -28401,7 +28401,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -28482,7 +28482,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -28550,7 +28550,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -28618,7 +28618,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -28686,7 +28686,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -28754,7 +28754,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -28822,7 +28822,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -28890,7 +28890,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -28971,7 +28971,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -29052,7 +29052,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -29120,7 +29120,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -29188,7 +29188,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -29256,7 +29256,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -29324,7 +29324,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -29392,7 +29392,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -29460,7 +29460,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -29541,7 +29541,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -29622,7 +29622,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -29690,7 +29690,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -29758,7 +29758,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -29826,7 +29826,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -29894,7 +29894,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -29962,7 +29962,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -30030,7 +30030,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -30111,7 +30111,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -30192,7 +30192,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -30260,7 +30260,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -30328,7 +30328,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -30396,7 +30396,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -30464,7 +30464,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -30532,7 +30532,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -30600,7 +30600,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -30681,7 +30681,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -30762,7 +30762,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -30830,7 +30830,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -30898,7 +30898,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -30966,7 +30966,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -31034,7 +31034,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -31102,7 +31102,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -31170,7 +31170,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -31251,7 +31251,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -31332,7 +31332,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -31400,7 +31400,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -31468,7 +31468,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -31536,7 +31536,7 @@
         "llm": {
           "key": "f9a30ade-9c65-4642-895c-fe890c29b9a1",
           "name": "Claude Haiku 4.5",
-          "emoji": "🔀",
+          "emoji": "📚",
           "model": "openrouter/anthropic/claude-haiku-4.5",
           "base_model": "openrouter",
           "temp": 1,
@@ -31604,7 +31604,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -31672,7 +31672,7 @@
         "llm": {
           "key": "4f7471f7-5bc7-45ff-b1e5-67c29885e389",
           "name": "GPT-5.4 Mini",
-          "emoji": "🔀",
+          "emoji": "🤖",
           "model": "openrouter/openai/gpt-5.4-mini",
           "base_model": "openrouter",
           "temp": 1,
@@ -31740,7 +31740,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -31821,7 +31821,7 @@
         "llm": {
           "key": "8557d088-4031-4d74-8334-a57d57824ba3",
           "name": "Gemini 3.1 Flash-Lite",
-          "emoji": "🔀",
+          "emoji": "♊",
           "model": "openrouter/google/gemini-3.1-flash-lite",
           "base_model": "openrouter",
           "temp": 1,
@@ -31902,7 +31902,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
@@ -31970,7 +31970,7 @@
         "llm": {
           "key": "89d9caaa-617b-4170-90c6-4ca1b3b06934",
           "name": "DeepSeek V4 Flash",
-          "emoji": "🔀",
+          "emoji": "🐋",
           "model": "openrouter/deepseek/deepseek-v4-flash",
           "base_model": "openrouter",
           "temp": 1,
