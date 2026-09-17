@@ -460,7 +460,6 @@ const CodeEvaluatorNode: React.FC<CodeEvaluatorNodeProps> = ({
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
   const [status, setStatus] = useState<Status>(Status.NONE);
-  const nodes = useStore((state) => state.nodes);
 
   // For genAI features
   const flags = useStore((state) => state.globalSettings);
@@ -592,7 +591,9 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
     // NOTE: Python only!
     let script_paths: string[] = [];
     if (progLang === "python") {
-      const script_nodes = nodes.filter((n) => n.type === "script");
+      const script_nodes = useStore
+        .getState()
+        .nodes.filter((n) => n.type === "script");
       script_paths = script_nodes
         .map((n) =>
           Object.values(n.data.scriptFiles as Dict<string>).filter(
