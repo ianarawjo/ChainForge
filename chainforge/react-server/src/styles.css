@@ -467,6 +467,18 @@ html[data-mantine-color-scheme="dark"] .eval-inspect-response-footer button {
   border: 1px solid #999;
   border-radius: 5px;
 }
+.ai-plot-suggestion {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(177, 63, 204, 0.35);
+}
+.ai-plot-suggestion:hover:not(:disabled) {
+  background: rgba(177, 63, 204, 0.08);
+}
+.ai-plot-suggestion:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
 .plotly-vis {
   width: 100%;
   height: 100%;

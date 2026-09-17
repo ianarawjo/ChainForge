@@ -184,7 +184,8 @@ export function AIPopover({
   // Called when the popover opens
   onOpen,
 }: {
-  children: React.ReactNode;
+  // Or a function that takes a callback to close the popover
+  children: React.ReactNode | ((close: () => void) => React.ReactNode);
   model: LLMSpec;
   buttonStyle?: React.CSSProperties;
   onOpen?: () => void;
@@ -242,6 +243,8 @@ export function AIPopover({
             >
               {setupProblem}
             </Alert>
+          ) : typeof children === "function" ? (
+            children(() => setOpened(false))
           ) : (
             children
           )}
