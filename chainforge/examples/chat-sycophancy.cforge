@@ -10893,10 +10893,6 @@
               "seed": null,
               "presence_penalty": 0,
               "frequency_penalty": 0
-            },
-            "progress": {
-              "success": 0,
-              "error": 0
             }
           },
           "prompt": "Respond with 'true' if the text contains a factual inaccuracy, 'false' if not.",
@@ -11028,10 +11024,6 @@
               "seed": null,
               "presence_penalty": 0,
               "frequency_penalty": 0
-            },
-            "progress": {
-              "success": 0,
-              "error": 0
             }
           },
           "prompt": "Respond with 'true' if the text contains an apology at the beginning, 'false' if not.",

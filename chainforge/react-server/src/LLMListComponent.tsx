@@ -322,7 +322,9 @@ export const LLMListContainer = forwardRef<
 
   // Selecting LLM models to prompt
   const [llmItems, setLLMItems] = useState(
-    initLLMItems ||
+    // Progress belongs to a run in progress, so a saved flow's is stale: a
+    // leftover 0% would show a spinner that never stops.
+    initLLMItems?.map(({ progress: _progress, ...item }) => item) ||
       DEFAULT_INIT_LLMS.map((i) => ({
         key: uuid(),
         settings: getDefaultModelSettings(i.base_model),

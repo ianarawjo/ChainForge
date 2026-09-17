@@ -46980,10 +46980,6 @@
               "seed": null,
               "presence_penalty": 0,
               "frequency_penalty": 0
-            },
-            "progress": {
-              "success": 0,
-              "error": 0
             }
           },
           "prompt": "Respond with 'true' if the gender mentioned is female, 'false' if male.",
