@@ -367,3 +367,168 @@ export async function generateColumn(
 
   return { col: colName, rows: values.map((v) => v.trim()) };
 }
+
+/**
+ * Uses an LLM to write variants of a prompt template, for comparing prompts.
+ * Variants that drop or add template variables are left out.
+ * @param guidance How the variants should differ, if the user said.
+ * @returns Between 1 and `n` variants.
+ */
+export async function generatePromptVariants(
+  prompt: string,
+  n: number,
+  guidance: string,
+  model: LLMSpec,
+  apiKeys?: Dict,
+): Promise<string[]> {
+  const templateVariables = [...new Set(new StringTemplate(prompt).get_vars())];
+  const vars =
+    templateVariables.length > 0
+      ? ` The prompt is a template: each variant must use all of its template variables, written exactly as they are, in single braces (${templateVariables.map((v) => `{${v}}`).join(", ")}), and no others.`
+      : " Don't add placeholders or template variables in braces.";
+  const how = guidance.trim()
+    ? ` The variants should differ in this way: ${guidance.trim()}`
+    : " Make the variants meaningfully different from the original and from each other, for instance in wording, structure, length or tone.";
+  const system = `You write variants of a prompt, so that people can compare how the variants perform. Each variant keeps the original's purpose and asks for the same kind of output.${how}${vars} Respond with only a JSON array of ${n} strings, each a complete prompt.`;
+
+  const reply = await queryAI(model, prompt, { system, apiKeys });
+  const variants = parseStringList(reply)
+    .filter((v) => v !== prompt.trim())
+    .filter((v) => containsSameTemplateVariables(prompt, v))
+    .slice(0, n);
+  if (variants.length === 0)
+    throw new AIError(
+      "The model's variants didn't keep the prompt's template variables. Please try again.",
+    );
+  return variants;
+}
+
+/** The output formats of an LLM Scorer, as ChainForge asks the grader for them. */
+export type RubricFormat = "bin" | "cat" | "num" | "open";
+
+const RUBRIC_FORMAT_DESCRIPTIONS: Record<RubricFormat, string> = {
+  bin: "true or false",
+  cat: "a single category",
+  num: "a number",
+  open: "a short open-ended answer",
+};
+
+const RUBRIC_FORMAT_ADVICE: Record<RubricFormat, string> = {
+  bin: "Say what makes a response true, and what makes it false.",
+  cat: "Name every category the grader can choose from, and when to choose each.",
+  num: "Give the scale (e.g. 1 to 5), and what the ends and middle of it mean.",
+  open: "Say what the grader's answer should contain.",
+};
+
+/**
+ * Uses an LLM to write the rubric of an LLM Scorer. The rubric is the user's
+ * part of the grader's prompt: ChainForge adds the response to grade and the
+ * output format instructions around it.
+ * @param request What to grade, or, with `currentRubric`, how to change the rubric.
+ * @param currentRubric The rubric to edit, if editing.
+ */
+export async function generateRubric(
+  request: string,
+  format: RubricFormat,
+  model: LLMSpec,
+  apiKeys?: Dict,
+  currentRubric?: string,
+): Promise<string> {
+  const system = `You write rubrics for an LLM that grades responses from other LLMs. The grader sees your rubric, then the response to grade, then an instruction to answer with ${RUBRIC_FORMAT_DESCRIPTIONS[format] ?? "an answer"}. Write the rubric as instructions addressed to the grader, briefly and concretely, in plain text: no title, headings or Markdown formatting. ${RUBRIC_FORMAT_ADVICE[format] ?? ""} Don't include the response, placeholders, or instructions about the answer's format. Respond with only the rubric.`;
+  const prompt =
+    currentRubric !== undefined
+      ? `Here is a rubric:\n\n${currentRubric}\n\nRewrite it to make this change: ${request}`
+      : `Write a rubric to grade: ${request}`;
+  const reply = await queryAI(model, prompt, { system, apiKeys });
+
+  // Drop any thinking, code fences or wrapping quotation marks
+  const rubric = reply
+    .replace(/<think>[\s\S]*?<\/think>/g, "")
+    .replace(/^\s*```[a-z]*\n?|```\s*$/g, "")
+    .trim()
+    .replace(/^"([\s\S]*)"$/, "$1")
+    .trim();
+  if (!rubric) throw new AIError(`${model.name} returned an empty rubric.`);
+  return rubric;
+}
+
+/** A document, or a chunk of one, to write test questions about. */
+export interface AIDocument {
+  text: string;
+  /** The document's name, e.g. its filename. */
+  source: string;
+}
+
+// Documents longer than this are cut short before being sent to the model.
+const MAX_DOCUMENT_CHARS = 8000;
+
+/** The columns of a table of RAG test questions, as the RAG example flow names them. */
+export const TEST_QUESTION_COLUMNS = [
+  "question",
+  "reference",
+  "answer_context",
+  "source_doc",
+];
+
+/**
+ * Uses an LLM to write question-answer pairs grounded in documents (or their
+ * chunks), for evaluating a retrieval-augmented generation pipeline. Each pair
+ * comes from one document; documents are queried in parallel.
+ * @param n How many pairs to write. Documents are sampled, and asked for several if there are fewer than `n`.
+ * @param guidance What kind of questions to write, if the user said.
+ * @returns Rows with the columns in TEST_QUESTION_COLUMNS.
+ */
+export async function generateTestQuestions(
+  documents: AIDocument[],
+  n: number,
+  guidance: string,
+  model: LLMSpec,
+  apiKeys?: Dict,
+): Promise<string[][]> {
+  const docs = documents.filter((d) => d.text.trim().length > 0);
+  if (docs.length === 0)
+    throw new AIError("There are no documents to write questions about.");
+
+  // Spread the questions over the documents, in random order
+  const shuffled = [...docs];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const picked = shuffled.slice(0, n);
+  const counts = picked.map(
+    (_, i) => Math.floor(n / picked.length) + (i < n % picked.length ? 1 : 0),
+  );
+  const passages = picked.map((d) =>
+    d.text.trim().slice(0, MAX_DOCUMENT_CHARS),
+  );
+
+  // A document with several questions gets them in one request, so they differ
+  const system = `You write test questions for evaluating a retrieval-augmented generation (RAG) system. You are given a passage from a document, and how many questions to write. Write questions that a user might ask, which the passage answers, and their answers, using only facts in the passage. Each question must make sense on its own, to someone who hasn't seen the passage: don't refer to "the passage", "the text" or "the document". Questions about the same passage must ask about different facts.${guidance.trim() ? ` ${guidance.trim()}` : ""} Respond with only a JSON array of objects, each with two keys, "question" and "answer".`;
+  const replies = await queryAIForEach(
+    model,
+    "{input}",
+    picked.map(
+      (d, i) =>
+        `Questions to write: ${counts[i]}\n\nDocument: ${d.source || "(untitled)"}\n\nPassage:\n${passages[i]}`,
+    ),
+    { system, apiKeys },
+  );
+
+  return replies.flatMap((reply, i) => {
+    let parsed = unwrapList(parseJSONReply(reply));
+    if (!Array.isArray(parsed)) parsed = [parsed];
+    const rows = (parsed as Dict[])
+      .map((pair) => [
+        cellToString(pair?.question).trim(),
+        cellToString(pair?.answer).trim(),
+        passages[i],
+        picked[i].source,
+      ])
+      .filter((row) => row[0].length > 0)
+      .slice(0, counts[i]);
+    if (rows.length === 0)
+      throw new AIError(`The model didn't write any questions: ${reply}`);
+    return rows;
+  });
+}

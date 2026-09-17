@@ -28,11 +28,13 @@ const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 const TIER_INFO: Record<AITier, { label: string; description: string }> = {
   fast: {
     label: "Fast model",
-    description: "Generates input data, like items and table rows.",
+    description:
+      "Generates input data, like items, table rows and test questions.",
   },
   smart: {
     label: "Smart model",
-    description: "Writes evaluation code, and powers EvalGen.",
+    description:
+      "Writes code, rubrics and prompt variants, and powers EvalGen.",
   },
 };
 

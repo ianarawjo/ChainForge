@@ -144,12 +144,12 @@ function evaluate(response) {
 }`;
 
 // Code processor examples for info modal
-const INFO_PROC_EXAMPLE_PY = `
+export const INFO_PROC_EXAMPLE_PY = `
 def process(response):
   # Return the first 12 characters
   return response.text[:12]
 `;
-const INFO_PROC_EXAMPLE_JS = `
+export const INFO_PROC_EXAMPLE_JS = `
 function process(response) {
   // Return the first 12 characters
   return response.text.slice(0, 12);
@@ -844,10 +844,11 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
     );
 
     // If AI support is available, add gen code with AI button:
-    if (flags.aiSupport && node_type === "evaluator")
+    if (flags.aiSupport)
       btns.push(
         <AIGenCodeEvaluatorPopover
           key="ai-popover"
+          nodeType={node_type}
           progLang={progLang}
           context={lastContext}
           onGeneratedCode={(code) => {

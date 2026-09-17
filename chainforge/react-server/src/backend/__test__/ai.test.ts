@@ -37,8 +37,12 @@ import {
   autofillTable,
   generateAndReplaceTable,
   generateColumn,
+  generatePromptVariants,
+  generateRubric,
+  generateTestQuestions,
   parseJSONReply,
   queryAI,
+  TEST_QUESTION_COLUMNS,
 } from "../ai";
 // eslint-disable-next-line import/first
 import { queryLLM } from "../backend";
@@ -248,5 +252,94 @@ describe("AI features", () => {
     );
     const vars = queryLLMMock.mock.calls[0][4] as Dict;
     expect(vars.input[0].text).toBe("Prompt: Tell me about \\{city\\}");
+  });
+
+  test("prompt variants keep the prompt's template variables", async () => {
+    replyWith(() =>
+      JSON.stringify([
+        "Briefly, what's the capital of {country}?",
+        "What is the capital of {country}?",
+        "Name a city in France.",
+        "Tell me the capital of {{country}}, in one word.",
+      ]),
+    );
+    expect(
+      await generatePromptVariants(
+        "What is the capital of {country}?",
+        3,
+        "",
+        model,
+      ),
+    ).toEqual([
+      "Briefly, what's the capital of {country}?",
+      "Tell me the capital of {country}, in one word.",
+    ]);
+
+    replyWith(() => '["Name a city in France."]');
+    await expect(
+      generatePromptVariants("What is the capital of {country}?", 1, "", model),
+    ).rejects.toThrow(/template variables/);
+  });
+
+  test("rubrics fit the expected format, and come back as plain text", async () => {
+    replyWith(() => '```\n"Score 1 to 5 for politeness."\n```');
+    expect(await generateRubric("politeness", "num", model)).toBe(
+      "Score 1 to 5 for politeness.",
+    );
+    const llm = (queryLLMMock.mock.calls[0][1] as LLMSpec[])[0];
+    expect(llm.settings?.system_msg).toMatch(/a number/);
+
+    replyWith(() => "Say true if the response is polite and brief.");
+    await generateRubric("also brief", "bin", model, undefined, "Polite?");
+    expect(queryLLMMock.mock.calls[1][3]).toMatch(/Polite\?[\s\S]*also brief/);
+  });
+
+  test("test questions spread over the documents, in one batched query", async () => {
+    // Each document is asked for its number of questions at once
+    replyWith((_prompt, input) => {
+      const text = String(input.text);
+      const count = Number(/Questions to write: (\d+)/.exec(text)?.[1]);
+      const topic = text.includes("cats") ? "cats" : "dogs";
+      return JSON.stringify(
+        Array.from({ length: count }, (_, i) => ({
+          question: `About ${topic} ${i + 1}?`,
+          answer: "Yes.",
+        })),
+      );
+    });
+    const rows = await generateTestQuestions(
+      [
+        { text: "All about cats.", source: "cats.pdf" },
+        { text: "All about dogs {and braces}.", source: "dogs.pdf" },
+        { text: "   ", source: "empty.pdf" },
+      ],
+      3,
+      "",
+      model,
+    );
+    expect(queryLLMMock).toHaveBeenCalledTimes(1);
+    expect(TEST_QUESTION_COLUMNS).toEqual([
+      "question",
+      "reference",
+      "answer_context",
+      "source_doc",
+    ]);
+    expect(rows).toHaveLength(3);
+    rows.forEach((row) => {
+      expect(row).toHaveLength(4);
+      expect(row[0]).toMatch(row[3] === "cats.pdf" ? /cats/ : /dogs/);
+      expect(row[2]).toMatch(/All about/);
+    });
+    // Both documents are asked, one of them for two different questions, and the empty one never
+    const questions = rows.map((row) => row[0]);
+    expect(new Set(questions).size).toBe(3);
+    expect(new Set(rows.map((row) => row[3]))).toEqual(
+      new Set(["cats.pdf", "dogs.pdf"]),
+    );
+    expect((queryLLMMock.mock.calls[0][4] as Dict).input).toHaveLength(2);
+
+    await expect(
+      generateTestQuestions([{ text: "", source: "x" }], 1, "", model),
+    ).rejects.toThrow(/no documents/);
   });
 });

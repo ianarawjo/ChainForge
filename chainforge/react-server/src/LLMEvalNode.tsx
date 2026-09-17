@@ -35,6 +35,7 @@ import {
   withReasoningMetavar,
 } from "./backend/utils";
 import { AlertModalContext } from "./AlertModal";
+import { AIGenRubricPopover } from "./AiPopover";
 import {
   Dict,
   LLMResponse,
@@ -115,6 +116,8 @@ export interface LLMEvaluatorComponentRef {
     grader?: LLMSpec;
   };
   getPromptTemplate: () => string;
+  /** Replaces the rubric, as if the user had typed it. */
+  setPrompt: (prompt: string) => void;
 }
 
 export interface LLMEvaluatorComponentProps {
@@ -298,12 +301,18 @@ export const LLMEvaluatorComponent = forwardRef<
     reasonBeforeScoring: useReasoning,
   });
 
+  const setPrompt = (newPrompt: string) => {
+    setPromptText(newPrompt);
+    if (onPromptEdit) onPromptEdit(newPrompt);
+  };
+
   // Define functions accessible from the parent component
   useImperativeHandle(ref, () => ({
     run,
     cancel,
     serialize,
     getPromptTemplate,
+    setPrompt,
   }));
 
   return (
@@ -378,6 +387,7 @@ export interface LLMEvaluatorNodeProps {
 const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
   // The inner component storing the UI and logic for running the LLM-based evaluation
   const llmEvaluatorRef = useRef<LLMEvaluatorComponentRef>(null);
+  const aiSupport = useStore((state) => state.globalSettings.aiSupport);
 
   const [status, setStatus] = useState<Status>(Status.NONE);
   const showAlert = useContext(AlertModalContext);
@@ -557,6 +567,18 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
         handleStopClick={handleStopClick}
         runButtonTooltip="Run scorer over inputs"
         customButtons={[
+          ...(aiSupport
+            ? [
+                <AIGenRubricPopover
+                  key="ai-popover"
+                  format={data.format ?? OutputFormat.Bin}
+                  currentRubric={data.prompt ?? ""}
+                  onGeneratedRubric={(rubric) =>
+                    llmEvaluatorRef.current?.setPrompt(rubric)
+                  }
+                />,
+              ]
+            : []),
           <PromptListPopover
             key="prompt-previews"
             promptInfos={promptPreviews}

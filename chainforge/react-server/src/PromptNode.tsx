@@ -93,6 +93,7 @@ import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import TemplateHighlightTextarea, {
   setTemplateTextareaValue,
 } from "./TemplateHighlightTextarea";
+import { AIGenPromptVariantsPopover } from "./AiPopover";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -367,6 +368,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     null,
   );
   const [templateVars, setTemplateVars] = useState<string[]>(data.vars ?? []);
+  const aiSupport = useStore((state) => state.globalSettings.aiSupport);
   const [promptText, setPromptText] = useState<string | string[]>(
     data.prompt ?? "",
   );
@@ -1412,11 +1414,33 @@ Soft failing by replacing undefined with empty strings.`,
     setPromptVariantLabel(updatedPromptVarLabels);
     setIdxPromptVariantShown(prompts.length);
     setDataPropsForNode(id, {
-      promptText: updatedPrompts,
+      prompt: updatedPrompts,
       promptVariantLabel: updatedPromptVarLabels,
     });
     setStatus(Status.WARNING);
   }, [promptText, idxPromptVariantShown, promptVariantLabel]);
+
+  // Adds variants an AI wrote after the existing ones, and shows the first
+  const handleAddAIPromptVariants = useCallback(
+    (variants: string[]) => {
+      const prompts =
+        typeof promptText === "string" ? [promptText] : promptText;
+      const updatedPrompts = prompts.concat(variants);
+      const updatedPromptVarLabels = promptVariantLabel.concat(
+        variants.map((_, i) => `Variant ${prompts.length + i + 1}`),
+      );
+      setPromptText(updatedPrompts);
+      setPromptVariantLabel(updatedPromptVarLabels);
+      setIdxPromptVariantShown(prompts.length);
+      setDataPropsForNode(id, {
+        prompt: updatedPrompts,
+        promptVariantLabel: updatedPromptVarLabels,
+      });
+      refreshTemplateHooks(updatedPrompts);
+      setStatus(Status.WARNING);
+    },
+    [promptText, promptVariantLabel, refreshTemplateHooks],
+  );
 
   const gotoPromptVariant = useCallback(
     (shift: number) => {
@@ -1446,7 +1470,7 @@ Soft failing by replacing undefined with empty strings.`,
       }
 
       setDataPropsForNode(id, {
-        promptText: prompts,
+        prompt: prompts,
       });
       return [...prompts];
     });
@@ -1636,6 +1660,19 @@ Soft failing by replacing undefined with empty strings.`,
         handleRunHover={handleRunHover}
         runButtonTooltip={runTooltip}
         customButtons={[
+          ...(aiSupport && node_type !== "chat"
+            ? [
+                <AIGenPromptVariantsPopover
+                  key="ai-popover"
+                  currentPrompt={
+                    typeof promptText === "string"
+                      ? promptText
+                      : promptText[idxPromptVariantShown] ?? ""
+                  }
+                  onAddVariants={handleAddAIPromptVariants}
+                />,
+              ]
+            : []),
           <PromptListPopover
             key="prompt-previews"
             promptInfos={promptPreviews}

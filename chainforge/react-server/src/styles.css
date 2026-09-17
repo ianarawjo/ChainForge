@@ -1679,7 +1679,7 @@ html[data-mantine-color-scheme="dark"] .custom-button:hover {
   border-radius: 5px;
   border: 1px solid #999;
   font-size: var(--fs-sm);
-  color: #666;
+  color: rgb(150, 45, 180);
   overflow: hidden;
   box-shadow: 0 0 0 0 transparent;
   -webkit-transition: all 0.2s ease-in;
@@ -1687,6 +1687,9 @@ html[data-mantine-color-scheme="dark"] .custom-button:hover {
   transition: all 0.2s ease-in;
   cursor: pointer;
   background: #f2d2f3;
+}
+.ai-button svg {
+  vertical-align: -2px;
 }
 .ai-button:hover {
   background: rgb(177, 63, 204);
@@ -1724,7 +1727,7 @@ html[data-mantine-color-scheme="dark"] .custom-button:hover {
 
 html[data-mantine-color-scheme="dark"] .ai-button {
   background: var(--dark);
-  color: hotpink;
+  color: rgb(222, 140, 250);
   border-color: var(--dark-btn-border);
 }
 html[data-mantine-color-scheme="dark"] .ai-button:hover {
