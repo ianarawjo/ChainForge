@@ -198,6 +198,20 @@ describe("AI features", () => {
     ]);
   });
 
+  test("extending a table accepts rows wrapped in an object", async () => {
+    replyWith(() => '{"rows": [["cow", "moo"], ["sheep", "baa"]]}');
+    expect(
+      await autofillTable(
+        { cols: ["animal", "sound"], rows: [["dog", "woof"]] },
+        2,
+        model,
+      ),
+    ).toEqual([
+      ["cow", "moo"],
+      ["sheep", "baa"],
+    ]);
+  });
+
   test("generates a table with named columns", async () => {
     replyWith(
       () =>
@@ -223,5 +237,16 @@ describe("AI features", () => {
     );
     expect(result).toEqual({ col: "Country", rows: ["France", "Peru"] });
     expect(queryLLMMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("braces in table cells are data, not template variables", async () => {
+    replyWith(() => "travel");
+    await generateColumn(
+      { cols: ["Prompt"], rows: [["Tell me about {city}"]] },
+      "Topic",
+      model,
+    );
+    const vars = queryLLMMock.mock.calls[0][4] as Dict;
+    expect(vars.input[0].text).toBe("Prompt: Tell me about \\{city\\}");
   });
 });

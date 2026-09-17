@@ -83,6 +83,7 @@ export async function queryAI(
  * Queries an AI model once per input, in parallel (within the provider's rate
  * limits), returning the replies in the same order as the inputs.
  * @param template The prompt, with the literal text escaped and `{input}` where each input goes.
+ * @param inputs Literal text: braces in them are not template variables.
  */
 export async function queryAIForEach(
   model: LLMSpec,
@@ -98,7 +99,7 @@ export async function queryAIForEach(
     template,
     {
       input: inputs.map((text, idx) => ({
-        text,
+        text: escapeBraces(text),
         metavars: { [ROW_INDEX_METAVAR]: idx.toString() },
       })),
     },
@@ -163,14 +164,18 @@ function cellToString(cell: unknown): string {
   return String(cell);
 }
 
-/** Reads a JSON array of strings from a model's reply. */
-function parseStringList(reply: string): string[] {
-  let parsed = parseJSONReply(reply);
-  // Some models wrap the list in an object, like {"items": [...]}
+/** Some models wrap a list in an object, like {"items": [...]}; unwraps it. */
+function unwrapList(parsed: unknown): unknown {
   if (!Array.isArray(parsed) && parsed && typeof parsed === "object") {
     const lists = Object.values(parsed).filter(Array.isArray);
-    if (lists.length === 1) parsed = lists[0];
+    if (lists.length === 1) return lists[0];
   }
+  return parsed;
+}
+
+/** Reads a JSON array of strings from a model's reply. */
+function parseStringList(reply: string): string[] {
+  const parsed = unwrapList(parseJSONReply(reply));
   if (!Array.isArray(parsed))
     throw new AIError(`Expected a list from the model, but got: ${reply}`);
   const items = parsed
@@ -273,7 +278,10 @@ export async function autofillTable(
     JSON.stringify({ columns: input.cols, rows: sampleRows }, null, 2),
     { system, apiKeys },
   );
-  const rows = toRows(parseJSONReply(reply), input.cols).slice(0, n);
+  const rows = toRows(unwrapList(parseJSONReply(reply)), input.cols).slice(
+    0,
+    n,
+  );
   if (rows.length === 0)
     throw new AIError(`The model returned no rows: ${reply}`);
   return rows;
@@ -288,7 +296,7 @@ export async function generateAndReplaceTable(
   model: LLMSpec,
   apiKeys?: Dict,
 ): Promise<AITable> {
-  const system = `Write a table for the user's request, with exactly ${n} rows. Cells hold the data asked for, written plainly. Only if the user asks for prompts or commands, write them as instructions to an AI assistant; only if they ask for templates, placeholders or variables, write those as template variables in single braces, like {variable}. Respond with only a JSON object with two keys: "columns", an array of short column names, and "rows", an array of ${n} rows, each an array of strings with one string per column.`;
+  const system = `Write a table for the user's request, with exactly ${n} rows. Cells hold the data asked for, written plainly. Only if the user asks for prompts or commands, write them as instructions to an AI assistant. Respond with only a JSON object with two keys: "columns", an array of short column names, and "rows", an array of ${n} rows, each an array of strings with one string per column.`;
   const reply = await queryAI(model, `Write a table of: ${prompt}`, {
     system,
     apiKeys,
