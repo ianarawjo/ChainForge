@@ -432,6 +432,21 @@ function construct_image_payload(
   }
 }
 
+/**
+ * Guesses an image's MIME type from the start of its base64 encoding, i.e. its
+ * magic bytes. Providers can return JPEG or WebP, so labelling everything PNG
+ * mislabels the stored file.
+ */
+export function imageMimeFromBase64(b64: string): string {
+  if (b64.startsWith("/9j/")) return "image/jpeg";
+  if (b64.startsWith("UklGR")) return "image/webp";
+  if (b64.startsWith("R0lGOD")) return "image/gif";
+  // "<svg" or "<?xml ", from vector image models
+  if (b64.startsWith("PHN2Zy") || b64.startsWith("PD94bWwg"))
+    return "image/svg+xml";
+  return "image/png";
+}
+
 async function imagesToBase64(images: string[]) {
   if (images && images.length > 0) {
     const base64_images: Array<string> = [];
@@ -442,7 +457,15 @@ async function imagesToBase64(images: string[]) {
         console.error(`Image not found in MediaLookup: ${image}`);
         continue;
       }
-      const base64_image = await blobOrFileToDataURL(imageBlob);
+      let base64_image = await blobOrFileToDataURL(imageBlob);
+      // Media read back from the server can lose its type (e.g. generated
+      // images arrive as application/octet-stream), and providers reject a
+      // data URL that isn't an image type. Tell the type from the bytes.
+      if (base64_image && !base64_image.startsWith("data:image/")) {
+        const data = getBase64DataFromDataURL(base64_image);
+        if (data)
+          base64_image = `data:${imageMimeFromBase64(data)};base64,${data}`;
+      }
       if (base64_image) base64_images.push(base64_image);
     }
     return base64_images;
@@ -834,6 +857,10 @@ export async function call_openrouter(
   const modelname = stripOpenRouterPrefix(model);
   const settings: Dict = { ...params };
   strip_empty_chat_params(settings);
+  // Plain text is the default anyway, and some providers behind OpenRouter
+  // (e.g. Cloudflare, which serves Llama 3.2 1B) reject a "text" response_format.
+  if (settings.response_format?.type === "text")
+    delete settings.response_format;
 
   // Reasoning takes either a token budget or an effort level, not both. Models
   // that don't reason ignore it. See https://openrouter.ai/docs/use-cases/reasoning-tokens

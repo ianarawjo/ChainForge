@@ -26,6 +26,7 @@ import {
   countQueries,
   ResponseInfo,
   grabResponses,
+  scoresAreBooleanish,
 } from "../backend";
 import { LLMResponse, Dict, StringOrHash, LLMSpec } from "../typing";
 import StorageCache from "../cache";
@@ -76,4 +77,13 @@ test("count queries required", async () => {
     ],
     5,
   );
+});
+
+test("LLM scores are boolean-ish even when every score is the same", () => {
+  expect(scoresAreBooleanish(new Set(["true", "false"]))).toBe(true);
+  expect(scoresAreBooleanish(new Set(["true"]))).toBe(true);
+  expect(scoresAreBooleanish(new Set(["no"]))).toBe(true);
+  // A score that isn't boolean-ish means the scores are categories.
+  expect(scoresAreBooleanish(new Set(["true", "maybe"]))).toBe(false);
+  expect(scoresAreBooleanish(new Set([]))).toBe(false);
 });

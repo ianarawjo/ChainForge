@@ -79,10 +79,12 @@ import UploadNode from "./UploadNode";
 import ChunkNode from "./ChunkNode";
 import RetrievalNode from "./RetrievalNode";
 import {
+  ModelSettings,
   getDefaultModelFormData,
   getDefaultModelSettings,
+  postProcessFormData,
 } from "./ModelSettingSchemas";
-import { NativeLLM } from "./backend/models";
+import { NativeLLM, OPENROUTER_PREFIX } from "./backend/models";
 import { v4 as uuid } from "uuid";
 import axios from "axios";
 import LZString from "lz-string";
@@ -211,6 +213,38 @@ const INITIAL_LLM = () => {
   qwenWebLLM.formData.shortname = qwenWebLLM.name;
   qwenWebLLM.formData.model = qwenWebLLM.model;
   return qwenWebLLM;
+};
+
+/**
+ * The OpenAI evals were converted to flows in 2023, all with GPT-3.5, which
+ * no longer exists. Swap in a current, cheap model through OpenRouter as each
+ * one loads, keeping the eval's own system message.
+ */
+const withCurrentOpenAIEvalModel = (flowJSON: Dict): Dict => {
+  const model = "openai/gpt-5.4-mini";
+  for (const node of flowJSON?.flow?.nodes ?? []) {
+    const llms: LLMSpec[] | undefined = node.data?.llms;
+    if (!Array.isArray(llms)) continue;
+    node.data.llms = llms.map((old) => {
+      const formData = getDefaultModelFormData("openrouter", model);
+      formData.shortname = "GPT-5.4 Mini";
+      // These evals grade short, formatted answers, so skip reasoning.
+      formData.reasoning_effort = "off";
+      if (typeof old.settings?.system_msg === "string")
+        formData.system_msg = old.settings.system_msg;
+      return {
+        key: uuid(),
+        name: "GPT-5.4 Mini",
+        emoji: "🔀",
+        model: OPENROUTER_PREFIX + model,
+        base_model: "openrouter",
+        temp: 1.0,
+        formData,
+        settings: postProcessFormData(ModelSettings.openrouter, formData),
+      } satisfies LLMSpec;
+    });
+  }
+  return flowJSON;
 };
 
 const nodeTypes = {
@@ -419,20 +453,12 @@ const App = () => {
         key: "RAG",
       },
       {
-        available: ragNodeAvailable("upload"),
-        key: "upload",
-        title: "Upload Docs Node",
-        icon: nodeEmojis.upload,
-        tooltip: "Upload documents to the flow, such as text files or PDFs.",
-        onClick: () => addNode("upload"),
-      },
-      {
         available: ragNodeAvailable("chunk"),
         key: "chunk",
         title: "Chunking Node",
         icon: nodeEmojis.chunk,
         tooltip:
-          "Chunk texts into smaller pieces. Compare different chunking methods. Typically used after the Upload Node.",
+          "Chunk texts into smaller pieces. Compare different chunking methods. Typically used after the Documents Node.",
         onClick: () => addNode("chunk"),
       },
       {
@@ -539,6 +565,17 @@ const App = () => {
         icon: nodeEmojis.media,
         tooltip: "Add image data with corresponding metadata.",
         onClick: () => addNode("media", "media"),
+      },
+      {
+        // Documents feed more than RAG (e.g. a Processor extracting fields
+        // from PDFs), so they sit with the other inputs. Uploading and reading
+        // documents works client-side, so it's always offered.
+        key: "upload",
+        title: "Documents Node",
+        icon: nodeEmojis.upload,
+        tooltip:
+          "Add documents to the flow, such as text files, PDFs or Word files. Each document's text becomes an input.",
+        onClick: () => addNode("upload"),
       },
       {
         key: "divider",
@@ -1324,7 +1361,7 @@ const App = () => {
       // The modal tells us which tab the card came from.
       if (category === "openai-eval") {
         const flowJSON = await fetchOpenAIEval(name.replace(/\.cforge$/i, ""));
-        importFlowFromJSON(flowJSON, "openai-eval");
+        importFlowFromJSON(withCurrentOpenAIEvalModel(flowJSON), "openai-eval");
         setFlowFileNameAndCache(`flow-${Date.now()}`);
         return;
       }

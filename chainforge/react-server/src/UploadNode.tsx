@@ -45,7 +45,7 @@ interface UploadNodeProps {
 
 const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
   const nodeIcon = useMemo(() => "📁", []);
-  const nodeDefaultTitle = useMemo(() => "Upload Node", []);
+  const nodeDefaultTitle = useMemo(() => "Documents Node", []);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
 
   const [fields, setFields] = useState<TemplateVarInfo[]>(data.fields || []);

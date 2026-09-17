@@ -432,6 +432,12 @@ const ExampleFlowsModal = forwardRef<
         <Tabs.Panel value="examples" pt="xs">
           <SimpleGrid cols={3} spacing="sm" verticalSpacing="sm">
             <ExampleFlowCard
+              title="🌐 No API key? Start here"
+              description="Two tiny models that run in your browser name world capitals, checked against a table. No API key or server needed."
+              filename="no-key-starter"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
               title="📑 Compare between prompt templates"
               description="Compare between prompt templates using template chaining. Visualize response quality across models."
               filename="compare-prompts"
@@ -439,7 +445,7 @@ const ExampleFlowsModal = forwardRef<
             />
             <ExampleFlowCard
               title="📊 Compare prompt across models"
-              description="A simple evaluation with a prompt template, some inputs, and three models to prompt. Visualizes variability in response length."
+              description="A prompt template, a few inputs, and four models to prompt. Visualizes how response length varies across three samples from each."
               filename="basic-comparison"
               onSelect={onSelect}
             />
@@ -451,7 +457,7 @@ const ExampleFlowsModal = forwardRef<
             />
             <ExampleFlowCard
               title="📗 Testing knowledge of book beginnings"
-              description="Test whether different LLMs know the first sentences of famous books."
+              description="Test whether small open models, from 1B to 31B parameters, know the first sentences of famous books."
               filename="book-beginnings"
               onSelect={onSelect}
             />
@@ -516,9 +522,9 @@ const ExampleFlowsModal = forwardRef<
               onSelect={onSelect}
             />
             <ExampleFlowCard
-              title="🔢 Ground truth evaluation for math problems"
-              description="Uses a Tabular Data Node to evaluate LLM performance on basic math problems. Compares responses to expected answer and plots performance."
-              filename="basic-math"
+              title="🧠 Does reasoning help? Math word problems"
+              description="Ask multi-step word problems with each model's reasoning off, then on. A settings variable switches reasoning per prompt, and answers are checked against a table."
+              filename="reasoning-math"
               onSelect={onSelect}
             />
             <ExampleFlowCard
@@ -529,8 +535,20 @@ const ExampleFlowsModal = forwardRef<
             />
             <ExampleFlowCard
               title="🖼 Generate images of animals"
-              description="Shows images of a fox, sparrow, and a pig as a computer scientist and a gamer, using Dall-E2."
-              filename="animal-images"
+              description="Two image models draw animals doing things, then a vision model checks each picture against what was asked for."
+              filename="animal-images.cfzip"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="👁 Identify animals in photos"
+              description="Vision models name the animals in twelve public-domain wildlife photos, checked against keywords and captions stored with each photo in a Media Node."
+              filename="vision-animals.cfzip"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="⚖️ Explain Supreme Court decisions"
+              description="Six Supreme Court opinions as PDFs in a Documents Node. A Processor extracts each holding, then models explain it in plain language."
+              filename="supreme-court.cfzip"
               onSelect={onSelect}
             />
           </SimpleGrid>

@@ -108,13 +108,13 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
     try {
       inputData = pullInputData(["text"], id) as { text?: TemplateVarInfo[] };
     } catch (error) {
-      handleError("No input text found. Is UploadNode connected?", error);
+      handleError("No input text found. Is a Documents Node connected?", error);
       return;
     }
     const fileArr = inputData.text || [];
     if (fileArr.length === 0) {
       handleError(
-        "No text found. Please attach an UploadNode or provide text.",
+        "No text found. Please attach a Documents Node or provide text.",
       );
       return;
     }

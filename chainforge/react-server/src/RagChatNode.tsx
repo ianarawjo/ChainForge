@@ -82,7 +82,7 @@ const MAX_SAVED_TURNS = 50;
 
 /** Titles for nodes that were never renamed, for failure messages. */
 const DEFAULT_TITLES: Record<string, string> = {
-  upload: "Upload Node",
+  upload: "Documents Node",
   chunk: "Chunk Node",
   retrieval: "Retrieval Node",
   rerank: "Rerank Node",

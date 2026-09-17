@@ -14,7 +14,17 @@ jest.mock("../cache", () => ({
   StringLookup: { get: (x: unknown) => x },
   MediaLookup: {
     get: async (uid: string) =>
-      new (globalThis as any).Blob([`bytes of ${uid}`], { type: "image/png" }),
+      uid.startsWith("untyped-")
+        ? // JPEG magic bytes, typed the way the server can send media back
+          new (globalThis as any).Blob(
+            [Uint8Array.from([0xff, 0xd8, 0xff, 0xe0])],
+            {
+              type: "application/octet-stream",
+            },
+          )
+        : new (globalThis as any).Blob([`bytes of ${uid}`], {
+            type: "image/png",
+          }),
   },
 }));
 jest.mock("@google/genai", () => ({ GoogleGenAI: jest.fn() }));
@@ -190,6 +200,44 @@ describe("OpenRouter chat completions", () => {
         LLMProvider.OpenRouter,
       ),
     ).toEqual(["Hi!"]);
+  });
+
+  test("a plain-text response_format is left out, but a JSON one is sent", async () => {
+    // Some providers (e.g. Cloudflare, serving Llama 3.2 1B) reject type "text".
+    mockFetch({ body: chatReply({ content: "Hi!" }) });
+    await call_openrouter(
+      "Q",
+      "openrouter/meta-llama/llama-3.2-1b-instruct",
+      1,
+      1,
+      {
+        response_format: { type: "text" },
+      },
+    );
+    expect(jsonBody(calls[0])).not.toHaveProperty("response_format");
+
+    mockFetch({ body: chatReply({ content: "{}" }) });
+    await call_openrouter("Q", "openrouter/openai/gpt-5.4-mini", 1, 1, {
+      response_format: { type: "json_object" },
+    });
+    expect(jsonBody(calls[0]).response_format).toEqual({ type: "json_object" });
+  });
+
+  test("an image stored without its type is sent with the type its bytes show", async () => {
+    // Providers reject image data URLs that aren't typed as images.
+    mockFetch({ body: chatReply({ content: "true" }) });
+    await call_openrouter(
+      "Is this a fox?",
+      "openrouter/openai/gpt-5.4-mini",
+      1,
+      1,
+      {},
+      undefined,
+      ["untyped-1"],
+    );
+    const messages = jsonBody(calls[0]).messages;
+    const content = messages[messages.length - 1].content;
+    expect(content[0].image_url.url).toMatch(/^data:image\/jpeg;base64,/);
   });
 
   test("reasoning effort is sent as OpenRouter's reasoning object", async () => {
