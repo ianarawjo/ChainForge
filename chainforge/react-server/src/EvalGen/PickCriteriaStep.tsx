@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { EvalCriteria, EvalFunctionReport } from "../backend/evalgen/typing";
+import { LLMSpec } from "../backend/typing";
 import {
   Accordion,
   Button,
@@ -46,7 +47,7 @@ interface PickCriteriaStepProps {
   setCriteria: React.Dispatch<React.SetStateAction<EvalCriteria[]>>;
   genCriteriaFromContext: () => Promise<EvalCriteria[] | undefined>;
   setOnNextCallback: React.Dispatch<React.SetStateAction<() => unknown>>;
-  genAIModelNames: { large: string; small: string };
+  genAIModels: { large: LLMSpec; small: LLMSpec };
 }
 
 export interface CriteriaCardProps {
@@ -377,7 +378,7 @@ const PickCriteriaStep: React.FC<PickCriteriaStepProps> = ({
   criteria,
   setCriteria,
   genCriteriaFromContext,
-  genAIModelNames,
+  genAIModels,
 }) => {
   // State for criteria cards
   const [addCriteriaValue, setAddCriteriaValue] = useState("");
@@ -394,7 +395,7 @@ const PickCriteriaStep: React.FC<PickCriteriaStepProps> = ({
     // Make async LLM call to expand criteria
     generateLLMEvaluationCriteria(
       "",
-      genAIModelNames.large,
+      genAIModels.large,
       apiKeys,
       getPromptForGenEvalCriteriaFromDesc(addCriteriaValue), // prompt
       null, // system_msg

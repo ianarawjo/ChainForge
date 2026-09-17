@@ -1,13 +1,27 @@
 import React from "react";
-import { Anchor, List, Stack, Text, Title } from "@mantine/core";
+import { Alert, Anchor, List, Stack, Text, Title } from "@mantine/core";
+import { IconAlertCircle } from "@tabler/icons-react";
 
 interface WelcomeStepProps {
   setOnNextCallback: React.Dispatch<React.SetStateAction<() => unknown>>;
+  // The names of the models EvalGen calls
+  models: { large: string; small: string };
+  // What's missing before EvalGen can call models, if anything
+  setupProblem?: string;
 }
 
-const WelcomeStep: React.FC<WelcomeStepProps> = () => (
+const WelcomeStep: React.FC<WelcomeStepProps> = ({ models, setupProblem }) => (
   <Stack spacing="md" m="lg" p="lg" mb={120}>
     <Title order={2}>Welcome to the EvalGen Wizard</Title>
+    {setupProblem && (
+      <Alert
+        color="grape"
+        title="AI features need setting up"
+        icon={<IconAlertCircle />}
+      >
+        {setupProblem}
+      </Alert>
+    )}
     <Text>
       This wizard will guide you through creating automated evaluators for LLM
       responses that are aligned with your preferences. You&apos;ll look at
@@ -38,9 +52,9 @@ const WelcomeStep: React.FC<WelcomeStepProps> = () => (
         screen. This is the chief difference from our paper.
       </List.Item>
       <List.Item>
-        Requires access to the GenAI features of ChainForge, which (currently)
-        requires an OpenAI API key. (If you&apos;d like to use other models,
-        more general access to GenAI features is coming soon.)
+        Uses the model provider set for AI support features in ChainForge&apos;s
+        settings, calling its smart model ({models.large}) and fast model (
+        {models.small}).
       </List.Item>
       <List.Item>
         Should be run on the outputs of <b>already-run</b> Prompt Nodes

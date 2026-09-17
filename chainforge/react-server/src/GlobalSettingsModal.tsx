@@ -21,8 +21,6 @@ import {
   Center,
   Badge,
   Card,
-  Switch,
-  Select,
   Checkbox,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -31,7 +29,6 @@ import {
   IconUpload,
   IconBrandPython,
   IconX,
-  IconSparkles,
   IconBrandGithub,
   IconBook,
 } from "@tabler/icons-react";
@@ -44,13 +41,9 @@ import {
   storeAPIKeys,
 } from "./backend/apiKeyStorage";
 import { setCustomProviders } from "./ModelSettingSchemas";
-import { getAIFeaturesModelProviders } from "./backend/ai";
-import {
-  CustomLLMProviderSpec,
-  Dict,
-  JSONCompatible,
-  LLMSpec,
-} from "./backend/typing";
+import AISupportSettings from "./AISupportSettings";
+import { AIModelOverrides } from "./backend/aiModels";
+import { CustomLLMProviderSpec, Dict, JSONCompatible } from "./backend/typing";
 import {
   getGlobalConfig,
   initCustomProvider,
@@ -63,10 +56,11 @@ import { ColorSchemeToggle } from "./ColorThemeProvider";
 
 // Type for the non-form (non-sensitive) settings
 interface GlobalSettingsType {
-  aiAutocomplete: boolean;
   aiSupport: boolean;
   imageCompression: boolean;
-  aiFeaturesProvider: string | LLMSpec;
+  // The provider for AI support features; blank to pick one from the API keys
+  aiProvider: string;
+  aiModels: AIModelOverrides;
 }
 
 // The JSON filename in the backend for the global settings
@@ -284,10 +278,10 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
     // Settings within the other tabs
     const [settings, setSettings] = useState<GlobalSettingsType>({
-      aiAutocomplete: false,
-      aiFeaturesProvider: "OpenAI",
       aiSupport: true,
       imageCompression: true,
+      aiProvider: "",
+      aiModels: {},
     });
 
     // Fetch the global settings from the backend
@@ -304,13 +298,16 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
           // Set any other settings that are on other pages (not in the form)
           setSettings((prev) => {
-            Object.keys(prev).forEach((key) => {
-              if (key in backendSettings)
-                prev[key as keyof GlobalSettingsType] = backendSettings[
-                  key
-                ] as any;
-            });
-            return { ...prev };
+            const loaded = { ...prev };
+            (Object.keys(prev) as (keyof GlobalSettingsType)[]).forEach(
+              (key) => {
+                if (key in backendSettings)
+                  (loaded as Dict)[key] = backendSettings[key];
+              },
+            );
+            // Nodes read these from the store.
+            setGlobalSettingsInZustandStore(loaded);
+            return loaded;
           });
 
           // Set any API keys that were custom set in the global settings form,
@@ -343,6 +340,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 console.log("No Ollama models available.");
                 return;
               }
+              setOllamaModels(models_available);
 
               // Set the available models in the global provider menu,
               // by replacing the default Ollama generic model with the model list from the server.
@@ -427,10 +425,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
     // Web version only: keep keys on this device, rather than for this tab.
     const [rememberKeys, setRememberKeys] = useState(false);
     const AvailableLLMs = useStore((state) => state.AvailableLLMs);
-    const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
-    const setAIFeaturesProvider = useStore(
-      (state) => state.setAIFeaturesProvider,
-    );
+    const setOllamaModels = useStore((state) => state.setOllamaModels);
     const setAvailableLLMs = useStore((state) => state.setAvailableLLMs);
     const setFavorites = useStore((state) => state.setFavorites);
     const nodes = useStore((state) => state.nodes);
@@ -621,7 +616,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
           <Tabs defaultValue="api-keys">
             <Tabs.List>
               <Tabs.Tab value="api-keys">API Keys</Tabs.Tab>
-              <Tabs.Tab value="ai-support">AI Support (BETA)</Tabs.Tab>
+              <Tabs.Tab value="ai-support">AI Support</Tabs.Tab>
               <Tabs.Tab value="custom-providers">Custom Providers</Tabs.Tab>
               <Tabs.Tab value="advanced">Advanced</Tabs.Tab>
             </Tabs.List>
@@ -840,52 +835,12 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
             </Tabs.Panel>
 
             <Tabs.Panel value="ai-support" pt="xs">
-              <Text mb="md" fz="sm" lh={1.3}>
-                AI support features in ChainForge include purple sparkly buttons{" "}
-                <IconSparkles size="10pt" /> and smart autocomplete. By default,
-                AI support features require OpenAI API access to call GPT3.5 and
-                GPT4 models. You can hide, disable, or change these features
-                here.
-              </Text>
-              <Switch
-                label="AI Support Features"
-                size="sm"
-                description="Adds purple sparkly AI buttons to nodes. These buttons allow you to generate in-context data or code."
-                checked={settings.aiSupport}
-                onChange={(e) => {
-                  handleChangeSetting("aiSupport", e.currentTarget.checked);
-                }}
+              <AISupportSettings
+                enabled={settings.aiSupport}
+                provider={settings.aiProvider}
+                models={settings.aiModels}
+                onChange={handleChangeSetting}
               />
-              {settings.aiSupport ? (
-                <Group>
-                  <Switch
-                    label="Autocomplete"
-                    size="sm"
-                    mt="sm"
-                    disabled={!settings.aiSupport}
-                    description="Works in background to streamline generation of input data. Press Tab in TextFields Nodes in empty fields to extend input data (currently only works in TextFields). NOTE: This will make OpenAI API calls in the background. We are not responsible for any additional costs incurred."
-                    checked={settings.aiAutocomplete}
-                    onChange={(e) => {
-                      handleChangeSetting(
-                        "aiAutocomplete",
-                        e.currentTarget.checked,
-                      );
-                    }}
-                  />
-                  <Select
-                    label="LLM Provider"
-                    description="The LLM provider to use for generative AI features. Currently only supports OpenAI, which queries the gpt-4o models. You must have set the relevant API key to use the provider."
-                    dropdownPosition="bottom"
-                    withinPortal
-                    defaultValue={getAIFeaturesModelProviders()[0]}
-                    data={getAIFeaturesModelProviders()}
-                    value={aiFeaturesProvider}
-                    onChange={setAIFeaturesProvider}
-                  ></Select>
-                </Group>
-              ) : (
-                <></>
-              )}
             </Tabs.Panel>
 
             {APP_IS_RUNNING_LOCALLY() ? (

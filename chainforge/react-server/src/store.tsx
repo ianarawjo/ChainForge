@@ -505,9 +505,9 @@ export interface StoreHandles {
   /** Forgets every API key set in the app. */
   clearAPIKeys: () => void;
 
-  // Provider for genAI features
-  aiFeaturesProvider: string;
-  setAIFeaturesProvider: (llmProvider: string) => void;
+  // The models pulled on the Ollama server, if it's running (local only)
+  ollamaModels: string[];
+  setOllamaModels: (models: string[]) => void;
 
   // Global settings (flags) from the settings menu
   globalSettings: Dict<JSONCompatible>;
@@ -624,10 +624,8 @@ const useStore = create<StoreHandles>((set, get) => ({
     set({ customRetrievers: items as any });
   },
 
-  aiFeaturesProvider: "OpenAI",
-  setAIFeaturesProvider: (llmProvider) => {
-    set({ aiFeaturesProvider: llmProvider });
-  },
+  ollamaModels: [],
+  setOllamaModels: (models) => set({ ollamaModels: models }),
 
   // Keeping track of LLM API keys
   apiKeys: initialAPIKeys,

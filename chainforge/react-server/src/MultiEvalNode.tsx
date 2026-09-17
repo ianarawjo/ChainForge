@@ -225,10 +225,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
 
-  // const flags = useStore((state) => state.flags);
-  // const AI_SUPPORT_ENABLED = useMemo(() => {
-  //   return flags.aiSupport;
-  // }, [flags]);
+  const aiSupport = useStore((state) => state.globalSettings.aiSupport);
 
   const [status, setStatus] = useState<Status>(Status.NONE);
   // For displaying error messages to user
@@ -844,13 +841,17 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
             >
               LLM
             </Menu.Item>
-            <Menu.Divider />
-            <Menu.Item
-              icon={<IconSparkles size="11pt" />}
-              onClick={openEvalGen}
-            >
-              Generate with EvalGen
-            </Menu.Item>
+            {aiSupport && (
+              <>
+                <Menu.Divider />
+                <Menu.Item
+                  icon={<IconSparkles size="11pt" />}
+                  onClick={openEvalGen}
+                >
+                  Generate with EvalGen
+                </Menu.Item>
+              </>
+            )}
             {/* <Menu.Divider /> */}
             {/* {EVALUATOR_PRESETS.map((category, idx) => (
               <React.Fragment key={category.label}>
@@ -884,7 +885,7 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
         </Menu>
       </div>
 
-      {evaluators && evaluators.length === 0 ? (
+      {aiSupport && evaluators && evaluators.length === 0 ? (
         <Flex justify="center" gap={12} mt="md">
           <Tooltip
             label="Let an AI help you generate criteria and implement evaluation functions."
