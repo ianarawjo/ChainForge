@@ -96,6 +96,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
+  const flags = useStore((state) => state.globalSettings);
 
   const [contextMenuPos, setContextMenuPos] = useState({ left: -100, top: 0 });
   const [contextMenuOpened, setContextMenuOpened] = useState(false);
@@ -737,16 +738,20 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
         nodeId={id}
         icon={"🗂️"}
         customButtons={[
-          <AIGenReplaceTablePopover
-            key="ai-popover"
-            values={tableData}
-            colValues={tableColumns}
-            onAddRows={addMultipleRows}
-            onAddColumns={addColumns}
-            onReplaceTable={replaceTable}
-            areValuesLoading={isLoading}
-            setValuesLoading={setIsLoading}
-          />,
+          ...(flags.aiSupport
+            ? [
+                <AIGenReplaceTablePopover
+                  key="ai-popover"
+                  values={tableData}
+                  colValues={tableColumns}
+                  onAddRows={addMultipleRows}
+                  onAddColumns={addColumns}
+                  onReplaceTable={replaceTable}
+                  areValuesLoading={isLoading}
+                  setValuesLoading={setIsLoading}
+                />,
+              ]
+            : []),
           <Tooltip
             key={0}
             label="Accepts xlsx, jsonl, and csv files with a header row"

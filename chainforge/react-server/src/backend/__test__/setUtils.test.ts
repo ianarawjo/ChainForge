@@ -1,10 +1,4 @@
-import {
-  union,
-  isSubset,
-  isExtension,
-  isExtensionIgnoreEmpty,
-  isEqual,
-} from "../setUtils";
+import { union, isSubset, isExtension, isEqual } from "../setUtils";
 
 describe("setUtils", () => {
   describe("isEqual", () => {
@@ -57,57 +51,6 @@ describe("setUtils", () => {
       const setB = new Set([1, 2]);
       const setC = new Set([3, 4]);
       expect(isExtension(setA, setB, setC)).toBe(false);
-    });
-  });
-
-  describe("isExtensionIgnoreEmpty", () => {
-    it("returns true if A is an extension of B and C, ignoring empty strings", () => {
-      const setA = ["", "1", "2", "", "3"];
-      const setB = ["", "1", "2", ""];
-      const setC = ["3", "4", ""];
-      expect(isExtensionIgnoreEmpty(setA, setB, setC)).toBe(true);
-    });
-
-    it("returns false if A is not an extension of B and C, ignoring empty strings", () => {
-      const setA = ["", "1", "3", "", "4"];
-      const setB = ["", "1", "2", ""];
-      const setC = ["3", "4", ""];
-      expect(isExtensionIgnoreEmpty(setA, setB, setC)).toBe(false);
-    });
-
-    it("return true on this real-life color example", () => {
-      const setA = [
-        "Red",
-        "Sky Blue",
-        "Deep Purple",
-        "Sunshine Yellow",
-        "Midnight Black",
-        "Emerald Green",
-        "Electric Pink",
-        "Arctic White",
-        "",
-        "",
-      ];
-      const setB = [
-        "Red",
-        "Sky Blue",
-        "Deep Purple",
-        "Sunshine Yellow",
-        "Midnight Black",
-        "Emerald Green",
-        "Electric Pink",
-        "",
-        "",
-        "",
-      ];
-      const setC = [
-        "Arctic White",
-        "Ocean Blue",
-        "Fiery Orange",
-        "Lavender Purple",
-        "Goldenrod Yellow",
-      ];
-      expect(isExtensionIgnoreEmpty(setA, setB, setC)).toBe(true);
     });
   });
 });

@@ -8,15 +8,15 @@ There is an interactive script to play with the functionality in `test.ts`. You 
 
 ## Architecture
 
-The module is divided into the following components: `executor`, `utils`, `oai_utils`.
+The module is divided into the following components: `executor`, `utils`, `assertionEmitter`.
 
 ### Utils
 
 This module contains types and prompts for criteria generation, function generation, and function execution.
 
-### OAI Utils
+### Assertion Emitter
 
-This module contains utilities for interacting with the OpenAI API.
+This module asks an LLM (through `queryLLM`, with the models set for AI support features) to write candidate assertion functions, and emits them as they're parsed.
 
 ### Executor
 

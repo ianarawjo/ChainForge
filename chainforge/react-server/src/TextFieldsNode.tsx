@@ -23,7 +23,6 @@ import BaseNode from "./BaseNode";
 import { DebounceRef, genDebounceFunc, setsAreEqual } from "./backend/utils";
 import { Func, Dict } from "./backend/typing";
 import { AIGenReplaceItemsPopover } from "./AiPopover";
-import AISuggestionsManager from "./backend/aiSuggestionsManager";
 import {
   ItemsNodeProps,
   makeSafeForCSLFormat,
@@ -63,8 +62,6 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   const removeNode = useStore((state) => state.removeNode);
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
-  const apiKeys = useStore((state) => state.apiKeys);
-  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
   const flags = useStore((state) => state.globalSettings);
 
   const [textfieldsValues, setTextfieldsValues] = useState<Dict<string>>(
@@ -85,20 +82,6 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
 
   // Whether the text fields should be in a loading state
   const [isLoading, setIsLoading] = useState(false);
-
-  const [aiSuggestionsManager] = useState(
-    new AISuggestionsManager(
-      () => aiFeaturesProvider,
-      // Do nothing when suggestions are simply updated because we are managing the placeholder state manually here.
-      undefined,
-      // When suggestions are refreshed, throw out existing placeholders.
-      () => setPlaceholders({}),
-      () => apiKeys,
-    ),
-  );
-
-  // Placeholders to show in the textareas. Object keyed by textarea index.
-  const [placeholders, setPlaceholders] = useState<Dict<string>>({});
 
   // Debounce helpers
   const debounceTimeoutRef: DebounceRef = useRef(null);
@@ -175,14 +158,7 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     setTimeout(() => {
       scrollToBottom();
     }, 10);
-
-    // Cycle suggestions when new field is created
-    // aiSuggestionsManager.cycleSuggestions();
-
-    // Ping AI suggestions to generate autocomplete options
-    if (flags.aiAutocomplete)
-      aiSuggestionsManager.update(Object.values(textfieldsValues));
-  }, [textfieldsValues, id, flags, setDataPropsForNode, pingOutputNodes]);
+  }, [textfieldsValues, id, setDataPropsForNode, pingOutputNodes]);
 
   // Disable/hide a text field temporarily
   const handleDisableField = useCallback(
@@ -295,28 +271,6 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     }
   }, [refresh]);
 
-  // Handle keydown events for the text fields
-  const handleTextAreaKeyDown = (
-    event: React.KeyboardEvent<HTMLTextAreaElement>,
-    placeholder: string,
-    fieldIdx: string,
-  ) => {
-    // Insert the AI suggested text if:
-    // (1) the user presses the Tab key
-    // (2) the user has not typed anything in the textarea
-    // (3) the suggestions are loaded
-    if (
-      event.key === "Tab" &&
-      textfieldsValues[fieldIdx] === "" &&
-      !aiSuggestionsManager.areSuggestionsLoading()
-    ) {
-      event.preventDefault();
-      // Insert the suggestion corresponding to the text field that was tabbed into by index.
-      aiSuggestionsManager.removeSuggestion(placeholder);
-      handleTextFieldChange(fieldIdx, placeholder, false);
-    }
-  };
-
   // Add the entire list of `fields` to `textfieldsValues`
   function addMultipleFields(strs: string[]) {
     // Unpack the object to force a re-render
@@ -355,24 +309,10 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
     ],
   );
 
-  // Whether a placeholder is needed for the text field with id `i`.
-  function placeholderNeeded(i: string) {
-    return !textfieldsValues[i] && !placeholders[i] && flags.aiAutocomplete;
-  }
-
-  // Load a placeholder into placeholders for the text field with id `i` if needed.
-  function loadPlaceholderIfNeeded(i: string) {
-    if (placeholderNeeded(i) && !aiSuggestionsManager.areSuggestionsLoading()) {
-      placeholders[i] = aiSuggestionsManager.popSuggestion();
-    }
-  }
-
   // Cache the rendering of the text fields.
   const textFields = useMemo(
     () =>
       Object.keys(textfieldsValues).map((i) => {
-        loadPlaceholderIfNeeded(i);
-        const placeholder = placeholders[i];
         return (
           <div className="input-field" key={i}>
             <Textarea
@@ -383,13 +323,9 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
               minRows={2}
               maxRows={8}
               value={textfieldsValues[i]}
-              placeholder={flags.aiAutocomplete ? placeholder : undefined}
               disabled={fieldVisibility[i] === false}
               onChange={(event) =>
                 handleTextFieldChange(i, event.currentTarget.value, true)
-              }
-              onKeyDown={(event) =>
-                handleTextAreaKeyDown(event, placeholder, i)
               }
             />
             {Object.keys(textfieldsValues).length > 1 ? (
@@ -440,8 +376,8 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
           </div>
         );
       }),
-    // Update the text fields only when their values, placeholders, or visibility changes.
-    [textfieldsValues, placeholders, fieldVisibility],
+    // Update the text fields only when their values or visibility changes.
+    [textfieldsValues, fieldVisibility],
   );
 
   // Add custom context menu options on right-click.

@@ -18,28 +18,23 @@ import {
   autofillTable,
   generateColumn,
   generateAndReplace,
-  AIError,
-  getAIFeaturesModels,
   generateAndReplaceTable,
+  queryAI,
 } from "./backend/ai";
 import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
 import { AlertModalContext } from "./AlertModal";
-import useStore from "./store";
+import useAIFeatures from "./useAIFeatures";
 import {
   INFO_CODEBLOCK_JS,
   INFO_CODEBLOCK_PY,
   INFO_EXAMPLE_JS,
   INFO_EXAMPLE_PY,
 } from "./CodeEvaluatorNode";
-import { queryLLM } from "./backend/backend";
 import { splitText } from "./SplitNode";
-import { escapeBraces } from "./backend/template";
-import {
-  cleanMetavarsFilterFunc,
-  llmResponseDataToString,
-} from "./backend/utils";
+import { cleanMetavarsFilterFunc } from "./backend/utils";
 import {
   Dict,
+  LLMSpec,
   TabularDataColType,
   TabularDataRowType,
   VarsContext,
@@ -138,80 +133,27 @@ export const buildContextPromptForVarsMetavars = (context: VarsContext) => {
   return context_str;
 };
 
+/** The message to show users for an error from an AI feature. */
+const errorMessage = (err: unknown) =>
+  err instanceof Error ? err.message : String(err);
+
+/** The model name to show users, without the provider name before it. */
+const displayModelName = (model: LLMSpec) =>
+  model.name.substring(model.name.indexOf(" ") + 1);
+
 // The generic popover button, a sparkly purple button that shows a popover with 'Generative AI' back on top.
 // Extend for specific implementations .
 export function AIPopover({
   // Pass the specific UI and logic for the popover as a child component
   children,
+  // The model the popover's features query, shown to users
+  model,
 }: {
   children: React.ReactNode;
+  model: LLMSpec;
 }) {
   const [opened, setOpened] = useState(false);
-  // API keys
-  const apiKeys = useStore((state) => state.apiKeys);
-  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
-
-  // To check for provider selection and credentials/api keys
-  const invalidAIFeaturesSetup = useMemo(() => {
-    if (!aiFeaturesProvider) {
-      return (
-        <Alert
-          variant="light"
-          color="grape"
-          title="No provider selected"
-          mt="xs"
-          maw={200}
-          fz="xs"
-          icon={<IconAlertCircle />}
-        >
-          You need to select a model in the settings to use this feature
-        </Alert>
-      );
-    } else if (
-      apiKeys &&
-      aiFeaturesProvider.toLowerCase().includes("openai") &&
-      !apiKeys.OpenAI
-    ) {
-      return (
-        <Alert
-          variant="light"
-          color="grape"
-          title="No OpenAI API key detected"
-          mt="xs"
-          maw={200}
-          fz="xs"
-          icon={<IconAlertCircle />}
-        >
-          You must set an OpenAI API key before you can use generative AI
-          support features.
-        </Alert>
-      );
-    } else if (
-      apiKeys &&
-      aiFeaturesProvider.toLowerCase().includes("bedrock") &&
-      !(
-        apiKeys.AWS_Access_Key_ID &&
-        apiKeys.AWS_Secret_Access_Key &&
-        apiKeys.AWS_Session_Token
-      )
-    ) {
-      return (
-        <Alert
-          variant="light"
-          color="grape"
-          title="No AWS Credentials detected"
-          mt="xs"
-          maw={200}
-          fz="xs"
-          icon={<IconAlertCircle />}
-        >
-          You must set temporary AWS Credentials before you can use generative
-          AI support features.
-        </Alert>
-      );
-    }
-    return undefined;
-  }, [apiKeys, aiFeaturesProvider]);
+  const { provider, setupProblem } = useAIFeatures();
 
   return (
     <Popover
@@ -233,15 +175,35 @@ export function AIPopover({
         </button>
       </Popover.Target>
       <Popover.Dropdown className="nodrag nowheel">
-        <Stack style={zeroGap}>
-          <Badge
-            color="grape"
-            variant="light"
-            leftSection={<IconSparkles size={10} stroke={3} />}
+        <Stack style={zeroGap} maw={260}>
+          <Tooltip
+            label={`Uses ${displayModelName(model)} via ${provider.name}. Change this in Settings.`}
+            withinPortal
+            multiline
+            maw={220}
           >
-            Generative AI ({aiFeaturesProvider ?? "None"})
-          </Badge>
-          {invalidAIFeaturesSetup || children}
+            <Badge
+              color="grape"
+              variant="light"
+              leftSection={<IconSparkles size={10} stroke={3} />}
+            >
+              Generative AI ({provider.name})
+            </Badge>
+          </Tooltip>
+          {setupProblem ? (
+            <Alert
+              variant="light"
+              color="grape"
+              title="AI features need setting up"
+              mt="xs"
+              fz="xs"
+              icon={<IconAlertCircle />}
+            >
+              {setupProblem}
+            </Alert>
+          ) : (
+            children
+          )}
         </Stack>
       </Popover.Dropdown>
     </Popover>
@@ -283,9 +245,7 @@ export function AIGenReplaceTablePopover({
   areValuesLoading,
   setValuesLoading,
 }: AIGenReplaceTablePopoverProps) {
-  // API keys and provider
-  const apiKeys = useStore((state) => state.apiKeys);
-  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
+  const { fastModel, apiKeys } = useAIFeatures();
 
   // Alert context
   const showAlert = useContext(AlertModalContext);
@@ -293,76 +253,60 @@ export function AIGenReplaceTablePopover({
   // Command Fill state
   const [commandFillNumber, setCommandFillNumber] = useState<number>(5);
   const [isCommandFillLoading, setIsCommandFillLoading] = useState(false);
-  const [didCommandFillError, setDidCommandFillError] = useState(false);
 
   // Generate and Replace state
   const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(5);
   const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState("");
-  const [didGenerateAndReplaceTableError, setDidGenerateAndReplaceTableError] =
-    useState(false);
 
   // Generate Column state
   const [isGenerateColumnLoading, setIsGenerateColumnLoading] = useState(false);
   const [generateColumnPrompt, setGenerateColumnPrompt] = useState("");
-  const [didGenerateColumnError, setDidGenerateColumnError] = useState(false);
 
-  // Check if there are any non-empty rows
+  // The table's non-empty rows, as the text of each cell in column order
   const nonEmptyRows = useMemo(
     () =>
-      values.filter((row) =>
-        Object.values(row).some((val) => StringLookup.get(val)?.trim()),
-      ).length,
-    [values],
+      values
+        .map((row) =>
+          colValues.map((col) => StringLookup.get(row[col.key])?.trim() ?? ""),
+        )
+        .filter((cells) => cells.some((cell) => cell.length > 0)),
+    [values, colValues],
   );
 
   // Check if there are enough rows to suggest autofilling
-  const enoughRowsForSuggestions = useMemo(
-    () => nonEmptyRows >= ROW_CONSTANTS.beginAutofilling,
-    [nonEmptyRows],
-  );
+  const enoughRowsForSuggestions =
+    nonEmptyRows.length >= ROW_CONSTANTS.beginAutofilling;
+  const showWarning =
+    enoughRowsForSuggestions && nonEmptyRows.length < ROW_CONSTANTS.warnIfBelow;
 
-  const showWarning = useMemo(
-    () => enoughRowsForSuggestions && nonEmptyRows < ROW_CONSTANTS.warnIfBelow,
-    [enoughRowsForSuggestions, nonEmptyRows],
-  );
+  const handleError = (err: unknown) => {
+    console.error(err);
+    if (showAlert) showAlert(errorMessage(err));
+  };
 
   const handleGenerateAndReplaceTable = async () => {
-    setDidGenerateAndReplaceTableError(false);
     setValuesLoading(true);
-
     try {
-      // Fetch the generated table
-      const generatedTable = await generateAndReplaceTable(
+      const { cols, rows } = await generateAndReplaceTable(
         generateAndReplacePrompt,
         generateAndReplaceNumber,
-        aiFeaturesProvider,
+        fastModel,
         apiKeys,
       );
-
-      const { cols, rows } = generatedTable;
-
-      // Transform the result into TabularDataNode format
       const columns = cols.map((col, index) => ({
         key: `col-${index}`,
         header: col,
       }));
-
-      const tabularRows = rows.map((row) => {
+      const tabularRows = rows.map((cells) => {
         const rowData: TabularDataRowType = { __uid: uuidv4() };
-        cols.forEach((col, index) => {
-          rowData[`col-${index}`] = row.split(" | ")[index]?.trim() || "";
+        columns.forEach((col, index) => {
+          rowData[col.key] = cells[index] ?? "";
         });
         return rowData;
       });
-
-      // Update state with the transformed columns and rows
       onReplaceTable(columns, tabularRows);
-
-      console.log("Generated table:", { columns, tabularRows });
-    } catch (error) {
-      console.error("Error in generateAndReplaceTable:", error);
-      setDidGenerateAndReplaceTableError(true);
-      showAlert && showAlert("An error occurred. Please try again.");
+    } catch (err) {
+      handleError(err);
     } finally {
       setValuesLoading(false);
     }
@@ -370,98 +314,56 @@ export function AIGenReplaceTablePopover({
 
   const handleCommandFill = async () => {
     setIsCommandFillLoading(true);
-    setDidCommandFillError(false);
-
     try {
-      // Extract columns from the values, excluding the __uid column
-      const tableColumns = colValues.map((col) => col.key);
-
-      // Extract rows as strings, excluding the __uid column and handling empty rows
-      const tableRows = values
-        .slice(0, -1) // Remove the last empty row
-        .map((row) =>
-          tableColumns
-            .map((col) => StringLookup.get(row[col])?.trim() || "")
-            .join(" | "),
-        );
-
-      const tableInput = {
-        cols: tableColumns,
-        rows: tableRows,
-      };
-
-      // Fetch new rows from the autofillTable function
-      const result = await autofillTable(
-        tableInput,
+      const rows = await autofillTable(
+        { cols: colValues.map((col) => col.header), rows: nonEmptyRows },
         commandFillNumber,
-        aiFeaturesProvider,
+        fastModel,
         apiKeys,
       );
-
-      // Transform result.rows into TabularDataNode format
-      const newRows = result.rows.map((row) => {
-        const newRow: TabularDataRowType = { __uid: uuidv4() };
-        row.split(" | ").forEach((cell, index) => {
-          newRow[`col-${index}`] = cell;
-        });
-        return newRow;
-      });
-
-      // Append the new rows to the existing rows
-      onAddRows(newRows);
-    } catch (error) {
-      console.error("Error generating rows:", error);
-      setDidCommandFillError(true);
-      showAlert && showAlert("Failed to generate new rows. Please try again.");
+      // The table maps these positional keys onto its own column keys
+      onAddRows(
+        rows.map((cells) => {
+          const newRow: TabularDataRowType = { __uid: uuidv4() };
+          cells.forEach((cell, index) => {
+            newRow[`col-${index}`] = cell;
+          });
+          return newRow;
+        }),
+      );
+    } catch (err) {
+      handleError(err);
     } finally {
       setIsCommandFillLoading(false);
     }
   };
 
   const handleGenerateColumn = async () => {
-    setDidGenerateColumnError(false);
     setIsGenerateColumnLoading(true);
-
     try {
-      // Extract columns from the values, excluding the __uid column
-      const tableColumns = colValues;
-
-      // Extract rows as strings, excluding the __uid column and handling empty rows
-      const lastRow = values[values.length - 1]; // Get the last row
-      const emptyLastRow = Object.values(lastRow).every((val) => !val); // Check if the last row is empty
-      const tableRows = values
+      // Every row but a trailing empty one, so values line up with the table's rows
+      const lastRow = values[values.length - 1];
+      const emptyLastRow =
+        lastRow !== undefined &&
+        colValues.every((col) => !StringLookup.get(lastRow[col.key])?.trim());
+      const rows = values
         .slice(0, emptyLastRow ? -1 : values.length)
         .map((row) =>
-          tableColumns
-            .map((col) => StringLookup.get(row[col.key])?.trim() || "")
-            .join(" | "),
+          colValues.map((col) => StringLookup.get(row[col.key])?.trim() ?? ""),
         );
 
-      const tableInput = {
-        cols: tableColumns,
-        rows: tableRows,
-      };
-
-      // Fetch the generated column
       const generatedColumn = await generateColumn(
-        tableInput,
+        { cols: colValues.map((col) => col.header), rows },
         generateColumnPrompt,
-        aiFeaturesProvider,
+        fastModel,
         apiKeys,
       );
-
-      const rowValues = generatedColumn.rows;
-
-      // Append the new column to the existing columns
       onAddColumns(
-        [{ key: `col-${tableColumns.length}`, header: generatedColumn.col }], // set key to length of columns
-        rowValues,
+        [{ key: `col-${uuidv4()}`, header: generatedColumn.col }],
+        generatedColumn.rows,
       );
-    } catch (error) {
-      console.error("Error generating column:", error);
-      setDidGenerateColumnError(true);
-      showAlert &&
-        showAlert("Failed to generate a new column. Please try again.");
+    } catch (err) {
+      handleError(err);
     } finally {
       setIsGenerateColumnLoading(false);
     }
@@ -469,11 +371,6 @@ export function AIGenReplaceTablePopover({
 
   const extendUI = (
     <Stack>
-      {didCommandFillError && (
-        <Text size="xs" color="red">
-          Failed to generate rows. Please try again.
-        </Text>
-      )}
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
         <NumberInput
           label="Rows to add"
@@ -498,22 +395,17 @@ export function AIGenReplaceTablePopover({
       </div>
       {showWarning && (
         <Text size="xs" color="grape">
-          You may want to add more fields for better suggestions.
+          You may want to add more rows for better suggestions.
         </Text>
       )}
       <Divider label="OR" labelPosition="center" />
-      {didGenerateColumnError && (
-        <Text size="xs" color="red">
-          Failed to generate column. Please try again.
-        </Text>
-      )}
       <Textarea
         label="Generate a column for..."
         value={generateColumnPrompt}
         onChange={(e) => setGenerateColumnPrompt(e.currentTarget.value)}
       />
       <Tooltip
-        label="Can take awhile if you have many rows. Please be patient."
+        label="Queries the model once per row."
         withArrow
         position="bottom"
       >
@@ -523,7 +415,7 @@ export function AIGenReplaceTablePopover({
           color="grape"
           fullWidth
           onClick={handleGenerateColumn}
-          disabled={!enoughRowsForSuggestions}
+          disabled={!enoughRowsForSuggestions || !generateColumnPrompt.trim()}
           loading={isGenerateColumnLoading}
         >
           Add Column
@@ -534,11 +426,6 @@ export function AIGenReplaceTablePopover({
 
   const replaceUI = (
     <Stack>
-      {didGenerateAndReplaceTableError && (
-        <Text size="xs" color="red">
-          Failed to replace rows. Please try again.
-        </Text>
-      )}
       <Textarea
         label="Generate data for..."
         value={generateAndReplacePrompt}
@@ -557,6 +444,7 @@ export function AIGenReplaceTablePopover({
         color="grape"
         fullWidth
         onClick={handleGenerateAndReplaceTable}
+        disabled={!generateAndReplacePrompt.trim()}
         loading={areValuesLoading}
       >
         Replace
@@ -565,7 +453,7 @@ export function AIGenReplaceTablePopover({
   );
 
   return (
-    <AIPopover>
+    <AIPopover model={fastModel}>
       <Tabs color="grape" defaultValue="replace">
         <Tabs.List grow>
           <Tabs.Tab value="replace">Replace</Tabs.Tab>
@@ -605,10 +493,7 @@ export function AIGenReplaceItemsPopover({
   areValuesLoading,
   setValuesLoading,
 }: AIGenReplaceItemsPopoverProps) {
-  // API keys
-  const apiKeys = useStore((state) => state.apiKeys);
-
-  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
+  const { fastModel, apiKeys } = useAIFeatures();
 
   // Alerts
   const showAlert = useContext(AlertModalContext);
@@ -616,205 +501,147 @@ export function AIGenReplaceItemsPopover({
   // Command Fill state
   const [commandFillNumber, setCommandFillNumber] = useState<number>(3);
   const [isCommandFillLoading, setIsCommandFillLoading] = useState(false);
-  const [didCommandFillError, setDidCommandFillError] = useState(false);
 
   // Generate and Replace state
   const [generateAndReplaceNumber, setGenerateAndReplaceNumber] = useState(3);
   const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState("");
   const [genDiverseOutputs, setGenDiverseOutputs] = useState(false);
-  const [didGenerateAndReplaceError, setDidGenerateAndReplaceError] =
-    useState(false);
 
   const nonEmptyRows = useMemo(
     () => Object.values(values).filter((row) => row !== "").length,
     [values],
   );
 
-  const enoughRowsForSuggestions = useMemo(
-    () => nonEmptyRows >= ROW_CONSTANTS.beginAutofilling,
-    [nonEmptyRows],
+  const enoughRowsForSuggestions =
+    nonEmptyRows >= ROW_CONSTANTS.beginAutofilling;
+  const showWarning =
+    enoughRowsForSuggestions && nonEmptyRows < ROW_CONSTANTS.warnIfBelow;
+
+  const handleError = useCallback(
+    (err: unknown) => {
+      console.error(err);
+      if (showAlert) showAlert(errorMessage(err));
+    },
+    [showAlert],
   );
 
-  const showWarning = useMemo(
-    () => enoughRowsForSuggestions && nonEmptyRows < ROW_CONSTANTS.warnIfBelow,
-    [enoughRowsForSuggestions, nonEmptyRows],
-  );
-
-  const handleCommandFill = () => {
+  const handleCommandFill = useCallback(() => {
     setIsCommandFillLoading(true);
-    setDidCommandFillError(false);
-    autofill(
-      Object.values(values),
-      commandFillNumber,
-      aiFeaturesProvider,
-      apiKeys,
-    )
+    autofill(Object.values(values), commandFillNumber, fastModel, apiKeys)
       .then(onAddValues)
-      .catch((e) => {
-        if (e instanceof AIError) {
-          setDidCommandFillError(true);
-        } else {
-          if (showAlert) showAlert(e?.message);
-          else console.error(e);
-        }
-      })
+      .catch(handleError)
       .finally(() => setIsCommandFillLoading(false));
-  };
+  }, [values, commandFillNumber, fastModel, apiKeys, onAddValues, handleError]);
 
-  const handleGenerateAndReplace = () => {
-    setDidGenerateAndReplaceError(false);
+  const handleGenerateAndReplace = useCallback(() => {
     setValuesLoading(true);
-
     generateAndReplace(
       generateAndReplacePrompt,
       generateAndReplaceNumber,
       genDiverseOutputs,
-      aiFeaturesProvider,
+      fastModel,
       apiKeys,
     )
       .then(onReplaceValues)
-      .catch((e) => {
-        if (e instanceof AIError) {
-          console.log(e);
-          setDidGenerateAndReplaceError(true);
-        } else {
-          if (showAlert) showAlert(e?.message);
-          else console.error(e);
-        }
-      })
+      .catch(handleError)
       .finally(() => setValuesLoading(false));
-  };
+  }, [
+    generateAndReplacePrompt,
+    generateAndReplaceNumber,
+    genDiverseOutputs,
+    fastModel,
+    apiKeys,
+    onReplaceValues,
+    setValuesLoading,
+    handleError,
+  ]);
 
-  const extendUI = useMemo(
-    () => (
-      <Stack>
-        {didCommandFillError ? (
-          <Text size="xs" c="red">
-            Failed to generate. Please try again.
-          </Text>
-        ) : (
-          <></>
-        )}
-        <NumberInput
-          label="Items to add"
-          mt={5}
-          min={1}
-          max={10}
-          defaultValue={3}
-          value={commandFillNumber}
-          onChange={(num) => {
-            if (typeof num === "number") setCommandFillNumber(num);
-          }}
-        />
-        {enoughRowsForSuggestions ? (
-          <></>
-        ) : (
-          <Text size="xs" c="grape" maw={200}>
-            You must enter at least {ROW_CONSTANTS.beginAutofilling} fields
-            before extending.
-          </Text>
-        )}
-        {showWarning ? (
-          <Text size="xs" c="grape" maw={200}>
-            You have less than {ROW_CONSTANTS.warnIfBelow} fields. You may want
-            to add more. Adding more rows typically improves the quality of the
-            suggestions.
-          </Text>
-        ) : (
-          <></>
-        )}
-        <Button
-          size="sm"
-          variant="light"
-          color="grape"
-          fullWidth
-          onClick={handleCommandFill}
-          disabled={!enoughRowsForSuggestions}
-          loading={isCommandFillLoading}
-        >
-          Extend
-        </Button>
-      </Stack>
-    ),
-    [
-      didCommandFillError,
-      enoughRowsForSuggestions,
-      showWarning,
-      isCommandFillLoading,
-      handleCommandFill,
-      setCommandFillNumber,
-      commandFillNumber,
-    ],
+  const extendUI = (
+    <Stack>
+      <NumberInput
+        label="Items to add"
+        mt={5}
+        min={1}
+        max={10}
+        value={commandFillNumber}
+        onChange={(num) => {
+          if (typeof num === "number") setCommandFillNumber(num);
+        }}
+      />
+      {!enoughRowsForSuggestions && (
+        <Text size="xs" c="grape" maw={200}>
+          You must enter at least {ROW_CONSTANTS.beginAutofilling} fields before
+          extending.
+        </Text>
+      )}
+      {showWarning && (
+        <Text size="xs" c="grape" maw={200}>
+          You have less than {ROW_CONSTANTS.warnIfBelow} fields. Adding more
+          typically improves the quality of the suggestions.
+        </Text>
+      )}
+      <Button
+        size="sm"
+        variant="light"
+        color="grape"
+        fullWidth
+        onClick={handleCommandFill}
+        disabled={!enoughRowsForSuggestions}
+        loading={isCommandFillLoading}
+      >
+        Extend
+      </Button>
+    </Stack>
   );
 
-  const replaceUI = useMemo(
-    () => (
-      <Stack style={zeroGap}>
-        {didGenerateAndReplaceError ? (
-          <Text size="xs" c="red">
-            Failed to generate. Please try again.
-          </Text>
-        ) : (
-          <></>
-        )}
-        <Textarea
-          label="Generate a list of..."
-          size="sm"
-          data-autofocus
-          minRows={1}
-          maxRows={4}
-          autosize
-          mt={5}
-          value={generateAndReplacePrompt}
-          onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}
-        />
-        <NumberInput
-          label="Items to generate"
-          size="xs"
-          mb={10}
-          min={1}
-          max={10}
-          defaultValue={3}
-          value={generateAndReplaceNumber}
-          onChange={(num) => {
-            if (typeof num === "number") setGenerateAndReplaceNumber(num);
-          }}
-        />
-        <Switch
-          color="grape"
-          mb={10}
-          size="xs"
-          label="Make outputs unconventional"
-          checked={genDiverseOutputs}
-          onChange={(e) => setGenDiverseOutputs(e.currentTarget.checked)}
-        />
-        <Button
-          size="sm"
-          variant="light"
-          color="grape"
-          fullWidth
-          onClick={handleGenerateAndReplace}
-          loading={areValuesLoading}
-        >
-          Replace
-        </Button>
-      </Stack>
-    ),
-    [
-      didGenerateAndReplaceError,
-      generateAndReplacePrompt,
-      setGenerateAndReplacePrompt,
-      generateAndReplaceNumber,
-      setGenerateAndReplaceNumber,
-      genDiverseOutputs,
-      setGenDiverseOutputs,
-      handleGenerateAndReplace,
-      areValuesLoading,
-    ],
+  const replaceUI = (
+    <Stack style={zeroGap}>
+      <Textarea
+        label="Generate a list of..."
+        size="sm"
+        data-autofocus
+        minRows={1}
+        maxRows={4}
+        autosize
+        mt={5}
+        value={generateAndReplacePrompt}
+        onChange={(e) => setGenerateAndReplacePrompt(e.currentTarget.value)}
+      />
+      <NumberInput
+        label="Items to generate"
+        size="xs"
+        mb={10}
+        min={1}
+        max={10}
+        value={generateAndReplaceNumber}
+        onChange={(num) => {
+          if (typeof num === "number") setGenerateAndReplaceNumber(num);
+        }}
+      />
+      <Switch
+        color="grape"
+        mb={10}
+        size="xs"
+        label="Make outputs unconventional"
+        checked={genDiverseOutputs}
+        onChange={(e) => setGenDiverseOutputs(e.currentTarget.checked)}
+      />
+      <Button
+        size="sm"
+        variant="light"
+        color="grape"
+        fullWidth
+        onClick={handleGenerateAndReplace}
+        disabled={!generateAndReplacePrompt.trim()}
+        loading={areValuesLoading}
+      >
+        Replace
+      </Button>
+    </Stack>
   );
 
   return (
-    <AIPopover>
+    <AIPopover model={fastModel}>
       <Tabs color="grape" defaultValue="replace">
         <Tabs.List grow>
           <Tabs.Tab value="replace">Replace</Tabs.Tab>
@@ -829,6 +656,30 @@ export function AIGenReplaceItemsPopover({
       </Tabs>
     </AIPopover>
   );
+}
+
+/**
+ * Asks a model for code, returning the code blocks in its reply, joined and
+ * retabbed to 2 spaces, or undefined if it wrote none.
+ * @param onlyFirstEvaluate Drops any later blocks that define another 'evaluate' function.
+ */
+async function generateCode(
+  model: LLMSpec,
+  prompt: string,
+  apiKeys: Dict,
+  onlyFirstEvaluate: boolean,
+): Promise<string | undefined> {
+  const reply = await queryAI(model, prompt, { apiKeys });
+  let codeBlocks: string[] = splitText(reply, "code", false);
+  if (codeBlocks.length === 0) return undefined;
+  if (onlyFirstEvaluate) {
+    const firstEval = codeBlocks.findIndex((c) => c.includes("evaluate(r"));
+    codeBlocks = codeBlocks.filter(
+      (c, idx) => idx <= firstEval || !c.includes("evaluate(r"),
+    );
+  }
+  // LLM outputs are generally 4-space tabs, but we use 2-space tabs
+  return changeFourSpaceTabsToTwo(codeBlocks.join("\n\n"));
 }
 
 export interface AIGenCodeEvaluatorPopoverProps {
@@ -854,9 +705,7 @@ export function AIGenCodeEvaluatorPopover({
   context,
   currentEvalCode,
 }: AIGenCodeEvaluatorPopoverProps) {
-  // API keys
-  const apiKeys = useStore((state) => state.apiKeys);
-  const aiFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
+  const { smartModel, apiKeys } = useAIFeatures();
 
   // State
   const [replacePrompt, setReplacePrompt] = useState("");
@@ -867,101 +716,47 @@ export function AIGenCodeEvaluatorPopover({
   const showAlert = useContext(AlertModalContext);
   const [didEncounterError, setDidEncounterError] = useState(false);
 
-  // Handle errors
-  const handleError = useCallback(
-    (err: string | Error) => {
-      setAwaitingResponse(false);
-      if (onLoadingChange) onLoadingChange(false);
-      setDidEncounterError(true);
-      if (typeof err !== "string") console.error(err);
-      if (showAlert) showAlert(typeof err === "string" ? err : err?.message);
+  // Queries the model for code, putting it in the editor
+  const runCodeQuery = useCallback(
+    (prompt: string, onlyFirstEvaluate: boolean) => {
+      setDidEncounterError(false);
+      setAwaitingResponse(true);
+      if (onLoadingChange) onLoadingChange(true);
+
+      generateCode(smartModel, prompt, apiKeys, onlyFirstEvaluate)
+        .then((code) => {
+          if (code !== undefined) onGeneratedCode(code);
+          // No code detected in the response
+          else setDidEncounterError(true);
+        })
+        .catch((err) => {
+          console.error(err);
+          setDidEncounterError(true);
+          if (showAlert) showAlert(errorMessage(err));
+        })
+        .finally(() => {
+          setAwaitingResponse(false);
+          if (onLoadingChange) onLoadingChange(false);
+        });
     },
-    [setAwaitingResponse, onLoadingChange, setDidEncounterError, showAlert],
+    [smartModel, apiKeys, onLoadingChange, onGeneratedCode, showAlert],
   );
 
   // Generate an evaluate function, given the user-specified prompt, in the proper programming language
   const handleGenerateEvalCode = useCallback(() => {
-    setDidEncounterError(false);
-    setAwaitingResponse(true);
-    if (onLoadingChange) onLoadingChange(true);
-
-    const context_str = buildContextPromptForVarsMetavars(context);
-
-    const template = buildGenEvalCodePrompt(
+    const prompt = buildGenEvalCodePrompt(
       progLang,
-      context_str,
+      buildContextPromptForVarsMetavars(context),
       replacePrompt,
       false,
       false,
     );
-
-    queryLLM(
-      replacePrompt,
-      getAIFeaturesModels(aiFeaturesProvider).large,
-      1,
-      escapeBraces(template),
-      {},
-      undefined,
-      apiKeys,
-      true,
-    )
-      .then((result) => {
-        setAwaitingResponse(false);
-        if (onLoadingChange) onLoadingChange(false);
-
-        // Handle any errors when collecting the response
-        if (result.errors && Object.keys(result.errors).length > 0)
-          throw new Error(Object.values(result.errors)[0].toString());
-
-        // Extract the first response
-        const response = llmResponseDataToString(
-          result.responses[0].responses[0],
-        );
-        console.log("LLM said: ", response);
-
-        // Try to extract out a single code block from the response
-        let code_blocks: string[] = splitText(response, "code", false);
-
-        // Concat all found code blocks
-        if (code_blocks.length > 0) {
-          // Success! (we assume...)
-          // If there's more than 1 code block, remove any others that also define an 'evaluate' function,
-          // after the first appearance:
-          const first_eval: number = code_blocks.findIndex((c) =>
-            c.includes("evaluate(r"),
-          );
-          code_blocks = code_blocks.filter(
-            (c, idx) => idx <= first_eval || !c.includes("evaluate(r"),
-          );
-
-          // We are using 2-space tabs but LLM outputs are generally 4-space tabs. Clean this up:
-          const cleaned_code = changeFourSpaceTabsToTwo(
-            code_blocks.join("\n\n"),
-          );
-
-          onGeneratedCode(cleaned_code);
-        } else {
-          // No code detected in response!
-          setDidEncounterError(true);
-        }
-      })
-      .catch(handleError);
-  }, [
-    progLang,
-    onLoadingChange,
-    onGeneratedCode,
-    handleError,
-    replacePrompt,
-    context,
-  ]);
+    runCodeQuery(prompt, true);
+  }, [progLang, context, replacePrompt, runCodeQuery]);
 
   // Edit existing code according to user-specified instruction
   const handleEditCode = useCallback(() => {
-    setDidEncounterError(false);
-    setAwaitingResponse(true);
-    if (onLoadingChange) onLoadingChange(true);
-
-    const template = `Edit the code below according to the following: ${editPrompt}
+    const prompt = `Edit the code below according to the following: ${editPrompt}
 
 You ${progLang === "javascript" ? "CANNOT import any external packages." : "can use imports if necessary. Do not include any type hints."}
 Functions should only return boolean, numeric, or string values. Present the edited code in a single block.
@@ -970,62 +765,11 @@ Code:
 \`\`\`${progLang}
 ${currentEvalCode}
 \`\`\``;
-
-    queryLLM(
-      editPrompt,
-      getAIFeaturesModels(aiFeaturesProvider).large,
-      1,
-      escapeBraces(template),
-      {},
-      undefined,
-      apiKeys,
-      true,
-    )
-      .then((result) => {
-        setAwaitingResponse(false);
-        if (onLoadingChange) onLoadingChange(false);
-
-        // Handle any errors when collecting the response
-        if (result.errors && Object.keys(result.errors).length > 0) {
-          const first_err = Object.values(result.errors)[0];
-          throw new Error(first_err.toString());
-        }
-
-        // Extract the first response
-        const response = llmResponseDataToString(
-          result.responses[0].responses[0],
-        );
-        console.log("LLM said: ", response);
-
-        // Try to extract out a single code block from the response
-        const code_blocks = splitText(response, "code", false);
-
-        // Concat all found code blocks
-        if (code_blocks.length > 0) {
-          // Success! (we assume...)
-          // We are using 2-space tabs but LLM outputs are generally 4-space tabs. Clean this up:
-          const edited_code = changeFourSpaceTabsToTwo(
-            code_blocks.join("\n\n"),
-          );
-          onGeneratedCode(edited_code);
-        } else {
-          // No code detected in response!
-          setDidEncounterError(true);
-        }
-      })
-      .catch(handleError);
-  }, [
-    progLang,
-    onLoadingChange,
-    onGeneratedCode,
-    currentEvalCode,
-    handleError,
-    editPrompt,
-    context,
-  ]);
+    runCodeQuery(prompt, false);
+  }, [progLang, editPrompt, currentEvalCode, runCodeQuery]);
 
   return (
-    <AIPopover>
+    <AIPopover model={smartModel}>
       <Tabs color="grape" defaultValue="replace">
         <Tabs.List grow>
           <Tabs.Tab value="replace">Replace</Tabs.Tab>
@@ -1033,12 +777,10 @@ ${currentEvalCode}
         </Tabs.List>
         <Tabs.Panel value="replace" pb="xs">
           <Stack style={zeroGap}>
-            {didEncounterError ? (
+            {didEncounterError && (
               <Text size="xs" c="red">
                 Failed to generate. Please try again.
               </Text>
-            ) : (
-              <></>
             )}
             <Textarea
               label="Describe what to evaluate:"
@@ -1059,6 +801,7 @@ ${currentEvalCode}
               mt="sm"
               fullWidth
               onClick={handleGenerateEvalCode}
+              disabled={!replacePrompt.trim()}
               loading={awaitingResponse}
             >
               Generate Code
@@ -1066,6 +809,11 @@ ${currentEvalCode}
           </Stack>
         </Tabs.Panel>
         <Tabs.Panel value="edit" pb="xs">
+          {didEncounterError && (
+            <Text size="xs" c="red">
+              Failed to edit. Please try again.
+            </Text>
+          )}
           <Textarea
             label="Describe how to edit existing code:"
             description="Describe what to change in the code."
@@ -1085,6 +833,7 @@ ${currentEvalCode}
             mt="sm"
             fullWidth
             onClick={handleEditCode}
+            disabled={!editPrompt.trim()}
             loading={awaitingResponse}
           >
             Edit Code

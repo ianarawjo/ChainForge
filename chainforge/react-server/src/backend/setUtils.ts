@@ -27,13 +27,3 @@ export function subtract<T>(a: Set<T>, b: Set<T>): Set<T> {
 export function isExtension<T>(a: Set<T>, b: Set<T>, c: Set<T>): boolean {
   return isSuperset(a, b) && isSubset(subtract(a, b), c);
 }
-
-// Returns whether A is an "extension" of B and C, ignoring empty strings.
-export function isExtensionIgnoreEmpty(a: string[], b: string[], c: string[]) {
-  const emptyStringFilter = (x: string) => x !== "";
-  return isExtension(
-    new Set(a.filter(emptyStringFilter)),
-    new Set(b.filter(emptyStringFilter)),
-    new Set(c.filter(emptyStringFilter)),
-  );
-}

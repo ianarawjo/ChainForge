@@ -1,6 +1,4 @@
-// import { env as process_env } from "process";
 import { EventEmitter } from "events";
-// import { AzureKeyCredential, OpenAIClient } from "@azure/openai";
 import { hashtagTemplateVars, llmResponseDataToString } from "../utils";
 import { simpleQueryLLM } from "../backend";
 import { Dict, LLMSpec } from "../typing";

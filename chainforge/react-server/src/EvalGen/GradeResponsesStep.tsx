@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { EvalCriteria } from "../backend/evalgen/typing";
-import { Dict, LLMResponse } from "../backend/typing";
+import { Dict, LLMResponse, LLMSpec } from "../backend/typing";
 import {
   ActionIcon,
   Button,
@@ -226,7 +226,7 @@ interface GradingResponsesStepProps {
   onPrevious: () => void;
   executor: EvaluationFunctionExecutor | null;
   logs: { date: Date; message: string }[];
-  genAIModelNames: { large: string; small: string };
+  genAIModels: { large: LLMSpec; small: LLMSpec };
   numCallsMade: { strong: number; weak: number };
   responses: LLMResponse[];
   criteria: EvalCriteria[];
@@ -242,7 +242,7 @@ interface GradingResponsesStepProps {
 
 const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
   logs,
-  genAIModelNames,
+  genAIModels,
   numCallsMade,
   responses,
   criteria,
@@ -321,7 +321,7 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
     // Make async LLM call to expand criteria
     generateLLMEvaluationCriteria(
       "",
-      genAIModelNames.large,
+      genAIModels.large,
       apiKeys,
       getPromptForGenEvalCriteriaFromDesc(desc), // prompt
       null, // system_msg
@@ -365,8 +365,8 @@ const GradingResponsesStep: React.FC<GradingResponsesStepProps> = ({
               </Text>
               {/* GPT Call Tally */}
               <Text size="sm" color="dark" style={{ fontStyle: "italic" }}>
-                Executed {numCallsMade.strong} {genAIModelNames.large} calls and{" "}
-                {numCallsMade.weak} {genAIModelNames.small} calls.
+                Executed {numCallsMade.strong} {genAIModels.large.name} calls
+                and {numCallsMade.weak} {genAIModels.small.name} calls.
               </Text>
             </Flex>
             <div

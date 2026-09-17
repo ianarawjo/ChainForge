@@ -1,6 +1,4 @@
 // Interfaces and utility functions
-// TODO: Use ChainForge's openai utils (I tried but got errors)
-// import { AzureOpenAIStreamer } from "./oai_utils";
 import { EventEmitter } from "events";
 import {
   AssertionWriterSystemMsg,
@@ -18,7 +16,7 @@ import {
   retryAsyncFunc,
 } from "../utils";
 import { v4 as uuid } from "uuid";
-import { EvalGenAssertionEmitter } from "./oai_utils";
+import { EvalGenAssertionEmitter } from "./assertionEmitter";
 import {
   buildContextPromptForVarsMetavars,
   buildGenEvalCodePrompt,

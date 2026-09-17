@@ -38,7 +38,7 @@ import {
 } from "../backend/utils";
 import { getRatingKeyForResponse } from "../ResponseRatingToolbar";
 import EvaluationFunctionExecutor from "../backend/evalgen/executor";
-import { getAIFeaturesModels } from "../backend/ai";
+import useAIFeatures from "../useAIFeatures";
 
 // Main wizard component props
 interface EvalGenWizardProps {
@@ -59,14 +59,11 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
 
   // From global state
   const apiKeys = useStore((state) => state.apiKeys);
-  const genAIFeaturesProvider = useStore((state) => state.aiFeaturesProvider);
-  const genAIModelNames = useMemo(() => {
-    const models = getAIFeaturesModels(genAIFeaturesProvider);
-    return {
-      large: models.large,
-      small: models.small,
-    };
-  }, [genAIFeaturesProvider]);
+  const { fastModel, smartModel, setupProblem } = useAIFeatures();
+  const genAIModels = useMemo(
+    () => ({ large: smartModel, small: fastModel }),
+    [smartModel, fastModel],
+  );
 
   // Regroup input responses by batch UID, whenever jsonResponses changes
   const batchedResponses = useMemo(
@@ -184,7 +181,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
       };
 
       const ex = new EvaluationFunctionExecutor(
-        genAIModelNames,
+        genAIModels,
         apiKeys,
         getLikelyPromptTemplateAsContext(samplesForExecutor) ?? "",
         samplesForExecutor,
@@ -265,7 +262,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
     // Attempt to generate criteria using an LLM
     return await generateLLMEvaluationCriteria(
       inputPromptTemplate,
-      genAIModelNames.large,
+      genAIModels.large,
       apiKeys,
       undefined,
       undefined,
@@ -303,7 +300,13 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
         },
       }}
     >
-      {active === 0 && <WelcomeStep setOnNextCallback={setOnNextCallback} />}
+      {active === 0 && (
+        <WelcomeStep
+          setOnNextCallback={setOnNextCallback}
+          models={{ large: smartModel.name, small: fastModel.name }}
+          setupProblem={setupProblem}
+        />
+      )}
 
       {active === 1 && (
         <FeedbackStep
@@ -323,7 +326,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
           genCriteriaFromContext={() =>
             genCriteriaFromContext(batchedResponses)
           }
-          genAIModelNames={genAIModelNames}
+          genAIModels={genAIModels}
           setOnNextCallback={setOnNextCallback}
         />
       )}
@@ -332,7 +335,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
         <GradingResponsesStep
           onNext={handleNext}
           onPrevious={handlePrevious}
-          genAIModelNames={genAIModelNames}
+          genAIModels={genAIModels}
           numCallsMade={numCallsMade}
           executor={executor}
           logs={logs}
@@ -380,6 +383,7 @@ const EvalGenWizard: React.FC<EvalGenWizardProps> = ({
             onClick={active !== 3 ? handleNext : handleDonePerCriteriaGrading}
             disabled={
               active === 4 ||
+              (active === 0 && setupProblem !== undefined) ||
               (active === 3 && numResponsesGraded < minNumToGrade)
             }
             style={{ pointerEvents: "all" }}
