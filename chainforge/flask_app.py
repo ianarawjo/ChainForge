@@ -1411,9 +1411,9 @@ def import_flow_bundle():
                 dst_path = os.path.join(MEDIA_DIR, media_file)
                 
                 if os.path.isfile(src_path):
-                    # Verify the media file's integrity
+                    # Verify the extracted file's integrity before it goes anywhere near MEDIA_DIR
                     try:
-                        verify_media_file_integrity(media_file)
+                        verify_media_file_integrity(media_file, directory=media_dir)
                     except Exception as e:
                         print(f"Failed to verify media file integrity: {str(e)}. Skipping (this result in a corrupted flow import)...", file=sys.stderr)
                         continue
@@ -1466,18 +1466,16 @@ def import_flow_bundle():
         except:
             print(f"Warning: Failed to clean up temporary directory: {temp_dir}", file=sys.stderr)
 
-def verify_media_file_integrity(uid):
+def verify_media_file_integrity(uid, directory=None):
     """
     Verifies if a media file's content hash matches the hash in its filename.
     Raises an error if the hash does not match. Passes if the file is valid.
     
     Args:
         uid (str): The unique identifier (filename) of the media file
-        
-    Returns:
-        dict: Result containing 'valid' (boolean) and additional hash information
+        directory (str): The folder holding the file. Defaults to MEDIA_DIR.
     """
-    file_path = os.path.join(MEDIA_DIR, uid)
+    file_path = os.path.join(directory if directory is not None else MEDIA_DIR, uid)
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File {file_path} does not exist.")
     
