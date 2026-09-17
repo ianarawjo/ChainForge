@@ -41,6 +41,7 @@ import {
 } from "./backend/typing";
 import { Handle, Position } from "reactflow";
 import { AIGenReplaceTablePopover } from "./AiPopover";
+import { AIDocument } from "./backend/ai";
 import { parseTableData } from "./backend/tableUtils";
 import { StringLookup } from "./backend/cache";
 import { pulledInputsToTable, responsesToTable } from "./LLMResponseInspector";
@@ -624,6 +625,29 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
 
   // Pulls data from input nodes into the table
   const pullInputData = useStore((state) => state.pullInputData);
+
+  // The text connected to the table's input, as documents for AI to write
+  // test questions about. Chunks carry their document's title; uploaded files, their name.
+  const getConnectedDocuments = useCallback((): AIDocument[] => {
+    try {
+      const pulled = pullInputData(["load-data"], id)["load-data"] ?? [];
+      return pulled.map((info) => {
+        if (typeof info === "string") return { text: info, source: "" };
+        const meta = info.metavars ?? {};
+        return {
+          text: StringLookup.get(info.text) ?? "",
+          source: String(
+            StringLookup.get(
+              (meta.docTitle ?? meta.filename ?? "") as StringOrHash,
+            ) ?? "",
+          ),
+        };
+      });
+    } catch {
+      return [];
+    }
+  }, [pullInputData, id]);
+
   const handlePullDataIn = async () => {
     // There are two ways in CF to pull data, unfortunately:
     // pulling via "input data", which includes things like text fields, and
@@ -749,6 +773,7 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
                   onReplaceTable={replaceTable}
                   areValuesLoading={isLoading}
                   setValuesLoading={setIsLoading}
+                  getDocuments={getConnectedDocuments}
                 />,
               ]
             : []),

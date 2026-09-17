@@ -37,11 +37,21 @@ import {
   autofillTable,
   generateAndReplaceTable,
   generateColumn,
+  documentPassages,
+  dropRepeatedDefinitions,
+  generatePromptVariants,
+  generateRubric,
+  generateTestQuestions,
   parseJSONReply,
   queryAI,
+  TEST_QUESTION_COLUMNS,
 } from "../ai";
 // eslint-disable-next-line import/first
 import { queryLLM } from "../backend";
+// eslint-disable-next-line import/first
+import CancelTracker from "../canceler";
+// eslint-disable-next-line import/first
+import { UserForcedPrematureExit } from "../errors";
 // eslint-disable-next-line import/first
 import { Dict, LLMSpec } from "../typing";
 
@@ -54,7 +64,9 @@ const provider = (name: string) =>
 function replyWith(reply: (prompt: string, vars: Dict) => string) {
   queryLLMMock.mockImplementation(
     async (_id: any, _llms: any, _n: any, prompt: any, vars: any) => {
-      const inputs: Dict[] = vars?.input ?? [{ text: "" }];
+      const inputs: Dict[] = Array.isArray(vars?.input)
+        ? vars.input
+        : [{ text: vars?.input ?? "" }];
       return {
         responses: inputs.map((input) => ({
           responses: [reply(prompt, input)],
@@ -226,7 +238,7 @@ describe("AI features", () => {
     });
   });
 
-  test("a new column's values line up with the rows, from one batched query", async () => {
+  test("a new column's values line up with the rows, one query per row", async () => {
     replyWith((_prompt, input) =>
       String(input.text).includes("Paris") ? "France" : "Peru",
     );
@@ -235,8 +247,103 @@ describe("AI features", () => {
       "Country",
       model,
     );
-    expect(result).toEqual({ col: "Country", rows: ["France", "Peru"] });
-    expect(queryLLMMock).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      col: "Country",
+      rows: ["France", "Peru"],
+      failed: 0,
+      canceled: false,
+    });
+    expect(queryLLMMock).toHaveBeenCalledTimes(2);
+  });
+
+  // Replies to each row with its number, except rows that `fail` says fail;
+  // `onCall` runs first on each call, e.g. to throw.
+  const replyPerRow = (
+    fail: (text: string) => boolean = () => false,
+    onCall: (call: number) => void = () => undefined,
+  ) => {
+    let call = 0;
+    queryLLMMock.mockImplementation(async (...args: any[]) => {
+      onCall(++call);
+      const text = String(args[4].input);
+      return fail(text)
+        ? { responses: [], errors: { key: ["Timed out"] } }
+        : {
+            responses: [{ responses: [text.replace(/\D/g, "")] }],
+            errors: {},
+          };
+    });
+  };
+  const bigTable = {
+    cols: ["n"],
+    rows: Array.from({ length: 120 }, (_, i) => [`${i}`]),
+  };
+
+  test("a big column reports progress, and leaves failed rows blank", async () => {
+    replyPerRow((text) => text === "n: 7");
+    const progress: any[] = [];
+    const result = await generateColumn(bigTable, "Same", model, undefined, {
+      onProgress: (p) => progress.push(p),
+    });
+    expect(queryLLMMock).toHaveBeenCalledTimes(120);
+    expect(result.rows[3]).toBe("3");
+    expect(result.rows[119]).toBe("119");
+    expect(result.rows[7]).toBe("");
+    expect(result.failed).toBe(1);
+    expect(result.errors).toEqual(["Timed out"]);
+    expect(progress[progress.length - 1]).toEqual({
+      done: 119,
+      failed: 1,
+      total: 120,
+    });
+  });
+
+  test("stopping keeps the rows already filled", async () => {
+    const cancelId = "stop-test";
+    // Rows finish in order; the stop comes as row 61 is being queried
+    replyPerRow(undefined, (call) => {
+      if (call === 61) CancelTracker.add(cancelId);
+      if (CancelTracker.has(cancelId)) throw new UserForcedPrematureExit();
+    });
+    const result = await generateColumn(bigTable, "Same", model, undefined, {
+      cancelId,
+    });
+    expect(result.canceled).toBe(true);
+    expect(result.rows.slice(0, 60).every((r) => r !== "")).toBe(true);
+    expect(result.rows.slice(60).every((r) => r === "")).toBe(true);
+  });
+
+  test("a row that errors doesn't stop the others", async () => {
+    replyPerRow(undefined, (call) => {
+      if (call === 71) throw new Error("Rate limited");
+    });
+    const result = await generateColumn(bigTable, "Same", model);
+    expect(result.rows[69]).toBe("69");
+    expect(result.rows[70]).toBe("");
+    expect(result.rows[71]).toBe("71");
+    expect(result.failed).toBe(1);
+    expect(result.errors).toEqual(["Rate limited"]);
+  });
+
+  test("examples to extend from fit the prompt, however long the cells", async () => {
+    const long = "word ".repeat(1000);
+    replyWith(() => '[["a"]]');
+    await autofillTable(
+      { cols: ["text"], rows: Array.from({ length: 200 }, () => [long]) },
+      1,
+      model,
+    );
+    const tablePrompt = String(queryLLMMock.mock.calls[0][3]);
+    expect(tablePrompt.length).toBeLessThan(15000);
+    expect(tablePrompt).toContain("…");
+
+    replyWith(() => '["a"]');
+    await autofill(
+      Array.from({ length: 200 }, () => long),
+      1,
+      model,
+    );
+    expect(String(queryLLMMock.mock.calls[1][3]).length).toBeLessThan(15000);
   });
 
   test("braces in table cells are data, not template variables", async () => {
@@ -247,6 +354,146 @@ describe("AI features", () => {
       model,
     );
     const vars = queryLLMMock.mock.calls[0][4] as Dict;
-    expect(vars.input[0].text).toBe("Prompt: Tell me about \\{city\\}");
+    expect(vars.input).toBe("Prompt: Tell me about \\{city\\}");
+  });
+
+  test("prompt variants keep the prompt's template variables", async () => {
+    replyWith(() =>
+      JSON.stringify([
+        "Briefly, what's the capital of {country}?",
+        "What is the capital of {country}?",
+        "Name a city in France.",
+        "Tell me the capital of {{country}}, in one word.",
+      ]),
+    );
+    expect(
+      await generatePromptVariants(
+        "What is the capital of {country}?",
+        3,
+        "",
+        model,
+      ),
+    ).toEqual([
+      "Briefly, what's the capital of {country}?",
+      "Tell me the capital of {country}, in one word.",
+    ]);
+
+    replyWith(() => '["Name a city in France."]');
+    await expect(
+      generatePromptVariants("What is the capital of {country}?", 1, "", model),
+    ).rejects.toThrow(/template variables/);
+  });
+
+  test("rubrics fit the expected format, and come back as plain text", async () => {
+    replyWith(() => '```\n"Score 1 to 5 for politeness."\n```');
+    expect(await generateRubric("politeness", "num", model)).toBe(
+      "Score 1 to 5 for politeness.",
+    );
+    const llm = (queryLLMMock.mock.calls[0][1] as LLMSpec[])[0];
+    expect(llm.settings?.system_msg).toMatch(/a number/);
+
+    replyWith(() => "Say true if the response is polite and brief.");
+    await generateRubric("also brief", "bin", model, undefined, "Polite?");
+    expect(queryLLMMock.mock.calls[1][3]).toMatch(/Polite\?[\s\S]*also brief/);
+  });
+
+  test("test questions spread over the documents, one query per document", async () => {
+    // Each document is asked for its number of questions at once
+    replyWith((_prompt, input) => {
+      const text = String(input.text);
+      const count = Number(/Questions to write: (\d+)/.exec(text)?.[1]);
+      const topic = text.includes("cats") ? "cats" : "dogs";
+      return JSON.stringify(
+        Array.from({ length: count }, (_, i) => ({
+          question: `About ${topic} ${i + 1}?`,
+          answer: "Yes.",
+        })),
+      );
+    });
+    const { rows, failed } = await generateTestQuestions(
+      [
+        { text: "All about cats.", source: "cats.pdf" },
+        { text: "All about dogs {and braces}.", source: "dogs.pdf" },
+        { text: "   ", source: "empty.pdf" },
+      ],
+      3,
+      "",
+      model,
+    );
+    expect(queryLLMMock).toHaveBeenCalledTimes(2);
+    expect(TEST_QUESTION_COLUMNS).toEqual([
+      "question",
+      "reference",
+      "answer_context",
+      "source_doc",
+    ]);
+    expect(rows).toHaveLength(3);
+    expect(failed).toBe(0);
+    rows.forEach((row) => {
+      expect(row).toHaveLength(4);
+      expect(row[0]).toMatch(row[3] === "cats.pdf" ? /cats/ : /dogs/);
+      expect(row[2]).toMatch(/All about/);
+    });
+    // Both documents are asked, one of them for two different questions, and the empty one never
+    const questions = rows.map((row) => row[0]);
+    expect(new Set(questions).size).toBe(3);
+    expect(new Set(rows.map((row) => row[3]))).toEqual(
+      new Set(["cats.pdf", "dogs.pdf"]),
+    );
+
+    await expect(
+      generateTestQuestions([{ text: "", source: "x" }], 1, "", model),
+    ).rejects.toThrow(/no documents/);
+  });
+
+  test("a reply that can't be read loses only its own questions", async () => {
+    replyWith((_prompt, input) =>
+      String(input.text).includes("dogs")
+        ? "Sorry, I can't help with that."
+        : '[{"question": "About cats?", "answer": "Yes."}]',
+    );
+    const { rows, failed, errors } = await generateTestQuestions(
+      [
+        { text: "All about cats.", source: "cats.pdf" },
+        { text: "All about dogs.", source: "dogs.pdf" },
+      ],
+      2,
+      "",
+      model,
+    );
+    expect(rows.map((row) => row[0])).toEqual(["About cats?"]);
+    expect(failed).toBe(1);
+    expect(errors[0]).toMatch(/JSON/);
+  });
+
+  test("questions about a long document come from all over it", () => {
+    const doc = Array.from({ length: 5000 }, (_, i) => `word${i}`).join(" ");
+    const passages = documentPassages(doc, 5, 8000);
+    expect(passages).toHaveLength(5);
+    expect(passages.reduce((sum, p) => sum + p.count, 0)).toBe(5);
+    passages.forEach((p) => expect(p.text.length).toBeLessThanOrEqual(8000));
+    // From the start of the document to its end, starting at whole words
+    expect(passages[0].text.startsWith("word0 ")).toBe(true);
+    expect(passages[4].text.endsWith("word4999")).toBe(true);
+    passages.forEach((p) => expect(p.text).toMatch(/^word\d+ /));
+
+    // Short documents are one passage, asked all the questions
+    expect(documentPassages("Short.", 3)).toEqual([
+      { text: "Short.", count: 3 },
+    ]);
+  });
+
+  test("only the first definition of evaluate is kept from a reply's code", () => {
+    expect(
+      dropRepeatedDefinitions(
+        [
+          "def evaluate(r):\n  return 1",
+          "print(evaluate(example))",
+          "def evaluate(response):\n  return 2",
+          "function evaluate(r) { return 3; }",
+        ],
+        "evaluate",
+      ),
+    ).toEqual(["def evaluate(r):\n  return 1", "print(evaluate(example))"]);
   });
 });

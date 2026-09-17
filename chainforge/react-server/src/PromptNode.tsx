@@ -93,6 +93,7 @@ import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import TemplateHighlightTextarea, {
   setTemplateTextareaValue,
 } from "./TemplateHighlightTextarea";
+import { AIGenPromptVariantsPopover } from "./AiPopover";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -367,6 +368,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     null,
   );
   const [templateVars, setTemplateVars] = useState<string[]>(data.vars ?? []);
+  const aiSupport = useStore((state) => state.globalSettings.aiSupport);
   const [promptText, setPromptText] = useState<string | string[]>(
     data.prompt ?? "",
   );
@@ -1412,11 +1414,36 @@ Soft failing by replacing undefined with empty strings.`,
     setPromptVariantLabel(updatedPromptVarLabels);
     setIdxPromptVariantShown(prompts.length);
     setDataPropsForNode(id, {
-      promptText: updatedPrompts,
+      prompt: updatedPrompts,
       promptVariantLabel: updatedPromptVarLabels,
     });
     setStatus(Status.WARNING);
   }, [promptText, idxPromptVariantShown, promptVariantLabel]);
+
+  // Adds variants an AI wrote after the existing ones, and shows the first.
+  // Builds on the prompts and labels as they are when the variants arrive,
+  // so edits made while they were being written are kept.
+  const handleAddAIPromptVariants = useCallback(
+    (variants: string[]) => {
+      setPromptText((prev) => {
+        const prompts = typeof prev === "string" ? [prev] : prev;
+        const updatedPrompts = prompts.concat(variants);
+        setIdxPromptVariantShown(prompts.length);
+        setDataPropsForNode(id, { prompt: updatedPrompts });
+        refreshTemplateHooks(updatedPrompts);
+        return updatedPrompts;
+      });
+      setPromptVariantLabel((prev) => {
+        const updatedLabels = prev.concat(
+          variants.map((_, i) => `Variant ${prev.length + i + 1}`),
+        );
+        setDataPropsForNode(id, { promptVariantLabel: updatedLabels });
+        return updatedLabels;
+      });
+      setStatus(Status.WARNING);
+    },
+    [id, refreshTemplateHooks],
+  );
 
   const gotoPromptVariant = useCallback(
     (shift: number) => {
@@ -1446,7 +1473,7 @@ Soft failing by replacing undefined with empty strings.`,
       }
 
       setDataPropsForNode(id, {
-        promptText: prompts,
+        prompt: prompts,
       });
       return [...prompts];
     });
@@ -1636,6 +1663,19 @@ Soft failing by replacing undefined with empty strings.`,
         handleRunHover={handleRunHover}
         runButtonTooltip={runTooltip}
         customButtons={[
+          ...(aiSupport && node_type !== "chat"
+            ? [
+                <AIGenPromptVariantsPopover
+                  key="ai-popover"
+                  currentPrompt={
+                    typeof promptText === "string"
+                      ? promptText
+                      : promptText[idxPromptVariantShown] ?? ""
+                  }
+                  onAddVariants={handleAddAIPromptVariants}
+                />,
+              ]
+            : []),
           <PromptListPopover
             key="prompt-previews"
             promptInfos={promptPreviews}

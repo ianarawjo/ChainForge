@@ -40,6 +40,12 @@ import { Status } from "./StatusIndicatorComponent";
 import { grabResponses } from "./backend/backend";
 import { StringLookup } from "./backend/cache";
 import { IconChartBar, IconChartHistogram } from "@tabler/icons-react";
+import {
+  AIGenPlotPopover,
+  AIPlotHeaderButtons,
+  AIPlotView,
+} from "./VisNodeAIPlot";
+import { AIPlot } from "./backend/aiPlots";
 
 /**
  * STATS
@@ -257,6 +263,8 @@ interface VisNodeData {
   input: string;
   refresh: boolean;
   title: string;
+  // A plot the AI made, shown instead of the default plot until the user goes back
+  aiPlot?: AIPlot | null;
 }
 
 /**
@@ -1469,6 +1477,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
   const visViewRef = useRef<VisViewRef | null>(null);
 
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
+  const aiSupport = useStore((state) => state.globalSettings.aiSupport);
 
   const [status, setStatus] = useState<Status>(Status.NONE);
   const [pastInputs, setPastInputs] = useState<JSONCompatible>([]);
@@ -1523,16 +1532,51 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         nodeId={id}
         status={status}
         icon={"📊"}
+        customButtons={[
+          ...(data.aiPlot?.code
+            ? [
+                <AIPlotHeaderButtons
+                  key="ai-plot-buttons"
+                  plot={data.aiPlot}
+                  onCodeChange={(code) =>
+                    setDataPropsForNode(id, {
+                      aiPlot: { ...data.aiPlot, code } as unknown as Dict,
+                    })
+                  }
+                  onBack={() => setDataPropsForNode(id, { aiPlot: null })}
+                />,
+              ]
+            : []),
+          ...(aiSupport
+            ? [
+                <AIGenPlotPopover
+                  key="ai-popover"
+                  responses={responses}
+                  onPlotReady={(aiPlot) =>
+                    setDataPropsForNode(id, {
+                      aiPlot: aiPlot as unknown as Dict,
+                    })
+                  }
+                />,
+              ]
+            : []),
+        ]}
       />
-      <VisView
-        ref={visViewRef}
-        id={id}
-        responses={responses}
-        data={data}
-        whenReplotting={(isReplotting) =>
-          setStatus(isReplotting ? Status.LOADING : Status.NONE)
-        }
-      />
+      {data.aiPlot?.code && (
+        <AIPlotView plot={data.aiPlot} responses={responses} />
+      )}
+      {/* Kept mounted, so its controls keep their state while an AI plot shows */}
+      <div style={{ display: data.aiPlot?.code ? "none" : undefined }}>
+        <VisView
+          ref={visViewRef}
+          id={id}
+          responses={responses}
+          data={data}
+          whenReplotting={(isReplotting) =>
+            setStatus(isReplotting ? Status.LOADING : Status.NONE)
+          }
+        />
+      </div>
       <Handle
         type="target"
         position={Position.Left}

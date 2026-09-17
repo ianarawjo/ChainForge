@@ -47,8 +47,10 @@ import {
   APP_IS_RUNNING_LOCALLY,
   batchResponsesByUID,
   genDebounceFunc,
+  getVarsAndMetavars,
   toStandardResponseFormat,
 } from "./backend/utils";
+import { AIGenCodeEvaluatorPopover, AIGenRubricPopover } from "./AiPopover";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import {
   CodeEvaluatorComponent,
@@ -56,13 +58,21 @@ import {
 } from "./CodeEvaluatorNode";
 import { LLMEvaluatorComponent, LLMEvaluatorComponentRef } from "./LLMEvalNode";
 import { GatheringResponsesRingProgress } from "./LLMItemButtonGroup";
-import { Dict, LLMResponse, QueryProgress } from "./backend/typing";
+import {
+  Dict,
+  LLMResponse,
+  QueryProgress,
+  VarsContext,
+} from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import { EvalFunctionSetReport } from "./backend/evalgen/typing";
 import EvalGenWizard from "./EvalGen/EvalGenWizard";
 import StorageCache from "./backend/cache";
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
+
+// The AI button sits in an evaluator's banner, not a node's header
+const AI_BUTTON_IN_ITEM_STYLE = { marginTop: 0, marginRight: 2 };
 
 const EVAL_TYPE_PRETTY_NAME = {
   python: "Python",
@@ -412,6 +422,16 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
     }
   }, [pullInputData, id, toStandardResponseFormat]);
 
+  // The vars and metavars of the inputs, for AI code generation. Fails silently.
+  const getInputContext = useCallback((): VarsContext => {
+    try {
+      const pulled = pullInputData(["responseBatch"], id);
+      return getVarsAndMetavars(pulled?.responseBatch ?? []);
+    } catch {
+      return { vars: [], metavars: [] };
+    }
+  }, [pullInputData, id]);
+
   const handleRunClick = useCallback(() => {
     // Pull inputs to the node
     const pulled_inputs = handlePullInputs();
@@ -676,33 +696,64 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
           initiallyOpen={e.justAdded}
           progress={e.progress}
           customButton={
-            e.state?.sandbox !== undefined ? (
-              <Tooltip
-                label={
-                  e.state?.sandbox
-                    ? "Running in sandbox (pyodide)"
-                    : "Running unsandboxed (local Python)"
-                }
-                withinPortal
-                withArrow
-              >
-                <button
-                  onClick={() =>
-                    updateEvalState(
-                      idx,
-                      (e) => (e.state.sandbox = !e.state.sandbox),
-                    )
-                  }
-                  className="custom-button"
-                  style={{ border: "none", padding: "0px", marginTop: "3px" }}
-                >
-                  <IconBox
-                    size="12pt"
-                    color={e.state.sandbox ? "orange" : "#999"}
+            <>
+              {aiSupport &&
+                (e.type === "llm" ? (
+                  <AIGenRubricPopover
+                    format={e.state?.format ?? "bin"}
+                    currentRubric={e.state?.prompt ?? ""}
+                    onGeneratedRubric={(rubric) =>
+                      (
+                        evaluatorComponentRefs.current[idx]
+                          ?.ref as LLMEvaluatorComponentRef | null
+                      )?.setPrompt(rubric)
+                    }
+                    buttonStyle={AI_BUTTON_IN_ITEM_STYLE}
                   />
-                </button>
-              </Tooltip>
-            ) : undefined
+                ) : (
+                  <AIGenCodeEvaluatorPopover
+                    progLang={e.type}
+                    context={getInputContext}
+                    currentEvalCode={e.state?.code ?? ""}
+                    onGeneratedCode={(code) => {
+                      (
+                        evaluatorComponentRefs.current[idx]
+                          ?.ref as CodeEvaluatorComponentRef | null
+                      )?.setCodeText(code);
+                      updateEvalState(idx, (e) => (e.state.code = code));
+                    }}
+                    onLoadingChange={() => undefined}
+                    buttonStyle={AI_BUTTON_IN_ITEM_STYLE}
+                  />
+                ))}
+              {e.state?.sandbox !== undefined && (
+                <Tooltip
+                  label={
+                    e.state?.sandbox
+                      ? "Running in sandbox (pyodide)"
+                      : "Running unsandboxed (local Python)"
+                  }
+                  withinPortal
+                  withArrow
+                >
+                  <button
+                    onClick={() =>
+                      updateEvalState(
+                        idx,
+                        (e) => (e.state.sandbox = !e.state.sandbox),
+                      )
+                    }
+                    className="custom-button"
+                    style={{ border: "none", padding: "0px", marginTop: "3px" }}
+                  >
+                    <IconBox
+                      size="12pt"
+                      color={e.state.sandbox ? "orange" : "#999"}
+                    />
+                  </button>
+                </Tooltip>
+              )}
+            </>
           }
           onDelete={() => {
             delete evaluatorComponentRefs.current[idx];

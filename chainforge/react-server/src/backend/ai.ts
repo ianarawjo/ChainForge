@@ -12,8 +12,9 @@ import {
   escapeBraces,
   containsSameTemplateVariables,
 } from "./template";
-import { Dict, LLMSpec, StringOrHash } from "./typing";
-import { StringLookup } from "./cache";
+import { Dict, LLMSpec } from "./typing";
+import CancelTracker from "./canceler";
+import { UserForcedPrematureExit } from "./errors";
 import { llmResponseDataToString, sampleRandomElements } from "./utils";
 
 export class AIError extends Error {
@@ -34,9 +35,10 @@ export interface AITable {
 
 // Tables longer than this are sampled before being sent to the model.
 const MAX_TABLE_ROWS_IN_PROMPT = 30;
-
-// Metavar that carries each row's index through a batched query.
-const ROW_INDEX_METAVAR = "__ai_row";
+// Examples sent to the model are cut to fit these, so prompts fit small
+// context windows (e.g. Ollama's) however long the table's cells are.
+const MAX_EXAMPLE_CHARS = 500;
+const MAX_EXAMPLES_PROMPT_CHARS = 12000;
 
 export interface AIQueryOptions {
   system?: string;
@@ -79,9 +81,31 @@ export async function queryAI(
   return llmResponseDataToString(response);
 }
 
+/** How far a batched query has got. */
+export interface AIProgress {
+  done: number;
+  failed: number;
+  total: number;
+}
+
+export interface AIForEachOptions extends AIQueryOptions {
+  onProgress?: (progress: AIProgress) => void;
+  /** Stops the query when added to CancelTracker. */
+  cancelId?: string;
+}
+
+export interface AIForEachResult {
+  /** Each input's reply, or undefined where it failed or wasn't reached. */
+  replies: (string | undefined)[];
+  errors: string[];
+  canceled: boolean;
+}
+
 /**
  * Queries an AI model once per input, in parallel (within the provider's rate
- * limits), returning the replies in the same order as the inputs.
+ * limits), returning the replies in the same order as the inputs. Each input
+ * is its own query, so a stop or a failed input keeps the replies already
+ * finished.
  * @param template The prompt, with the literal text escaped and `{input}` where each input goes.
  * @param inputs Literal text: braces in them are not template variables.
  */
@@ -89,40 +113,82 @@ export async function queryAIForEach(
   model: LLMSpec,
   template: string,
   inputs: string[],
-  options: AIQueryOptions = {},
-): Promise<string[]> {
-  if (inputs.length === 0) return [];
-  const result = await queryLLM(
-    `__ai-${uuid()}`,
-    [withSystemMessage(model, options.system)],
-    1,
-    template,
-    {
-      input: inputs.map((text, idx) => ({
-        text: escapeBraces(text),
-        metavars: { [ROW_INDEX_METAVAR]: idx.toString() },
-      })),
-    },
-    undefined,
-    options.apiKeys,
-    true,
+  options: AIForEachOptions = {},
+): Promise<AIForEachResult> {
+  const { onProgress, cancelId } = options;
+  const spec = withSystemMessage(model, options.system);
+  const total = inputs.length;
+  const replies: (string | undefined)[] = inputs.map(() => undefined);
+  const errors: string[] = [];
+  let done = 0;
+  let failed = 0;
+  let canceled = false;
+  // Set once this returns, after which late replies are ignored
+  let returned = false;
+  const isCanceled = () =>
+    cancelId !== undefined && CancelTracker.has(cancelId);
+
+  // queryLLM's rate limiter paces these; all are started at once
+  const all = Promise.all(
+    inputs.map(async (text, idx) => {
+      if (isCanceled()) {
+        canceled = true;
+        return;
+      }
+      try {
+        const result = await queryLLM(
+          `__ai-${uuid()}`,
+          [spec],
+          1,
+          template,
+          { input: escapeBraces(text) },
+          undefined,
+          options.apiKeys,
+          true,
+          undefined,
+          undefined,
+          cancelId,
+        );
+        // Replies that arrive after a stop returned are ignored
+        if (returned) return;
+        const response = result.responses[0]?.responses?.[0];
+        if (response !== undefined) {
+          replies[idx] = llmResponseDataToString(response);
+          done += 1;
+        } else {
+          failed += 1;
+          errors.push(
+            firstError(result.errors) ?? `${model.name} returned no response.`,
+          );
+        }
+      } catch (err) {
+        if (err instanceof UserForcedPrematureExit || isCanceled()) {
+          canceled = true;
+          return;
+        }
+        if (returned) return;
+        failed += 1;
+        errors.push(err instanceof Error ? err.message : String(err));
+      }
+      onProgress?.({ done, failed, total });
+    }),
   );
 
-  const replies: (string | undefined)[] = inputs.map(() => undefined);
-  for (const resp of result.responses) {
-    // queryLLM returns strings interned, as StringLookup hashes
-    const idx = Number(
-      StringLookup.get(resp.metavars?.[ROW_INDEX_METAVAR] as StringOrHash),
-    );
-    if (Number.isInteger(idx) && resp.responses.length > 0)
-      replies[idx] = llmResponseDataToString(resp.responses[0]);
-  }
-  if (replies.some((r) => r === undefined))
-    throw new AIError(
-      firstError(result.errors) ??
-        `${model.name} did not respond to every request.`,
-    );
-  return replies as string[];
+  // On a stop, return the replies so far, without waiting for requests in flight
+  if (cancelId !== undefined) {
+    let watcher: ReturnType<typeof setInterval> | undefined;
+    const stopped = new Promise<void>((resolve) => {
+      watcher = setInterval(() => {
+        if (isCanceled()) resolve();
+      }, 200);
+    });
+    await Promise.race([all, stopped]);
+    clearInterval(watcher);
+    if (isCanceled()) canceled = true;
+  } else await all;
+
+  returned = true;
+  return { replies: [...replies], errors: [...errors], canceled };
 }
 
 /**
@@ -202,6 +268,35 @@ function toRows(value: unknown, cols: string[]): string[][] {
   });
 }
 
+const truncateExample = (text: string) =>
+  text.length > MAX_EXAMPLE_CHARS
+    ? text.slice(0, MAX_EXAMPLE_CHARS) + "…"
+    : text;
+
+/**
+ * A random sample of examples to show the model, with long text cut short,
+ * that fits the prompt's character budget (always at least one example).
+ */
+function sampleExamples<T>(
+  examples: T[],
+  maxCount: number,
+  truncate: (example: T) => T,
+): T[] {
+  const sampled = (
+    examples.length > maxCount
+      ? sampleRandomElements(examples, maxCount)
+      : examples
+  ).map(truncate);
+  const fitted: T[] = [];
+  let chars = 0;
+  for (const example of sampled) {
+    chars += JSON.stringify(example).length;
+    if (fitted.length > 0 && chars > MAX_EXAMPLES_PROMPT_CHARS) break;
+    fitted.push(example);
+  }
+  return fitted;
+}
+
 function templateVariablesInstruction(vars: string[]): string {
   if (vars.length === 0) return "";
   const listed = vars.map((v) => `{${v}}`).join(", ");
@@ -224,8 +319,14 @@ export async function autofill(
     ...new Set(new StringTemplate(items.join("\n")).get_vars()),
   ];
 
+  const examples = sampleExamples(
+    items,
+    MAX_TABLE_ROWS_IN_PROMPT,
+    truncateExample,
+  );
+
   const system = `You are given a list of items. Work out the pattern they follow, then write ${n} more items that follow it, without repeating any.${templateVariablesInstruction(templateVariables)} Respond with only a JSON array of ${n} strings.`;
-  const reply = await queryAI(model, JSON.stringify(items, null, 2), {
+  const reply = await queryAI(model, JSON.stringify(examples, null, 2), {
     system,
     apiKeys,
   });
@@ -267,10 +368,11 @@ export async function autofillTable(
   model: LLMSpec,
   apiKeys?: Dict,
 ): Promise<string[][]> {
-  const sampleRows =
-    input.rows.length > MAX_TABLE_ROWS_IN_PROMPT
-      ? sampleRandomElements(input.rows, MAX_TABLE_ROWS_IN_PROMPT)
-      : input.rows;
+  const sampleRows = sampleExamples(
+    input.rows,
+    MAX_TABLE_ROWS_IN_PROMPT,
+    (row) => row.map(truncateExample),
+  );
 
   const system = `You are given a table, as JSON: its column names, and its rows as arrays of cells in column order. Work out the pattern the rows follow, then write ${n} more rows that follow it, without repeating any. Respond with only a JSON array of ${n} rows, each an array of ${input.cols.length} strings.`;
   const reply = await queryAI(
@@ -328,14 +430,22 @@ export async function generateAndReplaceTable(
 /**
  * Uses an LLM to add a column to a table, filling in each row's value from `prompt`.
  * Rows are queried in parallel.
- * @returns The new column's name, and its value for each row.
+ * @returns The new column's name, and its value for each row: blank where
+ * the row failed, or wasn't reached before a stop.
  */
 export async function generateColumn(
   table: AITable,
   prompt: string,
   model: LLMSpec,
   apiKeys?: Dict,
-): Promise<{ col: string; rows: string[] }> {
+  options: Pick<AIForEachOptions, "onProgress" | "cancelId"> = {},
+): Promise<{
+  col: string;
+  rows: string[];
+  failed: number;
+  errors: string[];
+  canceled: boolean;
+}> {
   let colName = prompt.trim();
   if (colName.length > 20) {
     const reply = await queryAI(
@@ -354,7 +464,7 @@ export async function generateColumn(
   const inputs = table.rows.map((row) =>
     table.cols.map((col, i) => `${col}: ${row[i] ?? ""}`).join("\n"),
   );
-  const values = await queryAIForEach(
+  const result = await queryAIForEach(
     model,
     `{input}\n${escapeBraces(prompt)}: ?`,
     inputs,
@@ -362,8 +472,260 @@ export async function generateColumn(
       system:
         "You are given a row of a table, with its last field missing. Fill in the missing field. Respond with only its value: no explanation, quotation marks or formatting.",
       apiKeys,
+      ...options,
     },
   );
+  const filled = result.replies.filter((r) => r !== undefined).length;
+  if (filled === 0 && !result.canceled)
+    throw new AIError(
+      result.errors[0] ?? `${model.name} didn't fill in any rows.`,
+    );
 
-  return { col: colName, rows: values.map((v) => v.trim()) };
+  return {
+    col: colName,
+    rows: result.replies.map((r) => (r ?? "").trim()),
+    failed: result.canceled ? 0 : inputs.length - filled,
+    errors: result.errors,
+    canceled: result.canceled,
+  };
+}
+
+/**
+ * Uses an LLM to write variants of a prompt template, for comparing prompts.
+ * Variants that drop or add template variables are left out.
+ * @param guidance How the variants should differ, if the user said.
+ * @returns Between 1 and `n` variants.
+ */
+export async function generatePromptVariants(
+  prompt: string,
+  n: number,
+  guidance: string,
+  model: LLMSpec,
+  apiKeys?: Dict,
+): Promise<string[]> {
+  const templateVariables = [...new Set(new StringTemplate(prompt).get_vars())];
+  const vars =
+    templateVariables.length > 0
+      ? ` The prompt is a template: each variant must use all of its template variables, written exactly as they are, in single braces (${templateVariables.map((v) => `{${v}}`).join(", ")}), and no others.`
+      : " Don't add placeholders or template variables in braces.";
+  const how = guidance.trim()
+    ? ` The variants should differ in this way: ${guidance.trim()}`
+    : " Make the variants meaningfully different from the original and from each other, for instance in wording, structure, length or tone.";
+  const system = `You write variants of a prompt, so that people can compare how the variants perform. Each variant keeps the original's purpose and asks for the same kind of output.${how}${vars} Respond with only a JSON array of ${n} strings, each a complete prompt.`;
+
+  const reply = await queryAI(model, prompt, { system, apiKeys });
+  const variants = parseStringList(reply)
+    .filter((v) => v !== prompt.trim())
+    .filter((v) => containsSameTemplateVariables(prompt, v))
+    .slice(0, n);
+  if (variants.length === 0)
+    throw new AIError(
+      "The model's variants didn't keep the prompt's template variables. Please try again.",
+    );
+  return variants;
+}
+
+/** The output formats of an LLM Scorer, as ChainForge asks the grader for them. */
+export type RubricFormat = "bin" | "cat" | "num" | "open";
+
+const RUBRIC_FORMAT_DESCRIPTIONS: Record<RubricFormat, string> = {
+  bin: "true or false",
+  cat: "a single category",
+  num: "a number",
+  open: "a short open-ended answer",
+};
+
+const RUBRIC_FORMAT_ADVICE: Record<RubricFormat, string> = {
+  bin: "Say what makes a response true, and what makes it false.",
+  cat: "Name every category the grader can choose from, and when to choose each.",
+  num: "Give the scale (e.g. 1 to 5), and what the ends and middle of it mean.",
+  open: "Say what the grader's answer should contain.",
+};
+
+/**
+ * Uses an LLM to write the rubric of an LLM Scorer. The rubric is the user's
+ * part of the grader's prompt: ChainForge adds the response to grade and the
+ * output format instructions around it.
+ * @param request What to grade, or, with `currentRubric`, how to change the rubric.
+ * @param currentRubric The rubric to edit, if editing.
+ */
+export async function generateRubric(
+  request: string,
+  format: RubricFormat,
+  model: LLMSpec,
+  apiKeys?: Dict,
+  currentRubric?: string,
+): Promise<string> {
+  const system = `You write rubrics for an LLM that grades responses from other LLMs. The grader sees your rubric, then the response to grade, then an instruction to answer with ${RUBRIC_FORMAT_DESCRIPTIONS[format] ?? "an answer"}. Write the rubric as instructions addressed to the grader, briefly and concretely, in plain text: no title, headings or Markdown formatting. ${RUBRIC_FORMAT_ADVICE[format] ?? ""} Don't include the response, placeholders, or instructions about the answer's format. Respond with only the rubric.`;
+  const prompt =
+    currentRubric !== undefined
+      ? `Here is a rubric:\n\n${currentRubric}\n\nRewrite it to make this change: ${request}`
+      : `Write a rubric to grade: ${request}`;
+  const reply = await queryAI(model, prompt, { system, apiKeys });
+
+  // Drop any thinking, code fences or wrapping quotation marks
+  const rubric = reply
+    .replace(/<think>[\s\S]*?<\/think>/g, "")
+    .replace(/^\s*```[a-z]*\n?|```\s*$/g, "")
+    .trim()
+    .replace(/^"([\s\S]*)"$/, "$1")
+    .trim();
+  if (!rubric) throw new AIError(`${model.name} returned an empty rubric.`);
+  return rubric;
+}
+
+/**
+ * Drops code blocks that define a function again after the first block that
+ * defines it, e.g. an alternative version a model wrote after its answer.
+ * @param funcName The function, e.g. "evaluate" (as `def evaluate(` or `function evaluate(`).
+ */
+export function dropRepeatedDefinitions(
+  codeBlocks: string[],
+  funcName: string,
+): string[] {
+  const definition = new RegExp(`\\b(def|function)\\s+${funcName}\\s*\\(`);
+  const firstDef = codeBlocks.findIndex((c) => definition.test(c));
+  return codeBlocks.filter((c, idx) => idx <= firstDef || !definition.test(c));
+}
+
+/** A document, or a chunk of one, to write test questions about. */
+export interface AIDocument {
+  text: string;
+  /** The document's name, e.g. its filename. */
+  source: string;
+}
+
+// Documents longer than this are cut short before being sent to the model.
+const MAX_DOCUMENT_CHARS = 8000;
+
+/** The columns of a table of RAG test questions, as the RAG example flow names them. */
+export const TEST_QUESTION_COLUMNS = [
+  "question",
+  "reference",
+  "answer_context",
+  "source_doc",
+];
+
+/** Test questions an LLM wrote, and the passages it failed to write any for. */
+export interface TestQuestionsResult {
+  /** Rows with the columns in TEST_QUESTION_COLUMNS. */
+  rows: string[][];
+  /** How many passages got no questions, because their request or reply failed. */
+  failed: number;
+  errors: string[];
+}
+
+/**
+ * The passages of a document to ask `count` questions about, each with how
+ * many questions to ask. A short document is one passage. A long one is cut
+ * into up to `count` passages spread evenly over it (or one at random, for a
+ * single question), so the questions cover the whole document, not its start.
+ */
+export function documentPassages(
+  text: string,
+  count: number,
+  maxChars = MAX_DOCUMENT_CHARS,
+): { text: string; count: number }[] {
+  const doc = text.trim();
+  if (doc.length <= maxChars) return [{ text: doc, count }];
+
+  const numPassages = Math.min(count, Math.ceil(doc.length / maxChars));
+  const lastStart = doc.length - maxChars;
+  return Array.from({ length: numPassages }, (_, i) => {
+    let start =
+      numPassages === 1
+        ? Math.floor(Math.random() * (lastStart + 1))
+        : Math.round((i * lastStart) / (numPassages - 1));
+    // Start at a word, rather than partway through one
+    if (start > 0) {
+      const space = doc.slice(start, start + 200).search(/\s/);
+      if (space !== -1) start += space + 1;
+    }
+    return {
+      text: doc.slice(start, start + maxChars).trim(),
+      count:
+        Math.floor(count / numPassages) + (i < count % numPassages ? 1 : 0),
+    };
+  });
+}
+
+/**
+ * Uses an LLM to write question-answer pairs grounded in documents (or their
+ * chunks), for evaluating a retrieval-augmented generation pipeline. Each pair
+ * comes from one passage of a document; passages are queried in parallel, and
+ * one that fails is left out rather than failing the rest.
+ * @param n How many pairs to write. Documents are sampled, and asked for several if there are fewer than `n`.
+ * @param guidance What kind of questions to write, if the user said.
+ */
+export async function generateTestQuestions(
+  documents: AIDocument[],
+  n: number,
+  guidance: string,
+  model: LLMSpec,
+  apiKeys?: Dict,
+): Promise<TestQuestionsResult> {
+  const docs = documents.filter((d) => d.text.trim().length > 0);
+  if (docs.length === 0)
+    throw new AIError("There are no documents to write questions about.");
+
+  // Spread the questions over the documents, in random order, and over the
+  // passages of long documents
+  const shuffled = [...docs];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  const picked = shuffled.slice(0, n);
+  const passages = picked.flatMap((doc, i) =>
+    documentPassages(
+      doc.text,
+      Math.floor(n / picked.length) + (i < n % picked.length ? 1 : 0),
+    ).map((passage) => ({ ...passage, source: doc.source })),
+  );
+
+  // A passage with several questions gets them in one request, so they differ
+  const system = `You write test questions for evaluating a retrieval-augmented generation (RAG) system. You are given a passage from a document, and how many questions to write. Write questions that a user might ask, which the passage answers, and their answers, using only facts in the passage. Each question must make sense on its own, to someone who hasn't seen the passage: don't refer to "the passage", "the text" or "the document". Questions about the same passage must ask about different facts.${guidance.trim() ? ` ${guidance.trim()}` : ""} Respond with only a JSON array of objects, each with two keys, "question" and "answer".`;
+  const result = await queryAIForEach(
+    model,
+    "{input}",
+    passages.map(
+      (p) =>
+        `Questions to write: ${p.count}\n\nDocument: ${p.source || "(untitled)"}\n\nPassage:\n${p.text}`,
+    ),
+    { system, apiKeys },
+  );
+
+  const rows: string[][] = [];
+  const errors = [...result.errors];
+  let failed = 0;
+  result.replies.forEach((reply, i) => {
+    // Passages whose request failed are left out
+    if (reply === undefined) {
+      failed += 1;
+      return;
+    }
+    try {
+      let parsed = unwrapList(parseJSONReply(reply));
+      if (!Array.isArray(parsed)) parsed = [parsed];
+      const passageRows = (parsed as Dict[])
+        .map((pair) => [
+          cellToString(pair?.question).trim(),
+          cellToString(pair?.answer).trim(),
+          passages[i].text,
+          passages[i].source,
+        ])
+        .filter((row) => row[0].length > 0)
+        .slice(0, passages[i].count);
+      if (passageRows.length === 0)
+        throw new AIError(`The model didn't write any questions: ${reply}`);
+      rows.push(...passageRows);
+    } catch (err) {
+      failed += 1;
+      errors.push(err instanceof Error ? err.message : String(err));
+    }
+  });
+
+  if (rows.length === 0)
+    throw new AIError(errors[0] ?? `${model.name} didn't write any questions.`);
+  return { rows, failed, errors };
 }
