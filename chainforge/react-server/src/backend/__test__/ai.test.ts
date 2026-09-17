@@ -37,6 +37,8 @@ import {
   autofillTable,
   generateAndReplaceTable,
   generateColumn,
+  documentPassages,
+  dropRepeatedDefinitions,
   generatePromptVariants,
   generateRubric,
   generateTestQuestions,
@@ -408,7 +410,7 @@ describe("AI features", () => {
         })),
       );
     });
-    const rows = await generateTestQuestions(
+    const { rows, failed } = await generateTestQuestions(
       [
         { text: "All about cats.", source: "cats.pdf" },
         { text: "All about dogs {and braces}.", source: "dogs.pdf" },
@@ -426,6 +428,7 @@ describe("AI features", () => {
       "source_doc",
     ]);
     expect(rows).toHaveLength(3);
+    expect(failed).toBe(0);
     rows.forEach((row) => {
       expect(row).toHaveLength(4);
       expect(row[0]).toMatch(row[3] === "cats.pdf" ? /cats/ : /dogs/);
@@ -441,5 +444,56 @@ describe("AI features", () => {
     await expect(
       generateTestQuestions([{ text: "", source: "x" }], 1, "", model),
     ).rejects.toThrow(/no documents/);
+  });
+
+  test("a reply that can't be read loses only its own questions", async () => {
+    replyWith((_prompt, input) =>
+      String(input.text).includes("dogs")
+        ? "Sorry, I can't help with that."
+        : '[{"question": "About cats?", "answer": "Yes."}]',
+    );
+    const { rows, failed, errors } = await generateTestQuestions(
+      [
+        { text: "All about cats.", source: "cats.pdf" },
+        { text: "All about dogs.", source: "dogs.pdf" },
+      ],
+      2,
+      "",
+      model,
+    );
+    expect(rows.map((row) => row[0])).toEqual(["About cats?"]);
+    expect(failed).toBe(1);
+    expect(errors[0]).toMatch(/JSON/);
+  });
+
+  test("questions about a long document come from all over it", () => {
+    const doc = Array.from({ length: 5000 }, (_, i) => `word${i}`).join(" ");
+    const passages = documentPassages(doc, 5, 8000);
+    expect(passages).toHaveLength(5);
+    expect(passages.reduce((sum, p) => sum + p.count, 0)).toBe(5);
+    passages.forEach((p) => expect(p.text.length).toBeLessThanOrEqual(8000));
+    // From the start of the document to its end, starting at whole words
+    expect(passages[0].text.startsWith("word0 ")).toBe(true);
+    expect(passages[4].text.endsWith("word4999")).toBe(true);
+    passages.forEach((p) => expect(p.text).toMatch(/^word\d+ /));
+
+    // Short documents are one passage, asked all the questions
+    expect(documentPassages("Short.", 3)).toEqual([
+      { text: "Short.", count: 3 },
+    ]);
+  });
+
+  test("only the first definition of evaluate is kept from a reply's code", () => {
+    expect(
+      dropRepeatedDefinitions(
+        [
+          "def evaluate(r):\n  return 1",
+          "print(evaluate(example))",
+          "def evaluate(response):\n  return 2",
+          "function evaluate(r) { return 3; }",
+        ],
+        "evaluate",
+      ),
+    ).toEqual(["def evaluate(r):\n  return 1", "print(evaluate(example))"]);
   });
 });

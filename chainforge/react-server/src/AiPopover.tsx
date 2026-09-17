@@ -33,6 +33,7 @@ import {
   AIDocument,
   AIProgress,
   queryAI,
+  dropRepeatedDefinitions,
   RubricFormat,
   TEST_QUESTION_COLUMNS,
 } from "./backend/ai";
@@ -541,7 +542,7 @@ export function AIGenReplaceTablePopover({
   const handleGenerateTestQuestions = async () => {
     setValuesLoading(true);
     try {
-      const rows = await generateTestQuestions(
+      const { rows, failed, errors } = await generateTestQuestions(
         documents,
         numQuestions,
         questionGuidance,
@@ -562,6 +563,10 @@ export function AIGenReplaceTablePopover({
           return rowData;
         }),
       );
+      if (failed > 0 && showAlert)
+        showAlert(
+          `Wrote ${rows.length} questions, but no questions came back for ${failed} ${failed === 1 ? "passage" : "passages"}.${errors[0] ? ` The first error: ${errors[0]}` : ""}`,
+        );
     } catch (err) {
       handleError(err);
     } finally {
@@ -863,7 +868,7 @@ export function AIGenReplaceItemsPopover({
 /**
  * Asks a model for code, returning the code blocks in its reply, joined and
  * retabbed to 2 spaces, or undefined if it wrote none.
- * @param onlyFirstFunc Drops any later blocks that define this function again.
+ * @param onlyFirstFunc The name of a function to keep only the first definition of.
  */
 async function generateCode(
   model: LLMSpec,
@@ -874,13 +879,8 @@ async function generateCode(
   const reply = await queryAI(model, prompt, { apiKeys });
   let codeBlocks: string[] = splitText(reply, "code", false);
   if (codeBlocks.length === 0) return undefined;
-  if (onlyFirstFunc) {
-    const definesFunc = (c: string) => c.includes(`${onlyFirstFunc}(`);
-    const firstDef = codeBlocks.findIndex(definesFunc);
-    codeBlocks = codeBlocks.filter(
-      (c, idx) => idx <= firstDef || !definesFunc(c),
-    );
-  }
+  if (onlyFirstFunc)
+    codeBlocks = dropRepeatedDefinitions(codeBlocks, onlyFirstFunc);
   // LLM outputs are generally 4-space tabs, but we use 2-space tabs
   return changeFourSpaceTabsToTwo(codeBlocks.join("\n\n"));
 }
@@ -967,7 +967,7 @@ export function AIGenCodeEvaluatorPopover({
           false,
           false,
         );
-    runCodeQuery(prompt, isProcessor ? "process(" : "evaluate(r");
+    runCodeQuery(prompt, isProcessor ? "process" : "evaluate");
   }, [progLang, context, replacePrompt, runCodeQuery, isProcessor]);
 
   // Edit existing code according to user-specified instruction

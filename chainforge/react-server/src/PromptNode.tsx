@@ -1420,26 +1420,29 @@ Soft failing by replacing undefined with empty strings.`,
     setStatus(Status.WARNING);
   }, [promptText, idxPromptVariantShown, promptVariantLabel]);
 
-  // Adds variants an AI wrote after the existing ones, and shows the first
+  // Adds variants an AI wrote after the existing ones, and shows the first.
+  // Builds on the prompts and labels as they are when the variants arrive,
+  // so edits made while they were being written are kept.
   const handleAddAIPromptVariants = useCallback(
     (variants: string[]) => {
-      const prompts =
-        typeof promptText === "string" ? [promptText] : promptText;
-      const updatedPrompts = prompts.concat(variants);
-      const updatedPromptVarLabels = promptVariantLabel.concat(
-        variants.map((_, i) => `Variant ${prompts.length + i + 1}`),
-      );
-      setPromptText(updatedPrompts);
-      setPromptVariantLabel(updatedPromptVarLabels);
-      setIdxPromptVariantShown(prompts.length);
-      setDataPropsForNode(id, {
-        prompt: updatedPrompts,
-        promptVariantLabel: updatedPromptVarLabels,
+      setPromptText((prev) => {
+        const prompts = typeof prev === "string" ? [prev] : prev;
+        const updatedPrompts = prompts.concat(variants);
+        setIdxPromptVariantShown(prompts.length);
+        setDataPropsForNode(id, { prompt: updatedPrompts });
+        refreshTemplateHooks(updatedPrompts);
+        return updatedPrompts;
       });
-      refreshTemplateHooks(updatedPrompts);
+      setPromptVariantLabel((prev) => {
+        const updatedLabels = prev.concat(
+          variants.map((_, i) => `Variant ${prev.length + i + 1}`),
+        );
+        setDataPropsForNode(id, { promptVariantLabel: updatedLabels });
+        return updatedLabels;
+      });
       setStatus(Status.WARNING);
     },
-    [promptText, promptVariantLabel, refreshTemplateHooks],
+    [id, refreshTemplateHooks],
   );
 
   const gotoPromptVariant = useCallback(

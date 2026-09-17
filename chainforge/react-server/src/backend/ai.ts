@@ -574,6 +574,20 @@ export async function generateRubric(
   return rubric;
 }
 
+/**
+ * Drops code blocks that define a function again after the first block that
+ * defines it, e.g. an alternative version a model wrote after its answer.
+ * @param funcName The function, e.g. "evaluate" (as `def evaluate(` or `function evaluate(`).
+ */
+export function dropRepeatedDefinitions(
+  codeBlocks: string[],
+  funcName: string,
+): string[] {
+  const definition = new RegExp(`\\b(def|function)\\s+${funcName}\\s*\\(`);
+  const firstDef = codeBlocks.findIndex((c) => definition.test(c));
+  return codeBlocks.filter((c, idx) => idx <= firstDef || !definition.test(c));
+}
+
 /** A document, or a chunk of one, to write test questions about. */
 export interface AIDocument {
   text: string;
@@ -592,13 +606,56 @@ export const TEST_QUESTION_COLUMNS = [
   "source_doc",
 ];
 
+/** Test questions an LLM wrote, and the passages it failed to write any for. */
+export interface TestQuestionsResult {
+  /** Rows with the columns in TEST_QUESTION_COLUMNS. */
+  rows: string[][];
+  /** How many passages got no questions, because their request or reply failed. */
+  failed: number;
+  errors: string[];
+}
+
+/**
+ * The passages of a document to ask `count` questions about, each with how
+ * many questions to ask. A short document is one passage. A long one is cut
+ * into up to `count` passages spread evenly over it (or one at random, for a
+ * single question), so the questions cover the whole document, not its start.
+ */
+export function documentPassages(
+  text: string,
+  count: number,
+  maxChars = MAX_DOCUMENT_CHARS,
+): { text: string; count: number }[] {
+  const doc = text.trim();
+  if (doc.length <= maxChars) return [{ text: doc, count }];
+
+  const numPassages = Math.min(count, Math.ceil(doc.length / maxChars));
+  const lastStart = doc.length - maxChars;
+  return Array.from({ length: numPassages }, (_, i) => {
+    let start =
+      numPassages === 1
+        ? Math.floor(Math.random() * (lastStart + 1))
+        : Math.round((i * lastStart) / (numPassages - 1));
+    // Start at a word, rather than partway through one
+    if (start > 0) {
+      const space = doc.slice(start, start + 200).search(/\s/);
+      if (space !== -1) start += space + 1;
+    }
+    return {
+      text: doc.slice(start, start + maxChars).trim(),
+      count:
+        Math.floor(count / numPassages) + (i < count % numPassages ? 1 : 0),
+    };
+  });
+}
+
 /**
  * Uses an LLM to write question-answer pairs grounded in documents (or their
  * chunks), for evaluating a retrieval-augmented generation pipeline. Each pair
- * comes from one document; documents are queried in parallel.
+ * comes from one passage of a document; passages are queried in parallel, and
+ * one that fails is left out rather than failing the rest.
  * @param n How many pairs to write. Documents are sampled, and asked for several if there are fewer than `n`.
  * @param guidance What kind of questions to write, if the user said.
- * @returns Rows with the columns in TEST_QUESTION_COLUMNS.
  */
 export async function generateTestQuestions(
   documents: AIDocument[],
@@ -606,57 +663,69 @@ export async function generateTestQuestions(
   guidance: string,
   model: LLMSpec,
   apiKeys?: Dict,
-): Promise<string[][]> {
+): Promise<TestQuestionsResult> {
   const docs = documents.filter((d) => d.text.trim().length > 0);
   if (docs.length === 0)
     throw new AIError("There are no documents to write questions about.");
 
-  // Spread the questions over the documents, in random order
+  // Spread the questions over the documents, in random order, and over the
+  // passages of long documents
   const shuffled = [...docs];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   const picked = shuffled.slice(0, n);
-  const counts = picked.map(
-    (_, i) => Math.floor(n / picked.length) + (i < n % picked.length ? 1 : 0),
-  );
-  const passages = picked.map((d) =>
-    d.text.trim().slice(0, MAX_DOCUMENT_CHARS),
+  const passages = picked.flatMap((doc, i) =>
+    documentPassages(
+      doc.text,
+      Math.floor(n / picked.length) + (i < n % picked.length ? 1 : 0),
+    ).map((passage) => ({ ...passage, source: doc.source })),
   );
 
-  // A document with several questions gets them in one request, so they differ
+  // A passage with several questions gets them in one request, so they differ
   const system = `You write test questions for evaluating a retrieval-augmented generation (RAG) system. You are given a passage from a document, and how many questions to write. Write questions that a user might ask, which the passage answers, and their answers, using only facts in the passage. Each question must make sense on its own, to someone who hasn't seen the passage: don't refer to "the passage", "the text" or "the document". Questions about the same passage must ask about different facts.${guidance.trim() ? ` ${guidance.trim()}` : ""} Respond with only a JSON array of objects, each with two keys, "question" and "answer".`;
   const result = await queryAIForEach(
     model,
     "{input}",
-    picked.map(
-      (d, i) =>
-        `Questions to write: ${counts[i]}\n\nDocument: ${d.source || "(untitled)"}\n\nPassage:\n${passages[i]}`,
+    passages.map(
+      (p) =>
+        `Questions to write: ${p.count}\n\nDocument: ${p.source || "(untitled)"}\n\nPassage:\n${p.text}`,
     ),
     { system, apiKeys },
   );
 
-  const { replies, errors } = result;
-  if (replies.every((r) => r === undefined))
-    throw new AIError(errors[0] ?? `${model.name} didn't write any questions.`);
-
-  return replies.flatMap((reply, i) => {
-    // Documents whose request failed are left out
-    if (reply === undefined) return [];
-    let parsed = unwrapList(parseJSONReply(reply));
-    if (!Array.isArray(parsed)) parsed = [parsed];
-    const rows = (parsed as Dict[])
-      .map((pair) => [
-        cellToString(pair?.question).trim(),
-        cellToString(pair?.answer).trim(),
-        passages[i],
-        picked[i].source,
-      ])
-      .filter((row) => row[0].length > 0)
-      .slice(0, counts[i]);
-    if (rows.length === 0)
-      throw new AIError(`The model didn't write any questions: ${reply}`);
-    return rows;
+  const rows: string[][] = [];
+  const errors = [...result.errors];
+  let failed = 0;
+  result.replies.forEach((reply, i) => {
+    // Passages whose request failed are left out
+    if (reply === undefined) {
+      failed += 1;
+      return;
+    }
+    try {
+      let parsed = unwrapList(parseJSONReply(reply));
+      if (!Array.isArray(parsed)) parsed = [parsed];
+      const passageRows = (parsed as Dict[])
+        .map((pair) => [
+          cellToString(pair?.question).trim(),
+          cellToString(pair?.answer).trim(),
+          passages[i].text,
+          passages[i].source,
+        ])
+        .filter((row) => row[0].length > 0)
+        .slice(0, passages[i].count);
+      if (passageRows.length === 0)
+        throw new AIError(`The model didn't write any questions: ${reply}`);
+      rows.push(...passageRows);
+    } catch (err) {
+      failed += 1;
+      errors.push(err instanceof Error ? err.message : String(err));
+    }
   });
+
+  if (rows.length === 0)
+    throw new AIError(errors[0] ?? `${model.name} didn't write any questions.`);
+  return { rows, failed, errors };
 }
