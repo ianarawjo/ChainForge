@@ -2103,9 +2103,10 @@ html[data-mantine-color-scheme="dark"] .upload-node-list {
 }
 
 /* Classes relative to the Media Node */
+/* Wide enough that the header's title, status and buttons share one line. */
 .media-node {
-  width: 340px;
-  max-width: 340px;
+  width: 380px;
+  max-width: 380px;
 }
 
 .media-node .node-header {

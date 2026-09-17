@@ -908,7 +908,6 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
                   variant="subtle"
                   size="xs"
                   color="gray"
-                  w="38%"
                   leftIcon={<IconX size={12} />}
                   onClick={handleRemoveMedia}
                   style={{ color: "#666" }}
@@ -919,7 +918,6 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
                   variant="subtle"
                   size="xs"
                   color="gray"
-                  w="38%"
                   leftIcon={<IconPlus size={12} />}
                   onClick={handleOpenUploadModal}
                   style={{ color: "#666" }}
