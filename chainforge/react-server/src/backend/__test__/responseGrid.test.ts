@@ -159,16 +159,56 @@ describe("collecting items and axis options", () => {
         ),
         accessors,
       ),
-    ).toEqual({ vars: ["style", "subject", "seed"], models: ["gpt", "flux"] });
+    ).toEqual({
+      vars: ["style", "subject", "seed"],
+      mediaVars: [],
+      models: ["gpt", "flux"],
+    });
   });
 
-  test("variables holding media are not offered as axes", () => {
+  test("variables holding media are listed apart from text variables", () => {
     const collected = items(
       response("vlm", { image: { t: "img", d: "input" }, question: "what?" }, [
         text("a cat"),
       ]),
     );
-    expect(gridAxisOptions(collected, accessors).vars).toEqual(["question"]);
+    const { vars, mediaVars } = gridAxisOptions(collected, accessors);
+    expect(vars).toEqual(["question"]);
+    expect(mediaVars).toEqual(["image"]);
+  });
+
+  test("media variables can be axes, and are the defaults only without text variables", () => {
+    // Text variables come first in the defaults, as before.
+    expect(resolveGridAxes(undefined, ["question"], 2, ["image"])).toEqual({
+      rows: "question",
+      cols: MODEL_AXIS,
+    });
+    // Images from a Media Node and nothing else: one row per image.
+    expect(resolveGridAxes(undefined, [], 2, ["image"])).toEqual({
+      rows: "image",
+      cols: MODEL_AXIS,
+    });
+    // A chosen media axis is kept.
+    expect(
+      resolveGridAxes({ cols: "image" }, ["question"], 2, ["image"]),
+    ).toEqual({ cols: "image" });
+  });
+
+  test("responses group by an image variable's file id", () => {
+    const collected = items(
+      response("vlm", { image: { t: "img", d: "fox.jpg" } }, [text("A fox.")]),
+      response("vlm", { image: { t: "img", d: "owl.jpg" } }, [text("An owl.")]),
+    );
+    // As in the app, where a media value reads as its file id.
+    const fileIds: GridAccessors = {
+      ...accessors,
+      valueOf: (r, v) =>
+        v in r.vars
+          ? (r.vars as Record<string, { d: string }>)[v].d
+          : undefined,
+    };
+    const grid = buildGrid(collected, { rows: "image" }, {}, fileIds);
+    expect(grid.rowValues).toEqual(["fox.jpg", "owl.jpg"]);
   });
 });
 

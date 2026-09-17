@@ -19,7 +19,7 @@ import StorageCache from "./backend/cache";
 import { IconCheck, IconChecks, IconX } from "@tabler/icons-react";
 import { getRatingKeyForResponse } from "./ResponseRatingToolbar";
 import useStore from "./store";
-import { useMediaUrl, useNearViewport } from "./useMediaUrl";
+import { useMediaUrl, useNearViewport, useThumbnailUrl } from "./useMediaUrl";
 
 // Lazy load the response toolbars
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
@@ -485,5 +485,48 @@ export const MediaBox: React.FC<MediaBoxProps> = ({ mediaUID }) => {
         <span className="icl">Image unavailable</span>
       ) : null}
     </div>
+  );
+};
+
+/**
+ * A small thumbnail of a stored image, e.g. where an image variable is shown
+ * in place of text (headers, variable tags). Its size is fixed, so layouts
+ * don't shift as it loads.
+ */
+export const MediaThumbnail: React.FC<{
+  mediaUID: string;
+  size: number;
+  title?: string;
+}> = ({ mediaUID, size, title }) => {
+  const { url, status } = useThumbnailUrl(mediaUID);
+  return (
+    <span
+      title={title}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: size,
+        height: size,
+        flexShrink: 0,
+        verticalAlign: "middle",
+        borderRadius: 3,
+        overflow: "hidden",
+        background: "rgba(128, 128, 128, 0.15)",
+      }}
+    >
+      {url ? (
+        <img
+          src={url}
+          alt=""
+          decoding="async"
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        />
+      ) : status === "error" ? (
+        <span className="icl" style={{ fontSize: 10 }}>
+          ?
+        </span>
+      ) : null}
+    </span>
   );
 };

@@ -68,7 +68,12 @@ import {
   DebounceRef,
   genDebounceFunc,
 } from "./backend/utils";
-import { MediaBox, ResponseGroup, getEvalResultStr } from "./ResponseBoxes";
+import {
+  MediaBox,
+  MediaThumbnail,
+  ResponseGroup,
+  getEvalResultStr,
+} from "./ResponseBoxes";
 import { getLabelForResponse } from "./ResponseRatingToolbar";
 import {
   Dict,
@@ -725,6 +730,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         key: string,
         val: string | undefined,
         depth: number,
+        isImage = false,
       ) => {
         if (val !== undefined) {
           const s = truncStr(val.trim(), 1024);
@@ -737,7 +743,12 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               }}
             >
               <span className="response-var-name">{key}&nbsp;=&nbsp;</span>
-              <span className="response-var-value">{`"${s}"`}</span>
+              {isImage ? (
+                // The value is the image's file id, which says nothing.
+                <MediaThumbnail mediaUID={val} size={wideFormat ? 72 : 40} />
+              ) : (
+                <span className="response-var-value">{`"${s}"`}</span>
+              )}
             </div>
           );
         } else {
@@ -794,10 +805,17 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
               transformDict(res_obj.vars, (v) => !eatenvars.includes(v)),
             ).map(([name, value]) => [
               name,
-              truncStr(
-                llmResponseDataToString(value).trim(),
-                wideFormat ? 72 : 18,
-              ) ?? "",
+              isImageResponseData(value) ? (
+                <MediaThumbnail
+                  mediaUID={value.d}
+                  size={wideFormat ? 48 : 28}
+                />
+              ) : (
+                truncStr(
+                  llmResponseDataToString(value).trim(),
+                  wideFormat ? 72 : 18,
+                ) ?? ""
+              ),
             ]),
           );
           return (
@@ -1384,7 +1402,14 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                   </div>
                 )
               : (key: string, val?: string) =>
-                  getHeaderBadge(key, val, eatenvars.length);
+                  getHeaderBadge(
+                    key,
+                    val,
+                    eatenvars.length,
+                    resps.some((r) =>
+                      isImageResponseData(r.vars?.[group_name]),
+                    ),
+                  );
 
           // Now produce nested divs corresponding to the groups
           const remaining_vars = varnames.slice(1);

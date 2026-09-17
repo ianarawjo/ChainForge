@@ -113,7 +113,7 @@ export interface TableResponseCellProps {
   /** A model name to show in the strip, where the view doesn't already show it. */
   modelNameFor?: (response: LLMResponse) => string | undefined;
   /** Prompt variables to list under the strip, e.g. those not grouped on. */
-  varsFor?: (response: LLMResponse) => Dict<string> | undefined;
+  varsFor?: (response: LLMResponse) => Dict<React.ReactNode> | undefined;
 }
 
 /** Copies a text response; sits in the response's bottom-right corner, shown on hover. */
