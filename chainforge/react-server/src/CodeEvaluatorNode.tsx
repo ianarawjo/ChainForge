@@ -205,7 +205,12 @@ export interface CodeEvaluatorComponentRef {
     logs?: string[];
   }>;
   serialize: () => { code: string };
+  // Replaces the code, e.g. with AI-generated code. Like an edit, this puts
+  // the last run's results out of date.
   setCodeText: (code: string) => void;
+  // Records the code that produced the node's current results, e.g. results
+  // loaded with a saved flow, so changing it puts them out of date
+  setCodeOnLastRun: (code: string) => void;
 }
 
 export interface CodeEvaluatorComponentProps {
@@ -255,14 +260,19 @@ export const CodeEvaluatorComponent = forwardRef<
   const debounceTimeoutRef = useRef(null);
   const debounce = genDebounceFunc(debounceTimeoutRef);
 
-  // Controlled handle when user edits code
-  const handleCodeEdit = (code: string) => {
+  // Sets the code, telling the caller whether it differs from the code that last ran
+  const updateCodeText = (code: string) => {
     if (codeTextOnLastRun !== false) {
       const code_changed = code !== codeTextOnLastRun;
       if (code_changed && onCodeChangedFromLastRun) onCodeChangedFromLastRun();
       else if (!code_changed && onCodeEqualToLastRun) onCodeEqualToLastRun();
     }
     setCodeText(code);
+  };
+
+  // Controlled handle when user edits code
+  const handleCodeEdit = (code: string) => {
+    updateCodeText(code);
 
     // Debounce to control number of re-renders to parent, when user is editing/typing:
     if (onCodeEdit) debounce(() => onCodeEdit(code), 200)();
@@ -334,7 +344,8 @@ export const CodeEvaluatorComponent = forwardRef<
   useImperativeHandle(ref, () => ({
     run,
     serialize,
-    setCodeText,
+    setCodeText: updateCodeText,
+    setCodeOnLastRun: setCodeTextOnLastRun,
   }));
 
   // Helpful instruction for user
@@ -525,6 +536,8 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
         // Store responses and set status to green checkmark
         setLastResponses(stripLLMDetailsFromResponses(resps));
         setStatus(Status.READY);
+        // Changing the code from here on puts these results out of date
+        codeEvaluatorRef.current?.setCodeOnLastRun(data.code ?? "");
       })
       .catch(() => {
         // soft fail
