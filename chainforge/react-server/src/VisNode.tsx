@@ -63,7 +63,7 @@ import { AIPlot } from "./backend/aiPlots";
 /**
  * STATS
  */
-import { sum } from "simple-statistics";
+import { mean } from "simple-statistics";
 // import * as jStat from "jstat"; // jStat is a pure JS library without types
 
 // FUTURE: Including in-progress error bar computation for future use.
@@ -144,6 +144,22 @@ const castEvalScoreToNum = (score: EvaluationScore): number => {
   else return 0; // unknown, soft fail
 };
 
+/**
+ * The mean of the scores in `items` and how many there are, leaving out
+ * results that aren't scores (errors), so they don't count as zeros.
+ */
+const meanAndCount = (
+  items: EvaluationScore[],
+): { mean: number | null; n: number } => {
+  const nums = items
+    .filter(
+      (x) =>
+        (typeof x === "number" && Number.isFinite(x)) || typeof x === "boolean",
+    )
+    .map(castEvalScoreToNum);
+  return { mean: nums.length > 0 ? mean(nums) : null, n: nums.length };
+};
+
 const findEvalResKeys = (resps: LLMResponse[]): Set<string> => {
   const eval_res_keys = new Set<string>();
   resps.forEach((resp_obj) => {
@@ -173,7 +189,7 @@ const toolbarItemStyle: React.CSSProperties = {
 };
 
 const toolbarLabelStyle: React.CSSProperties = {
-  fontSize: "8.5pt",
+  fontSize: "var(--fs-xs)",
   fontWeight: 600,
   whiteSpace: "nowrap",
 };
@@ -186,7 +202,7 @@ const toolbarSelectStyles = {
     height: 22,
     minHeight: 22,
     lineHeight: "20px",
-    fontSize: "8.5pt",
+    fontSize: "var(--fs-xs)",
     paddingLeft: 6,
     textOverflow: "ellipsis",
   },
@@ -859,10 +875,6 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         // Statistics: what the plot below compares, and evalstats' results for
         // it once they arrive (drawn over plots of single groupings).
         let stats_entities: Dict<EvalStatsEntity> | undefined;
-        // With statistics on, bar charts of numeric scores show means rather
-        // than sums, so their confidence intervals fit on the same axis.
-        const show_means =
-          !!showStats && statsAvailable && sel_typeof_eval_res === "Numeric";
         let stats_alpha = 0.05;
         if (showStats && statsAvailable) {
           const llm_factor: EvalStatsFactor = {
@@ -1138,61 +1150,48 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 marker: { color },
               };
 
-              // If only one result, plot a bar chart:
-              if (x_items.length === 1) {
+              // Bars show each group's mean score, with its n on hover. A
+              // single result can only be a bar; otherwise the user picks.
+              if (x_items.length === 1) setForcedGraphType("bar");
+              if (x_items.length === 1 || graphType.key === "bar") {
+                const { mean: bar_mean, n } = meanAndCount(x_items);
                 d.type = "bar";
+                d.x = bar_mean === null ? [] : [bar_mean];
+                d.y = bar_mean === null ? [] : [shortnames[name]];
+                d.customdata = [n];
+                d.hovertemplate =
+                  "%{y}<br>mean %{x:.3g}<br>n = %{customdata}<extra></extra>";
                 d.textposition = "none"; // hide the text which appears within each bar
-                d.y = new Array(x_items.length).fill(shortnames[name]);
-                setForcedGraphType("bar");
+                delete d.text;
+                // One bar per row, so bars needn't make room for each other.
+                layout.barmode = "overlay";
+                layout.xaxis = {
+                  title: {
+                    font: { size: 12 },
+                    text:
+                      "Mean of " +
+                      (metric_axes_labels.length > 0
+                        ? `'${selectedEvalResVar}'`
+                        : "scores"),
+                  },
+                  ...layout.xaxis,
+                };
               } else {
-                // If multiple eval results per response object (num generations per prompt n > 1),
-                // let user decide:
-                if (graphType.key === "bar") {
-                  d.type = "histogram";
-                  d.histfunc = show_means ? "avg" : "sum";
-                  d.y = new Array(x_items.length).fill(shortnames[name]);
-                  d.textposition = "none"; // hide the text which appears within each bar
-                  const xaxis_title =
-                    (show_means ? "Mean of " : "Sum of ") +
-                    (metric_axes_labels.length > 0
-                      ? "'" + selectedEvalResVar + "'"
-                      : "scores");
-                  layout.xaxis = {
-                    title: { font: { size: 12 }, text: xaxis_title },
-                    ...layout.xaxis,
-                  };
-
-                  // Compute error bars if present
-                  // const error_values = [
-                  //   computeErrorBar(x_items.map(castEvalScoreToNum), 1.0, sum),
-                  // ];
-                  // if (error_values.length > 0)
-                  //   d.error_x = {
-                  //     type: "data",
-                  //     // Asymmetric errors bars, since we're using bootstrapping to determine the 95% CI
-                  //     array: error_values.map((e) => e[1]), // Upper bound
-                  //     arrayminus: error_values.map((e) => e[0]), // Lower bound
-                  //     visible: true,
-                  //   };
-                } else {
-                  // Box-and-whiskers plot
-                  d.type = "box";
-                  d.boxpoints = "all";
-                }
+                // Box-and-whiskers plot
+                d.type = "box";
+                d.boxpoints = "all";
               }
 
               spec.push(d);
             }
           }
-          // Intervals of the mean, over boxes or bars of means (not of sums).
+          // Intervals of the mean, over boxes or bars of means.
           if (
             stats_entities &&
             !plotting_categorical_vars &&
             spec.length > 0 &&
             spec.every(
-              (trace: Dict) =>
-                trace.type === "box" ||
-                (trace.type === "histogram" && trace.histfunc === "avg"),
+              (trace: Dict) => trace.type === "box" || trace.type === "bar",
             )
           ) {
             // Boxes mark medians; also mark the means the intervals are around.
@@ -1307,41 +1306,32 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 d.type = "bar";
                 d.offsetgroup = llm;
                 d.textposition = "none"; // hide the text which appears within each bar
-                xaxis_title =
-                  (show_means ? "Mean of " : "Sum of ") +
-                  (metric_axes_labels.length > 0
-                    ? "'" + selectedEvalResVar + "'"
-                    : "scores");
 
                 if (sel_typeof_eval_res === "Numeric") {
-                  // To make error bars work, we need to sum the numbers, instead of relying
-                  // upon the stacked bar chart:
-                  let sum_x_items: number[] = [];
-                  // let error_bars: number[][] = [];
-                  const seq_y_items = [];
+                  // A bar for each value at the mean of this group's scores
+                  // for it, with n on hover.
+                  xaxis_title =
+                    "Mean of " +
+                    (metric_axes_labels.length > 0
+                      ? "'" + selectedEvalResVar + "'"
+                      : "scores");
+                  const bar_x: number[] = [];
+                  const bar_y: string[] = [];
+                  const bar_n: number[] = [];
                   for (const name of Object.values(shortnames)) {
-                    seq_y_items.push(name);
-                    // Skip results that aren't scores (errors), so they don't
-                    // count as zeros in a mean.
-                    const xs_for_y = x_items
-                      .filter(
-                        (x, idx) =>
-                          y_items[idx] === name &&
-                          (typeof x === "number" || typeof x === "boolean"),
-                      )
-                      .map(castEvalScoreToNum);
-                    sum_x_items = sum_x_items.concat(
-                      show_means && xs_for_y.length > 0
-                        ? mean(xs_for_y)
-                        : sum(xs_for_y),
+                    const { mean: bar_mean, n } = meanAndCount(
+                      x_items.filter((_, idx) => y_items[idx] === name),
                     );
-                    // error_bars = error_bars.concat([
-                    //   computeErrorBar(xs_for_y, 1.0, sum),
-                    // ]);
+                    if (bar_mean === null) continue;
+                    bar_x.push(bar_mean);
+                    bar_y.push(name);
+                    bar_n.push(n);
                   }
-                  d.x = sum_x_items;
-                  d.y = seq_y_items;
-                  d.hovertemplate = llm;
+                  d.x = bar_x;
+                  d.y = bar_y;
+                  d.customdata = bar_n;
+                  d.hovertemplate =
+                    "%{y}<br>mean %{x:.3g}<br>n = %{customdata}<extra>%{fullData.name}</extra>";
                   delete d.text;
 
                   // Add error bars to plot
@@ -1367,12 +1357,13 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             }
           });
           // Confidence intervals for each group and value, beside their bars
-          // (of percent true, or of means) or boxes. Bars of sums have none.
+          // (of percent true, or of means) or boxes.
           if (
             stats_entities &&
             (sel_typeof_eval_res === "Boolean" ||
               spec.every((trace: Dict) => trace.type === "box") ||
-              (show_means && spec.every((trace: Dict) => trace.type === "bar")))
+              (sel_typeof_eval_res === "Numeric" &&
+                spec.every((trace: Dict) => trace.type === "bar")))
           ) {
             const entities = stats_entities;
             const scale = sel_typeof_eval_res === "Boolean" ? 100 : 1;
@@ -2005,7 +1996,9 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
                         })
                       }
                       className="nodrag"
-                      styles={{ label: { paddingLeft: 4, fontSize: "9pt" } }}
+                      styles={{
+                        label: { paddingLeft: 4, fontSize: "var(--fs-sm)" },
+                      }}
                     />
                   )}
                 </span>,

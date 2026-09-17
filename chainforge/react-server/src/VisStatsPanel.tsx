@@ -239,7 +239,7 @@ const VisStatsPanel: React.FC<VisStatsPanelProps> = ({
             </div>
           </details>
 
-          <div style={{ ...note, fontSize: "7.5pt" }}>
+          <div style={{ ...note, fontSize: "var(--fs-xs)" }}>
             {result.n_items} items
             {result.n_runs > 1 ? ` × ${result.n_runs} runs` : ""} · paired ·
             evalstats
@@ -279,7 +279,7 @@ const VisStatsPanel: React.FC<VisStatsPanelProps> = ({
       style={{
         width: 0,
         minWidth: "100%",
-        fontSize: "8pt",
+        fontSize: "var(--fs-xs)",
         marginTop: 4,
         borderTop: rule,
         paddingTop: 2,
