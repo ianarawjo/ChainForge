@@ -16,7 +16,7 @@ import {
   Switch,
   useMantineColorScheme,
 } from "@mantine/core";
-import useStore from "./store";
+import useStore, { colorPalettes } from "./store";
 import Plot from "react-plotly.js";
 // The Plotly bundle react-plotly.js renders with (importing "plotly.js" would
 // add a second copy), for resizing plots ourselves. It has no type declarations.
@@ -158,6 +158,78 @@ const meanAndCount = (
     )
     .map(castEvalScoreToNum);
   return { mean: nums.length > 0 ? mean(nums) : null, n: nums.length };
+};
+
+/** A bar in a 100%-stacked chart of categorical scores. */
+interface CategoryShareRow {
+  /** The bar's label, or its [outer, inner] labels on a two-level axis. */
+  y: string | [string, string];
+  items: EvaluationScore[];
+}
+
+/**
+ * 100%-stacked bars for categorical scores: one trace per category, splitting
+ * each row into the share of its scores in that category, with the count and
+ * n on hover.
+ */
+const categoryShareTraces = (
+  rows: CategoryShareRow[],
+  palette: string[],
+): Dict[] => {
+  const counts = rows.map((row) => {
+    const byCategory: Dict<number> = {};
+    row.items.forEach((item) => {
+      if (item === undefined || item === null) return;
+      const category = String(item);
+      byCategory[category] = (byCategory[category] ?? 0) + 1;
+    });
+    return byCategory;
+  });
+  const ns = counts.map((c) => Object.values(c).reduce((a, b) => a + b, 0));
+  const categories = Array.from(
+    new Set(counts.flatMap((c) => Object.keys(c))),
+  ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const twoLevel = rows.some((row) => Array.isArray(row.y));
+  const y = twoLevel
+    ? [
+        rows.map((row) => (row.y as [string, string])[0]),
+        rows.map((row) => (row.y as [string, string])[1]),
+      ]
+    : rows.map((row) => row.y);
+  return categories.map((category, i) => ({
+    type: "bar",
+    orientation: "h",
+    name: category,
+    y,
+    x: counts.map((c, r) =>
+      ns[r] > 0 ? (100 * (c[category] ?? 0)) / ns[r] : 0,
+    ),
+    customdata: counts.map((c, r) => [c[category] ?? 0, ns[r]]),
+    marker: { color: palette[i % palette.length] },
+    hovertemplate:
+      "%{fullData.name}: %{x:.1f}%<br>%{customdata[0]} of n = %{customdata[1]}<extra></extra>",
+  }));
+};
+
+/** The layout for categoryShareTraces: stacked to 100%, with a legend of categories. */
+const applyCategoryShareLayout = (
+  layout: Dict,
+  twoLevel: boolean,
+  xTitle: string,
+) => {
+  layout.barmode = "stack";
+  layout.showlegend = true;
+  layout.hovermode = "closest";
+  layout.xaxis = {
+    ...layout.xaxis,
+    title: { font: { size: 12 }, text: xTitle },
+    range: [0, 100],
+  };
+  layout.yaxis = {
+    ...layout.yaxis,
+    type: twoLevel ? "multicategory" : "category",
+    showgrid: true,
+  };
 };
 
 const findEvalResKeys = (resps: LLMResponse[]): Set<string> => {
@@ -814,11 +886,13 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           if (is_all_bools) {
             typeof_eval_res = "Boolean";
             sel_typeof_eval_res = "Boolean";
-            setDisableGraphTypeOption(true);
           }
-        } else {
-          setDisableGraphTypeOption(false);
         }
+        // True/false and categorical scores are always plotted as bars.
+        setDisableGraphTypeOption(
+          sel_typeof_eval_res === "Boolean" ||
+            sel_typeof_eval_res === "Categorical",
+        );
 
         // Check the max length of eval results, as if it's only 1 score per item (num of generations per prompt n=1),
         // we might want to plot the result differently:
@@ -1061,134 +1135,100 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           resp_to_x: (r: LLMResponse) => string,
           group_type: "var" | "llm",
         ) => {
-          let names = new Set<string>();
-          const plotting_categorical_vars =
-            group_type === "var" && sel_typeof_eval_res === "Categorical";
+          const names = new Set(responses.map(resp_to_x));
+          const shortnames = genUniqueShortnames(names);
 
-          // When we're plotting vars, we want the stacked bar colors to be the *categories*,
-          // and the x_items to be the names of vars, so that the left axis is a vertical list of varnames.
-          if (plotting_categorical_vars) {
-            // Get all categories present in the evaluation results
-            responses.forEach((r) =>
-              get_items(r.eval_res).forEach((i) => names.add(i.toString())),
+          // Categorical scores: a bar for each group, split into the share of
+          // its responses in each category.
+          if (sel_typeof_eval_res === "Categorical") {
+            spec = categoryShareTraces(
+              [...names].map((name) => ({
+                y: shortnames[name],
+                items: responses
+                  .filter((r) => resp_to_x(r) === name)
+                  .flatMap((r) => get_items(r.eval_res)),
+              })),
+              colorPalettes.var,
             );
-          } else {
-            // Get all possible values of the single variable response ('name' vals)
-            names = new Set(responses.map(resp_to_x));
+            setForcedGraphType("bar");
+            applyCategoryShareLayout(
+              layout,
+              false,
+              metric_axes_labels.length > 0
+                ? `% of responses ('${selectedEvalResVar}')`
+                : "% of responses",
+            );
+            layout.margin.l = calcLeftPaddingForYLabels(
+              Object.values(shortnames),
+            );
+            return;
           }
 
-          const shortnames = genUniqueShortnames(names);
-          const yLabelShortnames = genUniqueShortnames(
-            new Set(responses.map(resp_to_x)),
-          );
           for (const name of names) {
             let x_items: EvaluationScore[] = [];
             let text_items: string[] = [];
-
-            if (plotting_categorical_vars) {
-              responses.forEach((r) => {
-                // Get all evaluation results for this response which match the category 'name':
-                const eval_res = get_items(r.eval_res).filter(
-                  (i) => i === name,
-                );
-                const rawLabel = resp_to_x(r);
-                const yLabel = yLabelShortnames[rawLabel] ?? rawLabel;
-                x_items = x_items.concat(
-                  new Array(eval_res.length).fill(yLabel),
-                );
-              });
-            } else {
-              responses.forEach((r) => {
-                if (resp_to_x(r) !== name) return;
-                x_items = x_items.concat(get_items(r.eval_res));
-                text_items = text_items.concat(
-                  createHoverTexts(r.responses.map(castData)),
-                );
-              });
-            }
+            responses.forEach((r) => {
+              if (resp_to_x(r) !== name) return;
+              x_items = x_items.concat(get_items(r.eval_res));
+              text_items = text_items.concat(
+                createHoverTexts(r.responses.map(castData)),
+              );
+            });
 
             // Lookup the color per LLM when displaying LLM differences,
             // otherwise use the palette for displaying variables.
             const color =
               group_type === "llm"
                 ? getColorForLLMAndSetIfNotFound(name)
-                : // :   varcolors[name_idx % varcolors.length];
-                  getColorForLLMAndSetIfNotFound(get_llm(responses[0]));
+                : getColorForLLMAndSetIfNotFound(get_llm(responses[0]));
 
-            if (
-              sel_typeof_eval_res === "Boolean" ||
-              sel_typeof_eval_res === "Categorical"
-            ) {
-              // Plot a histogram for categorical or boolean data.
-              spec.push({
-                type: "histogram",
-                histfunc: "sum",
-                name: shortnames[name],
-                marker: { color },
-                y: x_items,
-                orientation: "h",
-              });
-              layout.barmode = "stack";
-              layout.yaxis = {
-                showticklabels: true,
-                dtick: 1,
-                type: "category",
-                showgrid: true,
-              };
+            // Plot bar or boxplots for all other cases.
+            const d: Dict = {
+              name: shortnames[name],
+              x: x_items,
+              text: text_items,
+              hovertemplate: "%{text}",
+              orientation: "h",
+              marker: { color },
+            };
+
+            // Bars show each group's mean score, with its n on hover. A
+            // single result can only be a bar; otherwise the user picks.
+            if (x_items.length === 1) setForcedGraphType("bar");
+            if (x_items.length === 1 || graphType.key === "bar") {
+              const { mean: bar_mean, n } = meanAndCount(x_items);
+              d.type = "bar";
+              d.x = bar_mean === null ? [] : [bar_mean];
+              d.y = bar_mean === null ? [] : [shortnames[name]];
+              d.customdata = [n];
+              d.hovertemplate =
+                "%{y}<br>mean %{x:.3g}<br>n = %{customdata}<extra></extra>";
+              d.textposition = "none"; // hide the text which appears within each bar
+              delete d.text;
+              // One bar per row, so bars needn't make room for each other.
+              layout.barmode = "overlay";
               layout.xaxis = {
-                title: { font: { size: 12 }, text: "Number of 'true' values" },
+                title: {
+                  font: { size: 12 },
+                  text:
+                    "Mean of " +
+                    (metric_axes_labels.length > 0
+                      ? `'${selectedEvalResVar}'`
+                      : "scores"),
+                },
                 ...layout.xaxis,
               };
             } else {
-              // Plot bar or boxplots for all other cases.
-              const d: Dict = {
-                name: shortnames[name],
-                x: x_items,
-                text: text_items,
-                hovertemplate: "%{text}",
-                orientation: "h",
-                marker: { color },
-              };
-
-              // Bars show each group's mean score, with its n on hover. A
-              // single result can only be a bar; otherwise the user picks.
-              if (x_items.length === 1) setForcedGraphType("bar");
-              if (x_items.length === 1 || graphType.key === "bar") {
-                const { mean: bar_mean, n } = meanAndCount(x_items);
-                d.type = "bar";
-                d.x = bar_mean === null ? [] : [bar_mean];
-                d.y = bar_mean === null ? [] : [shortnames[name]];
-                d.customdata = [n];
-                d.hovertemplate =
-                  "%{y}<br>mean %{x:.3g}<br>n = %{customdata}<extra></extra>";
-                d.textposition = "none"; // hide the text which appears within each bar
-                delete d.text;
-                // One bar per row, so bars needn't make room for each other.
-                layout.barmode = "overlay";
-                layout.xaxis = {
-                  title: {
-                    font: { size: 12 },
-                    text:
-                      "Mean of " +
-                      (metric_axes_labels.length > 0
-                        ? `'${selectedEvalResVar}'`
-                        : "scores"),
-                  },
-                  ...layout.xaxis,
-                };
-              } else {
-                // Box-and-whiskers plot
-                d.type = "box";
-                d.boxpoints = "all";
-              }
-
-              spec.push(d);
+              // Box-and-whiskers plot
+              d.type = "box";
+              d.boxpoints = "all";
             }
+
+            spec.push(d);
           }
           // Intervals of the mean, over boxes or bars of means.
           if (
             stats_entities &&
-            !plotting_categorical_vars &&
             spec.length > 0 &&
             spec.every(
               (trace: Dict) => trace.type === "box" || trace.type === "bar",
@@ -1230,6 +1270,33 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           // Get all possible values of the single variable response ('name' vals)
           const names = new Set(responses.map(resp_to_x));
           const shortnames = genUniqueShortnames(names);
+
+          // Categorical scores: a bar for each value of the variable and LLM,
+          // split into the share of its responses in each category.
+          if (sel_typeof_eval_res === "Categorical") {
+            const rows: CategoryShareRow[] = [];
+            for (const name of names)
+              for (const llm of llm_names) {
+                const items = responses_by_llm[llm]
+                  .filter((r) => resp_to_x(r) === name)
+                  .flatMap((r) => get_items(r.eval_res));
+                if (items.length > 0)
+                  rows.push({ y: [shortnames[name], llm], items });
+              }
+            spec = categoryShareTraces(rows, colorPalettes.var);
+            setForcedGraphType("bar");
+            applyCategoryShareLayout(
+              layout,
+              true,
+              metric_axes_labels.length > 0
+                ? `% of responses ('${selectedEvalResVar}')`
+                : "% of responses",
+            );
+            layout.margin.l =
+              calcLeftPaddingForYLabels(Object.values(shortnames)) +
+              calcLeftPaddingForYLabels(llm_names);
+            return;
+          }
 
           llm_names.forEach((llm) => {
             // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
