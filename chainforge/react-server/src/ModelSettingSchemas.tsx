@@ -726,6 +726,9 @@ export const OpenRouterSettings: ModelSettingsDict = {
         title: "max_tokens",
         description:
           "The maximum number of tokens to generate. Reasoning models may spend much of this on reasoning, so set it generously for them.",
+        // Small open models can repeat themselves until they hit the model's
+        // own limit (one ran to 32K tokens, for minutes), so cap them by default.
+        default: 16000,
       },
       seed: {
         type: "integer",
@@ -769,7 +772,7 @@ export const OpenRouterSettings: ModelSettingsDict = {
       "ui:help": "Defaults to blank (use reasoning.effort).",
     },
     max_tokens: {
-      "ui:help": "Defaults to the model's limit.",
+      "ui:help": "Defaults to 16,000. Clear it to use the model's own limit.",
     },
   },
   postprocessors: ChatGPTSettings.postprocessors,

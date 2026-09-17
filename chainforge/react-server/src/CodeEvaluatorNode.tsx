@@ -205,7 +205,12 @@ export interface CodeEvaluatorComponentRef {
     logs?: string[];
   }>;
   serialize: () => { code: string };
+  // Replaces the code, e.g. with AI-generated code. Like an edit, this puts
+  // the last run's results out of date.
   setCodeText: (code: string) => void;
+  // Records the code that produced the node's current results, e.g. results
+  // loaded with a saved flow, so changing it puts them out of date
+  setCodeOnLastRun: (code: string) => void;
 }
 
 export interface CodeEvaluatorComponentProps {
@@ -255,14 +260,19 @@ export const CodeEvaluatorComponent = forwardRef<
   const debounceTimeoutRef = useRef(null);
   const debounce = genDebounceFunc(debounceTimeoutRef);
 
-  // Controlled handle when user edits code
-  const handleCodeEdit = (code: string) => {
+  // Sets the code, telling the caller whether it differs from the code that last ran
+  const updateCodeText = (code: string) => {
     if (codeTextOnLastRun !== false) {
       const code_changed = code !== codeTextOnLastRun;
       if (code_changed && onCodeChangedFromLastRun) onCodeChangedFromLastRun();
       else if (!code_changed && onCodeEqualToLastRun) onCodeEqualToLastRun();
     }
     setCodeText(code);
+  };
+
+  // Controlled handle when user edits code
+  const handleCodeEdit = (code: string) => {
+    updateCodeText(code);
 
     // Debounce to control number of re-renders to parent, when user is editing/typing:
     if (onCodeEdit) debounce(() => onCodeEdit(code), 200)();
@@ -334,7 +344,8 @@ export const CodeEvaluatorComponent = forwardRef<
   useImperativeHandle(ref, () => ({
     run,
     serialize,
-    setCodeText,
+    setCodeText: updateCodeText,
+    setCodeOnLastRun: setCodeTextOnLastRun,
   }));
 
   // Helpful instruction for user
@@ -525,16 +536,23 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
         // Store responses and set status to green checkmark
         setLastResponses(stripLLMDetailsFromResponses(resps));
         setStatus(Status.READY);
+        // Changing the code from here on puts these results out of date
+        codeEvaluatorRef.current?.setCodeOnLastRun(data.code ?? "");
       })
       .catch(() => {
         // soft fail
       });
   }, []);
 
+  // Whether the warning status is only because the code was edited since the
+  // last run, so undoing the edit can clear it
+  const warnedForCodeEdit = useRef(false);
+
   // On upstream changes
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
       setDataPropsForNode(id, { refresh: false });
+      warnedForCodeEdit.current = false;
       setStatus(Status.WARNING);
       const pulled_inputs = pullInputs();
       if (pulled_inputs) setLastContext(getVarsAndMetavars(pulled_inputs));
@@ -545,11 +563,19 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
   const handleCodeEdit = (code: string) => {
     setDataPropsForNode(id, { code });
   };
+  // Editing the code puts the last run's results out of date; changing it back
+  // brings them up to date again, unless something else changed meanwhile.
   const handleCodeChangedFromLastRun = useCallback(() => {
-    if (status === Status.WARNING) setStatus(Status.READY);
+    if (status === Status.READY) {
+      warnedForCodeEdit.current = true;
+      setStatus(Status.WARNING);
+    }
   }, [status, setStatus]);
   const handleCodeEqualToLastRun = useCallback(() => {
-    if (status !== Status.WARNING) setStatus(Status.WARNING);
+    if (status === Status.WARNING && warnedForCodeEdit.current) {
+      warnedForCodeEdit.current = false;
+      setStatus(Status.READY);
+    }
   }, [status, setStatus]);
 
   const handleRunClick = () => {
@@ -558,6 +584,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
     if (!pulled_inputs) return;
 
     setStatus(Status.LOADING);
+    warnedForCodeEdit.current = false;
     setLastRunLogs("");
     setLastResponses([]);
 

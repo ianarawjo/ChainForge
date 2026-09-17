@@ -1447,9 +1447,9 @@ export async function evalWithLLM(
       { __input: inputs },
       system_message, // if there's a sys_message, we pass it in chat history format
       undefined,
-      undefined,
-      progress_listener,
       !cache_id, // if there's no cache_id, we don't want to cache the responses
+      progress_listener,
+      undefined,
       cancel_id,
       // Grader responses are cached for this session only, never exported, so
       // don't intern their prompts: each pastes in a whole response, and the

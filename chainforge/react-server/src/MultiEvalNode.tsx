@@ -309,10 +309,25 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
     }[]
   >([]);
 
+  // The evaluators as of the last render, to tell whether an update changes them
+  const latestEvaluators = useRef(evaluators);
+  latestEvaluators.current = evaluators;
+
   const updateEvalState = (
     idx: number,
     transformFunc: (e: EvaluatorContainerDesc) => void,
   ) => {
+    // Evaluators report their settings as they load (e.g. an LLM Scorer its
+    // model), which isn't a change, so it mustn't mark results out of date.
+    const current = latestEvaluators.current[idx];
+    if (current !== undefined) {
+      const updated: EvaluatorContainerDesc = JSON.parse(
+        JSON.stringify(current),
+      );
+      transformFunc(updated);
+      if (JSON.stringify(updated.state) === JSON.stringify(current.state))
+        return;
+    }
     setStatus(Status.WARNING);
     setEvaluators((es) =>
       es.map((e, i) => {

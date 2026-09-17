@@ -37,9 +37,14 @@ import {
   RubricFormat,
   TEST_QUESTION_COLUMNS,
 } from "./backend/ai";
-import { IconSparkles, IconAlertCircle } from "@tabler/icons-react";
+import {
+  IconSparkles,
+  IconAlertCircle,
+  IconArrowBackUp,
+} from "@tabler/icons-react";
 import { AlertModalContext } from "./AlertModal";
 import useAIFeatures from "./useAIFeatures";
+import useUndoAIOverwrite from "./useUndoAIOverwrite";
 import {
   INFO_CODEBLOCK_JS,
   INFO_CODEBLOCK_PY,
@@ -265,6 +270,28 @@ export function AIPopover({
   );
 }
 
+/** The button for undoing an AI change, shown under the popover's tabs. */
+function UndoAIOverwriteButton({
+  label,
+  onUndo,
+}: {
+  label: string;
+  onUndo: () => void;
+}) {
+  return (
+    <Button
+      size="xs"
+      variant="subtle"
+      color="gray"
+      fullWidth
+      leftIcon={<IconArrowBackUp size={14} />}
+      onClick={onUndo}
+    >
+      {label}
+    </Button>
+  );
+}
+
 export interface AIGenReplaceTablePopoverProps {
   // Values in the rows of the table's columns
   values: TabularDataRowType[];
@@ -304,6 +331,17 @@ export function AIGenReplaceTablePopover({
   getDocuments,
 }: AIGenReplaceTablePopoverProps) {
   const { fastModel, apiKeys } = useAIFeatures();
+
+  // Undo for Replace and From docs, which replace the whole table
+  const restoreTable = useCallback(
+    (before: { columns: TabularDataColType[]; rows: TabularDataRowType[] }) =>
+      onReplaceTable(before.columns, before.rows),
+    [onReplaceTable],
+  );
+  const undoReplace = useUndoAIOverwrite(
+    { columns: colValues, rows: values },
+    restoreTable,
+  );
 
   // Test questions from documents state
   const [documents, setDocuments] = useState<AIDocument[]>([]);
@@ -371,6 +409,7 @@ export function AIGenReplaceTablePopover({
         });
         return rowData;
       });
+      undoReplace.remember();
       onReplaceTable(columns, tabularRows);
     } catch (err) {
       handleError(err);
@@ -553,6 +592,7 @@ export function AIGenReplaceTablePopover({
         key: `col-${index}`,
         header: col,
       }));
+      undoReplace.remember();
       onReplaceTable(
         columns,
         rows.map((cells) => {
@@ -673,6 +713,12 @@ export function AIGenReplaceTablePopover({
           {documentsUI}
         </Tabs.Panel>
       </Tabs>
+      {undoReplace.canUndo && (
+        <UndoAIOverwriteButton
+          label="Undo replacing the table"
+          onUndo={undoReplace.undo}
+        />
+      )}
     </AIPopover>
   );
 }
@@ -714,6 +760,13 @@ export function AIGenReplaceItemsPopover({
   const [generateAndReplacePrompt, setGenerateAndReplacePrompt] = useState("");
   const [genDiverseOutputs, setGenDiverseOutputs] = useState(false);
 
+  // Undo for Replace
+  const restoreValues = useCallback(
+    (before: Dict<string> | string[]) => onReplaceValues(Object.values(before)),
+    [onReplaceValues],
+  );
+  const undoReplace = useUndoAIOverwrite(values, restoreValues);
+
   const nonEmptyRows = useMemo(
     () => Object.values(values).filter((row) => row !== "").length,
     [values],
@@ -749,7 +802,10 @@ export function AIGenReplaceItemsPopover({
       fastModel,
       apiKeys,
     )
-      .then(onReplaceValues)
+      .then((vals) => {
+        undoReplace.remember();
+        onReplaceValues(vals);
+      })
       .catch(handleError)
       .finally(() => setValuesLoading(false));
   }, [
@@ -761,6 +817,7 @@ export function AIGenReplaceItemsPopover({
     onReplaceValues,
     setValuesLoading,
     handleError,
+    undoReplace.remember,
   ]);
 
   const extendUI = (
@@ -861,6 +918,9 @@ export function AIGenReplaceItemsPopover({
           {replaceUI}
         </Tabs.Panel>
       </Tabs>
+      {undoReplace.canUndo && (
+        <UndoAIOverwriteButton label="Undo replace" onUndo={undoReplace.undo} />
+      )}
     </AIPopover>
   );
 }
@@ -927,6 +987,9 @@ export function AIGenCodeEvaluatorPopover({
   const showAlert = useContext(AlertModalContext);
   const [didEncounterError, setDidEncounterError] = useState(false);
 
+  // Undo for Replace and Edit, which both overwrite the code
+  const undoCodeChange = useUndoAIOverwrite(currentEvalCode, onGeneratedCode);
+
   // Queries the model for code, putting it in the editor
   const runCodeQuery = useCallback(
     (prompt: string, onlyFirstFunc?: string) => {
@@ -936,7 +999,10 @@ export function AIGenCodeEvaluatorPopover({
 
       generateCode(smartModel, prompt, apiKeys, onlyFirstFunc)
         .then((code) => {
-          if (code !== undefined) onGeneratedCode(code);
+          if (code !== undefined) {
+            undoCodeChange.remember();
+            onGeneratedCode(code);
+          }
           // No code detected in the response
           else setDidEncounterError(true);
         })
@@ -950,7 +1016,14 @@ export function AIGenCodeEvaluatorPopover({
           if (onLoadingChange) onLoadingChange(false);
         });
     },
-    [smartModel, apiKeys, onLoadingChange, onGeneratedCode, showAlert],
+    [
+      smartModel,
+      apiKeys,
+      onLoadingChange,
+      onGeneratedCode,
+      showAlert,
+      undoCodeChange.remember,
+    ],
   );
 
   // Generate an evaluate function, given the user-specified prompt, in the proper programming language
@@ -1060,6 +1133,12 @@ ${currentEvalCode}
           </Button>
         </Tabs.Panel>
       </Tabs>
+      {undoCodeChange.canUndo && (
+        <UndoAIOverwriteButton
+          label="Undo AI code change"
+          onUndo={undoCodeChange.undo}
+        />
+      )}
     </AIPopover>
   );
 }
@@ -1091,18 +1170,31 @@ export function AIGenRubricPopover({
   const [editPrompt, setEditPrompt] = useState("");
   const [awaitingResponse, setAwaitingResponse] = useState(false);
 
+  // Undo for Replace and Edit, which both overwrite the rubric
+  const undoRubricChange = useUndoAIOverwrite(currentRubric, onGeneratedRubric);
+
   const runRubricQuery = useCallback(
     (request: string, rubricToEdit?: string) => {
       setAwaitingResponse(true);
       generateRubric(request, format, smartModel, apiKeys, rubricToEdit)
-        .then(onGeneratedRubric)
+        .then((rubric) => {
+          undoRubricChange.remember();
+          onGeneratedRubric(rubric);
+        })
         .catch((err) => {
           console.error(err);
           if (showAlert) showAlert(errorMessage(err));
         })
         .finally(() => setAwaitingResponse(false));
     },
-    [format, smartModel, apiKeys, onGeneratedRubric, showAlert],
+    [
+      format,
+      smartModel,
+      apiKeys,
+      onGeneratedRubric,
+      showAlert,
+      undoRubricChange.remember,
+    ],
   );
 
   return (
@@ -1166,6 +1258,12 @@ export function AIGenRubricPopover({
           </Button>
         </Tabs.Panel>
       </Tabs>
+      {undoRubricChange.canUndo && (
+        <UndoAIOverwriteButton
+          label="Undo AI rubric change"
+          onUndo={undoRubricChange.undo}
+        />
+      )}
     </AIPopover>
   );
 }
