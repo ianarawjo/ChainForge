@@ -531,10 +531,15 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
       });
   }, []);
 
+  // Whether the warning status is only because the code was edited since the
+  // last run, so undoing the edit can clear it
+  const warnedForCodeEdit = useRef(false);
+
   // On upstream changes
   useEffect(() => {
     if (data.refresh && data.refresh === true) {
       setDataPropsForNode(id, { refresh: false });
+      warnedForCodeEdit.current = false;
       setStatus(Status.WARNING);
       const pulled_inputs = pullInputs();
       if (pulled_inputs) setLastContext(getVarsAndMetavars(pulled_inputs));
@@ -545,11 +550,19 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
   const handleCodeEdit = (code: string) => {
     setDataPropsForNode(id, { code });
   };
+  // Editing the code puts the last run's results out of date; changing it back
+  // brings them up to date again, unless something else changed meanwhile.
   const handleCodeChangedFromLastRun = useCallback(() => {
-    if (status === Status.WARNING) setStatus(Status.READY);
+    if (status === Status.READY) {
+      warnedForCodeEdit.current = true;
+      setStatus(Status.WARNING);
+    }
   }, [status, setStatus]);
   const handleCodeEqualToLastRun = useCallback(() => {
-    if (status !== Status.WARNING) setStatus(Status.WARNING);
+    if (status === Status.WARNING && warnedForCodeEdit.current) {
+      warnedForCodeEdit.current = false;
+      setStatus(Status.READY);
+    }
   }, [status, setStatus]);
 
   const handleRunClick = () => {
@@ -558,6 +571,7 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
     if (!pulled_inputs) return;
 
     setStatus(Status.LOADING);
+    warnedForCodeEdit.current = false;
     setLastRunLogs("");
     setLastResponses([]);
 
