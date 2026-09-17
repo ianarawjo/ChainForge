@@ -188,3 +188,6 @@ chainforge_assets/
 **/bun.lock
 # Local Claude Code dev-server config: points at machine-specific paths.
 .claude/launch.json
+
+# TODO
+TODO.md
