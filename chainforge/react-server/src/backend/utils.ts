@@ -2244,21 +2244,6 @@ export async function call_ollama_provider(
     }
   }
 
-  // Call Ollama API
-  const resps: Response[] = [];
-  for (let i = 0; i < n; i++) {
-    // Abort if the user canceled
-    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
-
-    // Query Ollama and collect the response
-    const response = await fetch(url, {
-      method: "POST",
-      body: JSON.stringify(query),
-    });
-
-    resps.push(response);
-  }
-
   const parse_response = (body: string) => {
     const json = JSON.parse(body);
     if (json.message)
@@ -2268,11 +2253,44 @@ export async function call_ollama_provider(
     else return { generated_text: json.response };
   };
 
-  const responses = await Promise.all(resps.map((resp) => resp.text())).then(
-    (responses) => {
-      return responses.map((response) => parse_response(response));
-    },
-  );
+  // Ollama stops working on a request when its connection closes, including
+  // requests still waiting in its queue. So when the user cancels, abort the
+  // requests in flight, rather than leave Ollama generating responses no one
+  // will read (and holding up whatever runs next).
+  const controller = new AbortController();
+  const watcher = should_cancel
+    ? setInterval(() => {
+        if (should_cancel()) controller.abort();
+      }, 250)
+    : undefined;
+
+  let responses: Dict[];
+  try {
+    // Call Ollama API
+    const resps: Response[] = [];
+    for (let i = 0; i < n; i++) {
+      // Abort if the user canceled
+      if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+      // Query Ollama and collect the response
+      const response = await fetch(url, {
+        method: "POST",
+        body: JSON.stringify(query),
+        signal: controller.signal,
+      });
+
+      resps.push(response);
+    }
+
+    responses = await Promise.all(resps.map((resp) => resp.text())).then(
+      (bodies) => bodies.map((body) => parse_response(body)),
+    );
+  } catch (err) {
+    if (controller.signal.aborted) throw new UserForcedPrematureExit();
+    throw err;
+  } finally {
+    if (watcher !== undefined) clearInterval(watcher);
+  }
 
   return [query, responses];
 }
