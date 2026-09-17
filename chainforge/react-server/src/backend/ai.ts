@@ -244,7 +244,7 @@ export async function generateAndReplace(
   model: LLMSpec,
   apiKeys?: Dict,
 ): Promise<Row[]> {
-  const system = `Write a list of exactly ${n} items for the user's request, without repeating any.${creative ? " Be unconventional." : ""} If the request asks for prompts or commands, write each item as an instruction that could be given to an AI assistant. If items need placeholders for inputs, write them as template variables in single braces, like {variable}. Respond with only a JSON array of ${n} strings.`;
+  const system = `Write a list of exactly ${n} items for the user's request, without repeating any.${creative ? " Be unconventional." : ""} Each item is one of the things asked for, written plainly. Only if the user asks for prompts or commands, write each item as an instruction to an AI assistant; only if they ask for templates, placeholders or variables, write those as template variables in single braces, like {variable}. Respond with only a JSON array of ${n} strings.`;
   const reply = await queryAI(model, `Write a list of: ${prompt}`, {
     system,
     apiKeys,
@@ -288,7 +288,7 @@ export async function generateAndReplaceTable(
   model: LLMSpec,
   apiKeys?: Dict,
 ): Promise<AITable> {
-  const system = `Write a table for the user's request, with exactly ${n} rows. If the request asks for prompts or commands, write them as instructions that could be given to an AI assistant. If cells need placeholders for inputs, write them as template variables in single braces, like {variable}. Respond with only a JSON object with two keys: "columns", an array of short column names, and "rows", an array of ${n} rows, each an array of strings with one string per column.`;
+  const system = `Write a table for the user's request, with exactly ${n} rows. Cells hold the data asked for, written plainly. Only if the user asks for prompts or commands, write them as instructions to an AI assistant; only if they ask for templates, placeholders or variables, write those as template variables in single braces, like {variable}. Respond with only a JSON object with two keys: "columns", an array of short column names, and "rows", an array of ${n} rows, each an array of strings with one string per column.`;
   const reply = await queryAI(model, `Write a table of: ${prompt}`, {
     system,
     apiKeys,
