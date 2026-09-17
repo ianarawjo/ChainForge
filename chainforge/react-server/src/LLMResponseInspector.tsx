@@ -1086,8 +1086,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
           });
         });
 
-        // Table responses are clamped to a few lines.
-        const tableLines = wideFormat ? 6 : 4;
+        // How many lines of a response or variable show before it scrolls.
+        const tableLines = wideFormat ? 10 : 6;
         const cellPadding = (density: string) =>
           density === "xs" ? "3px 4px" : density === "xl" ? "12px" : "6px 8px";
         const numVarCols = var_cols.length + metavar_cols.length;
@@ -1160,14 +1160,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             const val = row.original[`c${i}`];
             if (typeof val === "string" || typeof val === "number") {
               const text = StringLookup.get(val) ?? "";
-              return (
-                <div
-                  className="cf-table-var"
-                  title={text.length > 120 ? text : undefined}
-                >
-                  {text}
-                </div>
-              );
+              return <div className="cf-table-var">{text}</div>;
             } else if (typeof val === "object" && "t" in val) {
               if (isImageResponseData(val)) {
                 // Display the image
