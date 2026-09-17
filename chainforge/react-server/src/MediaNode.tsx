@@ -381,6 +381,9 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
     }
   }, [imageStatus]);
 
+  // The table as it was loaded, so loading a saved flow isn't taken for an edit
+  const loadedTable = useRef({ rows: tableData, columns: tableColumns });
+
   // Updates the internal data store whenever the table data changes
   useEffect(() => {
     // Debounce the update to avoid a very costly rerender for every minor change
@@ -390,7 +393,13 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
         columns: tableColumns,
       });
 
-      pingOutputNodes(id);
+      // Tell downstream nodes their inputs changed, unless this is the table
+      // the node loaded with (which would mark them out of date on opening).
+      if (
+        tableData !== loadedTable.current.rows ||
+        tableColumns !== loadedTable.current.columns
+      )
+        pingOutputNodes(id);
 
       // Update the LLMResponseInspectorModal with the new data
       const items_in_json_responses = __construct_items_in_json_responses(

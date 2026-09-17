@@ -107,6 +107,24 @@ describe("the StringLookup table after LLM scoring", () => {
     expect(mockModelCalls).toHaveLength(1); // graded from the cache
   });
 
+  test("grading responses passed in directly (as EvalGen does) isn't cached", async () => {
+    const provided: LLMResponse[] = [
+      {
+        uid: "r1",
+        prompt: "Tell me about your pet.",
+        vars: {},
+        metavars: {},
+        llm: "GPT",
+        responses: [RESPONSE],
+      },
+    ];
+    const root = `${RUBRIC}\n{__input}`;
+    await evalWithLLM("evalgen-1", model("Judge"), root, provided);
+    await evalWithLLM("evalgen-1", model("Judge"), root, provided);
+    expect(mockModelCalls).toHaveLength(2); // graded fresh both times
+    expect(StorageCache.has("eval-evalgen-1-provided.json")).toBe(false);
+  });
+
   test("a prompt node's own responses are still interned", async () => {
     const { responses } = await queryLLM(
       "prompt-2",

@@ -37,15 +37,19 @@ jest.mock("../../store", () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { beforeAll, describe, expect, test } from "@jest/globals";
+import { afterAll, beforeAll, describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
 import {
   call_llm,
   call_openrouter,
   call_openrouter_image_gen,
   extract_responses,
+  OPENROUTER_RATE_LIMIT_RETRY,
+  openrouter_retry_delay_ms,
   set_api_keys,
 } from "../utils";
+// eslint-disable-next-line import/first
+import { UserForcedPrematureExit } from "../errors";
 // eslint-disable-next-line import/first
 import {
   LLMProvider,
@@ -59,6 +63,7 @@ import {
 import {
   ModelSettings,
   baseModelToProvider,
+  getDefaultModelSettings,
   getSettingsSchemaForLLM,
 } from "../../ModelSettingSchemas";
 // eslint-disable-next-line import/first
@@ -147,6 +152,14 @@ describe("recognizing OpenRouter models", () => {
       ModelSettings["openrouter-image"],
     );
     expect(RATE_LIMIT_BY_PROVIDER[LLMProvider.OpenRouter]).toBeDefined();
+  });
+
+  test("new OpenRouter models cap max_tokens, so a model stuck repeating itself stops", async () => {
+    const settings = getDefaultModelSettings("openrouter");
+    expect(settings.max_tokens).toBe(16000);
+    mockFetch({ body: chatReply({ content: "Hi!" }) });
+    await call_openrouter("Q", "openrouter/qwen/qwen3-8b", 1, 1, settings);
+    expect(jsonBody(calls[0]).max_tokens).toBe(16000);
   });
 
   test("the settings forms name every listed model, and list their defaults", () => {
@@ -340,6 +353,106 @@ describe("OpenRouter chat completions", () => {
     await expect(
       call_openrouter("Q", "openrouter/openai/gpt-5.5"),
     ).rejects.toThrow("Provider down");
+  });
+
+  describe("rate limits", () => {
+    const { retries, baseDelayMs } = OPENROUTER_RATE_LIMIT_RETRY;
+    beforeAll(() => {
+      OPENROUTER_RATE_LIMIT_RETRY.baseDelayMs = 1; // don't wait seconds in tests
+    });
+    afterAll(() => {
+      OPENROUTER_RATE_LIMIT_RETRY.baseDelayMs = baseDelayMs;
+    });
+    const limited = { status: 429, body: { error: { message: "Slow down" } } };
+
+    test("a 429 is retried until the request succeeds", async () => {
+      mockFetch(limited, limited, { body: chatReply({ content: "Hi!" }) });
+      const [, responses] = await call_openrouter(
+        "Q",
+        "openrouter/openai/gpt-5.5",
+      );
+      expect(calls).toHaveLength(3);
+      expect(responses).toHaveLength(1);
+    });
+
+    test("an upstream 429 sent with a 200 status is retried too", async () => {
+      mockFetch(
+        { body: { error: { code: 429, message: "Upstream limited" } } },
+        { body: chatReply({ content: "Hi!" }) },
+      );
+      await call_openrouter("Q", "openrouter/google/gemini-3.1-flash-lite");
+      expect(calls).toHaveLength(2);
+    });
+
+    test("other errors aren't retried", async () => {
+      mockFetch({ body: { error: { code: 502, message: "Provider down" } } });
+      await expect(
+        call_openrouter("Q", "openrouter/openai/gpt-5.5"),
+      ).rejects.toThrow("Provider down");
+      expect(calls).toHaveLength(1);
+    });
+
+    test("it gives up after a few retries, and says to run the node again", async () => {
+      mockFetch(limited);
+      await expect(
+        call_openrouter("Q", "openrouter/openai/gpt-5.5"),
+      ).rejects.toThrow(
+        /Slow down \(Still rate-limited after \d+ retries\. Run the node again/,
+      );
+      expect(calls).toHaveLength(retries + 1);
+    });
+
+    test("with n > 1, only the limited request is retried", async () => {
+      mockFetch({ body: chatReply({ content: "One" }) }, limited, {
+        body: chatReply({ content: "Two" }),
+      });
+      const [, responses] = await call_openrouter(
+        "Q",
+        "openrouter/openai/gpt-5.5",
+        2,
+      );
+      expect(calls).toHaveLength(3);
+      expect(responses).toHaveLength(2);
+    });
+
+    test("cancelling stops the wait", async () => {
+      OPENROUTER_RATE_LIMIT_RETRY.baseDelayMs = 60000;
+      try {
+        mockFetch(limited);
+        let cancelled = false;
+        setTimeout(() => (cancelled = true), 20);
+        const started = Date.now();
+        await expect(
+          call_openrouter(
+            "Q",
+            "openrouter/openai/gpt-5.5",
+            1,
+            1,
+            {},
+            () => cancelled,
+          ),
+        ).rejects.toBeInstanceOf(UserForcedPrematureExit);
+        expect(Date.now() - started).toBeLessThan(2000);
+        expect(calls).toHaveLength(1);
+      } finally {
+        OPENROUTER_RATE_LIMIT_RETRY.baseDelayMs = 1;
+      }
+    });
+
+    test("the wait follows Retry-After when given, and otherwise backs off", () => {
+      OPENROUTER_RATE_LIMIT_RETRY.baseDelayMs = 2000;
+      try {
+        expect(openrouter_retry_delay_ms(0, "7")).toBe(7000);
+        expect(openrouter_retry_delay_ms(0, "3600")).toBe(60000); // capped
+        for (let attempt = 0; attempt < 4; attempt++) {
+          const delay = openrouter_retry_delay_ms(attempt, null);
+          expect(delay).toBeGreaterThanOrEqual(1000 * 2 ** attempt);
+          expect(delay).toBeLessThanOrEqual(2000 * 2 ** attempt);
+        }
+      } finally {
+        OPENROUTER_RATE_LIMIT_RETRY.baseDelayMs = 1;
+      }
+    });
   });
 
   test("a key that isn't an OpenRouter key is named as the problem", async () => {

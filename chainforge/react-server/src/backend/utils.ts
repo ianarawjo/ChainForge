@@ -791,39 +791,114 @@ export async function call_minimax(
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
-/** POSTs to an OpenRouter endpoint, turning API errors into readable Errors. */
-async function openrouter_request(path: string, body: Dict): Promise<Dict> {
-  const res = await fetch(`${OPENROUTER_BASE_URL}${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-      "Content-Type": "application/json",
-      // Optional attribution, so requests are credited to ChainForge on openrouter.ai.
-      "HTTP-Referer": "https://chainforge.ai",
-      "X-OpenRouter-Title": "ChainForge",
-    },
-    body: JSON.stringify(body),
-  });
+/**
+ * Retrying rate-limited OpenRouter requests. Providers behind OpenRouter often
+ * answer 429 for a few seconds (e.g. Gemini Flash-Lite), and a big run can hit
+ * an account-wide limit. Exported so tests can shorten the wait.
+ */
+export const OPENROUTER_RATE_LIMIT_RETRY = {
+  retries: 4,
+  baseDelayMs: 2000, // doubles on each retry: about 2, 4, 8, then 16 seconds
+  maxDelayMs: 60000,
+};
 
-  let payload: Dict | undefined;
-  try {
-    payload = await res.json();
-  } catch {
-    payload = undefined;
+/**
+ * How long to wait before retrying a rate-limited request: the Retry-After
+ * header's seconds when given, or else an exponential backoff with jitter, so
+ * many requests limited at once don't all retry together.
+ */
+export function openrouter_retry_delay_ms(
+  attempt: number,
+  retryAfter?: string | null,
+): number {
+  const { baseDelayMs, maxDelayMs } = OPENROUTER_RATE_LIMIT_RETRY;
+  const seconds = retryAfter ? Number(retryAfter) : NaN;
+  if (isFinite(seconds) && seconds >= 0)
+    return Math.min(seconds * 1000, maxDelayMs);
+  const backoff = baseDelayMs * 2 ** attempt;
+  return Math.min(backoff / 2 + Math.random() * (backoff / 2), maxDelayMs);
+}
+
+/** Waits, checking for a cancel every so often so a cancel isn't kept waiting. */
+async function wait_unless_cancelled(
+  ms: number,
+  should_cancel?: () => boolean,
+): Promise<void> {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.min(250, end - Date.now())),
+    );
   }
-  // OpenRouter answers a key that isn't shaped like one of its keys with
-  // "Missing Authentication header", which reads as though no key was sent.
-  if (res.status === 401 && !OPENROUTER_API_KEY?.startsWith("sk-or-"))
-    throw new Error(
-      'OpenRouter did not recognize the API key. OpenRouter keys start with "sk-or-"; check the key in Settings.',
-    );
-  // Errors can also arrive with a 200 status, e.g. when the upstream provider fails.
-  if (!res.ok || payload?.error)
-    throw new Error(
-      payload?.error?.message ??
-        `OpenRouter request failed (HTTP ${res.status}).`,
-    );
-  return payload ?? {};
+  if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+}
+
+/**
+ * POSTs to an OpenRouter endpoint, turning API errors into readable Errors.
+ * A rate-limited request is retried after a wait. It keeps its place in the
+ * rate limiter while it waits, which slows the rest of the run down too.
+ */
+async function openrouter_request(
+  path: string,
+  body: Dict,
+  should_cancel?: () => boolean,
+): Promise<Dict> {
+  const { retries } = OPENROUTER_RATE_LIMIT_RETRY;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${OPENROUTER_BASE_URL}${path}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        // Optional attribution, so requests are credited to ChainForge on openrouter.ai.
+        "HTTP-Referer": "https://chainforge.ai",
+        "X-OpenRouter-Title": "ChainForge",
+      },
+      body: JSON.stringify(body),
+    });
+
+    let payload: Dict | undefined;
+    try {
+      payload = await res.json();
+    } catch {
+      payload = undefined;
+    }
+    // OpenRouter answers a key that isn't shaped like one of its keys with
+    // "Missing Authentication header", which reads as though no key was sent.
+    if (res.status === 401 && !OPENROUTER_API_KEY?.startsWith("sk-or-"))
+      throw new Error(
+        'OpenRouter did not recognize the API key. OpenRouter keys start with "sk-or-"; check the key in Settings.',
+      );
+
+    // A rate limit can also arrive with a 200 status, from the upstream provider.
+    const rate_limited =
+      res.status === 429 || Number(payload?.error?.code) === 429;
+    if (rate_limited && attempt < retries) {
+      const delay = openrouter_retry_delay_ms(
+        attempt,
+        res.headers?.get?.("retry-after"),
+      );
+      console.warn(
+        `OpenRouter rate-limited the request; retrying in ${Math.round(delay / 1000)}s (retry ${attempt + 1} of ${retries}).`,
+      );
+      await wait_unless_cancelled(delay, should_cancel);
+      continue;
+    }
+
+    // Errors can also arrive with a 200 status, e.g. when the upstream provider fails.
+    if (!res.ok || payload?.error) {
+      const message =
+        payload?.error?.message ??
+        `OpenRouter request failed (HTTP ${res.status}).`;
+      throw new Error(
+        rate_limited
+          ? `${message} (Still rate-limited after ${retries} retries. Run the node again to retry the failed queries.)`
+          : message,
+      );
+    }
+    return payload ?? {};
+  }
 }
 
 /** Whether a setting was left blank, e.g. an empty number field. */
@@ -900,7 +975,11 @@ export async function call_openrouter(
   while (responses.length < n) {
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
-    const payload = await openrouter_request("/chat/completions", query);
+    const payload = await openrouter_request(
+      "/chat/completions",
+      query,
+      should_cancel,
+    );
     const choice = payload.choices?.[0];
     if (!choice) throw new Error("OpenRouter returned no response.");
     if (choice.error)
@@ -979,7 +1058,7 @@ export async function call_openrouter_image_gen(
   while (results.length < n) {
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
-    const payload = await openrouter_request("/images", body);
+    const payload = await openrouter_request("/images", body, should_cancel);
     const data: Dict[] = (
       Array.isArray(payload.data) ? payload.data : []
     ).filter((d: Dict) => typeof d?.b64_json === "string");

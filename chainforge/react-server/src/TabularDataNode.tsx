@@ -613,7 +613,8 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
 
       updatedColumns.forEach((column) => {
         // Map row data to columns, default to empty strings for missing values
-        newRow[column.key] = row[column.key] || "";
+        // (keeping falsy values, e.g. a 0, so undoing an AI Replace restores them)
+        newRow[column.key] = row[column.key] ?? "";
       });
       return newRow;
     });
