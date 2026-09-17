@@ -219,6 +219,19 @@ function dataForPrompt(rows: PlotRow[]): string {
   return `Fields of the data (value: count):\n${JSON.stringify(describePlotData(rows), null, 1)}\n\nSample rows:\n${JSON.stringify(samples, null, 1)}`;
 }
 
+/**
+ * How ChainForge's plots should show data: the distribution and its
+ * variation, with descriptive statistics but no inferential ones.
+ */
+const PLOT_PRINCIPLES = `Show the distribution of the data, not only a summary of it:
+- Prefer plots that show individual responses or the spread of scores: strip or dot plots with jittered points, box plots with the points overlaid, violins, histograms.
+- Descriptive statistics are fine: counts, medians, quartiles, ranges, and means shown alongside the points they summarize.
+- Don't add inferential statistics: no standard errors, confidence intervals, error bars, p-values, or claims that a difference is significant.
+- For an average: draw the individual values too, e.g. a \`box\` trace with \`boxpoints: "all"\` and \`boxmean: true\`, or a \`scatter\` trace with \`mode: "markers"\` over the bar of the average.
+- For a proportion (e.g. the share of true scores, or of scores above a threshold): when the data has several inputs (values of a variable, or prompts), compute the proportion for each input, and plot those as points grouped by model, with the overall proportion as a bar or line behind them. Always show the counts behind a proportion as text on the chart, like "7 of 9" (e.g. \`text\` with \`textposition: "outside"\`), not only in hover text.
+- Start the value axis of bar charts at zero.
+- If a specific kind of chart is asked for (e.g. "a bar chart"), make that kind of chart, following these principles where it allows.`;
+
 const ROW_DOCS = `Each row is one response from an LLM, in ChainForge, a tool for comparing prompts and models:
 { llm: string, // the model's name
   prompt: string, // the prompt sent
@@ -237,7 +250,11 @@ export async function suggestPlots(
 ): Promise<AIPlot[]> {
   const system = `You suggest charts for exploring the results of experiments with LLMs. ${ROW_DOCS}
 
-Suggest ${n} different charts that answer questions someone comparing prompts or models would ask of this data, such as which model or prompt variable scores best, how scores are distributed, or how responses differ (e.g. in length). Each chart must be possible to build from the fields given. Prefer charts of evaluation scores when there are some. Respond with only a JSON array of ${n} objects, each with the keys "title" (a short chart title) and "description" (a phrase of at most 12 words on what the chart shows).`;
+Suggest ${n} different charts that answer questions someone comparing prompts or models would ask of this data, such as which model or prompt variable scores best, how scores are distributed, or how responses differ (e.g. in length). Each chart must be possible to build from the fields given. Prefer charts of evaluation scores when there are some.
+
+${PLOT_PRINCIPLES}
+
+Respond with only a JSON array of ${n} objects, each with the keys "title" (a short chart title) and "description" (a phrase of at most 12 words on what the chart shows).`;
   const reply = await queryAI(model, dataForPrompt(rows), { system, apiKeys });
 
   let parsed = parseJSONReply(reply);
@@ -284,6 +301,9 @@ Write a function \`plot(rows, context)\` that returns a Plotly figure, as an obj
 - Return only JSON values: no functions.
 - Handle rows missing a field or an evaluation result.
 - Set a title and axis titles, but not background or font colors.
+
+${PLOT_PRINCIPLES}
+
 Respond with the code in a single \`\`\`javascript code block.`;
   let prompt = `Chart to make: ${plot.title}${plot.description ? `: ${plot.description}` : ""}\n\n${dataForPrompt(rows)}`;
   if (previousAttempt)
