@@ -57,7 +57,6 @@ import { ColorSchemeToggle } from "./ColorThemeProvider";
 // Type for the non-form (non-sensitive) settings
 interface GlobalSettingsType {
   aiSupport: boolean;
-  imageCompression: boolean;
   // The provider for AI support features; blank to pick one from the API keys
   aiProvider: string;
   aiModels: AIModelOverrides;
@@ -279,7 +278,6 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
     // Settings within the other tabs
     const [settings, setSettings] = useState<GlobalSettingsType>({
       aiSupport: true,
-      imageCompression: true,
       aiProvider: "",
       aiModels: {},
     });
@@ -919,19 +917,6 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
             <Tabs.Panel value="advanced" pt="xs">
               <Box p="md">
-                <Checkbox
-                  label="Image compression"
-                  description="Images are expensive to store in the browser. To help with storage, 
-                  ChainForge automatically compresses images output from LLMs."
-                  checked={(settings.imageCompression as boolean) ?? false}
-                  onChange={(e) => {
-                    handleChangeSetting(
-                      "imageCompression",
-                      e.currentTarget.checked,
-                    );
-                  }}
-                />
-
                 <Divider my="xl" label="Resources" labelPosition="center" />
 
                 <Group position="center">
