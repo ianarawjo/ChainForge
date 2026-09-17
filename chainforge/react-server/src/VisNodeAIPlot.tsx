@@ -24,6 +24,9 @@ import {
 } from "@mantine/core";
 import { IconArrowRight, IconCode } from "@tabler/icons-react";
 import Plot from "react-plotly.js";
+// The Plotly bundle react-plotly.js renders with, for resizing plots ourselves.
+// @ts-expect-error No declaration file for plotly.js/dist/plotly
+import Plotly from "plotly.js/dist/plotly";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/theme-xcode";
@@ -295,6 +298,22 @@ export function AIPlotView({ plot, responses }: AIPlotViewProps) {
   const [figure, setFigure] = useState<PlotFigure | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
   const plotDivRef = useRef<HTMLDivElement | null>(null);
+  const plotlyRef = useRef<Plot>(null);
+
+  // Resize the plot with its box, e.g. when the node is resized, as the
+  // default plot does. (react-plotly's own handler only follows the window.)
+  useEffect(() => {
+    const elem = plotDivRef.current;
+    if (!elem || !window.ResizeObserver) return;
+    const observer = new window.ResizeObserver(() => {
+      const gd = (plotlyRef.current as unknown as { el?: HTMLElement } | null)
+        ?.el;
+      if (!gd || gd.offsetParent === null) return;
+      Promise.resolve(Plotly.Plots.resize(gd)).catch(() => undefined);
+    });
+    observer.observe(elem);
+    return () => observer.disconnect();
+  }, []);
 
   // Rerun the code whenever it or the data changes
   useEffect(() => {
@@ -322,14 +341,15 @@ export function AIPlotView({ plot, responses }: AIPlotViewProps) {
   const layout: Dict = {
     autosize: true,
     dragmode: "pan",
-    margin: { l: 60, r: 10, b: 50, t: figLayout.title ? 40 : 20, pad: 4 },
+    margin: { l: 40, r: 10, b: 30, t: figLayout.title ? 40 : 20, pad: 4 },
     ...figLayout,
     // ChainForge's background and text colors, whatever the code set
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     font: { ...figLayout.font, color: axisColor },
-    xaxis: { ...figLayout.xaxis, color: axisColor },
-    yaxis: { ...figLayout.yaxis, color: axisColor },
+    // Margins grow to fit tick labels and axis titles, so they aren't cut off
+    xaxis: { automargin: true, ...figLayout.xaxis, color: axisColor },
+    yaxis: { automargin: true, ...figLayout.yaxis, color: axisColor },
   };
 
   return (
@@ -350,9 +370,10 @@ export function AIPlotView({ plot, responses }: AIPlotViewProps) {
         </Text>
       ) : figure ? (
         <Plot
+          ref={plotlyRef}
           data={figure.data}
           layout={layout}
-          useResizeHandler
+          useResizeHandler={false}
           style={{ width: "100%", height: "100%" }}
         />
       ) : (
