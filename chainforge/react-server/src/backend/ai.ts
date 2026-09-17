@@ -12,8 +12,9 @@ import {
   escapeBraces,
   containsSameTemplateVariables,
 } from "./template";
-import { Dict, LLMSpec, StringOrHash } from "./typing";
-import { StringLookup } from "./cache";
+import { Dict, LLMSpec } from "./typing";
+import CancelTracker from "./canceler";
+import { UserForcedPrematureExit } from "./errors";
 import { llmResponseDataToString, sampleRandomElements } from "./utils";
 
 export class AIError extends Error {
@@ -34,9 +35,10 @@ export interface AITable {
 
 // Tables longer than this are sampled before being sent to the model.
 const MAX_TABLE_ROWS_IN_PROMPT = 30;
-
-// Metavar that carries each row's index through a batched query.
-const ROW_INDEX_METAVAR = "__ai_row";
+// Examples sent to the model are cut to fit these, so prompts fit small
+// context windows (e.g. Ollama's) however long the table's cells are.
+const MAX_EXAMPLE_CHARS = 500;
+const MAX_EXAMPLES_PROMPT_CHARS = 12000;
 
 export interface AIQueryOptions {
   system?: string;
@@ -79,9 +81,31 @@ export async function queryAI(
   return llmResponseDataToString(response);
 }
 
+/** How far a batched query has got. */
+export interface AIProgress {
+  done: number;
+  failed: number;
+  total: number;
+}
+
+export interface AIForEachOptions extends AIQueryOptions {
+  onProgress?: (progress: AIProgress) => void;
+  /** Stops the query when added to CancelTracker. */
+  cancelId?: string;
+}
+
+export interface AIForEachResult {
+  /** Each input's reply, or undefined where it failed or wasn't reached. */
+  replies: (string | undefined)[];
+  errors: string[];
+  canceled: boolean;
+}
+
 /**
  * Queries an AI model once per input, in parallel (within the provider's rate
- * limits), returning the replies in the same order as the inputs.
+ * limits), returning the replies in the same order as the inputs. Each input
+ * is its own query, so a stop or a failed input keeps the replies already
+ * finished.
  * @param template The prompt, with the literal text escaped and `{input}` where each input goes.
  * @param inputs Literal text: braces in them are not template variables.
  */
@@ -89,40 +113,82 @@ export async function queryAIForEach(
   model: LLMSpec,
   template: string,
   inputs: string[],
-  options: AIQueryOptions = {},
-): Promise<string[]> {
-  if (inputs.length === 0) return [];
-  const result = await queryLLM(
-    `__ai-${uuid()}`,
-    [withSystemMessage(model, options.system)],
-    1,
-    template,
-    {
-      input: inputs.map((text, idx) => ({
-        text: escapeBraces(text),
-        metavars: { [ROW_INDEX_METAVAR]: idx.toString() },
-      })),
-    },
-    undefined,
-    options.apiKeys,
-    true,
+  options: AIForEachOptions = {},
+): Promise<AIForEachResult> {
+  const { onProgress, cancelId } = options;
+  const spec = withSystemMessage(model, options.system);
+  const total = inputs.length;
+  const replies: (string | undefined)[] = inputs.map(() => undefined);
+  const errors: string[] = [];
+  let done = 0;
+  let failed = 0;
+  let canceled = false;
+  // Set once this returns, after which late replies are ignored
+  let returned = false;
+  const isCanceled = () =>
+    cancelId !== undefined && CancelTracker.has(cancelId);
+
+  // queryLLM's rate limiter paces these; all are started at once
+  const all = Promise.all(
+    inputs.map(async (text, idx) => {
+      if (isCanceled()) {
+        canceled = true;
+        return;
+      }
+      try {
+        const result = await queryLLM(
+          `__ai-${uuid()}`,
+          [spec],
+          1,
+          template,
+          { input: escapeBraces(text) },
+          undefined,
+          options.apiKeys,
+          true,
+          undefined,
+          undefined,
+          cancelId,
+        );
+        // Replies that arrive after a stop returned are ignored
+        if (returned) return;
+        const response = result.responses[0]?.responses?.[0];
+        if (response !== undefined) {
+          replies[idx] = llmResponseDataToString(response);
+          done += 1;
+        } else {
+          failed += 1;
+          errors.push(
+            firstError(result.errors) ?? `${model.name} returned no response.`,
+          );
+        }
+      } catch (err) {
+        if (err instanceof UserForcedPrematureExit || isCanceled()) {
+          canceled = true;
+          return;
+        }
+        if (returned) return;
+        failed += 1;
+        errors.push(err instanceof Error ? err.message : String(err));
+      }
+      onProgress?.({ done, failed, total });
+    }),
   );
 
-  const replies: (string | undefined)[] = inputs.map(() => undefined);
-  for (const resp of result.responses) {
-    // queryLLM returns strings interned, as StringLookup hashes
-    const idx = Number(
-      StringLookup.get(resp.metavars?.[ROW_INDEX_METAVAR] as StringOrHash),
-    );
-    if (Number.isInteger(idx) && resp.responses.length > 0)
-      replies[idx] = llmResponseDataToString(resp.responses[0]);
-  }
-  if (replies.some((r) => r === undefined))
-    throw new AIError(
-      firstError(result.errors) ??
-        `${model.name} did not respond to every request.`,
-    );
-  return replies as string[];
+  // On a stop, return the replies so far, without waiting for requests in flight
+  if (cancelId !== undefined) {
+    let watcher: ReturnType<typeof setInterval> | undefined;
+    const stopped = new Promise<void>((resolve) => {
+      watcher = setInterval(() => {
+        if (isCanceled()) resolve();
+      }, 200);
+    });
+    await Promise.race([all, stopped]);
+    clearInterval(watcher);
+    if (isCanceled()) canceled = true;
+  } else await all;
+
+  returned = true;
+  return { replies: [...replies], errors: [...errors], canceled };
 }
 
 /**
@@ -202,6 +268,35 @@ function toRows(value: unknown, cols: string[]): string[][] {
   });
 }
 
+const truncateExample = (text: string) =>
+  text.length > MAX_EXAMPLE_CHARS
+    ? text.slice(0, MAX_EXAMPLE_CHARS) + "…"
+    : text;
+
+/**
+ * A random sample of examples to show the model, with long text cut short,
+ * that fits the prompt's character budget (always at least one example).
+ */
+function sampleExamples<T>(
+  examples: T[],
+  maxCount: number,
+  truncate: (example: T) => T,
+): T[] {
+  const sampled = (
+    examples.length > maxCount
+      ? sampleRandomElements(examples, maxCount)
+      : examples
+  ).map(truncate);
+  const fitted: T[] = [];
+  let chars = 0;
+  for (const example of sampled) {
+    chars += JSON.stringify(example).length;
+    if (fitted.length > 0 && chars > MAX_EXAMPLES_PROMPT_CHARS) break;
+    fitted.push(example);
+  }
+  return fitted;
+}
+
 function templateVariablesInstruction(vars: string[]): string {
   if (vars.length === 0) return "";
   const listed = vars.map((v) => `{${v}}`).join(", ");
@@ -224,8 +319,14 @@ export async function autofill(
     ...new Set(new StringTemplate(items.join("\n")).get_vars()),
   ];
 
+  const examples = sampleExamples(
+    items,
+    MAX_TABLE_ROWS_IN_PROMPT,
+    truncateExample,
+  );
+
   const system = `You are given a list of items. Work out the pattern they follow, then write ${n} more items that follow it, without repeating any.${templateVariablesInstruction(templateVariables)} Respond with only a JSON array of ${n} strings.`;
-  const reply = await queryAI(model, JSON.stringify(items, null, 2), {
+  const reply = await queryAI(model, JSON.stringify(examples, null, 2), {
     system,
     apiKeys,
   });
@@ -267,10 +368,11 @@ export async function autofillTable(
   model: LLMSpec,
   apiKeys?: Dict,
 ): Promise<string[][]> {
-  const sampleRows =
-    input.rows.length > MAX_TABLE_ROWS_IN_PROMPT
-      ? sampleRandomElements(input.rows, MAX_TABLE_ROWS_IN_PROMPT)
-      : input.rows;
+  const sampleRows = sampleExamples(
+    input.rows,
+    MAX_TABLE_ROWS_IN_PROMPT,
+    (row) => row.map(truncateExample),
+  );
 
   const system = `You are given a table, as JSON: its column names, and its rows as arrays of cells in column order. Work out the pattern the rows follow, then write ${n} more rows that follow it, without repeating any. Respond with only a JSON array of ${n} rows, each an array of ${input.cols.length} strings.`;
   const reply = await queryAI(
@@ -328,14 +430,22 @@ export async function generateAndReplaceTable(
 /**
  * Uses an LLM to add a column to a table, filling in each row's value from `prompt`.
  * Rows are queried in parallel.
- * @returns The new column's name, and its value for each row.
+ * @returns The new column's name, and its value for each row: blank where
+ * the row failed, or wasn't reached before a stop.
  */
 export async function generateColumn(
   table: AITable,
   prompt: string,
   model: LLMSpec,
   apiKeys?: Dict,
-): Promise<{ col: string; rows: string[] }> {
+  options: Pick<AIForEachOptions, "onProgress" | "cancelId"> = {},
+): Promise<{
+  col: string;
+  rows: string[];
+  failed: number;
+  errors: string[];
+  canceled: boolean;
+}> {
   let colName = prompt.trim();
   if (colName.length > 20) {
     const reply = await queryAI(
@@ -354,7 +464,7 @@ export async function generateColumn(
   const inputs = table.rows.map((row) =>
     table.cols.map((col, i) => `${col}: ${row[i] ?? ""}`).join("\n"),
   );
-  const values = await queryAIForEach(
+  const result = await queryAIForEach(
     model,
     `{input}\n${escapeBraces(prompt)}: ?`,
     inputs,
@@ -362,10 +472,22 @@ export async function generateColumn(
       system:
         "You are given a row of a table, with its last field missing. Fill in the missing field. Respond with only its value: no explanation, quotation marks or formatting.",
       apiKeys,
+      ...options,
     },
   );
+  const filled = result.replies.filter((r) => r !== undefined).length;
+  if (filled === 0 && !result.canceled)
+    throw new AIError(
+      result.errors[0] ?? `${model.name} didn't fill in any rows.`,
+    );
 
-  return { col: colName, rows: values.map((v) => v.trim()) };
+  return {
+    col: colName,
+    rows: result.replies.map((r) => (r ?? "").trim()),
+    failed: result.canceled ? 0 : inputs.length - filled,
+    errors: result.errors,
+    canceled: result.canceled,
+  };
 }
 
 /**
@@ -505,7 +627,7 @@ export async function generateTestQuestions(
 
   // A document with several questions gets them in one request, so they differ
   const system = `You write test questions for evaluating a retrieval-augmented generation (RAG) system. You are given a passage from a document, and how many questions to write. Write questions that a user might ask, which the passage answers, and their answers, using only facts in the passage. Each question must make sense on its own, to someone who hasn't seen the passage: don't refer to "the passage", "the text" or "the document". Questions about the same passage must ask about different facts.${guidance.trim() ? ` ${guidance.trim()}` : ""} Respond with only a JSON array of objects, each with two keys, "question" and "answer".`;
-  const replies = await queryAIForEach(
+  const result = await queryAIForEach(
     model,
     "{input}",
     picked.map(
@@ -515,7 +637,13 @@ export async function generateTestQuestions(
     { system, apiKeys },
   );
 
+  const { replies, errors } = result;
+  if (replies.every((r) => r === undefined))
+    throw new AIError(errors[0] ?? `${model.name} didn't write any questions.`);
+
   return replies.flatMap((reply, i) => {
+    // Documents whose request failed are left out
+    if (reply === undefined) return [];
     let parsed = unwrapList(parseJSONReply(reply));
     if (!Array.isArray(parsed)) parsed = [parsed];
     const rows = (parsed as Dict[])

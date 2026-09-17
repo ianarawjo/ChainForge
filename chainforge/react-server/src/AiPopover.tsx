@@ -1,4 +1,10 @@
-import React, { useCallback, useContext, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Stack,
   NumberInput,
@@ -12,6 +18,8 @@ import {
   Alert,
   Divider,
   Tooltip,
+  Progress,
+  Flex,
 } from "@mantine/core";
 import {
   autofill,
@@ -23,6 +31,7 @@ import {
   generateRubric,
   generateTestQuestions,
   AIDocument,
+  AIProgress,
   queryAI,
   RubricFormat,
   TEST_QUESTION_COLUMNS,
@@ -49,6 +58,7 @@ import {
 } from "./backend/typing";
 import { v4 as uuidv4 } from "uuid";
 import { StringLookup } from "./backend/cache";
+import CancelTracker from "./backend/canceler";
 
 const zeroGap = { gap: "0rem" };
 const popoverShadow = "rgb(38, 57, 77) 0px 10px 30px -14px";
@@ -312,6 +322,10 @@ export function AIGenReplaceTablePopover({
 
   // Generate Column state
   const [isGenerateColumnLoading, setIsGenerateColumnLoading] = useState(false);
+  const [columnProgress, setColumnProgress] = useState<AIProgress | undefined>(
+    undefined,
+  );
+  const columnCancelId = useRef<string | undefined>(undefined);
   const [generateColumnPrompt, setGenerateColumnPrompt] = useState("");
 
   // The table's non-empty rows, as the text of each cell in column order
@@ -404,20 +418,32 @@ export function AIGenReplaceTablePopover({
           colValues.map((col) => StringLookup.get(row[col.key])?.trim() ?? ""),
         );
 
-      const generatedColumn = await generateColumn(
+      const cancelId = `ai-column-${uuidv4()}`;
+      columnCancelId.current = cancelId;
+      setColumnProgress({ done: 0, failed: 0, total: rows.length });
+      const generated = await generateColumn(
         { cols: colValues.map((col) => col.header), rows },
         generateColumnPrompt,
         fastModel,
         apiKeys,
+        { onProgress: setColumnProgress, cancelId },
       );
+      // Rows that failed, or weren't reached before a stop, are left blank
+      if (generated.canceled && generated.rows.every((r) => !r)) return;
       onAddColumns(
-        [{ key: `col-${uuidv4()}`, header: generatedColumn.col }],
-        generatedColumn.rows,
+        [{ key: `col-${uuidv4()}`, header: generated.col }],
+        generated.rows,
       );
+      if (generated.failed > 0 && showAlert)
+        showAlert(
+          `Filled ${rows.length - generated.failed} of ${rows.length} rows; the other ${generated.failed} failed and were left blank.${generated.errors[0] ? ` The first error: ${generated.errors[0]}` : ""}`,
+        );
     } catch (err) {
       handleError(err);
     } finally {
       setIsGenerateColumnLoading(false);
+      setColumnProgress(undefined);
+      columnCancelId.current = undefined;
     }
   };
 
@@ -456,23 +482,59 @@ export function AIGenReplaceTablePopover({
         value={generateColumnPrompt}
         onChange={(e) => setGenerateColumnPrompt(e.currentTarget.value)}
       />
-      <Tooltip
-        label="Queries the model once per row."
-        withArrow
-        position="bottom"
-      >
-        <Button
-          size="sm"
-          variant="light"
-          color="grape"
-          fullWidth
-          onClick={handleGenerateColumn}
-          disabled={!enoughRowsForSuggestions || !generateColumnPrompt.trim()}
-          loading={isGenerateColumnLoading}
+      {columnProgress ? (
+        <Stack spacing={4}>
+          <Progress
+            color="grape"
+            size="sm"
+            value={
+              (100 * (columnProgress.done + columnProgress.failed)) /
+              Math.max(columnProgress.total, 1)
+            }
+          />
+          <Flex justify="space-between" align="center">
+            <Text size="xs" c="dimmed">
+              Filled {columnProgress.done} of {columnProgress.total} rows
+              {columnProgress.failed > 0
+                ? ` (${columnProgress.failed} failed)`
+                : ""}
+            </Text>
+            <Button
+              size="xs"
+              variant="subtle"
+              color="gray"
+              onClick={() => {
+                if (columnCancelId.current)
+                  CancelTracker.add(columnCancelId.current);
+              }}
+            >
+              Stop
+            </Button>
+          </Flex>
+        </Stack>
+      ) : (
+        <Tooltip
+          label="Queries the model once per row. Stopping keeps the rows already filled."
+          withArrow
+          position="bottom"
         >
-          Add Column
-        </Button>
-      </Tooltip>
+          <Button
+            size="sm"
+            variant="light"
+            color="grape"
+            fullWidth
+            onClick={handleGenerateColumn}
+            disabled={
+              !enoughRowsForSuggestions ||
+              !generateColumnPrompt.trim() ||
+              isGenerateColumnLoading
+            }
+            loading={isGenerateColumnLoading}
+          >
+            Add Column
+          </Button>
+        </Tooltip>
+      )}
     </Stack>
   );
 
