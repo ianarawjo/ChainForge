@@ -661,14 +661,15 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp {
   color: var(--cf-band-text, #fff);
   background-color: color-mix(in srgb, var(--cf-model-color) 75%, transparent);
 }
+/* Long text scrolls within its cell, up to --cf-lines lines tall, rather than
+   being cut off with an ellipsis. --cf-lines: none shows all of it (the calc
+   is then invalid, so max-height falls back to none). */
 .cf-table-resp-text,
 .cf-table-var {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: var(--cf-lines, 6);
-  overflow: hidden;
+  max-height: calc(var(--cf-lines, 6) * 1.4em);
+  overflow-y: auto;
 }
 .cf-table-resp-text {
   cursor: pointer;
@@ -2102,9 +2103,10 @@ html[data-mantine-color-scheme="dark"] .upload-node-list {
 }
 
 /* Classes relative to the Media Node */
+/* Wide enough that the header's title, status and buttons share one line. */
 .media-node {
-  width: 340px;
-  max-width: 340px;
+  width: 380px;
+  max-width: 380px;
 }
 
 .media-node .node-header {

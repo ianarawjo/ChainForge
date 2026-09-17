@@ -31,6 +31,7 @@ import {
   NativeLLM,
   OPENROUTER_IMAGE_PREFIX,
   OPENROUTER_PREFIX,
+  openRouterEmoji,
 } from "./backend/models";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
 import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
@@ -155,6 +156,15 @@ export function LLMList({
             }
 
             if (savedItem.emoji) updated_item.emoji = savedItem.emoji;
+
+            // An OpenRouter model changed to another lab's takes that lab's
+            // emoji, unless the emoji was changed by hand.
+            if (
+              item.base_model === "openrouter" &&
+              updated_item.model !== item.model &&
+              updated_item.emoji === openRouterEmoji(item.model)
+            )
+              updated_item.emoji = openRouterEmoji(updated_item.model);
 
             // Save the model to favorites if user made it a favorite (clicked heart button),
             // creating a unique ID for it to ensure no clashes.
@@ -322,7 +332,9 @@ export const LLMListContainer = forwardRef<
 
   // Selecting LLM models to prompt
   const [llmItems, setLLMItems] = useState(
-    initLLMItems ||
+    // Progress belongs to a run in progress, so a saved flow's is stale: a
+    // leftover 0% would show a spinner that never stops.
+    initLLMItems?.map(({ progress: _progress, ...item }) => item) ||
       DEFAULT_INIT_LLMS.map((i) => ({
         key: uuid(),
         settings: getDefaultModelSettings(i.base_model),

@@ -1,0 +1,3385 @@
+{
+  "flow": {
+    "nodes": [
+      {
+        "width": 282,
+        "height": 344,
+        "id": "comment-d93a41c7-13c9-4300-a3cd-f2ce69d63199",
+        "type": "comment",
+        "data": {
+          "title": "Read me first",
+          "text": "No API key needed. Both models run in your browser: they download once, about 1.7 GB together, and nothing you type leaves your machine.\n\nThey are tiny, so they make mistakes. That makes them good for practising how to catch mistakes.\n\nFollow the wires: Table, Prompt, Simple Evaluator, Vis."
+        },
+        "position": {
+          "x": -1060,
+          "y": -600
+        },
+        "positionAbsolute": {
+          "x": -1060,
+          "y": -600
+        },
+        "dragHandle": ".node-header"
+      },
+      {
+        "width": 422,
+        "height": 446,
+        "id": "table-e0223721-81cc-498e-8dd3-8084789a61db",
+        "type": "table",
+        "data": {
+          "title": "Countries",
+          "columns": [
+            {
+              "header": "Country",
+              "key": "country"
+            },
+            {
+              "header": "Capital",
+              "key": "capital"
+            }
+          ],
+          "rows": [
+            {
+              "__uid": "25ac6e8e-4d18-4673-9c49-a7ae9f3cdf80",
+              "country": "France",
+              "capital": "Paris"
+            },
+            {
+              "__uid": "bf8ce264-344a-42a6-8095-2927bd12d5f9",
+              "country": "Japan",
+              "capital": "Tokyo"
+            },
+            {
+              "__uid": "f9a17e8d-316b-4368-8188-49dc2be96e85",
+              "country": "Kenya",
+              "capital": "Nairobi"
+            },
+            {
+              "__uid": "cda7da13-025a-403a-b786-0d954e72d520",
+              "country": "Australia",
+              "capital": "Canberra"
+            },
+            {
+              "__uid": "f54471f5-a8bd-4409-81a4-095d9875e0d0",
+              "country": "Canada",
+              "capital": "Ottawa"
+            },
+            {
+              "__uid": "08f10385-d912-4cd6-b23a-1917e6129b46",
+              "country": "Turkey",
+              "capital": "Ankara"
+            },
+            {
+              "__uid": "c3378acc-78b2-4033-b424-e3177b239eac",
+              "country": "Switzerland",
+              "capital": "Bern"
+            },
+            {
+              "__uid": "9234511c-cd67-4dc8-b460-0f3172d34ccb",
+              "country": "New Zealand",
+              "capital": "Wellington"
+            },
+            {
+              "__uid": "b5f898b0-6d5c-4fee-8801-d5c73d1248f2",
+              "country": "Morocco",
+              "capital": "Rabat"
+            },
+            {
+              "__uid": "6eea5290-5dc4-4545-ad4e-b4002bd347d3",
+              "country": "Nigeria",
+              "capital": "Abuja"
+            },
+            {
+              "__uid": "7ac54956-1471-4d1b-8c22-6ecf26208ebf",
+              "country": "Vietnam",
+              "capital": "Hanoi"
+            },
+            {
+              "__uid": "fe6a7877-bc17-4450-9371-c8d8b9859243",
+              "country": "Pakistan",
+              "capital": "Islamabad"
+            }
+          ],
+          "sel_rows": null
+        },
+        "position": {
+          "x": -1060,
+          "y": -140
+        },
+        "positionAbsolute": {
+          "x": -1060,
+          "y": -140
+        },
+        "dragHandle": ".node-header"
+      },
+      {
+        "width": 310,
+        "height": 402,
+        "id": "prompt-1b802abc-2f76-4f0d-b4c1-c1b38e21c37f",
+        "type": "prompt",
+        "data": {
+          "title": "Ask two tiny models",
+          "n": 1,
+          "llms": [
+            {
+              "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+              "name": "Gemma 3 1B",
+              "emoji": "🌐",
+              "model": "gemma3-1b-it-q4f16_1-MLC",
+              "base_model": "webllm",
+              "temp": 0.7,
+              "formData": {
+                "shortname": "Gemma 3 1B",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 0.7,
+                "top_p": 1,
+                "max_tokens": 512
+              },
+              "settings": {
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 0.7,
+                "top_p": 1,
+                "max_tokens": 512
+              }
+            },
+            {
+              "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+              "name": "Qwen2.5 0.5B",
+              "emoji": "🌐",
+              "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+              "base_model": "webllm",
+              "temp": 0.7,
+              "formData": {
+                "shortname": "Qwen2.5 0.5B",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 0.7,
+                "top_p": 1,
+                "max_tokens": 512
+              },
+              "settings": {
+                "system_msg": "You are a helpful assistant.",
+                "temperature": 0.7,
+                "top_p": 1,
+                "max_tokens": 512
+              }
+            }
+          ],
+          "prompt": "What is the capital of {country}? Answer with just the name of the city.",
+          "fields": [
+            {
+              "text": 40,
+              "prompt": 0,
+              "fill_history": {
+                "country": 2
+              },
+              "llm": {
+                "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+                "name": "Gemma 3 1B",
+                "emoji": "🌐",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemma 3 1B",
+                  "model": "gemma3-1b-it-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 91.66666666666666,
+                  "error": 0
+                }
+              },
+              "uid": "d0b4b323-584f-46b4-82d0-27df8d427071",
+              "metavars": {
+                "Capital": 1,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Gemma 3 1B"
+              }
+            },
+            {
+              "text": 1,
+              "prompt": 0,
+              "fill_history": {
+                "country": 2
+              },
+              "llm": {
+                "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+                "name": "Qwen2.5 0.5B",
+                "emoji": "🌐",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Qwen2.5 0.5B",
+                  "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "b4e46516-f0d7-4b74-a7e2-14b1613f7602",
+              "metavars": {
+                "Capital": 1,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Qwen2.5 0.5B"
+              }
+            },
+            {
+              "text": 4,
+              "prompt": 3,
+              "fill_history": {
+                "country": 5
+              },
+              "llm": {
+                "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+                "name": "Gemma 3 1B",
+                "emoji": "🌐",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemma 3 1B",
+                  "model": "gemma3-1b-it-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 91.66666666666666,
+                  "error": 0
+                }
+              },
+              "uid": "1d546362-a947-462d-8714-a32b42d7f52c",
+              "metavars": {
+                "Capital": 4,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Gemma 3 1B"
+              }
+            },
+            {
+              "text": 4,
+              "prompt": 3,
+              "fill_history": {
+                "country": 5
+              },
+              "llm": {
+                "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+                "name": "Qwen2.5 0.5B",
+                "emoji": "🌐",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Qwen2.5 0.5B",
+                  "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "ebe548e4-f2bd-47f5-8add-9805be08ed10",
+              "metavars": {
+                "Capital": 4,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Qwen2.5 0.5B"
+              }
+            },
+            {
+              "text": 41,
+              "prompt": 6,
+              "fill_history": {
+                "country": 8
+              },
+              "llm": {
+                "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+                "name": "Gemma 3 1B",
+                "emoji": "🌐",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemma 3 1B",
+                  "model": "gemma3-1b-it-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 91.66666666666666,
+                  "error": 0
+                }
+              },
+              "uid": "c05f9be3-1922-4dd1-a00b-829fc66c7b65",
+              "metavars": {
+                "Capital": 9,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Gemma 3 1B"
+              }
+            },
+            {
+              "text": 7,
+              "prompt": 6,
+              "fill_history": {
+                "country": 8
+              },
+              "llm": {
+                "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+                "name": "Qwen2.5 0.5B",
+                "emoji": "🌐",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Qwen2.5 0.5B",
+                  "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "8955d5e4-f6eb-40d7-8db8-92ea812edf8a",
+              "metavars": {
+                "Capital": 9,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Qwen2.5 0.5B"
+              }
+            },
+            {
+              "text": 42,
+              "prompt": 10,
+              "fill_history": {
+                "country": 12
+              },
+              "llm": {
+                "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+                "name": "Gemma 3 1B",
+                "emoji": "🌐",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemma 3 1B",
+                  "model": "gemma3-1b-it-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 91.66666666666666,
+                  "error": 0
+                }
+              },
+              "uid": "ddba614c-05ca-46ef-bc1c-bc9bf6e48aa3",
+              "metavars": {
+                "Capital": 13,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Gemma 3 1B"
+              }
+            },
+            {
+              "text": 11,
+              "prompt": 10,
+              "fill_history": {
+                "country": 12
+              },
+              "llm": {
+                "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+                "name": "Qwen2.5 0.5B",
+                "emoji": "🌐",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Qwen2.5 0.5B",
+                  "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "c2a61c43-7919-48e8-9368-cd5d4ab7bc51",
+              "metavars": {
+                "Capital": 13,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Qwen2.5 0.5B"
+              }
+            },
+            {
+              "text": 43,
+              "prompt": 14,
+              "fill_history": {
+                "country": 16
+              },
+              "llm": {
+                "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+                "name": "Gemma 3 1B",
+                "emoji": "🌐",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemma 3 1B",
+                  "model": "gemma3-1b-it-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 91.66666666666666,
+                  "error": 0
+                }
+              },
+              "uid": "339d3441-6b1a-4f96-b76f-cb6c50da312a",
+              "metavars": {
+                "Capital": 15,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Gemma 3 1B"
+              }
+            },
+            {
+              "text": 15,
+              "prompt": 14,
+              "fill_history": {
+                "country": 16
+              },
+              "llm": {
+                "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+                "name": "Qwen2.5 0.5B",
+                "emoji": "🌐",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Qwen2.5 0.5B",
+                  "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "a9299b31-6a6f-4df5-8b4a-493aa98eae58",
+              "metavars": {
+                "Capital": 15,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Qwen2.5 0.5B"
+              }
+            },
+            {
+              "text": 20,
+              "prompt": 17,
+              "fill_history": {
+                "country": 19
+              },
+              "llm": {
+                "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+                "name": "Gemma 3 1B",
+                "emoji": "🌐",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemma 3 1B",
+                  "model": "gemma3-1b-it-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 91.66666666666666,
+                  "error": 0
+                }
+              },
+              "uid": "5c9b5eb5-1012-4dc1-a428-a1f21abe079b",
+              "metavars": {
+                "Capital": 20,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Gemma 3 1B"
+              }
+            },
+            {
+              "text": 18,
+              "prompt": 17,
+              "fill_history": {
+                "country": 19
+              },
+              "llm": {
+                "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+                "name": "Qwen2.5 0.5B",
+                "emoji": "🌐",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Qwen2.5 0.5B",
+                  "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "f497de17-eb54-447b-8e30-ac45a09188bd",
+              "metavars": {
+                "Capital": 20,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Qwen2.5 0.5B"
+              }
+            },
+            {
+              "text": 44,
+              "prompt": 21,
+              "fill_history": {
+                "country": 23
+              },
+              "llm": {
+                "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+                "name": "Gemma 3 1B",
+                "emoji": "🌐",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemma 3 1B",
+                  "model": "gemma3-1b-it-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 91.66666666666666,
+                  "error": 0
+                }
+              },
+              "uid": "618a33c1-d099-43aa-83bb-d4e0afb06412",
+              "metavars": {
+                "Capital": 22,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Gemma 3 1B"
+              }
+            },
+            {
+              "text": 22,
+              "prompt": 21,
+              "fill_history": {
+                "country": 23
+              },
+              "llm": {
+                "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+                "name": "Qwen2.5 0.5B",
+                "emoji": "🌐",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Qwen2.5 0.5B",
+                  "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "d461a99a-3401-4261-926f-78d0c01535ea",
+              "metavars": {
+                "Capital": 22,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Qwen2.5 0.5B"
+              }
+            },
+            {
+              "text": 45,
+              "prompt": 24,
+              "fill_history": {
+                "country": 26
+              },
+              "llm": {
+                "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+                "name": "Gemma 3 1B",
+                "emoji": "🌐",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemma 3 1B",
+                  "model": "gemma3-1b-it-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 91.66666666666666,
+                  "error": 0
+                }
+              },
+              "uid": "9cea1923-c003-407d-b53a-00fbc071c986",
+              "metavars": {
+                "Capital": 25,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Gemma 3 1B"
+              }
+            },
+            {
+              "text": 25,
+              "prompt": 24,
+              "fill_history": {
+                "country": 26
+              },
+              "llm": {
+                "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+                "name": "Qwen2.5 0.5B",
+                "emoji": "🌐",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Qwen2.5 0.5B",
+                  "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "4cef282f-4cde-4cc5-b1e0-b71629ff7757",
+              "metavars": {
+                "Capital": 25,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Qwen2.5 0.5B"
+              }
+            },
+            {
+              "text": 46,
+              "prompt": 27,
+              "fill_history": {
+                "country": 29
+              },
+              "llm": {
+                "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+                "name": "Gemma 3 1B",
+                "emoji": "🌐",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemma 3 1B",
+                  "model": "gemma3-1b-it-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 91.66666666666666,
+                  "error": 0
+                }
+              },
+              "uid": "45cfb469-d439-4b35-9d37-93459d1de127",
+              "metavars": {
+                "Capital": 30,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Gemma 3 1B"
+              }
+            },
+            {
+              "text": 28,
+              "prompt": 27,
+              "fill_history": {
+                "country": 29
+              },
+              "llm": {
+                "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+                "name": "Qwen2.5 0.5B",
+                "emoji": "🌐",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Qwen2.5 0.5B",
+                  "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "222ddafd-95c3-422e-944f-5f6dc922b1e4",
+              "metavars": {
+                "Capital": 30,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Qwen2.5 0.5B"
+              }
+            },
+            {
+              "text": 47,
+              "prompt": 31,
+              "fill_history": {
+                "country": 33
+              },
+              "llm": {
+                "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+                "name": "Gemma 3 1B",
+                "emoji": "🌐",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemma 3 1B",
+                  "model": "gemma3-1b-it-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 91.66666666666666,
+                  "error": 0
+                }
+              },
+              "uid": "11f8925c-7566-489a-a38f-c532a08e0e41",
+              "metavars": {
+                "Capital": 32,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Gemma 3 1B"
+              }
+            },
+            {
+              "text": 32,
+              "prompt": 31,
+              "fill_history": {
+                "country": 33
+              },
+              "llm": {
+                "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+                "name": "Qwen2.5 0.5B",
+                "emoji": "🌐",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Qwen2.5 0.5B",
+                  "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "4c484fb8-04f6-4d26-bd69-7373bea5466a",
+              "metavars": {
+                "Capital": 32,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Qwen2.5 0.5B"
+              }
+            },
+            {
+              "text": 48,
+              "prompt": 34,
+              "fill_history": {
+                "country": 36
+              },
+              "llm": {
+                "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+                "name": "Gemma 3 1B",
+                "emoji": "🌐",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemma 3 1B",
+                  "model": "gemma3-1b-it-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 91.66666666666666,
+                  "error": 0
+                }
+              },
+              "uid": "aef54573-5165-4b2f-8d3f-a52d73996700",
+              "metavars": {
+                "Capital": 35,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Gemma 3 1B"
+              }
+            },
+            {
+              "text": 35,
+              "prompt": 34,
+              "fill_history": {
+                "country": 36
+              },
+              "llm": {
+                "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+                "name": "Qwen2.5 0.5B",
+                "emoji": "🌐",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Qwen2.5 0.5B",
+                  "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "29e39322-c71c-4ea8-8f70-d7aaccf26c63",
+              "metavars": {
+                "Capital": 35,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Qwen2.5 0.5B"
+              }
+            },
+            {
+              "text": 49,
+              "prompt": 37,
+              "fill_history": {
+                "country": 39
+              },
+              "llm": {
+                "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+                "name": "Gemma 3 1B",
+                "emoji": "🌐",
+                "model": "gemma3-1b-it-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Gemma 3 1B",
+                  "model": "gemma3-1b-it-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 91.66666666666666,
+                  "error": 0
+                }
+              },
+              "uid": "a7437f93-e609-40b7-9533-b0637ec3ff75",
+              "metavars": {
+                "Capital": 38,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Gemma 3 1B"
+              }
+            },
+            {
+              "text": 38,
+              "prompt": 37,
+              "fill_history": {
+                "country": 39
+              },
+              "llm": {
+                "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+                "name": "Qwen2.5 0.5B",
+                "emoji": "🌐",
+                "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                "base_model": "webllm",
+                "temp": 0.7,
+                "formData": {
+                  "shortname": "Qwen2.5 0.5B",
+                  "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "settings": {
+                  "system_msg": "You are a helpful assistant.",
+                  "temperature": 0.7,
+                  "top_p": 1,
+                  "max_tokens": 512
+                },
+                "progress": {
+                  "success": 100,
+                  "error": 0
+                }
+              },
+              "uid": "581325d5-7d2d-4a43-af1c-b3f356d66917",
+              "metavars": {
+                "Capital": 38,
+                "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+                "LLM_0": "Qwen2.5 0.5B"
+              }
+            }
+          ]
+        },
+        "position": {
+          "x": -560,
+          "y": -140
+        },
+        "positionAbsolute": {
+          "x": -560,
+          "y": -140
+        },
+        "dragHandle": ".node-header"
+      },
+      {
+        "width": 282,
+        "height": 214,
+        "id": "comment-1e6acacc-9637-4abd-8340-f72d9fc5e8c7",
+        "type": "comment",
+        "data": {
+          "title": "Checking against the table",
+          "text": "The Capital column isn't in the prompt, so it rides along with each response as a metavariable. The Simple Evaluator checks whether each answer contains it, with no code."
+        },
+        "position": {
+          "x": -140,
+          "y": -500
+        },
+        "positionAbsolute": {
+          "x": -140,
+          "y": -500
+        },
+        "dragHandle": ".node-header"
+      },
+      {
+        "width": 343,
+        "height": 233,
+        "id": "simpleval-83d5a204-136b-4a50-a19f-e27ca919a75d",
+        "type": "simpleval",
+        "data": {
+          "title": "Names the capital?",
+          "responseFormat": "response",
+          "operation": "contains",
+          "textValue": "",
+          "varValue": "Capital",
+          "varValueType": "meta",
+          "varSelected": true,
+          "availableVars": [
+            "country"
+          ],
+          "availableMetavars": [
+            "Capital"
+          ],
+          "refresh": false
+        },
+        "position": {
+          "x": -140,
+          "y": -140
+        },
+        "positionAbsolute": {
+          "x": -140,
+          "y": -140
+        },
+        "dragHandle": ".node-header"
+      },
+      {
+        "width": 722,
+        "height": 552,
+        "id": "vis-c7c040f7-7089-4a43-8f59-1a6763fff084",
+        "type": "vis",
+        "data": {
+          "title": "Capitals named correctly",
+          "input": "simpleval-83d5a204-136b-4a50-a19f-e27ca919a75d",
+          "refresh": false,
+          "vars": [
+            {
+              "value": "LLM (default)",
+              "label": "LLM (default)"
+            },
+            {
+              "value": "country",
+              "label": "country"
+            },
+            {
+              "value": "__meta_Capital",
+              "label": "Capital (meta)"
+            }
+          ],
+          "selected_vars": [],
+          "llm_groups": [
+            {
+              "value": "LLM",
+              "label": "LLM"
+            },
+            {
+              "value": "country",
+              "label": "country"
+            },
+            {
+              "value": "__meta_Capital",
+              "label": "Capital (meta)"
+            }
+          ],
+          "eval_res_vars": [
+            "score"
+          ]
+        },
+        "position": {
+          "x": 320,
+          "y": -200
+        },
+        "positionAbsolute": {
+          "x": 320,
+          "y": -200
+        },
+        "dragHandle": ".node-header"
+      },
+      {
+        "width": 282,
+        "height": 344,
+        "id": "comment-df540008-d626-4748-9316-7e3087d4e74d",
+        "type": "comment",
+        "data": {
+          "title": "Things to try",
+          "text": "1. Which capitals do both models miss? Is the wrong answer usually the biggest city?\n\n2. Open a model's settings (the gear icon) and change its system message, e.g. \"You are a geography teacher.\" Does it help?\n\n3. Got an API key? Add a bigger model under Response Providers and compare."
+        },
+        "position": {
+          "x": 1082,
+          "y": -200
+        },
+        "positionAbsolute": {
+          "x": 1082,
+          "y": -200
+        },
+        "dragHandle": ".node-header"
+      }
+    ],
+    "edges": [
+      {
+        "source": "table-e0223721-81cc-498e-8dd3-8084789a61db",
+        "sourceHandle": "Country",
+        "target": "prompt-1b802abc-2f76-4f0d-b4c1-c1b38e21c37f",
+        "targetHandle": "country",
+        "interactionWidth": 40,
+        "markerEnd": {
+          "type": "arrow",
+          "width": 22,
+          "height": 22
+        },
+        "type": "default",
+        "id": "reactflow__edge-table-e0223721-81cc-498e-8dd3-8084789a61dbCountry-prompt-1b802abc-2f76-4f0d-b4c1-c1b38e21c37fcountry"
+      },
+      {
+        "source": "prompt-1b802abc-2f76-4f0d-b4c1-c1b38e21c37f",
+        "sourceHandle": "prompt",
+        "target": "simpleval-83d5a204-136b-4a50-a19f-e27ca919a75d",
+        "targetHandle": "responseBatch",
+        "interactionWidth": 40,
+        "markerEnd": {
+          "type": "arrow",
+          "width": 22,
+          "height": 22
+        },
+        "type": "default",
+        "id": "reactflow__edge-prompt-1b802abc-2f76-4f0d-b4c1-c1b38e21c37fprompt-simpleval-83d5a204-136b-4a50-a19f-e27ca919a75dresponseBatch"
+      },
+      {
+        "source": "simpleval-83d5a204-136b-4a50-a19f-e27ca919a75d",
+        "sourceHandle": "output",
+        "target": "vis-c7c040f7-7089-4a43-8f59-1a6763fff084",
+        "targetHandle": "input",
+        "interactionWidth": 40,
+        "markerEnd": {
+          "type": "arrow",
+          "width": 22,
+          "height": 22
+        },
+        "type": "default",
+        "id": "reactflow__edge-simpleval-83d5a204-136b-4a50-a19f-e27ca919a75doutput-vis-c7c040f7-7089-4a43-8f59-1a6763fff084input"
+      }
+    ],
+    "viewport": {
+      "x": 760,
+      "y": 420,
+      "zoom": 0.6
+    }
+  },
+  "cache": {
+    "comment-d93a41c7-13c9-4300-a3cd-f2ce69d63199.json": {},
+    "table-e0223721-81cc-498e-8dd3-8084789a61db.json": {},
+    "prompt-1b802abc-2f76-4f0d-b4c1-c1b38e21c37f_0.json": {
+      "What is the capital of France? Answer with just the name of the city.": [
+        {
+          "prompt": 0,
+          "uid": "d0b4b323-584f-46b4-82d0-27df8d427071",
+          "responses": [
+            40
+          ],
+          "llm": "Gemma 3 1B",
+          "vars": {
+            "country": 2
+          },
+          "metavars": {
+            "Capital": 1,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          }
+        }
+      ],
+      "What is the capital of Japan? Answer with just the name of the city.": [
+        {
+          "prompt": 3,
+          "uid": "1d546362-a947-462d-8714-a32b42d7f52c",
+          "responses": [
+            4
+          ],
+          "llm": "Gemma 3 1B",
+          "vars": {
+            "country": 5
+          },
+          "metavars": {
+            "Capital": 4,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          }
+        }
+      ],
+      "What is the capital of Kenya? Answer with just the name of the city.": [
+        {
+          "prompt": 6,
+          "uid": "c05f9be3-1922-4dd1-a00b-829fc66c7b65",
+          "responses": [
+            41
+          ],
+          "llm": "Gemma 3 1B",
+          "vars": {
+            "country": 8
+          },
+          "metavars": {
+            "Capital": 9,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          }
+        }
+      ],
+      "What is the capital of Australia? Answer with just the name of the city.": [
+        {
+          "prompt": 10,
+          "uid": "ddba614c-05ca-46ef-bc1c-bc9bf6e48aa3",
+          "responses": [
+            42
+          ],
+          "llm": "Gemma 3 1B",
+          "vars": {
+            "country": 12
+          },
+          "metavars": {
+            "Capital": 13,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          }
+        }
+      ],
+      "What is the capital of Canada? Answer with just the name of the city.": [
+        {
+          "prompt": 14,
+          "uid": "339d3441-6b1a-4f96-b76f-cb6c50da312a",
+          "responses": [
+            43
+          ],
+          "llm": "Gemma 3 1B",
+          "vars": {
+            "country": 16
+          },
+          "metavars": {
+            "Capital": 15,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          }
+        }
+      ],
+      "What is the capital of Turkey? Answer with just the name of the city.": [
+        {
+          "prompt": 17,
+          "uid": "5c9b5eb5-1012-4dc1-a428-a1f21abe079b",
+          "responses": [
+            20
+          ],
+          "llm": "Gemma 3 1B",
+          "vars": {
+            "country": 19
+          },
+          "metavars": {
+            "Capital": 20,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          }
+        }
+      ],
+      "What is the capital of Switzerland? Answer with just the name of the city.": [
+        {
+          "prompt": 21,
+          "uid": "618a33c1-d099-43aa-83bb-d4e0afb06412",
+          "responses": [
+            44
+          ],
+          "llm": "Gemma 3 1B",
+          "vars": {
+            "country": 23
+          },
+          "metavars": {
+            "Capital": 22,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          }
+        }
+      ],
+      "What is the capital of New Zealand? Answer with just the name of the city.": [
+        {
+          "prompt": 24,
+          "uid": "9cea1923-c003-407d-b53a-00fbc071c986",
+          "responses": [
+            45
+          ],
+          "llm": "Gemma 3 1B",
+          "vars": {
+            "country": 26
+          },
+          "metavars": {
+            "Capital": 25,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          }
+        }
+      ],
+      "What is the capital of Morocco? Answer with just the name of the city.": [
+        {
+          "prompt": 27,
+          "uid": "45cfb469-d439-4b35-9d37-93459d1de127",
+          "responses": [
+            46
+          ],
+          "llm": "Gemma 3 1B",
+          "vars": {
+            "country": 29
+          },
+          "metavars": {
+            "Capital": 30,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          }
+        }
+      ],
+      "What is the capital of Nigeria? Answer with just the name of the city.": [
+        {
+          "prompt": 31,
+          "uid": "11f8925c-7566-489a-a38f-c532a08e0e41",
+          "responses": [
+            47
+          ],
+          "llm": "Gemma 3 1B",
+          "vars": {
+            "country": 33
+          },
+          "metavars": {
+            "Capital": 32,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          }
+        }
+      ],
+      "What is the capital of Vietnam? Answer with just the name of the city.": [
+        {
+          "prompt": 34,
+          "uid": "aef54573-5165-4b2f-8d3f-a52d73996700",
+          "responses": [
+            48
+          ],
+          "llm": "Gemma 3 1B",
+          "vars": {
+            "country": 36
+          },
+          "metavars": {
+            "Capital": 35,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          }
+        }
+      ],
+      "What is the capital of Pakistan? Answer with just the name of the city.": [
+        {
+          "prompt": 37,
+          "uid": "a7437f93-e609-40b7-9533-b0637ec3ff75",
+          "responses": [
+            49
+          ],
+          "llm": "Gemma 3 1B",
+          "vars": {
+            "country": 39
+          },
+          "metavars": {
+            "Capital": 38,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          }
+        }
+      ]
+    },
+    "prompt-1b802abc-2f76-4f0d-b4c1-c1b38e21c37f_1.json": {
+      "What is the capital of France? Answer with just the name of the city.": [
+        {
+          "prompt": 0,
+          "uid": "b4e46516-f0d7-4b74-a7e2-14b1613f7602",
+          "responses": [
+            1
+          ],
+          "llm": "Qwen2.5 0.5B",
+          "vars": {
+            "country": 2
+          },
+          "metavars": {
+            "Capital": 1,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          }
+        }
+      ],
+      "What is the capital of Japan? Answer with just the name of the city.": [
+        {
+          "prompt": 3,
+          "uid": "ebe548e4-f2bd-47f5-8add-9805be08ed10",
+          "responses": [
+            4
+          ],
+          "llm": "Qwen2.5 0.5B",
+          "vars": {
+            "country": 5
+          },
+          "metavars": {
+            "Capital": 4,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          }
+        }
+      ],
+      "What is the capital of Kenya? Answer with just the name of the city.": [
+        {
+          "prompt": 6,
+          "uid": "8955d5e4-f6eb-40d7-8db8-92ea812edf8a",
+          "responses": [
+            7
+          ],
+          "llm": "Qwen2.5 0.5B",
+          "vars": {
+            "country": 8
+          },
+          "metavars": {
+            "Capital": 9,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          }
+        }
+      ],
+      "What is the capital of Australia? Answer with just the name of the city.": [
+        {
+          "prompt": 10,
+          "uid": "c2a61c43-7919-48e8-9368-cd5d4ab7bc51",
+          "responses": [
+            11
+          ],
+          "llm": "Qwen2.5 0.5B",
+          "vars": {
+            "country": 12
+          },
+          "metavars": {
+            "Capital": 13,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          }
+        }
+      ],
+      "What is the capital of Canada? Answer with just the name of the city.": [
+        {
+          "prompt": 14,
+          "uid": "a9299b31-6a6f-4df5-8b4a-493aa98eae58",
+          "responses": [
+            15
+          ],
+          "llm": "Qwen2.5 0.5B",
+          "vars": {
+            "country": 16
+          },
+          "metavars": {
+            "Capital": 15,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          }
+        }
+      ],
+      "What is the capital of Turkey? Answer with just the name of the city.": [
+        {
+          "prompt": 17,
+          "uid": "f497de17-eb54-447b-8e30-ac45a09188bd",
+          "responses": [
+            18
+          ],
+          "llm": "Qwen2.5 0.5B",
+          "vars": {
+            "country": 19
+          },
+          "metavars": {
+            "Capital": 20,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          }
+        }
+      ],
+      "What is the capital of Switzerland? Answer with just the name of the city.": [
+        {
+          "prompt": 21,
+          "uid": "d461a99a-3401-4261-926f-78d0c01535ea",
+          "responses": [
+            22
+          ],
+          "llm": "Qwen2.5 0.5B",
+          "vars": {
+            "country": 23
+          },
+          "metavars": {
+            "Capital": 22,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          }
+        }
+      ],
+      "What is the capital of New Zealand? Answer with just the name of the city.": [
+        {
+          "prompt": 24,
+          "uid": "4cef282f-4cde-4cc5-b1e0-b71629ff7757",
+          "responses": [
+            25
+          ],
+          "llm": "Qwen2.5 0.5B",
+          "vars": {
+            "country": 26
+          },
+          "metavars": {
+            "Capital": 25,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          }
+        }
+      ],
+      "What is the capital of Morocco? Answer with just the name of the city.": [
+        {
+          "prompt": 27,
+          "uid": "222ddafd-95c3-422e-944f-5f6dc922b1e4",
+          "responses": [
+            28
+          ],
+          "llm": "Qwen2.5 0.5B",
+          "vars": {
+            "country": 29
+          },
+          "metavars": {
+            "Capital": 30,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          }
+        }
+      ],
+      "What is the capital of Nigeria? Answer with just the name of the city.": [
+        {
+          "prompt": 31,
+          "uid": "4c484fb8-04f6-4d26-bd69-7373bea5466a",
+          "responses": [
+            32
+          ],
+          "llm": "Qwen2.5 0.5B",
+          "vars": {
+            "country": 33
+          },
+          "metavars": {
+            "Capital": 32,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          }
+        }
+      ],
+      "What is the capital of Vietnam? Answer with just the name of the city.": [
+        {
+          "prompt": 34,
+          "uid": "29e39322-c71c-4ea8-8f70-d7aaccf26c63",
+          "responses": [
+            35
+          ],
+          "llm": "Qwen2.5 0.5B",
+          "vars": {
+            "country": 36
+          },
+          "metavars": {
+            "Capital": 35,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          }
+        }
+      ],
+      "What is the capital of Pakistan? Answer with just the name of the city.": [
+        {
+          "prompt": 37,
+          "uid": "581325d5-7d2d-4a43-af1c-b3f356d66917",
+          "responses": [
+            38
+          ],
+          "llm": "Qwen2.5 0.5B",
+          "vars": {
+            "country": 39
+          },
+          "metavars": {
+            "Capital": 38,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          }
+        }
+      ]
+    },
+    "prompt-1b802abc-2f76-4f0d-b4c1-c1b38e21c37f.json": {
+      "cache_files": {
+        "prompt-1b802abc-2f76-4f0d-b4c1-c1b38e21c37f_0.json": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        },
+        "prompt-1b802abc-2f76-4f0d-b4c1-c1b38e21c37f_1.json": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 0,
+            "error": 0
+          }
+        }
+      },
+      "responses_last_run": [
+        {
+          "vars": {
+            "country": 2
+          },
+          "metavars": {
+            "Capital": 1,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          },
+          "llm": "Gemma 3 1B",
+          "prompt": 0,
+          "responses": [
+            40
+          ],
+          "uid": "d0b4b323-584f-46b4-82d0-27df8d427071"
+        },
+        {
+          "vars": {
+            "country": 2
+          },
+          "metavars": {
+            "Capital": 1,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          },
+          "llm": "Qwen2.5 0.5B",
+          "prompt": 0,
+          "responses": [
+            1
+          ],
+          "uid": "b4e46516-f0d7-4b74-a7e2-14b1613f7602"
+        },
+        {
+          "vars": {
+            "country": 5
+          },
+          "metavars": {
+            "Capital": 4,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          },
+          "llm": "Gemma 3 1B",
+          "prompt": 3,
+          "responses": [
+            4
+          ],
+          "uid": "1d546362-a947-462d-8714-a32b42d7f52c"
+        },
+        {
+          "vars": {
+            "country": 5
+          },
+          "metavars": {
+            "Capital": 4,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          },
+          "llm": "Qwen2.5 0.5B",
+          "prompt": 3,
+          "responses": [
+            4
+          ],
+          "uid": "ebe548e4-f2bd-47f5-8add-9805be08ed10"
+        },
+        {
+          "vars": {
+            "country": 8
+          },
+          "metavars": {
+            "Capital": 9,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          },
+          "llm": "Gemma 3 1B",
+          "prompt": 6,
+          "responses": [
+            41
+          ],
+          "uid": "c05f9be3-1922-4dd1-a00b-829fc66c7b65"
+        },
+        {
+          "vars": {
+            "country": 8
+          },
+          "metavars": {
+            "Capital": 9,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          },
+          "llm": "Qwen2.5 0.5B",
+          "prompt": 6,
+          "responses": [
+            7
+          ],
+          "uid": "8955d5e4-f6eb-40d7-8db8-92ea812edf8a"
+        },
+        {
+          "vars": {
+            "country": 12
+          },
+          "metavars": {
+            "Capital": 13,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          },
+          "llm": "Gemma 3 1B",
+          "prompt": 10,
+          "responses": [
+            42
+          ],
+          "uid": "ddba614c-05ca-46ef-bc1c-bc9bf6e48aa3"
+        },
+        {
+          "vars": {
+            "country": 12
+          },
+          "metavars": {
+            "Capital": 13,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          },
+          "llm": "Qwen2.5 0.5B",
+          "prompt": 10,
+          "responses": [
+            11
+          ],
+          "uid": "c2a61c43-7919-48e8-9368-cd5d4ab7bc51"
+        },
+        {
+          "vars": {
+            "country": 16
+          },
+          "metavars": {
+            "Capital": 15,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          },
+          "llm": "Gemma 3 1B",
+          "prompt": 14,
+          "responses": [
+            43
+          ],
+          "uid": "339d3441-6b1a-4f96-b76f-cb6c50da312a"
+        },
+        {
+          "vars": {
+            "country": 16
+          },
+          "metavars": {
+            "Capital": 15,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          },
+          "llm": "Qwen2.5 0.5B",
+          "prompt": 14,
+          "responses": [
+            15
+          ],
+          "uid": "a9299b31-6a6f-4df5-8b4a-493aa98eae58"
+        },
+        {
+          "vars": {
+            "country": 19
+          },
+          "metavars": {
+            "Capital": 20,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          },
+          "llm": "Gemma 3 1B",
+          "prompt": 17,
+          "responses": [
+            20
+          ],
+          "uid": "5c9b5eb5-1012-4dc1-a428-a1f21abe079b"
+        },
+        {
+          "vars": {
+            "country": 19
+          },
+          "metavars": {
+            "Capital": 20,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          },
+          "llm": "Qwen2.5 0.5B",
+          "prompt": 17,
+          "responses": [
+            18
+          ],
+          "uid": "f497de17-eb54-447b-8e30-ac45a09188bd"
+        },
+        {
+          "vars": {
+            "country": 23
+          },
+          "metavars": {
+            "Capital": 22,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          },
+          "llm": "Gemma 3 1B",
+          "prompt": 21,
+          "responses": [
+            44
+          ],
+          "uid": "618a33c1-d099-43aa-83bb-d4e0afb06412"
+        },
+        {
+          "vars": {
+            "country": 23
+          },
+          "metavars": {
+            "Capital": 22,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          },
+          "llm": "Qwen2.5 0.5B",
+          "prompt": 21,
+          "responses": [
+            22
+          ],
+          "uid": "d461a99a-3401-4261-926f-78d0c01535ea"
+        },
+        {
+          "vars": {
+            "country": 26
+          },
+          "metavars": {
+            "Capital": 25,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          },
+          "llm": "Gemma 3 1B",
+          "prompt": 24,
+          "responses": [
+            45
+          ],
+          "uid": "9cea1923-c003-407d-b53a-00fbc071c986"
+        },
+        {
+          "vars": {
+            "country": 26
+          },
+          "metavars": {
+            "Capital": 25,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          },
+          "llm": "Qwen2.5 0.5B",
+          "prompt": 24,
+          "responses": [
+            25
+          ],
+          "uid": "4cef282f-4cde-4cc5-b1e0-b71629ff7757"
+        },
+        {
+          "vars": {
+            "country": 29
+          },
+          "metavars": {
+            "Capital": 30,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          },
+          "llm": "Gemma 3 1B",
+          "prompt": 27,
+          "responses": [
+            46
+          ],
+          "uid": "45cfb469-d439-4b35-9d37-93459d1de127"
+        },
+        {
+          "vars": {
+            "country": 29
+          },
+          "metavars": {
+            "Capital": 30,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          },
+          "llm": "Qwen2.5 0.5B",
+          "prompt": 27,
+          "responses": [
+            28
+          ],
+          "uid": "222ddafd-95c3-422e-944f-5f6dc922b1e4"
+        },
+        {
+          "vars": {
+            "country": 33
+          },
+          "metavars": {
+            "Capital": 32,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          },
+          "llm": "Gemma 3 1B",
+          "prompt": 31,
+          "responses": [
+            47
+          ],
+          "uid": "11f8925c-7566-489a-a38f-c532a08e0e41"
+        },
+        {
+          "vars": {
+            "country": 33
+          },
+          "metavars": {
+            "Capital": 32,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          },
+          "llm": "Qwen2.5 0.5B",
+          "prompt": 31,
+          "responses": [
+            32
+          ],
+          "uid": "4c484fb8-04f6-4d26-bd69-7373bea5466a"
+        },
+        {
+          "vars": {
+            "country": 36
+          },
+          "metavars": {
+            "Capital": 35,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          },
+          "llm": "Gemma 3 1B",
+          "prompt": 34,
+          "responses": [
+            48
+          ],
+          "uid": "aef54573-5165-4b2f-8d3f-a52d73996700"
+        },
+        {
+          "vars": {
+            "country": 36
+          },
+          "metavars": {
+            "Capital": 35,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          },
+          "llm": "Qwen2.5 0.5B",
+          "prompt": 34,
+          "responses": [
+            35
+          ],
+          "uid": "29e39322-c71c-4ea8-8f70-d7aaccf26c63"
+        },
+        {
+          "vars": {
+            "country": 39
+          },
+          "metavars": {
+            "Capital": 38,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Gemma 3 1B"
+          },
+          "llm": "Gemma 3 1B",
+          "prompt": 37,
+          "responses": [
+            49
+          ],
+          "uid": "a7437f93-e609-40b7-9533-b0637ec3ff75"
+        },
+        {
+          "vars": {
+            "country": 39
+          },
+          "metavars": {
+            "Capital": 38,
+            "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+            "LLM_0": "Qwen2.5 0.5B"
+          },
+          "llm": "Qwen2.5 0.5B",
+          "prompt": 37,
+          "responses": [
+            38
+          ],
+          "uid": "581325d5-7d2d-4a43-af1c-b3f356d66917"
+        }
+      ]
+    },
+    "comment-1e6acacc-9637-4abd-8340-f72d9fc5e8c7.json": {},
+    "simpleval-83d5a204-136b-4a50-a19f-e27ca919a75d.json": [
+      {
+        "vars": {
+          "country": 2
+        },
+        "metavars": {
+          "Capital": 1,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Gemma 3 1B"
+        },
+        "uid": "d0b4b323-584f-46b4-82d0-27df8d427071",
+        "llm": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 91.66666666666666,
+            "error": 0
+          }
+        },
+        "prompt": 0,
+        "responses": [
+          40
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 2
+        },
+        "metavars": {
+          "Capital": 1,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Qwen2.5 0.5B"
+        },
+        "uid": "b4e46516-f0d7-4b74-a7e2-14b1613f7602",
+        "llm": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": 0,
+        "responses": [
+          1
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 5
+        },
+        "metavars": {
+          "Capital": 4,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Gemma 3 1B"
+        },
+        "uid": "1d546362-a947-462d-8714-a32b42d7f52c",
+        "llm": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 91.66666666666666,
+            "error": 0
+          }
+        },
+        "prompt": 3,
+        "responses": [
+          4
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 5
+        },
+        "metavars": {
+          "Capital": 4,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Qwen2.5 0.5B"
+        },
+        "uid": "ebe548e4-f2bd-47f5-8add-9805be08ed10",
+        "llm": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": 3,
+        "responses": [
+          4
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 8
+        },
+        "metavars": {
+          "Capital": 9,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Gemma 3 1B"
+        },
+        "uid": "c05f9be3-1922-4dd1-a00b-829fc66c7b65",
+        "llm": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 91.66666666666666,
+            "error": 0
+          }
+        },
+        "prompt": 6,
+        "responses": [
+          41
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 8
+        },
+        "metavars": {
+          "Capital": 9,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Qwen2.5 0.5B"
+        },
+        "uid": "8955d5e4-f6eb-40d7-8db8-92ea812edf8a",
+        "llm": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": 6,
+        "responses": [
+          7
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 12
+        },
+        "metavars": {
+          "Capital": 13,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Gemma 3 1B"
+        },
+        "uid": "ddba614c-05ca-46ef-bc1c-bc9bf6e48aa3",
+        "llm": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 91.66666666666666,
+            "error": 0
+          }
+        },
+        "prompt": 10,
+        "responses": [
+          42
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 12
+        },
+        "metavars": {
+          "Capital": 13,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Qwen2.5 0.5B"
+        },
+        "uid": "c2a61c43-7919-48e8-9368-cd5d4ab7bc51",
+        "llm": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": 10,
+        "responses": [
+          11
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 16
+        },
+        "metavars": {
+          "Capital": 15,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Gemma 3 1B"
+        },
+        "uid": "339d3441-6b1a-4f96-b76f-cb6c50da312a",
+        "llm": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 91.66666666666666,
+            "error": 0
+          }
+        },
+        "prompt": 14,
+        "responses": [
+          43
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 16
+        },
+        "metavars": {
+          "Capital": 15,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Qwen2.5 0.5B"
+        },
+        "uid": "a9299b31-6a6f-4df5-8b4a-493aa98eae58",
+        "llm": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": 14,
+        "responses": [
+          15
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 19
+        },
+        "metavars": {
+          "Capital": 20,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Gemma 3 1B"
+        },
+        "uid": "5c9b5eb5-1012-4dc1-a428-a1f21abe079b",
+        "llm": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 91.66666666666666,
+            "error": 0
+          }
+        },
+        "prompt": 17,
+        "responses": [
+          20
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 19
+        },
+        "metavars": {
+          "Capital": 20,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Qwen2.5 0.5B"
+        },
+        "uid": "f497de17-eb54-447b-8e30-ac45a09188bd",
+        "llm": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": 17,
+        "responses": [
+          18
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 23
+        },
+        "metavars": {
+          "Capital": 22,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Gemma 3 1B"
+        },
+        "uid": "618a33c1-d099-43aa-83bb-d4e0afb06412",
+        "llm": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 91.66666666666666,
+            "error": 0
+          }
+        },
+        "prompt": 21,
+        "responses": [
+          44
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 23
+        },
+        "metavars": {
+          "Capital": 22,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Qwen2.5 0.5B"
+        },
+        "uid": "d461a99a-3401-4261-926f-78d0c01535ea",
+        "llm": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": 21,
+        "responses": [
+          22
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 26
+        },
+        "metavars": {
+          "Capital": 25,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Gemma 3 1B"
+        },
+        "uid": "9cea1923-c003-407d-b53a-00fbc071c986",
+        "llm": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 91.66666666666666,
+            "error": 0
+          }
+        },
+        "prompt": 24,
+        "responses": [
+          45
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 26
+        },
+        "metavars": {
+          "Capital": 25,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Qwen2.5 0.5B"
+        },
+        "uid": "4cef282f-4cde-4cc5-b1e0-b71629ff7757",
+        "llm": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": 24,
+        "responses": [
+          25
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 29
+        },
+        "metavars": {
+          "Capital": 30,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Gemma 3 1B"
+        },
+        "uid": "45cfb469-d439-4b35-9d37-93459d1de127",
+        "llm": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 91.66666666666666,
+            "error": 0
+          }
+        },
+        "prompt": 27,
+        "responses": [
+          46
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 29
+        },
+        "metavars": {
+          "Capital": 30,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Qwen2.5 0.5B"
+        },
+        "uid": "222ddafd-95c3-422e-944f-5f6dc922b1e4",
+        "llm": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": 27,
+        "responses": [
+          28
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            false
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 33
+        },
+        "metavars": {
+          "Capital": 32,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Gemma 3 1B"
+        },
+        "uid": "11f8925c-7566-489a-a38f-c532a08e0e41",
+        "llm": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 91.66666666666666,
+            "error": 0
+          }
+        },
+        "prompt": 31,
+        "responses": [
+          47
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 33
+        },
+        "metavars": {
+          "Capital": 32,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Qwen2.5 0.5B"
+        },
+        "uid": "4c484fb8-04f6-4d26-bd69-7373bea5466a",
+        "llm": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": 31,
+        "responses": [
+          32
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 36
+        },
+        "metavars": {
+          "Capital": 35,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Gemma 3 1B"
+        },
+        "uid": "aef54573-5165-4b2f-8d3f-a52d73996700",
+        "llm": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 91.66666666666666,
+            "error": 0
+          }
+        },
+        "prompt": 34,
+        "responses": [
+          48
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 36
+        },
+        "metavars": {
+          "Capital": 35,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Qwen2.5 0.5B"
+        },
+        "uid": "29e39322-c71c-4ea8-8f70-d7aaccf26c63",
+        "llm": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": 34,
+        "responses": [
+          35
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 39
+        },
+        "metavars": {
+          "Capital": 38,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Gemma 3 1B"
+        },
+        "uid": "a7437f93-e609-40b7-9533-b0637ec3ff75",
+        "llm": {
+          "key": "90176325-2cc0-46bd-9db2-fdee6e450f48",
+          "name": "Gemma 3 1B",
+          "emoji": "🌐",
+          "model": "gemma3-1b-it-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Gemma 3 1B",
+            "model": "gemma3-1b-it-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 91.66666666666666,
+            "error": 0
+          }
+        },
+        "prompt": 37,
+        "responses": [
+          49
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      },
+      {
+        "vars": {
+          "country": 39
+        },
+        "metavars": {
+          "Capital": 38,
+          "__pt": "What is the capital of {country}? Answer with just the name of the city.",
+          "LLM_0": "Qwen2.5 0.5B"
+        },
+        "uid": "581325d5-7d2d-4a43-af1c-b3f356d66917",
+        "llm": {
+          "key": "47d57381-7f7e-403b-96ea-384582e32f62",
+          "name": "Qwen2.5 0.5B",
+          "emoji": "🌐",
+          "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          "base_model": "webllm",
+          "temp": 0.7,
+          "formData": {
+            "shortname": "Qwen2.5 0.5B",
+            "model": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "settings": {
+            "system_msg": "You are a helpful assistant.",
+            "temperature": 0.7,
+            "top_p": 1,
+            "max_tokens": 512
+          },
+          "progress": {
+            "success": 100,
+            "error": 0
+          }
+        },
+        "prompt": 37,
+        "responses": [
+          38
+        ],
+        "tokens": {},
+        "eval_res": {
+          "items": [
+            true
+          ],
+          "dtype": "Categorical"
+        }
+      }
+    ],
+    "vis-c7c040f7-7089-4a43-8f59-1a6763fff084.json": {},
+    "comment-df540008-d626-4748-9316-7e3087d4e74d.json": {},
+    "__s": [
+      "What is the capital of France? Answer with just the name of the city.",
+      "Paris",
+      "France",
+      "What is the capital of Japan? Answer with just the name of the city.",
+      "Tokyo",
+      "Japan",
+      "What is the capital of Kenya? Answer with just the name of the city.",
+      " Kampala",
+      "Kenya",
+      "Nairobi",
+      "What is the capital of Australia? Answer with just the name of the city.",
+      "Sydney",
+      "Australia",
+      "Canberra",
+      "What is the capital of Canada? Answer with just the name of the city.",
+      "Ottawa",
+      "Canada",
+      "What is the capital of Turkey? Answer with just the name of the city.",
+      " Ankara",
+      "Turkey",
+      "Ankara",
+      "What is the capital of Switzerland? Answer with just the name of the city.",
+      "Bern",
+      "Switzerland",
+      "What is the capital of New Zealand? Answer with just the name of the city.",
+      "Wellington",
+      "New Zealand",
+      "What is the capital of Morocco? Answer with just the name of the city.",
+      "Casablanca",
+      "Morocco",
+      "Rabat",
+      "What is the capital of Nigeria? Answer with just the name of the city.",
+      "Abuja",
+      "Nigeria",
+      "What is the capital of Vietnam? Answer with just the name of the city.",
+      "Hanoi",
+      "Vietnam",
+      "What is the capital of Pakistan? Answer with just the name of the city.",
+      "Islamabad",
+      "Pakistan",
+      "Paris\n",
+      "Nairobi\n",
+      "Canberra\n",
+      "Ottawa.\n",
+      "Bern\n",
+      "Auckland\n",
+      "Marrakech\n",
+      "Abuja.\n",
+      "Hanoi.\n",
+      "Islamabad\n"
+    ],
+    "__media": {
+      "uids": [],
+      "cache": {}
+    }
+  }
+}

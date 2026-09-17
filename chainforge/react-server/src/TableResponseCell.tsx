@@ -4,7 +4,7 @@
  * with its model's color, as elsewhere in ChainForge. A strip of the model's
  * color along the top holds the response's badges (identical-response count,
  * scores) and its rating buttons, which appear on hover and stay visible once
- * the response is graded or annotated. The text is clamped to a few lines;
+ * the response is graded or annotated. Long text scrolls within the card;
  * clicking a response opens it in full.
  */
 import React, { Suspense, lazy, useState } from "react";
@@ -93,7 +93,7 @@ export const ScoreChips: React.FC<{ score?: EvaluationScore | null }> = ({
 
 export interface TableResponseCellProps {
   responses: LLMResponse[];
-  /** Lines of text to show per response before clamping, or "none" for all. */
+  /** Lines of text to show per response before it scrolls, or "none" for all. */
   lines: number | "none";
   /** Leave scores out, e.g. when they have their own columns. */
   hideScores?: boolean;
@@ -113,7 +113,7 @@ export interface TableResponseCellProps {
   /** A model name to show in the strip, where the view doesn't already show it. */
   modelNameFor?: (response: LLMResponse) => string | undefined;
   /** Prompt variables to list under the strip, e.g. those not grouped on. */
-  varsFor?: (response: LLMResponse) => Dict<string> | undefined;
+  varsFor?: (response: LLMResponse) => Dict<React.ReactNode> | undefined;
 }
 
 /** Copies a text response; sits in the response's bottom-right corner, shown on hover. */

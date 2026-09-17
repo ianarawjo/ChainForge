@@ -23,6 +23,7 @@ import {
   areEqualVarsDicts,
   repairCachedResponses,
   extractMediaVars,
+  imageMimeFromBase64,
 } from "./utils";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import { UserForcedPrematureExit } from "./errors";
@@ -40,21 +41,6 @@ interface _IntermediateLLMResponseType {
 // From trincot @ SO: https://stackoverflow.com/a/76477994/1911342
 // Functions equivalently to Python's asyncio 'as_completed' method,
 // performing a Promise.race() but where all promises are yielded as they complete
-/**
- * Guesses an image's MIME type from the start of its base64 encoding, i.e. its
- * magic bytes. Providers can return JPEG or WebP, and compression may produce
- * JPEG, so labelling everything PNG mislabels the stored file.
- */
-function imageMimeFromBase64(b64: string): string {
-  if (b64.startsWith("/9j/")) return "image/jpeg";
-  if (b64.startsWith("UklGR")) return "image/webp";
-  if (b64.startsWith("R0lGOD")) return "image/gif";
-  // "<svg" or "<?xml ", from vector image models
-  if (b64.startsWith("PHN2Zy") || b64.startsWith("PD94bWwg"))
-    return "image/svg+xml";
-  return "image/png";
-}
-
 async function* yield_as_completed(promises: Array<Promise<any>>) {
   // Don't mutate original array, and have Promise.race work with the
   // chained promises, so that if there is a rejection, the caller's
@@ -76,10 +62,18 @@ async function* yield_as_completed(promises: Array<Promise<any>>) {
 export class PromptPipeline {
   private _template: string;
   private _storageKey?: string;
+  private _internStrings: boolean;
 
-  constructor(template: string, storageKey?: string) {
+  /**
+   * @param internStrings Whether to intern the strings of each response in
+   * the StringLookup table. Interned strings are saved with the flow, so only
+   * intern responses that will be saved: for others (e.g. an LLM scorer's
+   * grader prompts, which paste in every response) it doubles the file size.
+   */
+  constructor(template: string, storageKey?: string, internStrings = true) {
     this._template = template;
     this._storageKey = storageKey;
+    this._internStrings = internStrings;
   }
 
   *gen_prompts(vars: Dict): Generator<PromptTemplate, boolean, undefined> {
@@ -179,7 +173,7 @@ export class PromptPipeline {
       resp_obj.chat_history = chat_history.messages;
 
     // Hash strings present in the response object, to improve performance
-    StringLookup.internDict(resp_obj, true);
+    if (this._internStrings) StringLookup.internDict(resp_obj, true);
 
     // Merge the response obj with the past one, if necessary
     if (past_resp_obj)

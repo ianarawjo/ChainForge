@@ -96,25 +96,30 @@ export function collectGridItems(
 
 /**
  * Candidate axes: prompt variables, in first-seen order, and the models
- * involved. Variables holding media (e.g. an input image) are left out; their
- * values are file ids, meaningless as headers.
+ * involved. Variables holding media (e.g. an input image) are listed apart, in
+ * `mediaVars`: their values are file ids, so they're shown as thumbnails rather
+ * than text, and aren't offered as filters.
  */
 export function gridAxisOptions(
   items: GridItem[],
   accessors: GridAccessors,
-): { vars: string[]; models: string[] } {
+): { vars: string[]; mediaVars: string[]; models: string[] } {
   const vars: string[] = [];
-  const mediaVars = new Set<string>();
+  const mediaVars: string[] = [];
   const models: string[] = [];
   for (const { response } of items) {
     for (const [name, value] of Object.entries(response.vars ?? {})) {
-      if (isMedia(value)) mediaVars.add(name);
-      else if (!vars.includes(name)) vars.push(name);
+      const list = isMedia(value) ? mediaVars : vars;
+      if (!list.includes(name)) list.push(name);
     }
     const model = accessors.modelOf(response);
     if (!models.includes(model)) models.push(model);
   }
-  return { vars: vars.filter((v) => !mediaVars.has(v)), models };
+  return {
+    vars: vars.filter((v) => !mediaVars.includes(v)),
+    mediaVars,
+    models,
+  };
 }
 
 /**
@@ -143,15 +148,22 @@ export function defaultGridAxes(vars: string[], numModels: number): GridAxes {
  * node re-runs and its responses are briefly cleared) is left out rather than
  * forgotten. If none of the chosen axes exist (e.g. the variables were
  * renamed), the defaults are shown instead.
+ *
+ * Media variables can be chosen too, but only make the defaults when there
+ * are no text variables (e.g. images from a Media Node, and nothing else).
  */
 export function resolveGridAxes(
   chosen: GridAxes | undefined,
   vars: string[],
   numModels: number,
+  mediaVars: string[] = [],
 ): GridAxes {
-  const defaults = defaultGridAxes(vars, numModels);
+  const defaults = defaultGridAxes(
+    vars.length > 0 ? vars : mediaVars,
+    numModels,
+  );
   if (!chosen) return defaults;
-  const available = new Set([...vars, MODEL_AXIS]);
+  const available = new Set([...vars, ...mediaVars, MODEL_AXIS]);
   const keys = ["rows", "cols", "split"] as const;
   const kept: GridAxes = {};
   for (const key of keys) {
@@ -160,7 +172,9 @@ export function resolveGridAxes(
   }
   const choseAny = keys.some((key) => chosen[key] !== undefined);
   const keptAny = keys.some((key) => kept[key] !== undefined);
-  return choseAny && !keptAny && vars.length > 0 ? defaults : kept;
+  return choseAny && !keptAny && vars.length + mediaVars.length > 0
+    ? defaults
+    : kept;
 }
 
 /** An item's value on an axis. */

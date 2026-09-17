@@ -1235,7 +1235,7 @@ Soft failing by replacing undefined with empty strings.`,
           newSessionOnlyMedia > 0
             ? `Browser storage for files is full (${Math.round(MediaLookup.storageUsage().limitBytes / 1024 / 1024)} MB), ` +
               `so ${newSessionOnlyMedia} generated image(s) from this run are kept only until this page is reloaded or closed. ` +
-              `Export the flow to keep them, or remove files you no longer need (e.g. from Media or Upload nodes) before generating more.`
+              `Export the flow to keep them, or remove files you no longer need (e.g. from Media or Documents nodes) before generating more.`
             : undefined;
 
         // If there was at least one error collecting a response...

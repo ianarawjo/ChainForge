@@ -48,7 +48,9 @@ import {
   passFail,
   resolveGridAxes,
   scoreMetrics,
+  UNSPECIFIED,
 } from "./backend/responseGrid";
+import { MediaThumbnail } from "./ResponseBoxes";
 import { useMediaUrl, useThumbnailUrl } from "./useMediaUrl";
 import VirtualResponseGrid from "./VirtualResponseGrid";
 import useStore from "./store";
@@ -287,11 +289,23 @@ export const ResponseLightbox: React.FC<ResponseLightboxProps> = ({
   const response = item?.response;
   const reasoning =
     item && response ? reasoningAt(response, item.index) : undefined;
-  // Prompt variables with text values; media inputs would only show a file id.
-  const vars = response
-    ? Object.entries(response.vars ?? {})
-        .filter(([, raw]) => !(typeof raw === "object" && raw !== null))
-        .map(([name]) => [name, accessors.valueOf(response, name) ?? ""])
+  // Prompt variables: text as text, images as thumbnails (their value is only
+  // a file id). Other media (documents) are left out.
+  const vars: [string, React.ReactNode][] = response
+    ? Object.entries(response.vars ?? {}).flatMap(
+        ([name, raw]): [string, React.ReactNode][] => {
+          if (typeof raw !== "object" || raw === null)
+            return [[name, accessors.valueOf(response, name) ?? ""]];
+          return raw.t === "img"
+            ? [
+                [
+                  name,
+                  <MediaThumbnail key={raw.d} mediaUID={raw.d} size={96} />,
+                ],
+              ]
+            : [];
+        },
+      )
     : [];
   const scores = item
     ? metrics
@@ -548,7 +562,7 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
     () => collectGridItems(responses, accessors),
     [responses, accessors],
   );
-  const { vars, models } = useMemo(
+  const { vars, mediaVars, models } = useMemo(
     () => gridAxisOptions(items, accessors),
     [items, accessors],
   );
@@ -595,10 +609,13 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
 
   // The defaults until the user picks axes, then the chosen axes whose
   // variables are present (see resolveGridAxes).
-  const available = useMemo(() => new Set([...vars, MODEL_AXIS]), [vars]);
+  const available = useMemo(
+    () => new Set([...vars, ...mediaVars, MODEL_AXIS]),
+    [vars, mediaVars],
+  );
   const axes = useMemo(
-    () => resolveGridAxes(chosenAxes, vars, models.length),
-    [chosenAxes, vars, models.length],
+    () => resolveGridAxes(chosenAxes, vars, models.length, mediaVars),
+    [chosenAxes, vars, models.length, mediaVars],
   );
   const filters = useMemo(
     () =>
@@ -686,8 +703,18 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
   const axisChoices = [
     { value: "", label: "None" },
     ...vars.map((v) => ({ value: v, label: v })),
+    ...mediaVars.map((v) => ({ value: v, label: v })),
     { value: MODEL_AXIS, label: modelLabel },
   ];
+  // Headers for an image variable show the image, since its value is a file
+  // id. (Image variables aren't offered as filters, for the same reason.)
+  const isMediaAxis = (axis?: string) =>
+    axis !== undefined && mediaVars.includes(axis);
+  const rowsAreImages = isMediaAxis(axes.rows);
+  const colsAreImages = isMediaAxis(axes.cols);
+  const splitIsImages = isMediaAxis(axes.split);
+  const headerThumbSize = wideFormat ? 96 : 48;
+  const titleThumbSize = wideFormat ? 48 : 28;
 
   // Variables not on an axis can narrow the grid to one value.
   const onAxes = new Set(AXIS_KEYS.map((k) => axes[k]).filter(Boolean));
@@ -768,10 +795,11 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
   // up to a cap past which long values (e.g. queries) wrap.
   const rowLabelWidth = useMemo(() => {
     if (!hasRows) return 0;
+    if (rowsAreImages) return headerThumbSize + 14;
     const longest = Math.max(0, ...grid.rowValues.map((v) => v.length));
     const [charWidth, min, max] = wideFormat ? [7.5, 48, 220] : [6.5, 40, 110];
     return Math.min(max, Math.max(min, Math.ceil(longest * charWidth) + 14));
-  }, [hasRows, grid, wideFormat]);
+  }, [hasRows, rowsAreImages, headerThumbSize, grid, wideFormat]);
   const headerLines = useMemo(() => {
     if (!hasCols) return 0;
     const slotWidth = hasText
@@ -796,8 +824,18 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
       itemGap: ITEM_GAP,
       cellGap: CELL_GAP,
       rowHeaderWidth: rowLabelWidth,
-      headerHeight: hasCols ? headerLines * colHeaderLineHeight + 6 : 0,
-      titleHeight: axes.split ? (wideFormat ? 28 : 22) : 0,
+      headerHeight: hasCols
+        ? (colsAreImages
+            ? headerThumbSize
+            : headerLines * colHeaderLineHeight) + 6
+        : 0,
+      titleHeight: axes.split
+        ? splitIsImages
+          ? titleThumbSize + 8
+          : wideFormat
+            ? 28
+            : 22
+        : 0,
       sectionGap: SECTION_GAP,
       wrap: !hasRows && !hasCols,
     }),
@@ -814,6 +852,10 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
       headerLines,
       colHeaderLineHeight,
       rowLabelWidth,
+      colsAreImages,
+      splitIsImages,
+      headerThumbSize,
+      titleThumbSize,
     ],
   );
 
@@ -969,48 +1011,71 @@ const ResponseGridView: React.FC<ResponseGridViewProps> = ({
           }
           renderTitle={(section) => (
             <Text size={sz} weight={500}>
-              {axes.split ? labelOf(axes.split) : ""} = {section.value}
+              {axes.split ? labelOf(axes.split) : ""} ={" "}
+              {splitIsImages &&
+              section.value !== undefined &&
+              section.value !== UNSPECIFIED ? (
+                <MediaThumbnail
+                  mediaUID={section.value}
+                  size={titleThumbSize}
+                />
+              ) : (
+                section.value
+              )}
             </Text>
           )}
           // Centered over the column, which can hold several responses, and
           // wrapped onto up to 3 lines (full value on hover).
-          renderColumnHeader={(value) => (
-            <div
-              title={value}
-              style={{
-                fontSize: wideFormat ? 13 : 11,
-                fontWeight: 500,
-                lineHeight: `${colHeaderLineHeight}px`,
-                textAlign: "center",
-                overflowWrap: "anywhere",
-                display: "-webkit-box",
-                WebkitBoxOrient: "vertical",
-                WebkitLineClamp: 3,
-                overflow: "hidden",
-              }}
-            >
-              {value}
-            </div>
-          )}
+          renderColumnHeader={(value) =>
+            colsAreImages && value !== UNSPECIFIED ? (
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <MediaThumbnail mediaUID={value} size={headerThumbSize} />
+              </div>
+            ) : (
+              <div
+                title={value}
+                style={{
+                  fontSize: wideFormat ? 13 : 11,
+                  fontWeight: 500,
+                  lineHeight: `${colHeaderLineHeight}px`,
+                  textAlign: "center",
+                  overflowWrap: "anywhere",
+                  display: "-webkit-box",
+                  WebkitBoxOrient: "vertical",
+                  WebkitLineClamp: 3,
+                  overflow: "hidden",
+                }}
+              >
+                {value}
+              </div>
+            )
+          }
           // Wraps onto as many lines as the row has room for, and scrolls for
           // the rest, so long values (e.g. queries) can be read and compared.
-          renderRowHeader={(value, maxHeight) => (
-            <div
-              className="nowheel"
-              title={value}
-              style={{
-                fontSize: wideFormat ? 13 : 11,
-                fontWeight: 500,
-                lineHeight: 1.35,
-                whiteSpace: "pre-wrap",
-                overflowWrap: "anywhere",
-                maxHeight,
-                overflowY: "auto",
-              }}
-            >
-              {value}
-            </div>
-          )}
+          renderRowHeader={(value, maxHeight) =>
+            rowsAreImages && value !== UNSPECIFIED ? (
+              <MediaThumbnail
+                mediaUID={value}
+                size={Math.min(headerThumbSize, maxHeight)}
+              />
+            ) : (
+              <div
+                className="nowheel"
+                title={value}
+                style={{
+                  fontSize: wideFormat ? 13 : 11,
+                  fontWeight: 500,
+                  lineHeight: 1.35,
+                  whiteSpace: "pre-wrap",
+                  overflowWrap: "anywhere",
+                  maxHeight,
+                  overflowY: "auto",
+                }}
+              >
+                {value}
+              </div>
+            )
+          }
           renderItem={(item) => {
             const i = indexOf.get(item) ?? 0;
             const open = () => setLightboxIndex(i);

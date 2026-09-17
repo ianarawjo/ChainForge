@@ -353,6 +353,16 @@ function allStringsAreNumeric(strs: Array<string>) {
   return strs.every((s) => !isNaN(parseFloat(s)));
 }
 
+/**
+ * Whether an LLM scorer's answers (trimmed, lowercased, unquoted) are all
+ * boolean-ish, so they can be stored as booleans. True even when every answer
+ * is the same, e.g. all "true".
+ */
+export function scoresAreBooleanish(scores: Set<string>): boolean {
+  const booleanish = new Set(["true", "false", "yes", "no"]);
+  return scores.size > 0 && Array.from(scores).every((s) => booleanish.has(s));
+}
+
 function check_typeof_vals(arr: Array<any>): MetricType {
   if (arr.length === 0) return MetricType.Empty;
 
@@ -835,6 +845,7 @@ export async function queryLLM(
   progress_listener?: (progress: { [key: symbol]: any }) => void,
   cont_only_w_prior_llms?: boolean,
   cancel_id?: string | number,
+  intern_strings = !no_cache, // see PromptPipeline; uncached responses are never saved
 ): Promise<{ responses: LLMResponse[]; errors: Dict<string[]> }> {
   // Verify the integrity of the params
   if (typeof id !== "string" || id.trim().length === 0)
@@ -954,6 +965,7 @@ export async function queryLLM(
     const prompter = new PromptPipeline(
       prompt,
       no_cache ? undefined : cache_filepath,
+      intern_strings,
     );
 
     // Prompt the LLM with all permutations of the input prompt template:
@@ -1439,6 +1451,10 @@ export async function evalWithLLM(
       progress_listener,
       !cache_id, // if there's no cache_id, we don't want to cache the responses
       cancel_id,
+      // Grader responses are cached for this session only, never exported, so
+      // don't intern their prompts: each pastes in a whole response, and the
+      // StringLookup table (which is exported) would keep a second copy of it.
+      false,
     );
 
     const err_vals: string[] = Object.values(errors).flat();
@@ -1556,13 +1572,7 @@ export async function evalWithLLM(
   }
 
   // Check if the results are boolean-ish:
-  if (
-    all_eval_res.size === 2 &&
-    (all_eval_res.has("true") ||
-      all_eval_res.has("false") ||
-      all_eval_res.has("yes") ||
-      all_eval_res.has("no"))
-  ) {
+  if (scoresAreBooleanish(all_eval_res)) {
     // Convert all eval results to boolean datatypes:
     all_evald_responses.forEach((resp_obj) => {
       if (!resp_obj.eval_res?.items) return;
