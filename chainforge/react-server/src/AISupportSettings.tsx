@@ -132,15 +132,17 @@ export default function AISupportSettings({
             label="Provider"
             description={
               chosen
-                ? "The model provider AI features use."
+                ? "The model provider AI features use. Clear it to pick one automatically."
                 : "Picked automatically from the API keys you've set. Choose one to keep it."
             }
             withinPortal
+            clearable
+            placeholder={`Automatic: ${provider.emoji} ${provider.name}`}
             data={providers.map((p) => ({
               value: p.name,
               label: `${p.emoji} ${p.name}`,
             }))}
-            value={provider.name}
+            value={chosen?.name ?? null}
             onChange={(value) => onChange("aiProvider", value ?? "")}
           />
           {setupProblem && (
