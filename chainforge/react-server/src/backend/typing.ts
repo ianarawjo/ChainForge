@@ -261,6 +261,13 @@ export interface ResponseStats {
   tokens_per_s?: number;
   /** How fast the model generated once it started, as measured by the server itself. Only local servers that report it (Ollama, llama.cpp, WebLLM). */
   decode_tokens_per_s?: number;
+  /**
+   * Set when the provider reported one total for several responses, e.g. one
+   * request that returned n of them: how many responses the total was shared
+   * between. The stats it covers (output tokens and speed, or latency) are
+   * then that total's average.
+   */
+  averaged_over?: number;
 }
 
 /** A JSON object describing an LLM response for the same prompt, with n responses (n>=1) */

@@ -23,6 +23,14 @@ def test_python_evaluators_see_each_responses_stats():
     ]
 
 
+def test_averages_are_marked():
+    seen = []
+    responses = [{"responses": ["a"], "prompt": "p", "vars": {}, "llm": "m", "metavars": {},
+                  "stats": [{"output_tokens": 100, "averaged_over": 4}]}]
+    flask_app.run_over_responses(lambda r: seen.append(r.meta) or 1, responses, "response", "evaluator")
+    assert seen == [{"stat_output_tokens": 100, "stat_averaged_over": 4}]
+
+
 def test_responses_without_stats_are_unchanged():
     seen = []
     responses = [{"responses": ["a"], "prompt": "p", "vars": {}, "llm": "m", "metavars": {"topic": "x"}}]

@@ -27,6 +27,7 @@ export const STATS_METAVARS = {
   output_tokens: "stat_output_tokens",
   tokens_per_s: "stat_tokens_per_s",
   decode_tokens_per_s: "stat_decode_tokens_per_s",
+  averaged_over: "stat_averaged_over",
 } as const;
 
 const STATS_METAVAR_NAMES = new Set<string>(Object.values(STATS_METAVARS));
@@ -143,7 +144,10 @@ function finish(stats: ResponseStats): ResponseStats | null {
     res.tokens_per_s = round1(stats.output_tokens / (stats.latency_ms / 1000));
   if (stats.decode_tokens_per_s !== undefined)
     res.decode_tokens_per_s = round1(stats.decode_tokens_per_s);
-  return Object.keys(res).length > 0 ? res : null;
+  if (Object.keys(res).length === 0) return null;
+  if (stats.averaged_over !== undefined && stats.averaged_over > 1)
+    res.averaged_over = stats.averaged_over;
+  return res;
 }
 
 /**
@@ -154,9 +158,10 @@ function finish(stats: ResponseStats): ResponseStats | null {
  * @param count How many responses were extracted from the reply.
  *
  * A reply with several choices (one request asked for n responses) gives each
- * the request's latency and an even share of its output tokens. Several
- * replies (a request per response) each count on their own; without a
- * per-request time, the total is split evenly between them.
+ * the request's latency, the average of its output tokens, and the speed that
+ * average makes. Several replies (a request per response) each count on their
+ * own; without a per-request time, each gets the average. Averaged stats are
+ * marked with `averaged_over`.
  */
 export function extract_stats(
   response: unknown,
@@ -194,13 +199,18 @@ export function extract_stats(
   if (replies.length === 0 || total !== count) {
     if (elapsed_ms === undefined) return undefined;
     return Array.from({ length: count }, () =>
-      finish({ latency_ms: elapsed_ms / count }),
+      finish({ latency_ms: elapsed_ms / count, averaged_over: count }),
     );
   }
 
   const stats: (ResponseStats | null)[] = [];
   replies.forEach((reply, i) => {
     const s = statsFromReply(reply);
+    // Without its own time, a reply gets the average of the call's
+    const latencyAveraged =
+      s.latency_ms === undefined &&
+      elapsed_ms !== undefined &&
+      replies.length > 1;
     if (s.latency_ms === undefined && elapsed_ms !== undefined)
       s.latency_ms = elapsed_ms / replies.length;
     const k = sizes[i];
@@ -212,6 +222,7 @@ export function extract_stats(
             s.output_tokens !== undefined ? s.output_tokens / k : undefined,
           // A server-measured speed is per sequence already
           decode_tokens_per_s: k === 1 ? s.decode_tokens_per_s : undefined,
+          averaged_over: Math.max(k, latencyAveraged ? replies.length : 1),
         }),
       );
   });
@@ -245,12 +256,14 @@ export function statsToMetavars(
     res[STATS_METAVARS.tokens_per_s] = stats.tokens_per_s;
   if (stats.decode_tokens_per_s !== undefined)
     res[STATS_METAVARS.decode_tokens_per_s] = stats.decode_tokens_per_s;
+  if (stats.averaged_over !== undefined)
+    res[STATS_METAVARS.averaged_over] = stats.averaged_over;
   return res;
 }
 
 /**
- * A short, human-readable summary, e.g. "2.4 s · 312 tok · 130 tok/s".
- * `compact` leaves out the token count.
+ * A short, human-readable summary, e.g. "2.4 s · 312 tok · 130 tok/s", marked
+ * "≈" when it's an average. `compact` leaves out the token count.
  */
 export function formatStats(
   stats: ResponseStats | undefined,
@@ -268,7 +281,8 @@ export function formatStats(
     parts.push(`${stats.output_tokens} tok`);
   if (stats.tokens_per_s !== undefined)
     parts.push(`${Math.round(stats.tokens_per_s)} tok/s`);
-  return parts.join(" · ");
+  const summary = parts.join(" · ");
+  return stats.averaged_over && summary ? `≈ ${summary}` : summary;
 }
 
 /** Each stat on its own line with its full name, for a tooltip. */
@@ -290,6 +304,10 @@ export function describeStats(stats: ResponseStats | undefined): string[] {
   if (stats.decode_tokens_per_s !== undefined)
     lines.push(
       `Decoding speed: ${stats.decode_tokens_per_s} tokens/s (measured by the server)`,
+    );
+  if (stats.averaged_over)
+    lines.push(
+      `≈ Averages: the provider reported one total for ${stats.averaged_over} responses`,
     );
   return lines;
 }

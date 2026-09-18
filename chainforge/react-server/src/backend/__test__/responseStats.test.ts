@@ -105,7 +105,7 @@ describe("extract_stats", () => {
     expect(extract_stats([reply], 2000, 1)?.[0]?.tokens_per_s).toBe(20);
   });
 
-  test("several choices from one request share its latency and split its output tokens", () => {
+  test("several choices from one request share its latency, and average its output tokens", () => {
     const reply = {
       choices: [{}, {}, {}, {}],
       usage: { prompt_tokens: 10, completion_tokens: 400 },
@@ -117,14 +117,26 @@ describe("extract_stats", () => {
       input_tokens: 10,
       output_tokens: 100,
       tokens_per_s: 25,
+      averaged_over: 4, // the provider only reports the request's total
     });
   });
 
-  test("replies without their own times split the call's time evenly", () => {
+  test("replies without their own times get the average of the call's time", () => {
     const reply = { usage: { input_tokens: 5, output_tokens: 10 } }; // Anthropic's shape
     const stats = extract_stats([reply, reply], 3000, 2);
     expect(stats?.map((s) => s?.latency_ms)).toEqual([1500, 1500]);
     expect(stats?.[0]?.output_tokens).toBe(10);
+    expect(stats?.[0]?.averaged_over).toBe(2);
+  });
+
+  test("stats from a reply of its own aren't marked as averages", () => {
+    const reply = {
+      usage: { input_tokens: 5, output_tokens: 10 },
+      [LATENCY_KEY]: 800,
+    };
+    const stats = extract_stats([reply, reply], 3000, 2);
+    expect(stats?.[0]).not.toHaveProperty("averaged_over");
+    expect(stats?.[0]?.latency_ms).toBe(800);
   });
 
   test("reads a provider's reply kept under `raw`", () => {
@@ -194,9 +206,11 @@ describe("extract_stats", () => {
   test("replies that don't line up with the responses only give the time", () => {
     // e.g. a custom provider returning plain strings
     expect(extract_stats(["a", "b"], 1000, 2)).toEqual([
-      { latency_ms: 500 },
-      { latency_ms: 500 },
+      { latency_ms: 500, averaged_over: 2 },
+      { latency_ms: 500, averaged_over: 2 },
     ]);
+    // A single response's time is its own
+    expect(extract_stats(["a"], 1000, 1)).toEqual([{ latency_ms: 1000 }]);
     expect(extract_stats(["a"], undefined, 1)).toBeUndefined();
   });
 });
@@ -219,6 +233,9 @@ describe("stats as metavars", () => {
       stat_output_tokens: 99,
       stat_tokens_per_s: 42.5,
       stat_decode_tokens_per_s: 60,
+    });
+    expect(statsToMetavars({ ...stats, averaged_over: 4 })).toMatchObject({
+      stat_averaged_over: 4,
     });
     expect(statsToMetavars(undefined)).toEqual({});
   });
@@ -281,4 +298,10 @@ test("formats stats for display", () => {
     "Speed: 130.4 tokens/s (output tokens over latency)",
     "Decoding speed: 150 tokens/s (measured by the server)",
   ]);
+  // Averages are marked
+  const averaged = { ...stats, averaged_over: 4 };
+  expect(formatStats(averaged, true)).toBe("≈ 2.4 s · 130 tok/s");
+  expect(describeStats(averaged).at(-1)).toBe(
+    "≈ Averages: the provider reported one total for 4 responses",
+  );
 });

@@ -288,6 +288,8 @@ export const responsesToTable = async (
           row["Tokens/s"] = stats.tokens_per_s;
         if (stats?.decode_tokens_per_s !== undefined)
           row["Decoding tokens/s"] = stats.decode_tokens_per_s;
+        if (stats?.averaged_over !== undefined)
+          row["Stats averaged over"] = stats.averaged_over;
 
         // Add columns for vars
         for (const [varname, val] of Object.entries(vars)) {

@@ -281,7 +281,7 @@ def with_stats_metavars(metavars: dict, stats: list, index: int) -> dict:
         res['stat_latency_s'] = round(s['latency_ms']) / 1000
     if isinstance(s.get('ttft_ms'), (int, float)):
         res['stat_ttft_s'] = round(s['ttft_ms']) / 1000
-    for key in ('input_tokens', 'output_tokens', 'tokens_per_s', 'decode_tokens_per_s'):
+    for key in ('input_tokens', 'output_tokens', 'tokens_per_s', 'decode_tokens_per_s', 'averaged_over'):
         if isinstance(s.get(key), (int, float)):
             res['stat_' + key] = s[key]
     return res
