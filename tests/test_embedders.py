@@ -14,7 +14,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from chainforge.rag import embeddings, rerankers
+from chainforge import offline_mode
+from chainforge.rag import devices, embeddings, rerankers
 from chainforge.rag.embeddings import instruction_prefix
 
 BGE = "Represent this sentence for searching relevant passages: "
@@ -139,6 +140,7 @@ class TestCohereEmbedder:
 @pytest.fixture
 def fake_sentence_transformers(monkeypatch):
     """Stands in for sentence_transformers, so nothing loads torch."""
+    monkeypatch.setenv(devices.DEVICE_ENV_VAR, "cpu")
     module = types.SimpleNamespace(SentenceTransformer=MagicMock(), CrossEncoder=MagicMock())
     monkeypatch.setitem(sys.modules, "sentence_transformers", module)
     embeddings._load_sentence_transformer.cache_clear()
@@ -157,7 +159,7 @@ class TestLocalModelsLoadOnce:
         embeddings.sentence_transformers_embedder(["a"], "intfloat/e5-small-v2", input_type="document")
         embeddings.sentence_transformers_embedder(["q"], "intfloat/e5-small-v2", input_type="query")
 
-        fake_sentence_transformers.SentenceTransformer.assert_called_once_with("intfloat/e5-small-v2")
+        fake_sentence_transformers.SentenceTransformer.assert_called_once_with("intfloat/e5-small-v2", device="cpu")
         assert [c.args[0] for c in model.encode.call_args_list] == [["passage: a"], ["query: q"]]
 
     def test_cross_encoder(self, fake_sentence_transformers):
@@ -169,7 +171,7 @@ class TestLocalModelsLoadOnce:
         for _ in range(2):
             rerank(["doc one", "doc two"], "query", model="cross-encoder/x", top_k=2)
 
-        fake_sentence_transformers.CrossEncoder.assert_called_once_with("cross-encoder/x")
+        fake_sentence_transformers.CrossEncoder.assert_called_once_with("cross-encoder/x", device="cpu")
 
 
 class TestHuggingFacePooling:
@@ -178,6 +180,7 @@ class TestHuggingFacePooling:
     @pytest.fixture
     def fake_transformers(self, monkeypatch):
         torch = pytest.importorskip("torch")
+        monkeypatch.setenv(devices.DEVICE_ENV_VAR, "cpu")
 
         class Tokenizer:
             def __call__(self, texts, return_tensors, truncation, padding, max_length):
@@ -212,3 +215,93 @@ class TestHuggingFacePooling:
         batched = embeddings.huggingface_embedder(["aa bbb", "aa bbb cccc ddddd eeeeee"], "some/model")
         assert alone[0] == pytest.approx([2.5])
         assert batched[0] == pytest.approx(alone[0])
+
+
+class TestDevice:
+    """Local models run on the fastest device there is, or the one asked for."""
+
+    def fake_torch(self, monkeypatch, cuda=False, mps=False):
+        torch = types.SimpleNamespace(
+            cuda=types.SimpleNamespace(is_available=lambda: cuda),
+            backends=types.SimpleNamespace(mps=types.SimpleNamespace(is_available=lambda: mps)),
+        )
+        monkeypatch.setitem(sys.modules, "torch", torch)
+        monkeypatch.delenv(devices.DEVICE_ENV_VAR, raising=False)
+
+    @pytest.mark.parametrize("cuda, mps, expected", [
+        (True, True, "cuda"),
+        (False, True, "mps"),
+        (False, False, "cpu"),
+    ])
+    def test_prefers_a_gpu(self, monkeypatch, cuda, mps, expected):
+        self.fake_torch(monkeypatch, cuda=cuda, mps=mps)
+        assert devices.torch_device() == expected
+
+    def test_can_be_chosen(self, monkeypatch):
+        self.fake_torch(monkeypatch, cuda=True)
+        monkeypatch.setenv(devices.DEVICE_ENV_VAR, "cpu")
+        assert devices.torch_device() == "cpu"
+
+    def test_without_torch_is_the_cpu(self, monkeypatch):
+        monkeypatch.setitem(sys.modules, "torch", None)
+        monkeypatch.delenv(devices.DEVICE_ENV_VAR, raising=False)
+        assert devices.torch_device() == "cpu"
+
+    def test_falls_back_to_the_cpu_when_the_gpu_fails(self, monkeypatch, fake_sentence_transformers):
+        monkeypatch.setenv(devices.DEVICE_ENV_VAR, "mps")
+
+        def model_for(name, device):
+            model = MagicMock()
+            if device == "mps":
+                model.encode.side_effect = NotImplementedError("aten::op is not implemented for MPS")
+            else:
+                model.encode.side_effect = lambda texts, batch_size: np.ones((len(texts), 2))
+            return model
+
+        fake_sentence_transformers.SentenceTransformer.side_effect = model_for
+        assert embeddings.sentence_transformers_embedder(["a"], "m") == [[1.0, 1.0]]
+        devices_used = [c.kwargs["device"] for c in fake_sentence_transformers.SentenceTransformer.call_args_list]
+        assert devices_used == ["mps", "cpu"]
+
+
+class TestOllamaEmbedder:
+
+    @pytest.fixture
+    def post(self):
+        def reply(url, json, **kwargs):
+            return MagicMock(status_code=200, json=lambda: {"embeddings": [[0.5] * 3 for _ in json["input"]]})
+        with patch("requests.post", side_effect=reply) as post:
+            yield post
+
+    def test_batches_and_prefixes(self, post):
+        result = embeddings.ollama_embedder(["t"] * 70, "nomic-embed-text", input_type="query")
+        assert len(result) == 70
+        sent = [c.kwargs for c in post.call_args_list]
+        assert [len(s["json"]["input"]) for s in sent] == [64, 6]
+        assert sent[0]["json"]["model"] == "nomic-embed-text"
+        assert sent[0]["json"]["input"][0] == "search_query: t"
+        assert post.call_args_list[0].args[0] == "http://localhost:11434/api/embed"
+
+    @pytest.mark.parametrize("setting, env, expected", [
+        ("http://gpu-box:11434/api/", None, "http://gpu-box:11434"),
+        ("", "0.0.0.0:11434", "http://localhost:11434"),
+        (None, None, "http://localhost:11434"),
+    ])
+    def test_finds_ollama(self, monkeypatch, setting, env, expected):
+        if env is None:
+            monkeypatch.delenv("OLLAMA_HOST", raising=False)
+        else:
+            monkeypatch.setenv("OLLAMA_HOST", env)
+        assert embeddings._ollama_base_url({"Ollama_BaseURL": setting}) == expected
+
+    def test_reports_ollamas_error(self):
+        resp = MagicMock(status_code=404, json=lambda: {"error": 'model "x" not found, try pulling it first'})
+        with patch("requests.post", return_value=resp):
+            with pytest.raises(ValueError, match="try pulling it first"):
+                embeddings.ollama_embedder(["t"], "x")
+
+    def test_respects_offline_mode(self, post, monkeypatch):
+        monkeypatch.setattr(offline_mode, "_enabled", True)
+        with pytest.raises(ValueError, match="Offline mode"):
+            embeddings.ollama_embedder(["t"], "x", api_keys={"Ollama_BaseURL": "http://8.8.8.8:11434"})
+        assert embeddings.ollama_embedder(["t"], "x") == [[0.5] * 3]

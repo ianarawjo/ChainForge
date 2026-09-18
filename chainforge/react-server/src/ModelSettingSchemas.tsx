@@ -11,6 +11,7 @@
  */
 
 import {
+  DEFAULT_LOCAL_PARALLEL_REQUESTS,
   LLMProvider,
   MAX_CONCURRENT,
   NativeLLM,
@@ -38,6 +39,17 @@ const UI_SUBMIT_BUTTON_SPEC = {
   norender: false,
   submitText: "Submit",
 } satisfies Dict;
+
+/** How many requests go to a local model server at once; see RateLimiter. */
+const PARALLEL_REQUESTS_SETTING = {
+  type: "integer",
+  title: "Parallel requests",
+  description:
+    "How many requests ChainForge sends this server at once, across all its models. Match it to how many the server runs in parallel (e.g. OLLAMA_NUM_PARALLEL, or llama-server's --parallel). More than that just waits in the server's queue, and the wait counts toward each response's measured latency.",
+  default: DEFAULT_LOCAL_PARALLEL_REQUESTS,
+  minimum: 1,
+  maximum: 64,
+};
 
 const ChatGPTSettings: ModelSettingsDict = {
   fullName: "GPT-3.5+ (OpenAI)",
@@ -1939,6 +1951,7 @@ const OllamaSettings: ModelSettingsDict = {
           'Sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
         default: "",
       },
+      parallel_requests: PARALLEL_REQUESTS_SETTING,
     },
   },
   uiSchema: {
@@ -2229,6 +2242,100 @@ export const TogetherChatSettings: ModelSettingsDict = {
   },
 };
 
+/**
+ * Any server with an OpenAI-compatible Chat Completions API: LM Studio,
+ * llama.cpp's llama-server, MLX's mlx_lm.server, vLLM, Ollama's /v1 endpoint,
+ * and many more. It takes OpenAI's chat settings, less those only OpenAI's own
+ * models have, plus where the server is.
+ */
+const OPENAI_ONLY_SETTINGS = new Set([
+  "reasoning_effort",
+  "verbosity",
+  "reasoning_summary",
+  // Local servers take max_tokens, which not all of them know by this name
+  "max_completion_tokens",
+]);
+export const OpenAICompatibleSettings: ModelSettingsDict = {
+  fullName: "OpenAI-compatible server",
+  schema: {
+    type: "object",
+    required: ["shortname", "model", "base_url"],
+    properties: {
+      ...Object.fromEntries(
+        Object.entries(ChatGPTSettings.schema.properties).filter(
+          ([key]) => !OPENAI_ONLY_SETTINGS.has(key),
+        ),
+      ),
+      shortname: {
+        ...ChatGPTSettings.schema.properties.shortname,
+        default: "Local model",
+      },
+      model: {
+        type: "string",
+        title: "Model",
+        description:
+          "The model ID the server knows the model by. Models ChainForge found on servers running on this machine are listed; you can also type one in.",
+        default: "",
+      },
+      base_url: {
+        type: "string",
+        title: "Base URL",
+        description:
+          'Where the server\'s OpenAI-compatible API is, up to and including /v1. The server must accept requests from web pages (CORS); in LM Studio, turn on "Enable CORS". Common defaults: LM Studio http://localhost:1234/v1, llama-server and mlx_lm.server http://localhost:8080/v1, Ollama http://localhost:11434/v1, vLLM http://localhost:8000/v1 (ChainForge also uses port 8000 by default, so run one of them on another port).',
+        default: "http://localhost:1234/v1",
+      },
+      api_key: {
+        type: "string",
+        title: "API key",
+        description:
+          "Only if the server asks for one. Unlike keys in Settings, it is saved with this model's settings, including in exported flows.",
+        default: "",
+        allow_empty_str: true,
+      },
+      system_msg: {
+        ...ChatGPTSettings.schema.properties.system_msg,
+        default: "",
+      },
+      response_format: {
+        ...ChatGPTSettings.schema.properties.response_format,
+        default: "",
+      },
+      max_tokens: {
+        type: "integer",
+        title: "max_tokens",
+        description:
+          "The most tokens to generate, reasoning included. Leave blank for the server's default.",
+        allow_empty_str: true,
+      },
+      parallel_requests: PARALLEL_REQUESTS_SETTING,
+    },
+  },
+  uiSchema: {
+    ...ChatGPTSettings.uiSchema,
+    model: { "ui:widget": "datalist" },
+    api_key: { "ui:widget": "password" },
+  },
+  postprocessors: {
+    ...ChatGPTSettings.postprocessors,
+    // Blank means the server's default, rather than OpenAI's "text"
+    response_format: (str) =>
+      typeof str === "string" && str.trim().length === 0
+        ? ""
+        : ChatGPTSettings.postprocessors.response_format(str),
+  },
+};
+
+/**
+ * Sets the models listed in the OpenAI-compatible server form, e.g. once
+ * ChainForge has found which models servers on this machine have.
+ */
+export function setOpenAICompatibleModelSuggestions(models: string[]): void {
+  const model = OpenAICompatibleSettings.schema.properties.model;
+  const unique = Array.from(new Set(models));
+  if (unique.length > 0) model.enum = unique;
+  else delete model.enum;
+}
+
 export const WebLLMSettings: ModelSettingsDict = {
   fullName: "WebLLM (In-browser)",
   schema: {
@@ -2340,6 +2447,7 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "azure-openai": AzureOpenAISettings,
   hf: HuggingFaceSettings,
   ollama: OllamaSettings,
+  "openai-compatible": OpenAICompatibleSettings,
   bedrock: BedrockSettings,
   // The per-vendor keys flows were saved with before Bedrock's Converse API
   // let one form cover every vendor. They all open that form now.
@@ -2374,6 +2482,7 @@ export function baseModelToProvider(base_model: string): LLMProvider {
     "azure-openai": LLMProvider.Azure_OpenAI,
     hf: LLMProvider.HuggingFace,
     ollama: LLMProvider.Ollama,
+    "openai-compatible": LLMProvider.OpenAICompatible,
     bedrock: LLMProvider.Bedrock,
     "br.anthropic.claude": LLMProvider.Bedrock,
     "br.ai21.j2": LLMProvider.Bedrock,
@@ -2415,6 +2524,7 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.HuggingFace]: HuggingFaceSettings,
     [LLMProvider.Bedrock]: BedrockSettings,
     [LLMProvider.Ollama]: OllamaSettings,
+    [LLMProvider.OpenAICompatible]: OpenAICompatibleSettings,
     [LLMProvider.Together]: TogetherChatSettings,
     [LLMProvider.DeepSeek]: DeepSeekSettings,
     [LLMProvider.MiniMax]: MiniMaxSettings,
