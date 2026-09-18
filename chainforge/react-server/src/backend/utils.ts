@@ -12,6 +12,7 @@ import {
   isGeminiImageModel,
   isOpenAIImageModel,
   isOpenRouterImageModel,
+  isDecisionModel,
   stripBedrockPrefix,
   stripHuggingFacePrefix,
   stripTogetherPrefix,
@@ -852,7 +853,10 @@ async function openrouter_request(
 ): Promise<Dict> {
   const { retries } = OPENROUTER_RATE_LIMIT_RETRY;
   for (let attempt = 0; ; attempt++) {
-    const res = await fetch(`${OPENROUTER_BASE_URL}${path}`, {
+    const url = path.startsWith("https://")
+      ? path
+      : `${OPENROUTER_BASE_URL}${path}`;
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${OPENROUTER_API_KEY}`,
@@ -1008,6 +1012,80 @@ export async function call_openrouter(
   }
 
   return [query, responses];
+}
+
+/** OpenRouter's endpoint for decision models like Jev. It's in alpha, so its path may change. */
+const OPENROUTER_DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions";
+
+/**
+ * Asks a decision model (e.g. TypeSafe's Jev) one typed question about a text,
+ * through OpenRouter's decisions endpoint. The text is sent as the state, and
+ * the question comes from `params.decision_question`, which an LLM Scorer sets
+ * from its rubric and format: { type: "noul" | "choice" | "score",
+ * instructions, criteria? }. Each reply's answer is under `answers.score`.
+ */
+export async function call_openrouter_decision(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  _temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+): Promise<[Dict, Dict]> {
+  if (!OPENROUTER_API_KEY)
+    throw new Error(
+      "Could not find an OpenRouter API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+  const modelname = stripOpenRouterPrefix(model);
+  const question = params?.decision_question;
+  if (!question)
+    throw new Error(
+      `${modelname} makes decisions rather than writing text, so it can't answer prompts. Use it as a judge in an LLM Scorer.`,
+    );
+
+  const query: Dict = {
+    model: modelname,
+    state: { response: prompt },
+    questions: { score: question },
+  };
+  console.log(`Asking decision model '${modelname}' (n=${n})...`);
+
+  const responses: Dict[] = [];
+  while (responses.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+    const start = performance.now();
+    const payload = await openrouter_request(
+      OPENROUTER_DECISIONS_URL,
+      query,
+      should_cancel,
+    );
+    if (!payload.answers?.score)
+      throw new Error(`${modelname} returned no answer.`);
+    payload[LATENCY_KEY] = performance.now() - start;
+    responses.push(payload);
+  }
+  return [query, responses];
+}
+
+/**
+ * A decision model's answer as a score an LLM Scorer reads: "true" or "false"
+ * for a yes/no question (at probability 0.5), the chosen category, or the
+ * position on the scale. The scale's levels come back numbered from 0, and
+ * the position is a probability-weighted mean that can land between levels,
+ * so it's shifted to the scorer's 1-to-N numbering.
+ */
+function _extract_openrouter_decision_responses(
+  responses: Array<Dict>,
+): Array<string> {
+  return responses.map((r) => {
+    const a = r?.answers?.score ?? {};
+    if (a.type === "noul" && typeof a.noul === "number")
+      return a.noul >= 0.5 ? "true" : "false";
+    if (a.type === "choice" && typeof a.choice === "string") return a.choice;
+    if (a.type === "score" && typeof a.score === "number")
+      return String(Math.round((a.score + 1) * 1000) / 1000);
+    return JSON.stringify(a);
+  });
 }
 
 /** Settings sent to OpenRouter's Image API when set. "auto" leaves them to the model. */
@@ -2888,7 +2966,9 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.OpenRouter)
     call_api = isOpenRouterImageModel(llm)
       ? call_openrouter_image_gen
-      : call_openrouter;
+      : isDecisionModel(llm)
+        ? call_openrouter_decision
+        : call_openrouter;
   if (call_api === undefined)
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
@@ -3417,6 +3497,8 @@ export function extract_responses(
     case LLMProvider.OpenRouter:
       if (isOpenRouterImageModel(llm))
         return _extract_openrouter_image_responses(response as Dict[]);
+      if (isDecisionModel(llm))
+        return _extract_openrouter_decision_responses(response as Dict[]);
       return _extract_openrouter_chat_responses(response as Dict[]);
     default:
       if (

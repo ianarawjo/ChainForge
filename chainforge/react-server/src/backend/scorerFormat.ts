@@ -408,3 +408,61 @@ export function findDisagreements(
   });
   return out;
 }
+
+/** Jev's limits on a question's options. */
+const MAX_DECISION_CATEGORIES = 255;
+const MIN_DECISION_LEVELS = 2;
+const MAX_DECISION_LEVELS = 10;
+
+/**
+ * The typed question a decision model (e.g. Jev) answers for a scorer: a
+ * yes/no question for binary scores, a choice among the categories, or a
+ * position on the scale. The rubric is the question's instructions. Throws,
+ * with a message for the user, when the format can't be asked this way.
+ */
+export function decisionQuestion(
+  spec: ScoreSpec,
+  rubric: string,
+  judge: string,
+): Dict {
+  const instructions = rubric.trim();
+  if (!instructions)
+    throw new Error(`${judge} needs a rubric: describe what to decide.`);
+  switch (spec.format) {
+    case "bin":
+      return { type: "noul", instructions };
+    case "cat": {
+      const cats = spec.categories ?? [];
+      if (cats.length < 2)
+        throw new Error(
+          `${judge} picks from a list of categories. List at least two, next to the answer format.`,
+        );
+      if (cats.length > MAX_DECISION_CATEGORIES)
+        throw new Error(
+          `${judge} can pick from at most ${MAX_DECISION_CATEGORIES} categories.`,
+        );
+      return {
+        type: "choice",
+        instructions,
+        criteria: Object.fromEntries(
+          cats.map((c) => [c.label, c.description ?? c.label]),
+        ),
+      };
+    }
+    case "num": {
+      const scale = spec.scale ?? [];
+      if (
+        scale.length < MIN_DECISION_LEVELS ||
+        scale.length > MAX_DECISION_LEVELS
+      )
+        throw new Error(
+          `${judge} scores on a scale of ${MIN_DECISION_LEVELS} to ${MAX_DECISION_LEVELS} levels. Describe each level, next to the answer format.`,
+        );
+      return { type: "score", instructions, criteria: scale };
+    }
+    default:
+      throw new Error(
+        `${judge} can't give open-ended answers. Pick true/false, categorical or numeric.`,
+      );
+  }
+}

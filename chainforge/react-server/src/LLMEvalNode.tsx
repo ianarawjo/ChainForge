@@ -321,10 +321,15 @@ export const LLMEvaluatorComponent = forwardRef<
           (acc, resp_obj) => acc + resp_obj.responses.length,
           0,
         );
+        // Text judges and decision judges (e.g. Jev) are queried separately, each
+        // reporting progress for its own judges, so keep the latest for all of them
+        const progress_so_far: Dict<QueryProgress> = {};
         return onProgressChange
-          ? (progress_by_llm: Dict<QueryProgress>) =>
+          ? (progress_update: Dict<QueryProgress>) =>
               // Debounce the progress bars UI update to ensure we don't re-render too often:
               debounce(() => {
+                Object.assign(progress_so_far, progress_update);
+                const progress_by_llm = progress_so_far;
                 // Progress across all judges
                 const total = num_resps_required * judges.length;
                 const sum = (k: "success" | "error") =>
@@ -352,6 +357,7 @@ export const LLMEvaluatorComponent = forwardRef<
           undefined,
           useReasoning,
           spec,
+          promptText,
         );
       })
       .then(function (res) {

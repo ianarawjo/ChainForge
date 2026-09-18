@@ -21,7 +21,13 @@ import {
   StringOrHash,
   JSONCompatible,
 } from "./typing";
-import { LLM, LLMProvider, getEnumName, getProvider } from "./models";
+import {
+  LLM,
+  LLMProvider,
+  getEnumName,
+  getProvider,
+  isDecisionModel,
+} from "./models";
 import {
   APP_IS_RUNNING_LOCALLY,
   set_api_keys,
@@ -47,7 +53,7 @@ import {
   escapeBraces,
 } from "./template";
 import { UserForcedPrematureExit } from "./errors";
-import { ScoreSpec, parseScore } from "./scorerFormat";
+import { ScoreSpec, decisionQuestion, parseScore } from "./scorerFormat";
 import CancelTracker from "./canceler";
 import { execPy } from "./pyodide/exec-py";
 import { baseModelToProvider } from "../ModelSettingSchemas";
@@ -876,7 +882,6 @@ export async function queryLLM(
   if (no_cache) cache = {};
 
   const llm_to_cache_filename: Dict<string> = {};
-  const past_cache_files: Dict<string | LLMSpec> = {};
   if (typeof cache === "object" && cache.cache_files !== undefined) {
     const past_cache_files: Dict = cache.cache_files;
     const past_cache_filenames: Array<string> = Object.keys(past_cache_files);
@@ -1090,8 +1095,12 @@ export async function queryLLM(
     return 0;
   });
 
-  // Save the responses *of this run* to the storage cache, for further recall:
-  const cache_filenames = past_cache_files;
+  // Save the responses *of this run* to the storage cache, for further recall.
+  // Keep the cache files of earlier runs listed too, so that switching a
+  // model's settings back (e.g. a judge's rubric) reuses its cached responses.
+  const cache_filenames: Dict<string | LLMSpec> = {
+    ...(cache.cache_files ?? {}),
+  };
   llms.forEach((llm_spec: string | LLMSpec) => {
     const filename = llm_to_cache_filename[extract_llm_key(llm_spec)];
     cache_filenames[filename] = llm_spec;
@@ -1403,6 +1412,7 @@ export async function evalWithLLM(
   system_msg?: string,
   useReasoning?: boolean,
   score_spec?: ScoreSpec,
+  rubric?: string,
 ): Promise<{
   responses?: LLMResponse[];
   errors: string[];
@@ -1415,6 +1425,27 @@ export async function evalWithLLM(
   // Several judges score each response side by side, their scores keyed by judge name.
   const judges = Array.isArray(llm) ? llm : [llm];
   const keyed = judges.length > 1;
+
+  // Decision models (e.g. Jev) are asked a typed question built from the
+  // rubric and format, about the response alone, rather than sent the prompt.
+  const isDecisionJudge = (j: string | LLMSpec) =>
+    typeof j !== "string" && isDecisionModel(j.model);
+  const text_judges = judges.filter((j) => !isDecisionJudge(j));
+  const decision_judges = (judges.filter(isDecisionJudge) as LLMSpec[]).map(
+    (j) => {
+      if (!score_spec || rubric === undefined)
+        throw new Error(
+          `${j.name} can only be used as a judge in an LLM Scorer.`,
+        );
+      return {
+        ...j,
+        settings: {
+          ...j.settings,
+          decision_question: decisionQuestion(score_spec, rubric, j.name),
+        },
+      };
+    },
+  );
   const judgeName = (r: LLMResponse): string =>
     typeof r.llm === "object"
       ? r.llm.name
@@ -1462,23 +1493,39 @@ export async function evalWithLLM(
       )
       .flat();
 
-    // Now run all inputs through the LLM grader!:
-    const { responses, errors } = await queryLLM(
-      `eval-${id}-${cache_id ?? "provided"}`,
-      judges,
-      1,
-      root_prompt,
-      { __input: inputs },
-      system_message, // if there's a sys_message, we pass it in chat history format
-      undefined,
-      !cache_id, // if there's no cache_id, we don't want to cache the responses
-      progress_listener,
-      undefined,
-      cancel_id,
-      // Grader responses are cached for this session only, never exported, so
-      // don't intern their prompts: each pastes in a whole response, and the
-      // StringLookup table (which is exported) would keep a second copy of it.
-      false,
+    // Now run all inputs through the LLM grader(s)!
+    // Text judges get the full grader prompt; decision judges get just the response.
+    const runs: [string, (string | LLMSpec)[], string][] = [
+      ["", text_judges, root_prompt],
+      ["-decisions", decision_judges, "{__input}"],
+    ];
+    const results = await Promise.all(
+      runs
+        .filter(([, js]) => js.length > 0)
+        .map(([suffix, js, template]) =>
+          queryLLM(
+            `eval-${id}-${cache_id ?? "provided"}${suffix}`,
+            js,
+            1,
+            template,
+            { __input: inputs },
+            system_message, // if there's a sys_message, we pass it in chat history format
+            undefined,
+            !cache_id, // if there's no cache_id, we don't want to cache the responses
+            progress_listener,
+            undefined,
+            cancel_id,
+            // Grader responses are cached for this session only, never exported, so
+            // don't intern their prompts: each pastes in a whole response, and the
+            // StringLookup table (which is exported) would keep a second copy of it.
+            false,
+          ),
+        ),
+    );
+    const responses = results.flatMap((r) => r.responses);
+    const errors: Dict<string[]> = Object.assign(
+      {},
+      ...results.map((r) => r.errors),
     );
 
     const err_vals: string[] = Object.values(errors).flat();
