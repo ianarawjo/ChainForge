@@ -165,7 +165,7 @@ describe("building Jev's question from a scorer", () => {
     ).toEqual({
       type: "choice",
       instructions: "Which team?",
-      criteria: { billing: "charges", technical: "technical" },
+      criteria: { billing: "charges", technical: "" },
     });
     expect(
       decisionQuestion(

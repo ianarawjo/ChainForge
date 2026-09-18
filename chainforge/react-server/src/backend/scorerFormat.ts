@@ -451,8 +451,10 @@ export function decisionQuestion(
       return {
         type: "choice",
         instructions,
+        // A category without a description gets an empty one: repeating its
+        // label costs Jev tokens (about 10 per category) and tells it nothing new
         criteria: Object.fromEntries(
-          cats.map((c) => [c.label, c.description ?? c.label]),
+          cats.map((c) => [c.label, c.description ?? ""]),
         ),
       };
     }
