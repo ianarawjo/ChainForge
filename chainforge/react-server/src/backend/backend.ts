@@ -1384,6 +1384,132 @@ export async function executepy(
   return { responses: all_evald_responses, logs: all_logs };
 }
 
+/**
+ * The queries an LLM Scorer makes: one for its text judges, with the full
+ * grader prompt, and one for its decision judges (e.g. Jev), which are asked a
+ * typed question built from the rubric and format, about the response alone.
+ * Each has its own cache, under the scorer's id plus `suffix`.
+ */
+function evalQueryRuns(
+  judges: (string | LLMSpec)[],
+  root_prompt: string,
+  score_spec?: ScoreSpec,
+  rubric?: string,
+): { suffix: string; judges: (string | LLMSpec)[]; template: string }[] {
+  const isDecisionJudge = (j: string | LLMSpec) =>
+    typeof j !== "string" && isDecisionModel(j.model);
+  const text_judges = judges.filter((j) => !isDecisionJudge(j));
+  const decision_judges = (judges.filter(isDecisionJudge) as LLMSpec[]).map(
+    (j) => {
+      if (!score_spec || rubric === undefined)
+        throw new Error(
+          `${j.name} can only be used as a judge in an LLM Scorer.`,
+        );
+      return {
+        ...j,
+        settings: {
+          ...j.settings,
+          decision_question: decisionQuestion(score_spec, rubric, j.name),
+        },
+      };
+    },
+  );
+  return [
+    { suffix: "", judges: text_judges, template: root_prompt },
+    { suffix: "-decisions", judges: decision_judges, template: "{__input}" },
+  ].filter((r) => r.judges.length > 0);
+}
+
+/**
+ * The responses to score, as values of the grader prompt's {__input}. Each
+ * carries its position in the response objects (__i, __j), to map scores back.
+ */
+function evalInputs(resp_objs: LLMResponse[]) {
+  return resp_objs
+    .map((obj, __i) =>
+      obj.responses.map((r: LLMResponseData, __j: number) => ({
+        text:
+          typeof r === "string" || typeof r === "number"
+            ? escapeBraces(StringLookup.get(r) ?? "(string lookup failed)")
+            : undefined,
+        image: typeof r === "object" && r.t === "img" ? r.d : undefined,
+        fill_history: obj.vars,
+        metavars: {
+          ...withResponseMetavars(obj.metavars, obj, __j),
+          __i: __i.toString(),
+          __j: __j.toString(),
+        },
+      })),
+    )
+    .flat();
+}
+
+/** A system message in the chat history format queries take. */
+function systemMessageHistory(
+  system_msg?: string,
+): ChatHistoryInfo[] | undefined {
+  return system_msg
+    ? [
+        {
+          messages: [{ role: "system", content: system_msg }],
+          fill_history: {},
+        },
+      ]
+    : undefined;
+}
+
+/**
+ * How many new requests an LLM Scorer would send to each judge, given what's
+ * already cached, e.g. for its Run button's tooltip. Keyed by judge key.
+ * Throws when the scorer can't run as set up (e.g. Jev with an open-ended format).
+ */
+export async function countEvalQueries(
+  id: string,
+  llm: LLMSpec | LLMSpec[],
+  root_prompt: string,
+  response_ids: string[],
+  system_msg?: string,
+  score_spec?: ScoreSpec,
+  rubric?: string,
+): Promise<Dict<number>> {
+  const judges = Array.isArray(llm) ? llm : [llm];
+  const runs = evalQueryRuns(judges, root_prompt, score_spec, rubric);
+  const new_requests: Dict<number> = {};
+  judges.forEach((j) => (new_requests[extract_llm_key(j)] = 0));
+  for (const cache_id of response_ids) {
+    const fname = `${cache_id}.json`;
+    if (!StorageCache.has(fname)) continue;
+    const inputs = evalInputs(load_cache_responses(fname) as LLMResponse[]);
+    for (const { suffix, judges: js, template } of runs) {
+      const { counts } = await countQueries(
+        template,
+        { __input: inputs },
+        js,
+        1,
+        systemMessageHistory(system_msg),
+        `eval-${id}-${cache_id}${suffix}`,
+      );
+      for (const [llm_key, by_prompt] of Object.entries(counts))
+        new_requests[llm_key] =
+          (new_requests[llm_key] ?? 0) +
+          Object.values(by_prompt).reduce((a, b) => a + b, 0);
+    }
+  }
+  return new_requests;
+}
+
+/**
+ * Clears an LLM Scorer's cached scores: its saved results, and every judge's
+ * cached answers (under "eval-<id>-"), so the next run asks the judges again.
+ */
+export function clearCachedScores(id: string): void {
+  const prefix = `eval-${id}-`;
+  Object.keys(StorageCache.getAllMatching((k) => k.startsWith(prefix))).forEach(
+    (k) => StorageCache.clear(k),
+  );
+  StorageCache.clear(`${id}.json`);
+}
+
 /** A judge's answers that didn't fit the scorer's format, e.g. a category not on its list. */
 export interface InvalidScores {
   judge: string;
@@ -1425,41 +1551,14 @@ export async function evalWithLLM(
   // Several judges score each response side by side, their scores keyed by judge name.
   const judges = Array.isArray(llm) ? llm : [llm];
   const keyed = judges.length > 1;
-
-  // Decision models (e.g. Jev) are asked a typed question built from the
-  // rubric and format, about the response alone, rather than sent the prompt.
-  const isDecisionJudge = (j: string | LLMSpec) =>
-    typeof j !== "string" && isDecisionModel(j.model);
-  const text_judges = judges.filter((j) => !isDecisionJudge(j));
-  const decision_judges = (judges.filter(isDecisionJudge) as LLMSpec[]).map(
-    (j) => {
-      if (!score_spec || rubric === undefined)
-        throw new Error(
-          `${j.name} can only be used as a judge in an LLM Scorer.`,
-        );
-      return {
-        ...j,
-        settings: {
-          ...j.settings,
-          decision_question: decisionQuestion(score_spec, rubric, j.name),
-        },
-      };
-    },
-  );
+  const runs = evalQueryRuns(judges, root_prompt, score_spec, rubric);
   const judgeName = (r: LLMResponse): string =>
     typeof r.llm === "object"
       ? r.llm.name
       : StringLookup.get(r.llm) ?? String(r.llm);
 
   const load_resps_from_cache = typeof response_ids[0] === "string";
-  const system_message: ChatHistoryInfo[] | undefined = system_msg
-    ? [
-        {
-          messages: [{ role: "system", content: system_msg }],
-          fill_history: {},
-        },
-      ]
-    : undefined;
+  const system_message = systemMessageHistory(system_msg);
 
   if (api_keys !== undefined) set_api_keys(api_keys);
 
@@ -1473,54 +1572,29 @@ export async function evalWithLLM(
   ) => {
     console.log("Running LLM evaluator over response objects:", resp_objs);
 
-    // We need to keep track of the index of each response in the response object.
-    // We can generate var dicts with metadata to store the indices:
-    const inputs = resp_objs
-      .map((obj, __i) =>
-        obj.responses.map((r: LLMResponseData, __j: number) => ({
-          text:
-            typeof r === "string" || typeof r === "number"
-              ? escapeBraces(StringLookup.get(r) ?? "(string lookup failed)")
-              : undefined,
-          image: typeof r === "object" && r.t === "img" ? r.d : undefined,
-          fill_history: obj.vars,
-          metavars: {
-            ...withResponseMetavars(obj.metavars, obj, __j),
-            __i: __i.toString(),
-            __j: __j.toString(),
-          },
-        })),
-      )
-      .flat();
+    const inputs = evalInputs(resp_objs);
 
     // Now run all inputs through the LLM grader(s)!
-    // Text judges get the full grader prompt; decision judges get just the response.
-    const runs: [string, (string | LLMSpec)[], string][] = [
-      ["", text_judges, root_prompt],
-      ["-decisions", decision_judges, "{__input}"],
-    ];
     const results = await Promise.all(
-      runs
-        .filter(([, js]) => js.length > 0)
-        .map(([suffix, js, template]) =>
-          queryLLM(
-            `eval-${id}-${cache_id ?? "provided"}${suffix}`,
-            js,
-            1,
-            template,
-            { __input: inputs },
-            system_message, // if there's a sys_message, we pass it in chat history format
-            undefined,
-            !cache_id, // if there's no cache_id, we don't want to cache the responses
-            progress_listener,
-            undefined,
-            cancel_id,
-            // Grader responses are cached for this session only, never exported, so
-            // don't intern their prompts: each pastes in a whole response, and the
-            // StringLookup table (which is exported) would keep a second copy of it.
-            false,
-          ),
+      runs.map(({ suffix, judges: js, template }) =>
+        queryLLM(
+          `eval-${id}-${cache_id ?? "provided"}${suffix}`,
+          js,
+          1,
+          template,
+          { __input: inputs },
+          system_message, // if there's a sys_message, we pass it in chat history format
+          undefined,
+          !cache_id, // if there's no cache_id, we don't want to cache the responses
+          progress_listener,
+          undefined,
+          cancel_id,
+          // Grader responses are cached for this session only, never exported, so
+          // don't intern their prompts: each pastes in a whole response, and the
+          // StringLookup table (which is exported) would keep a second copy of it.
+          false,
         ),
+      ),
     );
     const responses = results.flatMap((r) => r.responses);
     const errors: Dict<string[]> = Object.assign(

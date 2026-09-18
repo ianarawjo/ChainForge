@@ -466,3 +466,26 @@ export function decisionQuestion(
       );
   }
 }
+
+/**
+ * The Run button's tooltip: what a run will send, by judge. E.g. "Will load
+ * scores from cache", "Will send 36 requests to Jev and load others from
+ * cache", or "Will send 36 new requests per judge".
+ */
+export function runTooltipFor(by_judge: Dict<number>): string {
+  const judges = Object.keys(by_judge);
+  const sending = judges.filter((j) => by_judge[j] > 0);
+  if (sending.length === 0) return "Will load scores from cache";
+  const counts = sending.map((j) => by_judge[j]);
+  const plural = (n: number) => `${n} ${n === 1 ? "request" : "requests"}`;
+  const others =
+    sending.length < judges.length ? " and load others from cache" : "";
+  if (sending.length === 1)
+    return `Will send ${plural(counts[0])} to ${sending[0]}${others}`;
+  if (counts.every((c) => c === counts[0]))
+    return sending.length === judges.length
+      ? `Will send ${plural(counts[0])} per judge`
+      : `Will send ${plural(counts[0])} to each of ${sending.length} judges${others}`;
+  const total = counts.reduce((a, b) => a + b, 0);
+  return `Will send ${plural(total)} to ${sending.length} judges${others}`;
+}

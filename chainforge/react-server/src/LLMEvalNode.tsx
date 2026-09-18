@@ -21,7 +21,12 @@ import {
   Checkbox,
   Tooltip,
 } from "@mantine/core";
-import { IconPencil, IconRobot, IconSearch } from "@tabler/icons-react";
+import {
+  IconEraser,
+  IconPencil,
+  IconRobot,
+  IconSearch,
+} from "@tabler/icons-react";
 import { v4 as uuid } from "uuid";
 import useStore, { initLLMProviders } from "./store";
 import BaseNode from "./BaseNode";
@@ -51,6 +56,8 @@ import {
 import { Status } from "./StatusIndicatorComponent";
 import {
   InvalidScores,
+  clearCachedScores,
+  countEvalQueries,
   evalWithLLM,
   generatePrompts,
   grabResponses,
@@ -67,6 +74,7 @@ import {
   findDisagreements,
   formatInstruction,
   judgeAgreement,
+  runTooltipFor,
   scoreSpecFrom,
 } from "./backend/scorerFormat";
 
@@ -121,6 +129,11 @@ export interface LLMEvaluatorComponentRef {
   getScoreSpec: () => ScoreSpec;
   /** The judges' names, in order. */
   getJudgeNames: () => string[];
+  /**
+   * How many new requests a run would send to each judge, by judge name,
+   * given what's already cached. Rejects when the scorer can't run as set up.
+   */
+  countNewRequests: (input_node_ids: string[]) => Promise<Dict<number>>;
   getPromptTemplate: () => string;
   /** Replaces the rubric, as if the user had typed it. */
   setPrompt: (prompt: string) => void;
@@ -377,6 +390,22 @@ export const LLMEvaluatorComponent = forwardRef<
       });
   };
 
+  const countNewRequests = async (input_node_ids: string[]) => {
+    const judges = activeJudges();
+    const by_key = await countEvalQueries(
+      id ?? "",
+      judges.length > 1 ? judges : judges[0],
+      getPromptTemplate(),
+      input_node_ids,
+      undefined,
+      getScoreSpec(),
+      promptText,
+    );
+    return Object.fromEntries(
+      judges.map((j) => [j.name, by_key[j.key ?? ""] ?? 0]),
+    );
+  };
+
   const cancel = (cancelId: string | number, cancelProgress: () => void) => {
     CancelTracker.add(cancelId);
     // eslint-disable-next-line
@@ -408,6 +437,7 @@ export const LLMEvaluatorComponent = forwardRef<
     setPrompt,
     getScoreSpec,
     getJudgeNames: () => activeJudges().map((j) => j.name),
+    countNewRequests,
   }));
 
   return (
@@ -754,6 +784,42 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
     data.reasonBeforeScoring,
   ]);
 
+  // What a run will do, for the Run button's tooltip, as the Prompt Node shows
+  const [runTooltip, setRunTooltip] = useState<string | undefined>(undefined);
+  const handleRunHover = useCallback(() => {
+    const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
+    if (input_node_ids.length === 0) {
+      setRunTooltip("Connect responses to score first.");
+      return;
+    }
+    setRunTooltip("Checking the cache...");
+    llmEvaluatorRef.current
+      ?.countNewRequests(input_node_ids)
+      .then((by_judge) => {
+        setRunTooltip(runTooltipFor(by_judge));
+      })
+      .catch((err: Error) => setRunTooltip(err.message));
+  }, [id, inputEdgesForNode]);
+
+  // Right-click menu: clear the cached scores, so the judges are asked again
+  const customContextMenuItems = useMemo(
+    () => [
+      {
+        key: "clear_cache",
+        icon: <IconEraser size="11pt" />,
+        text: "Clear cached scores",
+        onClick: () => {
+          clearCachedScores(id);
+          setLastResponses([]);
+          setInvalidScores([]);
+          setStatus(Status.NONE);
+          setRunTooltip(undefined);
+        },
+      },
+    ],
+    [id],
+  );
+
   const handleStopClick = useCallback(() => {
     llmEvaluatorRef?.current?.cancel(cancelId, () => setProgress(undefined));
     refreshCancelId();
@@ -789,7 +855,11 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
   }, []);
 
   return (
-    <BaseNode classNames="evaluator-node" nodeId={id}>
+    <BaseNode
+      classNames="evaluator-node"
+      nodeId={id}
+      contextMenuExts={customContextMenuItems}
+    >
       <NodeLabel
         title={data.title ?? "LLM Scorer"}
         nodeId={id}
@@ -798,7 +868,8 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
         isRunning={status === Status.LOADING}
         handleRunClick={handleRunClick}
         handleStopClick={handleStopClick}
-        runButtonTooltip="Run scorer over inputs"
+        handleRunHover={handleRunHover}
+        runButtonTooltip={runTooltip ?? "Run scorer over inputs"}
         customButtons={[
           ...(aiSupport
             ? [

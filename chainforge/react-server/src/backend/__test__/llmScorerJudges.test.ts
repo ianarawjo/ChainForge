@@ -32,13 +32,17 @@ jest.mock("../utils", () => ({
 // eslint-disable-next-line import/first
 import { beforeEach, describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
-import { evalWithLLM } from "../backend";
+import { clearCachedScores, countEvalQueries, evalWithLLM } from "../backend";
 // eslint-disable-next-line import/first
 import StorageCache, { StringLookup } from "../cache";
 // eslint-disable-next-line import/first
 import { LLMResponse, LLMSpec } from "../typing";
 // eslint-disable-next-line import/first
-import { formatInstruction, scoreSpecFrom } from "../scorerFormat";
+import {
+  formatInstruction,
+  runTooltipFor,
+  scoreSpecFrom,
+} from "../scorerFormat";
 
 const judge = (name: string, model: string): LLMSpec => ({
   key: `key-${name}`,
@@ -176,5 +180,74 @@ describe("several judges in one LLM Scorer", () => {
       ],
       dtype: "KeyValue_Categorical",
     });
+  });
+});
+
+describe("an LLM Scorer's cache", () => {
+  const run = (judges: LLMSpec[]) =>
+    evalWithLLM(
+      "llmeval-c",
+      judges.length > 1 ? judges : judges[0],
+      root(),
+      ["prompt-1"],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false,
+      SPEC,
+    );
+  const count = (judges: LLMSpec[]) =>
+    countEvalQueries(
+      "llmeval-c",
+      judges.length > 1 ? judges : judges[0],
+      root(),
+      ["prompt-1"],
+      undefined,
+      SPEC,
+    );
+
+  test("counts what a run will send, per judge, before and after running", async () => {
+    const [a, b] = [judge("A", "a"), judge("B", "b")];
+    expect(await count([a, b])).toEqual({ "key-A": 2, "key-B": 2 });
+    await run([a]);
+    expect(mockPrompts).toHaveLength(2);
+    // A's scores are cached; B hasn't run yet
+    expect(await count([a, b])).toEqual({ "key-A": 0, "key-B": 2 });
+    await run([a, b]);
+    expect(mockPrompts).toHaveLength(4); // only B was asked
+    expect(await count([a, b])).toEqual({ "key-A": 0, "key-B": 0 });
+  });
+
+  test("clearing it asks every judge again, and leaves other nodes' caches alone", async () => {
+    const a = judge("A", "a");
+    await run([a]);
+    StorageCache.store("eval-llmeval-cx-prompt-1.json", { other: true });
+    clearCachedScores("llmeval-c");
+    expect(StorageCache.has("llmeval-c.json")).toBe(false);
+    expect(StorageCache.has("eval-llmeval-cx-prompt-1.json")).toBe(true);
+    expect(StorageCache.has("prompt-1.json")).toBe(true);
+    expect(await count([a])).toEqual({ "key-A": 2 });
+  });
+});
+
+describe("the Run button's tooltip", () => {
+  test("says what a run will send", () => {
+    expect(runTooltipFor({ Jev: 0, Sonnet: 0 })).toBe(
+      "Will load scores from cache",
+    );
+    expect(runTooltipFor({ Jev: 36, Sonnet: 0 })).toBe(
+      "Will send 36 requests to Jev and load others from cache",
+    );
+    expect(runTooltipFor({ Jev: 1 })).toBe("Will send 1 request to Jev");
+    expect(runTooltipFor({ Jev: 36, Sonnet: 36 })).toBe(
+      "Will send 36 requests per judge",
+    );
+    expect(runTooltipFor({ Jev: 36, Sonnet: 36, Nano: 0 })).toBe(
+      "Will send 36 requests to each of 2 judges and load others from cache",
+    );
+    expect(runTooltipFor({ Jev: 36, Sonnet: 10 })).toBe(
+      "Will send 46 requests to 2 judges",
+    );
   });
 });
