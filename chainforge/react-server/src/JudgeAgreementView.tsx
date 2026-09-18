@@ -26,37 +26,99 @@ const agreementValue = (row: AgreementRow) =>
       ? pct(row.agreement)
       : row.meanAbsDiff?.toFixed(2) ?? "–";
 
+/** Longest bar in a table cell, in pixels. */
+const MAX_BAR_PX = 90;
+
+/**
+ * A table cell with a value and a bar for it, in the judge's model color,
+ * scaled to the column's largest value, so judges compare at a glance.
+ */
+const BarCell: React.FC<{
+  value?: number;
+  max: number;
+  color?: string;
+  label: string;
+}> = ({ value, max, color, label }) => (
+  <td>
+    {value === undefined ? (
+      "–"
+    ) : (
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div
+          style={{
+            flex: "none",
+            width: max > 0 ? Math.max(2, (value / max) * MAX_BAR_PX) : 2,
+            height: 12,
+            borderRadius: "0 4px 4px 0",
+            backgroundColor: color ?? "#888",
+          }}
+        />
+        <span style={{ whiteSpace: "nowrap" }}>{label}</span>
+      </div>
+    )}
+  </td>
+);
+
+/**
+ * Each judge's color: its model's color, the same as elsewhere in ChainForge.
+ * (Set after render, since picking a new model's color updates the store.)
+ */
+function useJudgeColors(judges: string[]): Record<string, string> {
+  const getColor = useStore((st) => st.getColorForLLMAndSetIfNotFound);
+  const [colors, setColors] = useState<Record<string, string>>({});
+  const key = judges.join("\u0000");
+  useEffect(() => {
+    setColors(Object.fromEntries(judges.map((j) => [j, getColor(j)])));
+  }, [key, getColor]);
+  return colors;
+}
+
 const AgreementTable: React.FC<{
   title: string;
   rows: AgreementRow[];
   numeric: boolean;
-}> = ({ title, rows, numeric }) => (
-  <div>
-    <Title order={5} mb={4}>
-      {title}
-    </Title>
-    <Table fontSize="sm" verticalSpacing={4} maw={560}>
-      <thead>
-        <tr>
-          <th></th>
-          <th>{numeric ? "Mean abs. difference" : "Agreement"}</th>
-          <th>n</th>
-          <th>Left out</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => (
-          <tr key={r.name}>
-            <td>{r.name}</td>
-            <td>{agreementValue(r)}</td>
-            <td>{r.n}</td>
-            <td>{r.excluded > 0 ? r.excluded : ""}</td>
+  /** Judges' colors, to draw each row's value as a bar. */
+  colors?: Record<string, string>;
+}> = ({ title, rows, numeric, colors }) => {
+  // Rates are out of 100%; mean differences are scaled to the largest
+  const max = numeric ? Math.max(0, ...rows.map((r) => r.meanAbsDiff ?? 0)) : 1;
+  return (
+    <div>
+      <Title order={5} mb={4}>
+        {title}
+      </Title>
+      <Table fontSize="sm" verticalSpacing={4} maw={560}>
+        <thead>
+          <tr>
+            <th></th>
+            <th>{numeric ? "Mean abs. difference" : "Agreement"}</th>
+            <th>n</th>
+            <th>Left out</th>
           </tr>
-        ))}
-      </tbody>
-    </Table>
-  </div>
-);
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.name}>
+              <td style={{ whiteSpace: "nowrap" }}>{r.name}</td>
+              {colors && r.n > 0 ? (
+                <BarCell
+                  value={numeric ? r.meanAbsDiff : r.agreement}
+                  max={max}
+                  color={colors[r.name]}
+                  label={agreementValue(r)}
+                />
+              ) : (
+                <td>{agreementValue(r)}</td>
+              )}
+              <td>{r.n}</td>
+              <td>{r.excluded > 0 ? r.excluded : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </div>
+  );
+};
 
 /** How many disagreements to list before cutting off. */
 const MAX_DISAGREEMENTS = 200;
@@ -134,49 +196,11 @@ const DisagreementsTable: React.FC<{
 const formatLatency = (ms: number) =>
   ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`;
 
-/** Longest bar in a table cell, in pixels. */
-const MAX_BAR_PX = 90;
-
-/**
- * A table cell with a value and a bar for it, in the judge's model color,
- * scaled to the column's largest value, so judges compare at a glance.
- */
-const BarCell: React.FC<{
-  value?: number;
-  max: number;
-  color?: string;
-  label: string;
-}> = ({ value, max, color, label }) => (
-  <td>
-    {value === undefined ? (
-      "–"
-    ) : (
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <div
-          style={{
-            flex: "none",
-            width: max > 0 ? Math.max(2, (value / max) * MAX_BAR_PX) : 2,
-            height: 12,
-            borderRadius: "0 4px 4px 0",
-            backgroundColor: color ?? "#888",
-          }}
-        />
-        <span style={{ whiteSpace: "nowrap" }}>{label}</span>
-      </div>
-    )}
-  </td>
-);
-
 /** Each judge's cost, time per answer and tokens over the last run. */
-const JudgeStatsTable: React.FC<{ stats: JudgeStats[] }> = ({ stats }) => {
-  // Each judge in its model's color, the same as elsewhere in ChainForge
-  const getColor = useStore((st) => st.getColorForLLMAndSetIfNotFound);
-  const [colors, setColors] = useState<Record<string, string>>({});
-  useEffect(() => {
-    setColors(
-      Object.fromEntries(stats.map((s) => [s.judge, getColor(s.judge)])),
-    );
-  }, [stats, getColor]);
+const JudgeStatsTable: React.FC<{
+  stats: JudgeStats[];
+  colors: Record<string, string>;
+}> = ({ stats, colors }) => {
   const maxCost = Math.max(0, ...stats.map((s) => s.cost_usd ?? 0));
   const maxLatency = Math.max(0, ...stats.map((s) => s.median_latency_ms ?? 0));
 
@@ -302,6 +326,7 @@ const JudgeAgreementView: React.FC<JudgeAgreementViewProps> = ({
   reliabilityByJudge,
 }) => {
   const labelName = labelVar?.replace(/^__meta_/, "");
+  const colors = useJudgeColors(judges);
   const hasTables =
     summary &&
     (summary.withLabel.length > 0 || summary.betweenJudges.length > 0);
@@ -318,6 +343,7 @@ const JudgeAgreementView: React.FC<JudgeAgreementViewProps> = ({
           title={`Agreement with ${labelName ?? "the label"}`}
           rows={summary.withLabel}
           numeric={numeric}
+          colors={colors}
         />
       )}
       {summary && summary.betweenJudges.length > 0 && (
@@ -334,7 +360,7 @@ const JudgeAgreementView: React.FC<JudgeAgreementViewProps> = ({
         </Text>
       )}
       {judgeStats && judgeStats.length > 0 && (
-        <JudgeStatsTable stats={judgeStats} />
+        <JudgeStatsTable stats={judgeStats} colors={colors} />
       )}
       {Object.entries(reliabilityByJudge ?? {}).map(
         ([judge, rows]) =>
