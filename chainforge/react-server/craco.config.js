@@ -1,3 +1,4 @@
+const path = require("path");
 const webpack = require("webpack");
 
 // const dotenv = require('dotenv').config({ path: __dirname + '/.env' })
@@ -53,6 +54,18 @@ module.exports = {
         }
       };
       excludePdfjsFromBabel(webpackConfig.module?.rules);
+
+      // ChainBuddy's knowledge files are Markdown the app sends to models as
+      // text. CRA's catch-all would otherwise turn them into asset URLs. This
+      // goes first in CRA's oneOf list, so it wins over that catch-all.
+      const oneOf = webpackConfig.module?.rules?.find((r) =>
+        Array.isArray(r?.oneOf),
+      )?.oneOf;
+      oneOf?.unshift({
+        test: /\.md$/,
+        include: path.resolve(__dirname, "src/chainbuddy/knowledge"),
+        type: "asset/source",
+      });
 
       // Several dependencies (@mlc-ai/web-llm, @google/genai, ...) publish
       // sourcemap references to TS sources that are not in the npm package,
