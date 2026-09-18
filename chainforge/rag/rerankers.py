@@ -4,12 +4,14 @@ from collections import defaultdict
 import copy
 from functools import lru_cache
 
+from chainforge.rag.devices import torch_device, warn_falling_back_to_cpu
+
 
 @lru_cache(maxsize=2)
-def _load_cross_encoder(model_name: str):
+def _load_cross_encoder(model_name: str, device: str = "cpu"):
     """Load a cross-encoder once per process rather than on every /rerank call."""
     from sentence_transformers import CrossEncoder
-    return CrossEncoder(model_name)
+    return CrossEncoder(model_name, device=device)
 
 
 # === Reranking Registry ===
@@ -81,13 +83,18 @@ def cross_encoder_rerank(documents: List[str], query: str = "", **kwargs: Any) -
     batch_size = int(kwargs.get("batch_size", 32))
     
     try:
-        model = _load_cross_encoder(model_name)
-        
         # Create query-document pairs
         pairs = [(query, doc) for doc in documents]
-        
+
         # Get relevance scores
-        scores = model.predict(pairs, batch_size=batch_size)
+        device = torch_device()
+        try:
+            scores = _load_cross_encoder(model_name, device).predict(pairs, batch_size=batch_size)
+        except (RuntimeError, NotImplementedError) as e:
+            if device == "cpu":
+                raise
+            warn_falling_back_to_cpu("Cross-encoder reranking", device, e)
+            scores = _load_cross_encoder(model_name, "cpu").predict(pairs, batch_size=batch_size)
         
         # Create results with scores and original indices
         results = [

@@ -483,6 +483,7 @@ export class PromptPipeline {
           return result;
         },
         should_cancel,
+        params,
       );
 
       // When/if we emerge from getting a response, check if this process has been canceled in the meantime:
