@@ -243,6 +243,33 @@ export interface BaseLLMResponseObject {
   chat_history?: ChatHistory;
 }
 
+/**
+ * How long a response took, and how many tokens went in and came out, as far
+ * as the provider reports. Every field is optional: providers report different
+ * things, and responses cached before stats were recorded have none.
+ */
+export interface ResponseStats {
+  /** Wall-clock time to get the response. Responses returned together by one request each get that request's time. */
+  latency_ms?: number;
+  /** Time until the first output token: loading the model plus reading the prompt. Only local servers that report it. */
+  ttft_ms?: number;
+  /** Prompt tokens. When one request returned several responses, each gets the full prompt count. */
+  input_tokens?: number;
+  /** Generated tokens, including any reasoning tokens. */
+  output_tokens?: number;
+  /** Output tokens over latency, the same way for every provider, so models can be compared. */
+  tokens_per_s?: number;
+  /** How fast the model generated once it started, as measured by the server itself. Only local servers that report it (Ollama, llama.cpp, WebLLM). */
+  decode_tokens_per_s?: number;
+  /**
+   * Set when the provider reported one total for several responses, e.g. one
+   * request that returned n of them: how many responses the total was shared
+   * between. The stats it covers (output tokens and speed, or latency) are
+   * then that total's average.
+   */
+  averaged_over?: number;
+}
+
 /** A JSON object describing an LLM response for the same prompt, with n responses (n>=1) */
 export interface RawLLMResponseObject extends BaseLLMResponseObject {
   // A snapshot of the exact query (payload) sent to the LLM's API
@@ -257,6 +284,8 @@ export interface RawLLMResponseObject extends BaseLLMResponseObject {
   reasoning?: (StringOrHash | null)[];
   // Each response's reasoning state, which a Chat Turn sends back to the model (see extract_reasoning_state); null where there is none
   reasoning_state?: (Dict | null)[];
+  // Each response's timing and token counts, in the same order as `responses`; null where there are none
+  stats?: (ResponseStats | null)[];
   // Token lengths (if given)
   tokens?: Dict<number>;
 }
@@ -290,6 +319,8 @@ export interface LLMResponse extends BaseLLMResponseObject {
   reasoning?: (StringOrHash | null)[];
   // Each response's reasoning state, in the same order as `responses`; null where there is none
   reasoning_state?: (Dict | null)[];
+  // Each response's timing and token counts, in the same order as `responses`; null where there are none
+  stats?: (ResponseStats | null)[];
   // Evaluation results
   eval_res?: EvaluationResults;
   // Token lengths (if given)

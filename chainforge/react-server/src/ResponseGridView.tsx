@@ -30,6 +30,7 @@ import {
 } from "@tabler/icons-react";
 import { Dict, LLMResponse } from "./backend/typing";
 import { llmResponseDataToString, reasoningAt } from "./backend/utils";
+import { describeStats, statsAt } from "./backend/responseStats";
 import {
   axisValues,
   buildGrid,
@@ -395,6 +396,11 @@ export const ResponseLightbox: React.FC<ResponseLightboxProps> = ({
           <Text size="sm">
             <b>{modelLabel}:</b> {accessors.modelOf(response)}
           </Text>
+          {statsAt(response, item.index) && (
+            <Text size="sm" color="dimmed">
+              {describeStats(statsAt(response, item.index)).join(" · ")}
+            </Text>
+          )}
           {vars.map(([name, value]) => (
             <Text size="sm" key={name}>
               <b>{name}:</b> {value}

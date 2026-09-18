@@ -730,6 +730,14 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp-text {
 .cf-table-resp .cf-table-resp-band .cf-reasoning-chip[aria-expanded="true"] {
   background-color: rgba(0, 0, 0, 0.3);
 }
+.cf-table-resp .cf-table-resp-band .cf-stats-chip {
+  font-size: var(--fs-xs);
+  line-height: 15px;
+  white-space: nowrap;
+  padding: 0 3px;
+  opacity: 0.8;
+  cursor: default;
+}
 .cf-table-resp-reasoning {
   margin: 4px 7px 0;
   padding: 2px 0 2px 7px;

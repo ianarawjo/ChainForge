@@ -23,6 +23,7 @@ import {
   truncStr,
 } from "./backend/utils";
 import { formatScore, passFail } from "./backend/responseGrid";
+import { describeStats, formatStats, statsAt } from "./backend/responseStats";
 import { MediaBox } from "./ResponseBoxes";
 
 const ResponseRatingToolbar = lazy(() => import("./ResponseRatingToolbar"));
@@ -199,6 +200,30 @@ const ReasoningChip: React.FC<{
   </Tooltip>
 );
 
+/** How long a response took and how fast it came, with its token counts on hover. */
+const StatsChip: React.FC<{
+  text: string;
+  lines: string[];
+  /** Whether identical responses share the card, so the stats are the first one's */
+  shared: boolean;
+}> = ({ text, lines, shared }) => (
+  <Tooltip
+    label={
+      <span style={{ whiteSpace: "pre-line" }}>
+        {lines.join("\n")}
+        {shared ? "\n(the first of the identical responses)" : ""}
+      </span>
+    }
+    multiline
+    width={240}
+    openDelay={300}
+    withArrow
+    withinPortal
+  >
+    <span className="cf-stats-chip">{text}</span>
+  </Tooltip>
+);
+
 export const TableResponseCell: React.FC<TableResponseCellProps> = ({
   responses,
   lines,
@@ -276,6 +301,13 @@ export const TableResponseCell: React.FC<TableResponseCellProps> = ({
                       reasoning={reasoning}
                       expanded={showReasoning}
                       onToggle={() => toggleExpanded(cardKey)}
+                    />
+                  )}
+                  {!onlyShowScores && statsAt(response, indices[0]) && (
+                    <StatsChip
+                      lines={describeStats(statsAt(response, indices[0]))}
+                      text={formatStats(statsAt(response, indices[0]), true)}
+                      shared={indices.length > 1}
                     />
                   )}
                   {indices.length > 1 && (
