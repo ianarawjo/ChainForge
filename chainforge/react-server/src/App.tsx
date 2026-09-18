@@ -101,6 +101,7 @@ import useStore, { StoreHandles } from "./store";
 import StorageCache, { MediaLookup, StringLookup } from "./backend/cache";
 import { FlowLoadSource, flowLoadReplacesMedia } from "./backend/flowLoading";
 import { claimActiveTab, isActiveTab } from "./backend/activeTab";
+import { FlowLoadGuard } from "./backend/flowLoadGuard";
 import {
   StorageProtection,
   checkStorageProtection,
@@ -371,6 +372,13 @@ const App = () => {
   const [autosavingInterval, setAutosavingInterval] = useState<
     NodeJS.Timeout | undefined
   >(undefined);
+
+  // Saves are refused while a flow is loading, as the canvas is empty on the
+  // way and saving it would replace the autosave. See ./backend/flowLoadGuard.
+  const [flowLoad] = useState(() => new FlowLoadGuard());
+  useEffect(() => {
+    flowLoad.nodesRendered(nodes);
+  }, [nodes]);
 
   // The 'name' of the current flow, to use when saving/loading
   const [flowFileName, setFlowFileName] = useState(`flow-${Date.now()}`);
@@ -900,14 +908,24 @@ const App = () => {
     ) => {
       const rf = rf_inst ?? rfInstance;
       if (!rf) return;
+      if (flowLoad.isLoading) {
+        console.log("Not saving: a flow is still loading.");
+        return;
+      }
 
       setShowSaveSuccess(false);
 
       startSaveTransition(() => {
         // Get current flow state
         const flow = rf.toObject();
+        const loadGeneration = flowLoad.generation;
 
         const saveToLocalStorage = () => {
+          // Running locally, this is the fallback for a failed save to the
+          // filesystem, so it runs later. If a flow was loaded meanwhile,
+          // `flow` is the previous one: don't write it over the loaded flow.
+          if (flowLoad.generation !== loadGeneration) return true;
+
           // This line only saves the front-end state. Cache files
           // are not pulled or overwritten upon loading from localStorage.
           const flowSaved = StorageCache.saveToLocalStorage(
@@ -1079,7 +1097,13 @@ const App = () => {
 
   const loadFlow = useCallback(
     async (flow?: Dict, rf_inst?: ReactFlowInstance | null) => {
-      if (flow === undefined) return;
+      if (flow == null) {
+        flowLoad.cancel();
+        return;
+      }
+      // No saving until these nodes are on the canvas: until then, it's empty.
+      const loadedNodes: Node[] = flow.nodes || [];
+      flowLoad.awaitNodes(loadedNodes);
       if (rf_inst) {
         if (flow.viewport)
           rf_inst.setViewport({
@@ -1098,7 +1122,7 @@ const App = () => {
 
       // After a delay, load in the new state.
       setTimeout(() => {
-        setNodes(flow.nodes || []);
+        setNodes(loadedNodes);
         setEdges(flow.edges || []);
 
         // Save flow that user loaded to autosave cache, in case they refresh the browser
@@ -1162,43 +1186,55 @@ const App = () => {
       const replaceMedia = flowLoadReplacesMedia(source);
 
       setIsLoading(true);
+      // Saving now would store the current flow alongside the incoming cache.
+      // loadFlow takes over once the flow's nodes are known.
+      flowLoad.begin();
+      const importGeneration = flowLoad.generation;
 
       // Delay briefly, to ensure there's time for
       // the isLoading spinner to appear:
       setTimeout(() => {
-        // Detect if there's no cache data
-        if (!flowJSON.cache) {
-          // Support for loading old flows w/o cache data:
-          loadFlow(flowJSON, rf);
-          StringLookup.restoreFrom([]); // manually clear the string lookup table
-          // Not for a bundle, whose media were just imported, or the autosave.
-          if (replaceMedia) MediaLookup.clear();
-          return;
+        try {
+          // Detect if there's no cache data
+          if (!flowJSON.cache) {
+            // Support for loading old flows w/o cache data:
+            loadFlow(flowJSON, rf);
+            StringLookup.restoreFrom([]); // manually clear the string lookup table
+            // Not for a bundle, whose media were just imported, or the autosave.
+            if (replaceMedia) MediaLookup.clear();
+            return;
+          }
+
+          // Then we need to extract the JSON of the flow vs the cache data
+          const flow = flowJSON.flow;
+          const cache = flowJSON.cache;
+
+          // We need to send the cache data to the backend first,
+          // before we can load the flow itself...
+          handleImportCache(cache, replaceMedia)
+            .then(() => {
+              // We load the ReactFlow instance last
+              loadFlow(flow, rf);
+            })
+            .catch((err) => {
+              // On an error, still try to load the flow itself:
+              handleError(
+                "Error encountered when importing cache data:" +
+                  err.message +
+                  "\n\nTrying to load flow regardless...",
+              );
+              loadFlow(flow, rf);
+            });
+        } catch (err) {
+          // E.g. flowJSON was null. The canvas still holds the previous flow;
+          // unless loadFlow already took over, end the load so saving resumes.
+          if (flowLoad.generation === importGeneration) flowLoad.cancel();
+          setIsLoading(false);
+          handleError(err as Error);
         }
-
-        // Then we need to extract the JSON of the flow vs the cache data
-        const flow = flowJSON.flow;
-        const cache = flowJSON.cache;
-
-        // We need to send the cache data to the backend first,
-        // before we can load the flow itself...
-        handleImportCache(cache, replaceMedia)
-          .then(() => {
-            // We load the ReactFlow instance last
-            loadFlow(flow, rf);
-          })
-          .catch((err) => {
-            // On an error, still try to load the flow itself:
-            handleError(
-              "Error encountered when importing cache data:" +
-                err.message +
-                "\n\nTrying to load flow regardless...",
-            );
-            loadFlow(flow, rf);
-          });
       }, 100);
     },
-    [rfInstance, handleImportCache, loadFlow],
+    [rfInstance, handleImportCache, loadFlow, handleError],
   );
 
   // Import a ChainForge flow from a file
@@ -1713,8 +1749,9 @@ const App = () => {
   // closed or the page reloaded. (The uploaded files themselves are already in
   // IndexedDB; what was lost was the flow referencing them.) localStorage
   // writes are synchronous, so the browser-storage save completes even during
-  // pagehide. Only armed once a flow has loaded and autosaving has started, so
-  // a reload mid-load can't overwrite the autosave with an empty flow.
+  // pagehide. Only armed once autosaving has started, and saveFlow refuses to
+  // save while a flow is still loading, so a reload mid-load can't overwrite
+  // the autosave with an empty flow.
   //
   // Only the tab the user last used saves this way: closing an old ChainForge
   // tab left open in the background would otherwise save its stale flow over
