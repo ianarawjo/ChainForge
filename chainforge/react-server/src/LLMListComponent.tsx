@@ -23,9 +23,13 @@ import { StrictModeDroppable } from "./StrictModeDroppable";
 import ModelSettingsModal, {
   ModelSettingsModalRef,
 } from "./ModelSettingsModal";
-import { getDefaultModelSettings } from "./ModelSettingSchemas";
+import {
+  baseModelToProvider,
+  getDefaultModelSettings,
+} from "./ModelSettingSchemas";
 import {
   BEDROCK_PREFIX,
+  OPENAI_COMPATIBLE_PREFIX,
   TOGETHER_PREFIX,
   HUGGINGFACE_PREFIX,
   NativeLLM,
@@ -38,6 +42,7 @@ import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
 import { deepcopy, ensureUniqueName } from "./backend/utils";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
+import { isLocalProvider, isOfflineMode } from "./backend/offlineMode";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to an in-browser Qwen 2.5 model.
@@ -53,7 +58,23 @@ const MODEL_NAME_PREFIXES: Record<string, string> = {
   "openrouter-image": OPENROUTER_IMAGE_PREFIX,
   hf: HUGGINGFACE_PREFIX,
   bedrock: BEDROCK_PREFIX,
+  "openai-compatible": OPENAI_COMPATIBLE_PREFIX,
 };
+
+/** The menu without models that offline mode rules out, and without groups it leaves empty. */
+function localMenuEntries(
+  entries: (LLMSpec | LLMGroup)[],
+): (LLMSpec | LLMGroup)[] {
+  return entries.flatMap((entry): (LLMSpec | LLMGroup)[] => {
+    if ("group" in entry) {
+      const items = localMenuEntries(entry.items);
+      return items.length > 0 ? [{ ...entry, items }] : [];
+    }
+    return isLocalProvider(baseModelToProvider(entry.base_model))
+      ? [entry]
+      : [];
+  });
+}
 
 // Helper funcs
 /** Get position CSS style below and left-aligned to the input element */
@@ -320,6 +341,11 @@ export const LLMListContainer = forwardRef<
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
   const removeFavorite = useStore((state) => state.removeFavorite);
   const apiKeys = useStore((state) => state.apiKeys);
+  // In offline mode, the menu only offers local models
+  const offlineMode =
+    (useStore((state) => state.globalSettings.offlineMode) as
+      | boolean
+      | undefined) ?? isOfflineMode();
 
   // For some reason, when the AvailableLLMs list is updated in the store/, it is not
   // immediately updated here. I've tried all kinds of things, but cannot seem to fix this problem.
@@ -425,11 +451,22 @@ export const LLMListContainer = forwardRef<
           item.settings.ollamaModel = _item?.settings?.ollamaModel;
         }
 
-        // If the user has entered a custom base url, pass it over
-        if (apiKeys.Ollama_BaseURL) {
-          item.formData.ollama_url = apiKeys.Ollama_BaseURL;
-          item.settings.ollama_url = apiKeys.Ollama_BaseURL;
+        // The server the model was found on, or else a base url the user entered in Settings
+        const ollama_url =
+          _item?.settings?.ollama_url ?? apiKeys.Ollama_BaseURL;
+        if (ollama_url) {
+          item.formData.ollama_url = ollama_url;
+          item.settings.ollama_url = ollama_url;
         }
+      }
+
+      // Models found on a local server carry that server's URL
+      if (
+        item.base_model === "openai-compatible" &&
+        typeof _item?.settings?.base_url === "string"
+      ) {
+        item.formData.base_url = _item.settings.base_url;
+        item.settings.base_url = _item.settings.base_url;
       }
 
       let new_items: LLMSpec[] = [];
@@ -505,10 +542,16 @@ export const LLMListContainer = forwardRef<
         };
       }
     };
-    const res = initLLMProviderMenu.map((i) => convert(i));
+    const menu = offlineMode
+      ? localMenuEntries(initLLMProviderMenu)
+      : initLLMProviderMenu;
+    const res = menu.map((i) => convert(i));
 
     for (const item of AvailableLLMs) {
-      if (initModels.has(item.base_model)) {
+      if (
+        initModels.has(item.base_model) ||
+        (offlineMode && !isLocalProvider(baseModelToProvider(item.base_model)))
+      ) {
         continue;
       }
       res.push({
@@ -523,6 +566,7 @@ export const LLMListContainer = forwardRef<
     handleSelectModel,
     refreshLLMProviderList,
     removeFavorite,
+    offlineMode,
   ]);
 
   return (

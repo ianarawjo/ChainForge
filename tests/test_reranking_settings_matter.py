@@ -40,7 +40,7 @@ class Fakes:
         fakes = self
 
         class CrossEncoder:
-            def __init__(self, model_name):
+            def __init__(self, model_name, device="cpu"):
                 fakes.models.append(model_name)
 
             def predict(self, pairs, batch_size):

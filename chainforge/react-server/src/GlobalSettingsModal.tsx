@@ -36,11 +36,25 @@ import { Dropzone, FileWithPath } from "@mantine/dropzone";
 import useStore, { initLLMProviderMenu } from "./store";
 import { APP_IS_RUNNING_LOCALLY, clear_api_keys } from "./backend/utils";
 import {
+  LOCAL_MODELS_GROUP,
+  discoverLocalModels,
+  localModelsMenuGroup,
+  syncOfflineModeToServer,
+} from "./backend/localModels";
+import {
+  isOfflineMode,
+  isOfflineModeLocked,
+  setOfflineMode,
+} from "./backend/offlineMode";
+import {
   forgetStoredAPIKeys,
   loadStoredAPIKeys,
   storeAPIKeys,
 } from "./backend/apiKeyStorage";
-import { setCustomProviders } from "./ModelSettingSchemas";
+import {
+  setCustomProviders,
+  setOpenAICompatibleModelSuggestions,
+} from "./ModelSettingSchemas";
 import AISupportSettings from "./AISupportSettings";
 import { AIModelOverrides } from "./backend/aiModels";
 import { CustomLLMProviderSpec, Dict, JSONCompatible } from "./backend/typing";
@@ -60,6 +74,8 @@ interface GlobalSettingsType {
   // The provider for AI support features; blank to pick one from the API keys
   aiProvider: string;
   aiModels: AIModelOverrides;
+  /** Only local models and services (see backend/offlineMode.ts) */
+  offlineMode: boolean;
 }
 
 // The JSON filename in the backend for the global settings
@@ -280,7 +296,45 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       aiSupport: true,
       aiProvider: "",
       aiModels: {},
+      offlineMode: isOfflineMode(),
     });
+
+    /**
+     * Finds the model servers running on this machine, and lists their models
+     * in the model menu and in the OpenAI-compatible server settings form.
+     */
+    const refreshLocalModels = useCallback(async (ollama_url?: string) => {
+      const servers = await discoverLocalModels(ollama_url);
+      const idx = initLLMProviderMenu.findIndex(
+        (item) => "group" in item && item.group === LOCAL_MODELS_GROUP,
+      );
+      if (idx !== -1) initLLMProviderMenu[idx] = localModelsMenuGroup(servers);
+      setOpenAICompatibleModelSuggestions(
+        servers
+          .filter((server) => server.kind === "openai-compatible")
+          .flatMap((server) => server.models),
+      );
+      // Prompt nodes rebuild their model menus
+      const state = useStore.getState();
+      state.setAvailableLLMs([...state.AvailableLLMs]);
+      state.nodes
+        .filter((n) => n.type === "prompt" || n.type === "chat")
+        .forEach((n) =>
+          state.setDataPropsForNode(n.id, { refreshLLMList: true }),
+        );
+      // AI support features can use Ollama's models
+      state.setOllamaModels(
+        servers.find((server) => server.kind === "ollama")?.models ?? [],
+      );
+    }, []);
+
+    /** Puts offline mode into effect, here and on ChainForge's server. */
+    const applyOfflineMode = useCallback((on: boolean) => {
+      const effective = on || isOfflineModeLocked();
+      setOfflineMode(effective);
+      syncOfflineModeToServer(effective);
+      return effective;
+    }, []);
 
     // Fetch the global settings from the backend
     const loadSettingsFromBackend = useCallback(() => {
@@ -317,61 +371,18 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
           return backendSettings;
         })
         .then((backendSettings) => {
-          // Attempt to fetch Ollama model list
-          // TODO: This should use the Ollama BaseURL setting
-          const Ollama_BaseURL =
-            backendSettings.Ollama_BaseURL || "http://localhost:11434";
-          fetch(`${Ollama_BaseURL}/api/tags`)
-            .then((response) => {
-              if (response.ok) {
-                return response.json();
-              } else {
-                throw new Error("Server not running?");
-              }
-            })
-            .then((data) => {
-              const models_available = data.models?.map(
-                (model_obj: Dict) => model_obj.name,
-              );
-
-              if (models_available.length === 0) {
-                console.log("No Ollama models available.");
-                return;
-              }
-              setOllamaModels(models_available);
-
-              // Set the available models in the global provider menu,
-              // by replacing the default Ollama generic model with the model list from the server.
-              const ollama_item = initLLMProviderMenu.findIndex(
-                (item) => "base_model" in item && item.base_model === "ollama",
-              );
-              if (ollama_item !== -1) {
-                initLLMProviderMenu[ollama_item] = {
-                  group: "Ollama",
-                  emoji: "🦙",
-                  items: models_available.map((model: string, idx: number) => ({
-                    key: idx,
-                    name: model,
-                    emoji: "🦙",
-                    model: "ollama",
-                    base_model: "ollama",
-                    formData: {
-                      ollamaModel: model,
-                    },
-                    settings: {
-                      ollamaModel: model,
-                    },
-                    temp: 1.0,
-                  })),
-                };
-              }
-
-              console.log("Ollama models available:", models_available);
-              console.log("Loaded Ollama model list from backend.");
-            })
-            .catch((error) => {
-              console.error("Error trying to fetch Ollama models", error);
-            });
+          const offline = applyOfflineMode(
+            backendSettings.offlineMode === true,
+          );
+          setSettings((prev) => ({ ...prev, offlineMode: offline }));
+          useStore.getState().setGlobalSetting("offlineMode", offline);
+          // List the models on servers running on this machine
+          const ollama_url = backendSettings.Ollama_BaseURL;
+          refreshLocalModels(
+            typeof ollama_url === "string" ? ollama_url : undefined,
+          ).catch((err) =>
+            console.error("Could not look for local model servers:", err),
+          );
         });
     }, [form, settings]);
 
@@ -423,7 +434,6 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
     // Web version only: keep keys on this device, rather than for this tab.
     const [rememberKeys, setRememberKeys] = useState(false);
     const AvailableLLMs = useStore((state) => state.AvailableLLMs);
-    const setOllamaModels = useStore((state) => state.setOllamaModels);
     const setAvailableLLMs = useStore((state) => state.setAvailableLLMs);
     const setFavorites = useStore((state) => state.setFavorites);
     const nodes = useStore((state) => state.nodes);
@@ -546,6 +556,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         (Object.keys(prev) as (keyof GlobalSettingsType)[]).forEach((key) => {
           if (key in saved) (restored as Dict)[key] = saved[key];
         });
+        restored.offlineMode = applyOfflineMode(restored.offlineMode);
         // Nodes read these from the store.
         setGlobalSettingsInZustandStore(restored);
         return restored;
@@ -917,6 +928,27 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
             <Tabs.Panel value="advanced" pt="xs">
               <Box p="md">
+                <Checkbox
+                  label="Offline mode"
+                  description={
+                    "Keep prompts, responses and documents on this machine or your local network: only local models " +
+                    "(Ollama, OpenAI-compatible servers on your network, in-browser models, custom providers) and local " +
+                    "RAG methods can be used, and requests to anywhere else are blocked. Model files can still be " +
+                    "downloaded, and code you write yourself (custom providers, Python evaluators) runs as written." +
+                    (isOfflineModeLocked()
+                      ? " ChainForge was started with --offline, so it stays on."
+                      : "")
+                  }
+                  checked={settings.offlineMode}
+                  disabled={isOfflineModeLocked()}
+                  onChange={(e) =>
+                    handleChangeSetting(
+                      "offlineMode",
+                      applyOfflineMode(e.currentTarget.checked),
+                    )
+                  }
+                />
+
                 <Divider my="xl" label="Resources" labelPosition="center" />
 
                 <Group position="center">

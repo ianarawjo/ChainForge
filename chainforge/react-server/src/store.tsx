@@ -48,6 +48,7 @@ import {
   openRouterEmoji,
 } from "./backend/models";
 import { StringLookup } from "./backend/cache";
+import { localModelsMenuGroup } from "./backend/localModels";
 import { saveGlobalConfig } from "./backend/backend";
 import { ChunkMethodSpec } from "./ChunkMethodListComponent";
 import type { RetrievalMethodSpec } from "./RetrievalMethodListComponent";
@@ -440,16 +441,9 @@ initLLMProviderMenu.push({
   ),
 });
 
-// Setup for when the app is running locally
-if (IS_RUNNING_LOCALLY) {
-  initLLMProviderMenu.push({
-    name: "Ollama",
-    emoji: "🦙",
-    model: "ollama",
-    base_model: "ollama",
-    temp: 1.0,
-  });
-}
+// Models on servers the user runs, like Ollama or LM Studio. Settings fills
+// in the ones it finds running (see refreshLocalModelsMenu).
+if (IS_RUNNING_LOCALLY) initLLMProviderMenu.push(localModelsMenuGroup([]));
 
 function flattenLLMGroup(group: LLMGroup): LLMSpec[] {
   return group.items.flatMap((item) =>

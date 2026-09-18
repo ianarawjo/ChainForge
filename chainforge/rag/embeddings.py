@@ -1,6 +1,9 @@
 import os
 from functools import lru_cache
 
+from chainforge import offline_mode
+from chainforge.rag.devices import torch_device, warn_falling_back_to_cpu
+
 """
 NOTE: The following API key names are passed in from the ChainForge settings:
 
@@ -80,18 +83,20 @@ class EmbeddingMethodRegistry:
 # Loading a model takes seconds, and /retrieve embeds chunks and queries in
 # separate calls, so keep the most recently used ones in memory.
 @lru_cache(maxsize=2)
-def _load_huggingface_model(name):
+def _load_huggingface_model(name, device="cpu"):
     from transformers import AutoTokenizer, AutoModel
     tokenizer = AutoTokenizer.from_pretrained(name)
     model = AutoModel.from_pretrained(name)
+    if device != "cpu":
+        model = model.to(device)
     model.eval()
     return tokenizer, model
 
 
 @lru_cache(maxsize=2)
-def _load_sentence_transformer(name):
+def _load_sentence_transformer(name, device="cpu"):
     from sentence_transformers import SentenceTransformer
-    return SentenceTransformer(name)
+    return SentenceTransformer(name, device=device)
 
 
 @EmbeddingMethodRegistry.register("huggingface")
@@ -112,24 +117,36 @@ def huggingface_embedder(texts, model_name="sentence-transformers/all-mpnet-base
     try:
         import torch
 
-        print(f"Using HuggingFace model: {model_name} for {len(texts)} texts")
-        tokenizer, model = _load_huggingface_model(path or model_name)
         texts = _with_prefix(texts, model_name, input_type)
 
-        embeddings = []
-        batch_size = 32
-        for i in range(0, len(texts), batch_size):
-            inputs = tokenizer(texts[i:i + batch_size], return_tensors="pt", truncation=True,
-                               padding=True, max_length=512)
-            with torch.no_grad():
-                hidden = model(**inputs).last_hidden_state
-            # Mean over real tokens only; padding would otherwise dilute
-            # shorter texts in a batch.
-            mask = inputs["attention_mask"].unsqueeze(-1).to(hidden.dtype)
-            pooled = (hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1)
-            embeddings.extend(pooled.tolist())
+        def embed(device):
+            print(f"Using HuggingFace model: {model_name} for {len(texts)} texts on {device}")
+            tokenizer, model = _load_huggingface_model(path or model_name, device)
+            embeddings = []
+            batch_size = 32
+            for i in range(0, len(texts), batch_size):
+                inputs = tokenizer(texts[i:i + batch_size], return_tensors="pt", truncation=True,
+                                   padding=True, max_length=512)
+                if device != "cpu":
+                    inputs = {k: v.to(device) for k, v in inputs.items()}
+                with torch.no_grad():
+                    hidden = model(**inputs).last_hidden_state
+                # Mean over real tokens only; padding would otherwise dilute
+                # shorter texts in a batch.
+                mask = inputs["attention_mask"].unsqueeze(-1).to(hidden.dtype)
+                pooled = (hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1)
+                embeddings.extend(pooled.cpu().tolist())
+            return embeddings
 
-        return embeddings
+        device = torch_device()
+        try:
+            return embed(device)
+        except (RuntimeError, NotImplementedError) as e:
+            # Some models use operations a GPU backend (MPS especially) lacks.
+            if device == "cpu":
+                raise
+            warn_falling_back_to_cpu("HuggingFace embedding", device, e)
+            return embed("cpu")
     except Exception as e:
         print(f"HuggingFace embedder failed: {str(e)}")
         raise ValueError(f"Failed to generate HuggingFace embeddings: {str(e)}")
@@ -250,10 +267,16 @@ def sentence_transformers_embedder(texts, model_name="all-MiniLM-L6-v2", path=No
         List of embeddings for each text
     """
     try:
-        print(f"Using SentenceTransformer model: {model_name} for {len(texts)} texts")
-        model = _load_sentence_transformer(path or model_name)
         texts = _with_prefix(texts, model_name, input_type)
-        return model.encode(texts, batch_size=32).tolist()
+        device = torch_device()
+        print(f"Using SentenceTransformer model: {model_name} for {len(texts)} texts on {device}")
+        try:
+            return _load_sentence_transformer(path or model_name, device).encode(texts, batch_size=32).tolist()
+        except (RuntimeError, NotImplementedError) as e:
+            if device == "cpu":
+                raise
+            warn_falling_back_to_cpu("SentenceTransformer embedding", device, e)
+            return _load_sentence_transformer(path or model_name, "cpu").encode(texts, batch_size=32).tolist()
     except Exception as e:
         print(f"SentenceTransformer embedder failed: {str(e)}")
         raise ValueError(f"Failed to generate SentenceTransformer embeddings: {str(e)}")
@@ -299,3 +322,61 @@ def azure_openai_embedder(texts, model_name="text-embedding-3-small", path=None,
     except Exception as e:
         print(f"Azure OpenAI embedder failed: {str(e)}")
         raise ValueError(f"Failed to generate Azure OpenAI embeddings: {str(e)}")
+
+
+def _ollama_base_url(api_keys=None):
+    """Where Ollama is: the URL in ChainForge's settings, else OLLAMA_HOST, else its default."""
+    url = (api_keys or {}).get("Ollama_BaseURL") or os.environ.get("OLLAMA_HOST") or "http://localhost:11434"
+    url = url.strip().rstrip("/")
+    if "://" not in url:
+        url = "http://" + url  # OLLAMA_HOST is often just host:port
+    url = url.replace("://0.0.0.0", "://localhost")  # the address Ollama listens on, not one to call
+    if url.endswith("/api"):
+        url = url[:-len("/api")]
+    return url
+
+
+@EmbeddingMethodRegistry.register("ollama")
+def ollama_embedder(texts, model_name="nomic-embed-text", path=None, api_keys=None,
+                    input_type="document"):
+    """
+    Generate embeddings with a model served by Ollama, on this machine or the
+    local network. Pull the model first, e.g. `ollama pull nomic-embed-text`.
+
+    Args:
+        texts: List of text strings to embed
+        model_name: The Ollama embedding model (default: nomic-embed-text)
+        path: not used
+        api_keys: ChainForge's settings, for Ollama_BaseURL
+        input_type: "document" or "query"
+
+    Returns:
+        List of embeddings for each text
+    """
+    import requests
+
+    base_url = _ollama_base_url(api_keys)
+    blocked = offline_mode.block_reason_for_url(base_url)
+    if blocked:
+        raise ValueError(blocked)
+    texts = _with_prefix(texts, model_name, input_type)
+    print(f"Using Ollama model: {model_name} at {base_url} for {len(texts)} texts")
+
+    embeddings = []
+    batch_size = 64
+    for i in range(0, len(texts), batch_size):
+        try:
+            resp = requests.post(f"{base_url}/api/embed",
+                                 json={"model": model_name, "input": texts[i:i + batch_size]},
+                                 allow_redirects=not offline_mode.is_offline())
+        except requests.RequestException as e:
+            raise ValueError(f"Could not reach Ollama at {base_url}. Is it running? ({e})")
+        try:
+            data = resp.json()
+        except ValueError:
+            data = {}
+        if resp.status_code != 200 or "embeddings" not in data:
+            error = data.get("error") or resp.text[:300]
+            raise ValueError(f"Ollama could not embed with {model_name} ({resp.status_code}): {error}")
+        embeddings.extend(data["embeddings"])
+    return embeddings
