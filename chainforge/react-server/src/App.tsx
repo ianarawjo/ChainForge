@@ -86,6 +86,7 @@ import {
 } from "./ModelSettingSchemas";
 import { NativeLLM, OPENROUTER_PREFIX } from "./backend/models";
 import { v4 as uuid } from "uuid";
+import ChainBuddyPanel from "./chainbuddy/ui/ChainBuddyPanel";
 import axios from "axios";
 import LZString from "lz-string";
 import { EXAMPLEFLOW_1 } from "./example_flows";
@@ -1728,6 +1729,7 @@ const App = () => {
               gap={16}
             />
             <Controls showZoom={true} />
+            <ChainBuddyPanel />
           </ReactFlow>
         </div>
       </div>

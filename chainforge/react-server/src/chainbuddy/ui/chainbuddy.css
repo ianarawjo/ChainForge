@@ -1,0 +1,43 @@
+/* Proposed nodes and edges, before the user accepts or rejects them. */
+.react-flow__node.chainbuddy-pending-add {
+  outline: 2px dashed #be4bdb;
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+.react-flow__node.chainbuddy-pending-update {
+  outline: 2px dashed #f59f00;
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+.react-flow__node.chainbuddy-pending-remove {
+  outline: 2px dashed #fa5252;
+  outline-offset: 6px;
+  border-radius: 8px;
+  opacity: 0.55;
+}
+.react-flow__edge.chainbuddy-pending-add .react-flow__edge-path {
+  stroke: #be4bdb;
+  stroke-dasharray: 6 4;
+}
+
+.chainbuddy-panel {
+  width: 390px;
+  height: min(600px, calc(100vh - 120px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chainbuddy-markdown p {
+  margin: 0 0 6px;
+}
+.chainbuddy-markdown p:last-child {
+  margin-bottom: 0;
+}
+.chainbuddy-markdown ul,
+.chainbuddy-markdown ol {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+.chainbuddy-markdown code {
+  font-size: 12px;
+}
