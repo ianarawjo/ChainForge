@@ -390,28 +390,28 @@ export function scoresAreBooleanish(scores: Set<string>): boolean {
 function check_typeof_vals(arr: Array<any>): MetricType {
   if (arr.length === 0) return MetricType.Empty;
 
-  const typeof_set: (types: Set<any>) => MetricType = (types: Set<any>) => {
+  // The kind of one result, akin to Python's type(). Plain objects are
+  // "object"; arrays and null get their own kinds, since typeof calls them
+  // objects too.
+  const kind = (v: any): string =>
+    v === null ? "null" : Array.isArray(v) ? "array" : typeof v;
+
+  // Classifies by the set of kinds, not the set of values: every object is a
+  // distinct value, so a set of values could never hold just one object.
+  const typeof_set: (types: Set<string>) => MetricType = (
+    types: Set<string>,
+  ) => {
     if (types.size === 0) return MetricType.Empty;
-    const [first_val] = types;
-    if (
-      types.size === 1 &&
-      typeof first_val === "object" &&
-      !Array.isArray(first_val)
-    ) {
+    const kinds = Array.from(types);
+    if (types.size === 1 && types.has("object")) {
       return MetricType.KeyValue;
-    } else if (Array.from(types).every((t) => typeof t === "number"))
+    } else if (kinds.every((t) => t === "number"))
       // Numeric metrics only
       return MetricType.Numeric;
-    else if (
-      Array.from(types).every((t) => ["string", "boolean"].includes(typeof t))
-    )
+    else if (kinds.every((t) => ["string", "boolean"].includes(t)))
       // Categorical metrics only ('bool' is True/False, counts as categorical)
       return MetricType.Categorical;
-    else if (
-      Array.from(types).every((t) =>
-        ["string", "boolean", "number"].includes(typeof t),
-      )
-    )
+    else if (kinds.every((t) => ["string", "boolean", "number"].includes(t)))
       // Mix of numeric and categorical types
       return MetricType.Mixed;
     // Mix of types beyond basic ones
@@ -419,7 +419,7 @@ function check_typeof_vals(arr: Array<any>): MetricType {
   };
 
   const typeof_dict_vals = (d: Dict) => {
-    const dict_val_type = typeof_set(new Set(Object.values(d)));
+    const dict_val_type = typeof_set(new Set(Object.values(d).map(kind)));
     if (dict_val_type === MetricType.Numeric)
       return MetricType.KeyValue_Numeric;
     else if (dict_val_type === MetricType.Categorical)
@@ -428,14 +428,14 @@ function check_typeof_vals(arr: Array<any>): MetricType {
   };
 
   // Checks type of all values in 'arr' and returns the type
-  const val_type = typeof_set(new Set(arr));
+  const val_type = typeof_set(new Set(arr.map(kind)));
   if (val_type === MetricType.KeyValue) {
     // This is a 'KeyValue' pair type. We need to find the more specific type of the values in the dict.
     // First, we check that all dicts have the exact same keys
     for (let i = 0; i < arr.length - 1; i++) {
       const d = arr[i];
       const e = arr[i + 1];
-      if (!areSetsEqual(d, e))
+      if (!areSetsEqual(new Set(Object.keys(d)), new Set(Object.keys(e))))
         throw new Error(
           "The keys and size of dicts for evaluation results must be consistent across evaluations.",
         );
