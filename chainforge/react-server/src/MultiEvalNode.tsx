@@ -834,6 +834,14 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
               onFormatChange={(format) =>
                 updateEvalState(idx, (e) => (e.state.format = format))
               }
+              categories={e.state?.categories}
+              scale={e.state?.scale}
+              onCategoriesChange={(categories) =>
+                updateEvalState(idx, (e) => (e.state.categories = categories))
+              }
+              onScaleChange={(scale) =>
+                updateEvalState(idx, (e) => (e.state.scale = scale))
+              }
             />
           ) : (
             <Alert>Error: Unknown evaluator type {e.type}</Alert>

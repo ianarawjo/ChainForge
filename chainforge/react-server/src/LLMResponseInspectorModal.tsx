@@ -8,6 +8,7 @@ import React, {
   lazy,
   Suspense,
   useContext,
+  useState,
 } from "react";
 import { LoadingOverlay, Modal } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -19,7 +20,8 @@ import { AlertModalContext } from "./AlertModal";
 const LLMResponseInspector = lazy(() => import("./LLMResponseInspector"));
 
 export interface LLMResponseInspectorModalRef {
-  trigger: () => void;
+  /** Opens the modal, on the given tab if one is named (e.g. "judges"). */
+  trigger: (viewFormat?: string) => void;
 }
 
 export interface LLMResponseInspectorModalProps {
@@ -30,6 +32,8 @@ export interface LLMResponseInspectorModalProps {
   ignoreAndHideLLMField?: boolean; // If true, LLM field will not be shown in the table view
   ignoreAndHideEvalResField?: boolean; // If true, "Eval Res" column option will not be shown in the table view
   defaultTableColVar?: string;
+  /** Content for a "Judges" tab; see LLMResponseInspector. */
+  judgesPanel?: React.ReactNode;
 }
 
 const LLMResponseInspectorModal = forwardRef<
@@ -42,7 +46,11 @@ const LLMResponseInspectorModal = forwardRef<
   // const [openedOnce, setOpenedOnce] = useState(false);
 
   // This gives the parent access to triggering the modal
-  const trigger = () => {
+  const [requestedView, setRequestedView] = useState<string | undefined>(
+    undefined,
+  );
+  const trigger = (viewFormat?: string) => {
+    if (viewFormat) setRequestedView(viewFormat);
     open();
     // if (inspectorRef.current) inspectorRef.current.triggerRedraw();
   };
@@ -115,6 +123,11 @@ const LLMResponseInspectorModal = forwardRef<
             ignoreAndHideLLMField={props.ignoreAndHideLLMField}
             ignoreAndHideEvalResField={props.ignoreAndHideEvalResField}
             defaultTableColVar={props.defaultTableColVar}
+            judgesPanel={props.judgesPanel}
+            viewFormat={requestedView}
+            onViewFormatChange={
+              requestedView !== undefined ? setRequestedView : undefined
+            }
           />
         </Suspense>
       </div>

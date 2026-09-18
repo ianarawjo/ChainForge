@@ -2,10 +2,7 @@ import * as yaml from "js-yaml";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import { createJSEvalCodeFor } from "../SimpleEvalNode";
-import {
-  OUTPUT_FORMAT_PROMPTS,
-  OUTPUT_FORMAT_PROMPTS_REASONING,
-} from "../LLMEvalNode";
+import { formatInstruction, scoreSpecFrom } from "./scorerFormat";
 
 function cleanText(text: string): string {
   return '"' + text.replace(/\s*\n\s*/g, " ").trim() + '"';
@@ -20,6 +17,8 @@ function multievalChildToNodeFormat(child: any) {
         prompt: child.state.prompt,
         reasonBeforeScoring: child.state.reasonBeforeScoring,
         format: child.state.format,
+        categories: child.state.categories,
+        scale: child.state.scale,
         grader: child.state.grader,
       },
     };
@@ -43,13 +42,10 @@ function getPromptTemplate(llmEvalData: any): string {
   const useReasoning = llmEvalData?.reasonBeforeScoring ?? false;
   const expectedFormat = llmEvalData?.format ?? "bin";
 
-  const formatting_instr = useReasoning
-    ? OUTPUT_FORMAT_PROMPTS_REASONING[
-        expectedFormat as keyof typeof OUTPUT_FORMAT_PROMPTS_REASONING
-      ] ?? ""
-    : OUTPUT_FORMAT_PROMPTS[
-        expectedFormat as keyof typeof OUTPUT_FORMAT_PROMPTS
-      ] ?? "";
+  const formatting_instr = formatInstruction(
+    scoreSpecFrom(expectedFormat, llmEvalData?.categories, llmEvalData?.scale),
+    useReasoning,
+  );
 
   return (
     "You are evaluating text that will be pasted below. " +

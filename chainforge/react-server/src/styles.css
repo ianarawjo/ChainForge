@@ -847,6 +847,16 @@ html[data-mantine-color-scheme="dark"] .cf-table-resp .cf-table-copy {
 .cf-score-chip-label {
   opacity: 0.7;
 }
+/* In the Table View's score columns, long answers (e.g. a judge's "I am not
+   sure.") wrap instead of being cut off. Chips in a response's one-line
+   strip still truncate. */
+.cf-table-score-cell .cf-score-chip {
+  display: inline-block;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 16px;
+  padding: 1px 5px;
+}
 .cf-score-pass {
   background-color: rgba(47, 158, 68, 0.25);
 }

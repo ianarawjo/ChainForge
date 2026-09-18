@@ -6,17 +6,22 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useContext,
+  useMemo,
 } from "react";
 import { Handle, Position } from "reactflow";
 import {
+  Button,
   Group,
   NativeSelect,
+  Popover,
   Progress,
+  Select,
   Text,
   Textarea,
   Checkbox,
+  Tooltip,
 } from "@mantine/core";
-import { IconRobot, IconSearch } from "@tabler/icons-react";
+import { IconPencil, IconRobot, IconSearch } from "@tabler/icons-react";
 import { v4 as uuid } from "uuid";
 import useStore, { initLLMProviders } from "./store";
 import BaseNode from "./BaseNode";
@@ -44,13 +49,26 @@ import {
   QueryProgress,
 } from "./backend/typing";
 import { Status } from "./StatusIndicatorComponent";
-import { evalWithLLM, generatePrompts, grabResponses } from "./backend/backend";
+import {
+  InvalidScores,
+  evalWithLLM,
+  generatePrompts,
+  grabResponses,
+} from "./backend/backend";
 import { UserForcedPrematureExit } from "./backend/errors";
 import CancelTracker from "./backend/canceler";
 import { PromptInfo, PromptListModal, PromptListPopover } from "./PromptNode";
 import { useDisclosure } from "@mantine/hooks";
 import { PromptTemplate } from "./backend/template";
 import { StringLookup } from "./backend/cache";
+import JudgeAgreementView from "./JudgeAgreementView";
+import {
+  ScoreSpec,
+  findDisagreements,
+  formatInstruction,
+  judgeAgreement,
+  scoreSpecFrom,
+} from "./backend/scorerFormat";
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt.
 const PLACEHOLDER_PROMPT =
@@ -63,30 +81,11 @@ enum OutputFormat {
   Any = "open",
 }
 const OUTPUT_FORMATS = [
-  { value: OutputFormat.Bin, label: "binary (true/false)" },
+  { value: OutputFormat.Bin, label: "true/false" },
   { value: OutputFormat.Cat, label: "categorical" },
   { value: OutputFormat.Num, label: "numeric" },
   { value: OutputFormat.Any, label: "open-ended" },
 ];
-export const OUTPUT_FORMAT_PROMPTS = {
-  [OutputFormat.Bin]:
-    "Only reply with boolean values true or false, nothing else.",
-  [OutputFormat.Cat]: "Only reply with your categorization, nothing else.",
-  [OutputFormat.Num]:
-    "Only reply with a numeric value (a number), nothing else.",
-  [OutputFormat.Any]: "",
-};
-
-export const OUTPUT_FORMAT_PROMPTS_REASONING = {
-  [OutputFormat.Bin]:
-    "First, explain your reasoning for the classification. Then, output your final answer in the following format on a new line: SCORE: true or SCORE: false",
-  [OutputFormat.Cat]:
-    "First, explain your reasoning for the categorization. Then, output your final answer in the following format on a new line: SCORE: your_category",
-  [OutputFormat.Num]:
-    "First, explain your reasoning for the numeric value. Then, output your final answer in the following format on a new line: SCORE: numeric_value",
-  [OutputFormat.Any]:
-    "First, explain your reasoning. Then, output your final answer in the following format on a new line: SCORE: your_answer",
-};
 
 // The default LLM annotator is GPT-4 at temperature 0.
 const DEFAULT_LLM_ITEM = (() => {
@@ -114,7 +113,14 @@ export interface LLMEvaluatorComponentRef {
     prompt: string;
     format: string;
     grader?: LLMSpec;
+    graders?: LLMSpec[];
+    categories?: string;
+    scale?: string;
   };
+  /** The scorer's format, with its categories or scale levels. */
+  getScoreSpec: () => ScoreSpec;
+  /** The judges' names, in order. */
+  getJudgeNames: () => string[];
   getPromptTemplate: () => string;
   /** Replaces the rubric, as if the user had typed it. */
   setPrompt: (prompt: string) => void;
@@ -123,7 +129,20 @@ export interface LLMEvaluatorComponentRef {
 export interface LLMEvaluatorComponentProps {
   prompt?: string;
   grader?: LLMSpec;
+  /** Several judges, when allowMultipleJudges is set. Takes precedence over grader. */
+  graders?: LLMSpec[];
+  /** Whether several models can judge side by side. Their scores are keyed by judge name. */
+  allowMultipleJudges?: boolean;
   format?: OutputFormat;
+  /** For categorical scores: one category per line, optionally "label: description". */
+  categories?: string;
+  /** For numeric scores: the scale's levels, lowest first, one per line. */
+  scale?: string;
+  onCategoriesChange?: (categories: string) => void;
+  onScaleChange?: (scale: string) => void;
+  onLLMGradersChange?: (newGraders: LLMSpec[]) => void;
+  /** Called after each run with the judges' answers that didn't fit the format. */
+  onInvalidScores?: (invalid: InvalidScores[]) => void;
   id?: string;
   showUserInstruction?: boolean;
   onPromptEdit?: (newPrompt: string) => void;
@@ -144,12 +163,20 @@ export const LLMEvaluatorComponent = forwardRef<
   {
     prompt,
     grader,
+    graders,
+    allowMultipleJudges,
     format,
+    categories,
+    scale,
     id,
     showUserInstruction,
     onPromptEdit,
     onLLMGraderChange,
+    onLLMGradersChange,
     onFormatChange,
+    onCategoriesChange,
+    onScaleChange,
+    onInvalidScores,
     modelContainerBgColor,
     reasonBeforeScoring,
     onReasonBeforeScoringChange,
@@ -157,7 +184,13 @@ export const LLMEvaluatorComponent = forwardRef<
   ref,
 ) {
   const [promptText, setPromptText] = useState(prompt ?? "");
-  const [llmScorers, setLLMScorers] = useState([grader ?? DEFAULT_LLM_ITEM]);
+  const [llmScorers, setLLMScorers] = useState<LLMSpec[]>(
+    allowMultipleJudges && graders && graders.length > 0
+      ? graders
+      : [grader ?? DEFAULT_LLM_ITEM],
+  );
+  const [categoriesText, setCategoriesText] = useState(categories ?? "");
+  const [scaleText, setScaleText] = useState(scale ?? "");
   const [expectedFormat, setExpectedFormat] = useState<OutputFormat>(
     format ?? OutputFormat.Bin,
   );
@@ -169,6 +202,9 @@ export const LLMEvaluatorComponent = forwardRef<
   // Debounce helpers
   const debounceTimeoutRef = useRef(null);
   const debounce = genDebounceFunc(debounceTimeoutRef);
+  // A separate one for the categories and scale, so typing there doesn't drop a pending prompt edit
+  const optionsDebounceRef = useRef(null);
+  const debounceOptions = genDebounceFunc(optionsDebounceRef);
 
   const handlePromptChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -187,9 +223,52 @@ export const LLMEvaluatorComponent = forwardRef<
 
       if (new_items.length > 0 && onLLMGraderChange)
         onLLMGraderChange(new_items[0]);
+      if (onLLMGradersChange) onLLMGradersChange(new_items);
     },
-    [setLLMScorers, onLLMGraderChange],
+    [setLLMScorers, onLLMGraderChange, onLLMGradersChange],
   );
+
+  const handleCategoriesChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setCategoriesText(e.target.value);
+      if (onCategoriesChange)
+        debounceOptions(() => onCategoriesChange(e.target.value), 200)();
+    },
+    [onCategoriesChange],
+  );
+
+  const handleScaleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setScaleText(e.target.value);
+      if (onScaleChange)
+        debounceOptions(() => onScaleChange(e.target.value), 200)();
+    },
+    [onScaleChange],
+  );
+
+  // What the answer options button says: the categories or scale in brief
+  const answerOptionsLabel = () => {
+    const spec = getScoreSpec();
+    const base =
+      expectedFormat === OutputFormat.Cat
+        ? spec.categories
+          ? `${spec.categories.length} categories`
+          : "Any answer"
+        : expectedFormat === OutputFormat.Num
+          ? spec.scale
+            ? `${spec.scale.length}-level scale`
+            : "Any number"
+          : "Options";
+    return useReasoning ? `${base} · reasons` : base;
+  };
+
+  const getScoreSpec = () =>
+    scoreSpecFrom(expectedFormat, categoriesText, scaleText);
+
+  // The judges that score each response: all of them, or just the first
+  // where only one is allowed
+  const activeJudges = () =>
+    allowMultipleJudges ? llmScorers : llmScorers.slice(0, 1);
 
   const handleFormatChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -210,9 +289,7 @@ export const LLMEvaluatorComponent = forwardRef<
 
   const getPromptTemplate = () => {
     // Choose the appropriate format instruction based on the reasoning checkbox
-    const formatting_instr = useReasoning
-      ? OUTPUT_FORMAT_PROMPTS_REASONING[expectedFormat] ?? ""
-      : OUTPUT_FORMAT_PROMPTS[expectedFormat] ?? "";
+    const formatting_instr = formatInstruction(getScoreSpec(), useReasoning);
 
     return (
       "You are evaluating text that will be pasted below. " +
@@ -232,7 +309,8 @@ export const LLMEvaluatorComponent = forwardRef<
   ) => {
     // Create prompt template to wrap user-specified scorer prompt and input data
     const template = getPromptTemplate();
-    const llm_key = llmScorers[0].key ?? "";
+    const judges = activeJudges();
+    const spec = getScoreSpec();
 
     // Fetch info about the number of queries we'll need to make
     return grabResponses(input_node_ids)
@@ -247,12 +325,16 @@ export const LLMEvaluatorComponent = forwardRef<
           ? (progress_by_llm: Dict<QueryProgress>) =>
               // Debounce the progress bars UI update to ensure we don't re-render too often:
               debounce(() => {
+                // Progress across all judges
+                const total = num_resps_required * judges.length;
+                const sum = (k: "success" | "error") =>
+                  judges.reduce(
+                    (acc, j) => acc + (progress_by_llm[j.key ?? ""]?.[k] ?? 0),
+                    0,
+                  );
                 onProgressChange({
-                  success:
-                    (100 * progress_by_llm[llm_key].success) /
-                    num_resps_required,
-                  error:
-                    (100 * progress_by_llm[llm_key].error) / num_resps_required,
+                  success: (100 * sum("success")) / total,
+                  error: (100 * sum("error")) / total,
                 });
               }, 30)()
           : undefined;
@@ -261,7 +343,7 @@ export const LLMEvaluatorComponent = forwardRef<
         // Run LLM as evaluator
         return evalWithLLM(
           id ?? Date.now().toString(),
-          llmScorers[0],
+          judges.length > 1 ? judges : judges[0],
           template,
           input_node_ids,
           apiKeys ?? {},
@@ -269,6 +351,7 @@ export const LLMEvaluatorComponent = forwardRef<
           cancelId,
           undefined,
           useReasoning,
+          spec,
         );
       })
       .then(function (res) {
@@ -283,6 +366,7 @@ export const LLMEvaluatorComponent = forwardRef<
           );
 
         // Success!
+        if (onInvalidScores) onInvalidScores(res.invalid ?? []);
         return res.responses;
       });
   };
@@ -297,7 +381,10 @@ export const LLMEvaluatorComponent = forwardRef<
   const serialize = () => ({
     prompt: promptText,
     grader: llmScorers.length > 0 ? llmScorers[0] : undefined,
+    ...(allowMultipleJudges ? { graders: llmScorers } : {}),
     format: expectedFormat,
+    categories: categoriesText,
+    scale: scaleText,
     reasonBeforeScoring: useReasoning,
   });
 
@@ -313,6 +400,8 @@ export const LLMEvaluatorComponent = forwardRef<
     serialize,
     getPromptTemplate,
     setPrompt,
+    getScoreSpec,
+    getJudgeNames: () => activeJudges().map((j) => j.name),
   }));
 
   return (
@@ -339,33 +428,83 @@ export const LLMEvaluatorComponent = forwardRef<
         onChange={handlePromptChange}
       />
 
-      <Group spacing="xs">
-        <Text size="sm" fw="500" pl="2px" mb="14px">
-          Expected format:
+      <Group spacing={6} mb="sm" noWrap>
+        <Text size="sm" fw={500} pl="2px">
+          Answer
         </Text>
         <NativeSelect
           size="xs"
           data={OUTPUT_FORMATS}
           value={expectedFormat}
           onChange={handleFormatChange}
-          mb="sm"
         />
+        <Popover
+          width={300}
+          position="bottom-start"
+          withArrow
+          shadow="md"
+          withinPortal
+          // React Flow's canvas swallows mousedown, so close on click instead (as AiPopover does)
+          clickOutsideEvents={["click"]}
+        >
+          <Popover.Target>
+            <Button
+              size="xs"
+              compact
+              variant="light"
+              color="gray"
+              rightIcon={<IconPencil size="12px" />}
+              styles={{ label: { fontWeight: 400 } }}
+            >
+              {answerOptionsLabel()}
+            </Button>
+          </Popover.Target>
+          <Popover.Dropdown className="nodrag nowheel">
+            {expectedFormat === OutputFormat.Cat && (
+              <Textarea
+                autosize
+                label="Categories"
+                description="One per line, optionally with a description after a colon. Empty accepts any answer."
+                placeholder={
+                  "billing: charges, invoices, refunds\ntechnical: bugs, outages"
+                }
+                minRows={3}
+                maxRows={12}
+                mb="sm"
+                value={categoriesText}
+                onChange={handleCategoriesChange}
+              />
+            )}
+            {expectedFormat === OutputFormat.Num && (
+              <Textarea
+                autosize
+                label="Scale"
+                description="Levels, lowest first, one per line. Scored 1, 2, 3, and so on. Empty accepts any number."
+                placeholder={"Rude\nNeutral\nWarm"}
+                minRows={3}
+                maxRows={10}
+                mb="sm"
+                value={scaleText}
+                onChange={handleScaleChange}
+              />
+            )}
+            <Checkbox
+              label="Reason before scoring"
+              size="xs"
+              checked={useReasoning}
+              onChange={handleReasoningChange}
+            />
+          </Popover.Dropdown>
+        </Popover>
       </Group>
-
-      <Checkbox
-        label="Reason before scoring"
-        checked={useReasoning}
-        onChange={handleReasoningChange}
-        mb="sm"
-      />
 
       <LLMListContainer
         initLLMItems={llmScorers}
-        description="Model to use as scorer:"
-        modelSelectButtonText="Change"
-        selectModelAction="replace"
+        description={allowMultipleJudges ? "Judges" : "Model to use as scorer:"}
+        modelSelectButtonText={allowMultipleJudges ? "Add judge +" : "Change"}
+        selectModelAction={allowMultipleJudges ? "add" : "replace"}
         onItemsChange={handleLLMListItemsChange}
-        hideTrashIcon={true}
+        hideTrashIcon={!allowMultipleJudges || llmScorers.length <= 1}
         bgColor={modelContainerBgColor}
       />
     </>
@@ -376,7 +515,12 @@ export interface LLMEvaluatorNodeProps {
   data: {
     prompt: string;
     grader: LLMSpec;
+    graders?: LLMSpec[];
     format: OutputFormat;
+    categories?: string;
+    scale?: string;
+    /** The input variable (or "__meta_"-prefixed metavariable) holding each response's true label. */
+    labelVar?: string | null;
     title: string;
     refresh: boolean;
     reasonBeforeScoring?: boolean;
@@ -412,6 +556,89 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
 
   const [lastResponses, setLastResponses] = useState<LLMResponse[]>([]);
+  const [invalidScores, setInvalidScores] = useState<InvalidScores[]>([]);
+
+  // Variables and metavariables of the inputs, as candidates for the ground-truth label
+  const [labelOptions, setLabelOptions] = useState<
+    { value: string; label: string }[]
+  >(data.labelVar ? [{ value: data.labelVar, label: data.labelVar }] : []);
+  const refreshLabelOptions = useCallback(() => {
+    const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
+    if (input_node_ids.length === 0) return;
+    grabResponses(input_node_ids)
+      .then((resps) => {
+        const vars = new Set<string>();
+        const metavars = new Set<string>();
+        resps.forEach((r) => {
+          Object.keys(r.vars ?? {}).forEach((v) => vars.add(v));
+          Object.keys(r.metavars ?? {}).forEach((v) => {
+            if (!v.startsWith("__")) metavars.add(v);
+          });
+        });
+        setLabelOptions([
+          ...Array.from(vars).map((v) => ({ value: v, label: v })),
+          ...Array.from(metavars)
+            .filter((v) => !vars.has(v))
+            .map((v) => ({
+              value: `__meta_${v}`,
+              label: `${v} (metavariable)`,
+            })),
+        ]);
+      })
+      .catch(() => {
+        // soft fail: the inputs haven't been run yet
+      });
+  }, [id, inputEdgesForNode]);
+
+  // Agreement with the label, and between judges, over the last run's scores
+  const scoreSpec = useMemo(
+    () => scoreSpecFrom(data.format, data.categories, data.scale),
+    [data.format, data.categories, data.scale],
+  );
+  // The judges in the last run's scores, and whether they're keyed by judge
+  const scoredJudges = useMemo(() => {
+    const keyed = lastResponses.some((r) =>
+      r.eval_res?.dtype?.startsWith("KeyValue"),
+    );
+    const judges = keyed
+      ? Array.from(
+          new Set(
+            lastResponses.flatMap((r) =>
+              (r.eval_res?.items ?? []).flatMap((i) =>
+                typeof i === "object" ? Object.keys(i) : [],
+              ),
+            ),
+          ),
+        )
+      : [data.grader?.name ?? "Judge"];
+    return { keyed, judges };
+  }, [lastResponses, data.grader]);
+  const disagreements = useMemo(
+    () =>
+      lastResponses.length === 0 || scoreSpec.format === "open"
+        ? []
+        : findDisagreements(
+            lastResponses,
+            scoredJudges.judges,
+            scoredJudges.keyed,
+            scoreSpec,
+            data.labelVar ?? undefined,
+          ),
+    [lastResponses, scoredJudges, scoreSpec, data.labelVar],
+  );
+  const agreement = useMemo(() => {
+    if (lastResponses.length === 0 || scoreSpec.format === "open")
+      return undefined;
+    const { keyed, judges } = scoredJudges;
+    if (!data.labelVar && judges.length < 2) return undefined;
+    return judgeAgreement(
+      lastResponses,
+      judges,
+      keyed,
+      scoreSpec,
+      data.labelVar ?? undefined,
+    );
+  }, [lastResponses, scoredJudges, scoreSpec, data.labelVar]);
 
   // Progress when querying responses
   const [progress, setProgress] = useState<QueryProgress | undefined>(
@@ -590,6 +817,16 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
       <LLMResponseInspectorModal
         ref={inspectModal}
         jsonResponses={lastResponses}
+        judgesPanel={
+          <JudgeAgreementView
+            summary={agreement}
+            numeric={scoreSpec.format === "num"}
+            labelVar={data.labelVar ?? undefined}
+            invalid={invalidScores}
+            disagreements={disagreements}
+            judges={scoredJudges.judges}
+          />
+        }
       />
       <PromptListModal
         promptPreviews={promptPreviews}
@@ -612,14 +849,66 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
           onLLMGraderChange={(new_grader) =>
             setDataPropsForNode(id, { grader: new_grader })
           }
+          onLLMGradersChange={(new_graders) => {
+            setDataPropsForNode(id, { graders: new_graders });
+            setStatus(Status.WARNING);
+          }}
           onFormatChange={(new_format) =>
             setDataPropsForNode(id, { format: new_format })
           }
+          onCategoriesChange={(categories) => {
+            setDataPropsForNode(id, { categories });
+            setStatus(Status.WARNING);
+          }}
+          onScaleChange={(scale) => {
+            setDataPropsForNode(id, { scale });
+            setStatus(Status.WARNING);
+          }}
+          onInvalidScores={setInvalidScores}
           grader={data.grader}
+          graders={data.graders}
+          allowMultipleJudges={true}
           format={data.format}
+          categories={data.categories}
+          scale={data.scale}
           id={id}
           showUserInstruction={true}
         />
+
+        {data.format !== OutputFormat.Any && (
+          <Tooltip
+            label="An input column with each response's true label, to measure how often each judge agrees with it"
+            multiline
+            width={240}
+            withArrow
+            openDelay={500}
+            withinPortal
+          >
+            <Group spacing={6} mt="xs" noWrap>
+              <Text
+                size="sm"
+                fw={500}
+                pl="2px"
+                style={{ whiteSpace: "nowrap" }}
+              >
+                Compare to
+              </Text>
+              <Select
+                size="xs"
+                placeholder="No label"
+                clearable
+                searchable
+                data={labelOptions}
+                value={data.labelVar ?? null}
+                onDropdownOpen={refreshLabelOptions}
+                onChange={(v) => setDataPropsForNode(id, { labelVar: v })}
+                className="nodrag"
+                style={{ flex: 1 }}
+                withinPortal
+              />
+            </Group>
+          </Tooltip>
+        )}
       </div>
 
       {progress !== undefined ? (

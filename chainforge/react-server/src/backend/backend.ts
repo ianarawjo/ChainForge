@@ -11,6 +11,7 @@ import {
   isEqualChatHistory,
   PromptVarsDict,
   QueryProgress,
+  EvaluationResults,
   EvaluationScore,
   LLMSpec,
   EvaluatedResponsesResults,
@@ -46,6 +47,7 @@ import {
   escapeBraces,
 } from "./template";
 import { UserForcedPrematureExit } from "./errors";
+import { ScoreSpec, parseScore } from "./scorerFormat";
 import CancelTracker from "./canceler";
 import { execPy } from "./pyodide/exec-py";
 import { baseModelToProvider } from "../ModelSettingSchemas";
@@ -1373,6 +1375,14 @@ export async function executepy(
   return { responses: all_evald_responses, logs: all_logs };
 }
 
+/** A judge's answers that didn't fit the scorer's format, e.g. a category not on its list. */
+export interface InvalidScores {
+  judge: string;
+  count: number;
+  total: number;
+  examples: string[];
+}
+
 /**
  * Runs an LLM over responses as a grader/evaluator.
  *
@@ -1384,7 +1394,7 @@ export async function executepy(
  */
 export async function evalWithLLM(
   id: string,
-  llm: string | LLMSpec,
+  llm: string | LLMSpec | LLMSpec[],
   root_prompt: string,
   response_ids: string | string[] | LLMResponse[],
   api_keys?: Dict,
@@ -1392,10 +1402,23 @@ export async function evalWithLLM(
   cancel_id?: string | number,
   system_msg?: string,
   useReasoning?: boolean,
-): Promise<{ responses?: LLMResponse[]; errors: string[] }> {
+  score_spec?: ScoreSpec,
+): Promise<{
+  responses?: LLMResponse[];
+  errors: string[];
+  invalid?: InvalidScores[];
+}> {
   // Check format of response_ids
   if (!Array.isArray(response_ids)) response_ids = [response_ids];
   if (response_ids.length === 0) return { responses: [], errors: [] };
+
+  // Several judges score each response side by side, their scores keyed by judge name.
+  const judges = Array.isArray(llm) ? llm : [llm];
+  const keyed = judges.length > 1;
+  const judgeName = (r: LLMResponse): string =>
+    typeof r.llm === "object"
+      ? r.llm.name
+      : StringLookup.get(r.llm) ?? String(r.llm);
 
   const load_resps_from_cache = typeof response_ids[0] === "string";
   const system_message: ChatHistoryInfo[] | undefined = system_msg
@@ -1442,7 +1465,7 @@ export async function evalWithLLM(
     // Now run all inputs through the LLM grader!:
     const { responses, errors } = await queryLLM(
       `eval-${id}-${cache_id ?? "provided"}`,
-      [llm],
+      judges,
       1,
       root_prompt,
       { __input: inputs },
@@ -1507,6 +1530,7 @@ export async function evalWithLLM(
 
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
+    const keyed_objs = new Set<LLMResponse>();
     responses.forEach((r: LLMResponse) => {
       const __i = parseInt(StringLookup.get(r.metavars.__i as number) ?? "");
       const __j = parseInt(StringLookup.get(r.metavars.__j as number) ?? "");
@@ -1518,7 +1542,19 @@ export async function evalWithLLM(
         return; // Skip this response
       }
       const resp_obj = resp_objs[__i];
-      if (resp_obj.eval_res !== undefined)
+      if (keyed) {
+        // Start from scratch, rather than from any scores the input already had
+        if (!keyed_objs.has(resp_obj)) {
+          keyed_objs.add(resp_obj);
+          resp_obj.eval_res = { items: [], dtype: "KeyValue_Mixed" };
+        }
+        const items = (resp_obj.eval_res as EvaluationResults).items;
+        const prev = items[__j];
+        items[__j] = {
+          ...(typeof prev === "object" ? prev : {}),
+          [judgeName(r)]: llmResponseDataToString(r.responses[0]),
+        };
+      } else if (resp_obj.eval_res !== undefined)
         resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
       else {
         resp_obj.eval_res = {
@@ -1559,53 +1595,81 @@ export async function evalWithLLM(
     all_evald_responses = all_evald_responses.concat(evald_resp_objs);
   }
 
-  // Do additional processing to check if all evaluations are
-  // boolean-ish (e.g., 'true' and 'false') or all numeric-ish (parseable as numbers)
-  const all_eval_res: Set<string> = new Set();
-  for (const resp_obj of all_evald_responses) {
-    if (!resp_obj.eval_res) continue;
-    for (const score of resp_obj.eval_res.items) {
+  // Applies fn to every score, or to each judge's score when scores are keyed by judge
+  const mapScores = (
+    fn: (v: EvaluationScore, judge: string) => EvaluationScore,
+  ) =>
+    all_evald_responses.forEach((resp_obj) => {
+      if (!resp_obj.eval_res?.items) return;
+      resp_obj.eval_res.items = resp_obj.eval_res.items.map((item) => {
+        if (!keyed || typeof item !== "object") return fn(item, "");
+        return Object.fromEntries(
+          Object.entries(item).map(([judge, v]) => [judge, fn(v, judge)]),
+        ) as Dict<boolean | number | string>;
+      });
+    });
+  const setDtype = (dtype: "Categorical" | "Numeric") =>
+    all_evald_responses.forEach((resp_obj) => {
+      if (resp_obj.eval_res)
+        resp_obj.eval_res.dtype = keyed ? `KeyValue_${dtype}` : dtype;
+    });
+
+  let invalid: InvalidScores[] | undefined;
+  if (score_spec && score_spec.format !== "open") {
+    // The format is known: read each answer against it, and count the ones that don't fit
+    const by_judge: Dict<InvalidScores> = {};
+    mapScores((v, judge) => {
+      const name =
+        judge || (typeof judges[0] === "string" ? judges[0] : judges[0].name);
+      if (!(name in by_judge))
+        by_judge[name] = { judge: name, count: 0, total: 0, examples: [] };
+      const tally = by_judge[name];
+      tally.total++;
+      if (typeof v !== "string") return v;
+      const parsed = parseScore(v, score_spec);
+      if (!parsed.valid) {
+        tally.count++;
+        if (tally.examples.length < 3 && !tally.examples.includes(v))
+          tally.examples.push(v);
+      }
+      return parsed.value;
+    });
+    invalid = Object.values(by_judge).filter((t) => t.count > 0);
+    setDtype(score_spec.format === "num" ? "Numeric" : "Categorical");
+  } else {
+    // Otherwise, check if all evaluations are boolean-ish (e.g., 'true' and 'false')
+    // or all numeric-ish (parseable as numbers), and store them as such
+    const all_eval_res: Set<string> = new Set();
+    mapScores((score) => {
       if (score !== undefined)
         all_eval_res.add(
           stripWrappingQuotes(score.toString().trim().toLowerCase()),
         );
-    }
-  }
+      return score;
+    });
 
-  // Check if the results are boolean-ish:
-  if (scoresAreBooleanish(all_eval_res)) {
-    // Convert all eval results to boolean datatypes:
-    all_evald_responses.forEach((resp_obj) => {
-      if (!resp_obj.eval_res?.items) return;
-      resp_obj.eval_res.items = resp_obj.eval_res.items.map(
-        (i: EvaluationScore) => {
-          if (typeof i !== "string") return i;
-          const li = i.toLowerCase();
-          return li === "true" || li === "yes";
-        },
-      );
-      resp_obj.eval_res.dtype = "Categorical";
-    });
-    // Check if the results are all numeric-ish:
-  } else if (allStringsAreNumeric(Array.from(all_eval_res))) {
-    // Convert all eval results to numeric datatypes:
-    all_evald_responses.forEach((resp_obj) => {
-      if (!resp_obj.eval_res?.items) return;
-      resp_obj.eval_res.items = resp_obj.eval_res.items.map(
-        (i: EvaluationScore) => {
-          if (typeof i !== "string") return i;
-          return parseFloat(i);
-        },
-      );
-      resp_obj.eval_res.dtype = "Numeric";
-    });
+    if (scoresAreBooleanish(all_eval_res)) {
+      mapScores((i) => {
+        if (typeof i !== "string") return i;
+        const li = stripWrappingQuotes(i.trim().toLowerCase());
+        return li === "true" || li === "yes";
+      });
+      setDtype("Categorical");
+    } else if (allStringsAreNumeric(Array.from(all_eval_res))) {
+      mapScores((i) => (typeof i === "string" ? parseFloat(i) : i));
+      setDtype("Numeric");
+    } else if (keyed) {
+      setDtype("Categorical");
+    }
   }
 
   // Store the evaluated responses in a new cache json:
   if (load_resps_from_cache)
     StorageCache.store(`${id}.json`, all_evald_responses);
 
-  return { responses: all_evald_responses, errors: all_errors };
+  return invalid && invalid.length > 0
+    ? { responses: all_evald_responses, errors: all_errors, invalid }
+    : { responses: all_evald_responses, errors: all_errors };
 }
 
 /**
