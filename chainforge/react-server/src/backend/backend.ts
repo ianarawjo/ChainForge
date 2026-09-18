@@ -35,7 +35,7 @@ import {
   extendArrayDict,
   stripWrappingQuotes,
   extractMediaVars,
-  withReasoningMetavar,
+  withResponseMetavars,
 } from "./utils";
 import StorageCache, { MediaLookup, StringLookup } from "./cache";
 import { PromptPipeline } from "./query";
@@ -177,6 +177,7 @@ function to_standard_format(r: RawLLMResponseObject | Dict): LLMResponse {
   if ("eval_res" in r) resp_obj.eval_res = r.eval_res;
   if ("reasoning" in r) resp_obj.reasoning = r.reasoning;
   if ("reasoning_state" in r) resp_obj.reasoning_state = r.reasoning_state;
+  if ("stats" in r) resp_obj.stats = r.stats;
   if ("chat_history" in r) resp_obj.chat_history = r.chat_history;
   return resp_obj;
 }
@@ -453,7 +454,7 @@ async function run_over_responses(
           cleanEscapedBraces(llmResponseDataToString(r)),
           StringLookup.get(resp_obj.prompt) ?? "",
           StringLookup.concretizeDict(resp_obj.vars),
-          withReasoningMetavar(
+          withResponseMetavars(
             StringLookup.concretizeDict(resp_obj.metavars) || {},
             resp_obj,
             j,
@@ -1430,7 +1431,7 @@ export async function evalWithLLM(
           image: typeof r === "object" && r.t === "img" ? r.d : undefined,
           fill_history: obj.vars,
           metavars: {
-            ...withReasoningMetavar(obj.metavars, obj, __j),
+            ...withResponseMetavars(obj.metavars, obj, __j),
             __i: __i.toString(),
             __j: __j.toString(),
           },

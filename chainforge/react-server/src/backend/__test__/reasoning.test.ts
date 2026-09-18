@@ -50,7 +50,7 @@ import {
   strip_reasoning_state,
   toStandardResponseFormat,
   withReasoningMetavar,
-  withoutReasoningMetavar,
+  withoutResponseMetavars,
 } from "../utils";
 // eslint-disable-next-line import/first
 import { executejs } from "../backend";
@@ -205,7 +205,7 @@ describe("the reasoning metavar", () => {
       topic: "math",
       [REASONING_METAVAR]: "An earlier model's thinking",
     };
-    expect(withoutReasoningMetavar(carried)).toEqual({ topic: "math" });
+    expect(withoutResponseMetavars(carried)).toEqual({ topic: "math" });
     expect(carried).toHaveProperty(REASONING_METAVAR); // not changed in place
   });
 

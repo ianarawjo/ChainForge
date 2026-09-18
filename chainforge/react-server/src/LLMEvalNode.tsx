@@ -32,7 +32,7 @@ import {
   extractSettingsVars,
   genDebounceFunc,
   stripLLMDetailsFromResponses,
-  withReasoningMetavar,
+  withResponseMetavars,
 } from "./backend/utils";
 import { AlertModalContext } from "./AlertModal";
 import { AIGenRubricPopover } from "./AiPopover";
@@ -444,7 +444,7 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
                     : undefined,
                 image: typeof r === "object" && r.t === "img" ? r.d : undefined,
                 fill_history: obj.vars,
-                metavars: withReasoningMetavar(obj.metavars, obj, j),
+                metavars: withResponseMetavars(obj.metavars, obj, j),
               })),
             )
             .flat();

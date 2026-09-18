@@ -74,6 +74,7 @@ import {
   ResponseGroup,
   getEvalResultStr,
 } from "./ResponseBoxes";
+import { statsAt } from "./backend/responseStats";
 import { getLabelForResponse } from "./ResponseRatingToolbar";
 import {
   Dict,
@@ -274,6 +275,19 @@ export const responsesToTable = async (
         };
         const reasoning = reasoningAt(res_obj, r_idx);
         if (reasoning) row.Reasoning = fitExcelCell(reasoning);
+        const stats = statsAt(res_obj, r_idx);
+        if (stats?.latency_ms !== undefined)
+          row["Latency (s)"] = stats.latency_ms / 1000;
+        if (stats?.ttft_ms !== undefined)
+          row["Time to first token (s)"] = stats.ttft_ms / 1000;
+        if (stats?.input_tokens !== undefined)
+          row["Input tokens"] = stats.input_tokens;
+        if (stats?.output_tokens !== undefined)
+          row["Output tokens"] = stats.output_tokens;
+        if (stats?.tokens_per_s !== undefined)
+          row["Tokens/s"] = stats.tokens_per_s;
+        if (stats?.decode_tokens_per_s !== undefined)
+          row["Decoding tokens/s"] = stats.decode_tokens_per_s;
 
         // Add columns for vars
         for (const [varname, val] of Object.entries(vars)) {

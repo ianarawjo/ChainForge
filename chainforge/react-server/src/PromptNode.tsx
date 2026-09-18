@@ -58,7 +58,7 @@ import {
   extractSettingsVars,
   genDebounceFunc,
   ensureUniqueName,
-  withReasoningMetavar,
+  withResponseMetavars,
 } from "./backend/utils";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import CancelTracker from "./backend/canceler";
@@ -1214,8 +1214,8 @@ Soft failing by replacing undefined with empty strings.`,
                       ? StringLookup.get(resp_obj.llm) ?? "(LLM lookup failed)"
                       : resp_obj.llm.name;
 
-                  // Expose this response's reasoning, if any, as a metavar
-                  o.metavars = withReasoningMetavar(o.metavars, resp_obj, j);
+                  // Expose this response's reasoning and stats, if any, as metavars
+                  o.metavars = withResponseMetavars(o.metavars, resp_obj, j);
                   // ...and its reasoning state, for a Chat Turn to send back to the model
                   const reasoning_state = resp_obj.reasoning_state?.[j];
                   if (reasoning_state) o.reasoning_state = reasoning_state;

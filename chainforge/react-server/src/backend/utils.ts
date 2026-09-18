@@ -53,6 +53,12 @@ import {
 } from "@google/genai";
 import { UserForcedPrematureExit } from "./errors";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
+import {
+  LATENCY_KEY,
+  isStatsMetavar,
+  statsAt,
+  statsToMetavars,
+} from "./responseStats";
 import { Annotations } from "plotly.js";
 
 /**
@@ -975,6 +981,7 @@ export async function call_openrouter(
   while (responses.length < n) {
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
+    const start = performance.now();
     const payload = await openrouter_request(
       "/chat/completions",
       query,
@@ -996,6 +1003,7 @@ export async function call_openrouter(
           : `${modelname} ran out of tokens before it answered. Raise max_tokens.`,
       );
 
+    payload[LATENCY_KEY] = performance.now() - start;
     responses.push(payload);
   }
 
@@ -1194,6 +1202,7 @@ async function call_openai_responses(
   while (responses.length < n) {
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
+    const start = performance.now();
     const res = await fetch(`${base}/responses`, {
       method: "POST",
       headers: {
@@ -1221,6 +1230,7 @@ async function call_openai_responses(
       throw new Error(
         `${model} stopped before it answered (${payload.incomplete_details?.reason ?? "incomplete"}). Raise max_completion_tokens, or lower the reasoning effort.`,
       );
+    (payload as Dict)[LATENCY_KEY] = performance.now() - start;
     responses.push(payload as Dict);
   }
 
@@ -1738,6 +1748,7 @@ export async function call_anthropic(
     // Abort if canceled
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
+    const start = performance.now();
     if (APP_IS_RUNNING_LOCALLY()) {
       // If we're running locally, route the request through the Flask backend,
       // where we can use the Anthropic Python API to make the API call:
@@ -1752,6 +1763,7 @@ export async function call_anthropic(
         "X-Api-Key": ANTHROPIC_API_KEY,
       };
       const resp = await route_fetch(url, "POST", headers, query);
+      resp[LATENCY_KEY] = performance.now() - start;
       responses.push(resp);
     } else {
       // We're on the chainforge.ai server; route API call through a proxy on the server, since Anthropic has CORS policy on their API:
@@ -1774,6 +1786,7 @@ export async function call_anthropic(
         throw new Error(`${resp.error.type}: ${resp.error.message}`);
       }
 
+      resp[LATENCY_KEY] = performance.now() - start;
       responses.push(resp);
     }
   }
@@ -1954,6 +1967,7 @@ export async function call_google_ai(
       config: gemini_config,
     });
 
+    const start = performance.now();
     const chat_response = await chat.sendMessage({ message: prompt_parts });
 
     // NOTE: Sometimes, Google's API returns empty responses.
@@ -1975,6 +1989,8 @@ export async function call_google_ai(
       text: chat_response.text,
       candidates: chat_response.candidates,
       promptFeedback: chat_response.promptFeedback,
+      usageMetadata: chat_response.usageMetadata,
+      [LATENCY_KEY]: performance.now() - start,
     });
   }
 
@@ -2213,6 +2229,7 @@ export async function call_huggingface(
   while (responses.length < n) {
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
+    const start = performance.now();
     const response = await fetch(url, {
       headers,
       method: "POST",
@@ -2247,7 +2264,11 @@ export async function call_huggingface(
 
     // Stored in the shape ChainForge has always stored HuggingFace responses
     // in, so that runs cached before this change still display.
-    responses.push({ generated_text: content, raw: result });
+    responses.push({
+      generated_text: content,
+      raw: result,
+      [LATENCY_KEY]: performance.now() - start,
+    });
   }
 
   return [query, responses];
@@ -2349,13 +2370,26 @@ export async function call_ollama_provider(
     }
   }
 
-  const parse_response = (body: string) => {
+  // Ollama's reply also carries its timings and token counts, which extract_stats reads
+  const OLLAMA_STATS = [
+    "total_duration",
+    "load_duration",
+    "prompt_eval_count",
+    "prompt_eval_duration",
+    "eval_count",
+    "eval_duration",
+  ];
+  const parse_response = (body: string, latency_ms: number) => {
     const json = JSON.parse(body);
-    if (json.message)
-      // chat models
-      return { generated_text: json.message.content };
-    // text-only models
-    else return { generated_text: json.response };
+    const stats = Object.fromEntries(
+      OLLAMA_STATS.filter((key) => key in json).map((key) => [key, json[key]]),
+    );
+    return {
+      // chat models reply with a message; text-only models with a response
+      generated_text: json.message ? json.message.content : json.response,
+      ...stats,
+      [LATENCY_KEY]: latency_ms,
+    };
   };
 
   // Ollama stops working on a request when its connection closes, including
@@ -2373,22 +2407,26 @@ export async function call_ollama_provider(
   try {
     // Call Ollama API
     const resps: Response[] = [];
+    // How long each request took; Ollama replies once the whole response is ready
+    const latencies: number[] = [];
     for (let i = 0; i < n; i++) {
       // Abort if the user canceled
       if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
       // Query Ollama and collect the response
+      const start = performance.now();
       const response = await fetch(url, {
         method: "POST",
         body: JSON.stringify(query),
         signal: controller.signal,
       });
+      latencies.push(performance.now() - start);
 
       resps.push(response);
     }
 
     responses = await Promise.all(resps.map((resp) => resp.text())).then(
-      (bodies) => bodies.map((body) => parse_response(body)),
+      (bodies) => bodies.map((body, i) => parse_response(body, latencies[i])),
     );
   } catch (err) {
     if (controller.signal.aborted) throw new UserForcedPrematureExit();
@@ -2532,6 +2570,7 @@ export async function call_bedrock(
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
     let result: Dict;
+    const start = performance.now();
     try {
       result = (await client.send(new ConverseCommand(query as any))) as Dict;
     } catch (error: any) {
@@ -2559,7 +2598,11 @@ export async function call_bedrock(
         `Bedrock returned no text for '${modelId}' (stopReason: ${result.stopReason ?? "unknown"}).`,
       );
 
-    responses.push({ generated_text: text, raw: result });
+    responses.push({
+      generated_text: text,
+      raw: result,
+      [LATENCY_KEY]: performance.now() - start,
+    });
   }
 
   return [query, responses];
@@ -2778,9 +2821,12 @@ async function call_webllm(
   };
 
   const choices: Dict[] = [];
+  // Each choice's token counts and speed, for extract_stats
+  const usages: Dict[] = [];
   while (choices.length < n) {
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
+    const start = performance.now();
     const completion = await engine.chat.completions.create({
       model: llm_model,
       messages,
@@ -2790,12 +2836,16 @@ async function call_webllm(
       ...call_params,
     });
 
-    if (completion?.choices && completion.choices.length > 0)
+    if (completion?.choices && completion.choices.length > 0) {
       choices.push(...completion.choices.map(split_webllm_thinking));
-    else throw new Error("WebLLM returned no choices.");
+      const latency = performance.now() - start;
+      completion.choices.forEach(() =>
+        usages.push({ ...(completion.usage ?? {}), [LATENCY_KEY]: latency }),
+      );
+    } else throw new Error("WebLLM returned no choices.");
   }
 
-  return [query, { choices: choices.slice(0, n) }];
+  return [query, { choices: choices.slice(0, n), usages: usages.slice(0, n) }];
 }
 
 /**
@@ -3419,6 +3469,11 @@ export function merge_response_objs(
       o.responses.map((_, i) => o.reasoning_state?.[i] ?? null);
     res.reasoning_state = stateOf(resp_obj_A).concat(stateOf(resp_obj_B));
   }
+  if (resp_obj_A.stats || resp_obj_B.stats) {
+    const statsOf = (o: RawLLMResponseObject) =>
+      o.responses.map((_, i) => o.stats?.[i] ?? null);
+    res.stats = statsOf(resp_obj_A).concat(statsOf(resp_obj_B));
+  }
   if (resp_obj_B.chat_history !== undefined)
     res.chat_history = resp_obj_B.chat_history;
   return res;
@@ -3897,11 +3952,12 @@ export async function retryAsyncFunc<T>(
 // Filters internally used keys LLM_{idx} and __{str} from metavar dictionaries.
 // This method is used to pass around information hidden from the user.
 export function cleanMetavarsFilterFunc(key: string) {
-  // Reasoning is long text, which isn't useful to group or plot by.
+  // Reasoning is long text, and stats are continuous numbers: neither is useful to group by.
   return !(
     key.startsWith("LLM_") ||
     key.startsWith("__pt") ||
-    key === REASONING_METAVAR
+    key === REASONING_METAVAR ||
+    isStatsMetavar(key)
   );
 }
 
@@ -3929,13 +3985,37 @@ export function withReasoningMetavar<T extends Dict>(
 }
 
 /**
- * Metavars without REASONING_METAVAR: for a new response, whose metavars would
- * otherwise carry an earlier model's reasoning as though it were its own.
+ * The metavars for the response at `index` of a response object, with the
+ * metavars that belong to that response alone: its reasoning (see
+ * withReasoningMetavar) and its timing and token counts (see STATS_METAVARS).
  */
-export function withoutReasoningMetavar<T extends Dict>(metavars: T): T {
-  if (!(REASONING_METAVAR in metavars)) return metavars;
+export function withResponseMetavars<T extends Dict>(
+  metavars: T,
+  resp_obj: {
+    reasoning?: (StringOrHash | null)[];
+    stats?: RawLLMResponseObject["stats"];
+  },
+  index: number,
+): T {
+  const withReasoning = withReasoningMetavar(metavars, resp_obj, index);
+  const stats = statsToMetavars(statsAt(resp_obj, index));
+  return Object.keys(stats).length > 0
+    ? { ...withReasoning, ...stats }
+    : withReasoning;
+}
+
+/**
+ * Metavars without the ones that belong to a single response (its reasoning
+ * and stats): for a new response, whose metavars would otherwise carry an
+ * earlier model's reasoning or timing as though they were its own.
+ */
+export function withoutResponseMetavars<T extends Dict>(metavars: T): T {
+  const own = Object.keys(metavars).filter(
+    (key) => key === REASONING_METAVAR || isStatsMetavar(key),
+  );
+  if (own.length === 0) return metavars;
   const rest: Dict = { ...metavars };
-  delete rest[REASONING_METAVAR];
+  own.forEach((key) => delete rest[key]);
   return rest as T;
 }
 

@@ -268,6 +268,24 @@ def with_reasoning_metavar(metavars: dict, reasoning: list, index: int) -> dict:
     text = reasoning[index] if index < len(reasoning) else None
     return {**metavars, 'reasoning': text} if isinstance(text, str) and text else metavars
 
+def with_stats_metavars(metavars: dict, stats: list, index: int) -> dict:
+    """The metavars for the response at `index`, with its timing and token counts, if any.
+
+    Mirrors statsToMetavars in react-server/src/backend/responseStats.ts.
+    """
+    s = stats[index] if index < len(stats) else None
+    if not isinstance(s, dict):
+        return metavars
+    res = dict(metavars)
+    if isinstance(s.get('latency_ms'), (int, float)):
+        res['stat_latency_s'] = round(s['latency_ms']) / 1000
+    if isinstance(s.get('ttft_ms'), (int, float)):
+        res['stat_ttft_s'] = round(s['ttft_ms']) / 1000
+    for key in ('input_tokens', 'output_tokens', 'tokens_per_s', 'decode_tokens_per_s'):
+        if isinstance(s.get(key), (int, float)):
+            res['stat_' + key] = s[key]
+    return res
+
 def check_typeof_vals(arr: list) -> MetricType:
     if len(arr) == 0: return MetricType.Empty
 
@@ -322,15 +340,17 @@ def run_over_responses(process_func, responses: list, scope: str, process_type: 
         res = resp_obj['responses']
         if scope == 'response':
             # Run process func over every individual response text.
-            # Each response's reasoning, if the model gave any, is in its meta under 'reasoning'.
+            # Each response's reasoning, if the model gave any, is in its meta under 'reasoning',
+            # and its stats (stat_latency_s, stat_output_tokens, stat_tokens_per_s, ...) beside it.
             metavars = resp_obj['metavars'] if 'metavars' in resp_obj else {}
             reasoning = resp_obj.get('reasoning') or []
+            stats = resp_obj.get('stats') or []
             proc = [process_func(
                         ResponseInfo(
                             text=r,
                             prompt=resp_obj['prompt'],
                             var=resp_obj['vars'],
-                            meta=with_reasoning_metavar(metavars, reasoning, j),
+                            meta=with_stats_metavars(with_reasoning_metavar(metavars, reasoning, j), stats, j),
                             llm=resp_obj['llm'])
                     ) for j, r in enumerate(res)]
 

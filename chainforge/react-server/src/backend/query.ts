@@ -14,7 +14,7 @@ import {
   extract_reasoning,
   extract_reasoning_state,
   extract_responses,
-  withoutReasoningMetavar,
+  withoutResponseMetavars,
   merge_response_objs,
   call_llm,
   mergeDicts,
@@ -26,6 +26,7 @@ import {
   imageMimeFromBase64,
 } from "./utils";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
+import { extract_stats } from "./responseStats";
 import { UserForcedPrematureExit } from "./errors";
 import { typecastSettingsDict } from "../ModelSettingSchemas";
 
@@ -36,6 +37,8 @@ interface _IntermediateLLMResponseType {
   response?: Dict | LLMResponseError;
   past_resp_obj?: RawLLMResponseObject;
   past_resp_obj_cache_idx?: number;
+  /** How long the call to the model took, not counting time waiting on the rate limiter. */
+  elapsed_ms?: number;
 }
 
 // From trincot @ SO: https://stackoverflow.com/a/76477994/1911342
@@ -95,6 +98,7 @@ export class PromptPipeline {
       response,
       past_resp_obj,
       past_resp_obj_cache_idx,
+      elapsed_ms,
     } = result;
 
     // Check for selective failure
@@ -111,6 +115,7 @@ export class PromptPipeline {
     const extracted_resps = extract_responses(response, llm, provider);
     const reasoning = extract_reasoning(response, llm, provider);
     const reasoning_state = extract_reasoning_state(response, llm, provider);
+    const stats = extract_stats(response, elapsed_ms, extracted_resps.length);
 
     // Detect any images and intern them to the MediaLookup table.
     // This saves a lot of performance and storage.
@@ -160,13 +165,14 @@ export class PromptPipeline {
       llm,
       vars: mergeDicts(info, chat_history?.fill_history) ?? {},
       // This response's reasoning is its own (below), not one carried from an earlier model
-      metavars: withoutReasoningMetavar(
+      metavars: withoutResponseMetavars(
         mergeDicts(metavars, chat_history?.metavars) ?? {},
       ),
     };
 
     if (reasoning) resp_obj.reasoning = reasoning;
     if (reasoning_state) resp_obj.reasoning_state = reasoning_state;
+    if (stats) resp_obj.stats = stats;
 
     // Carry over the chat history if present:
     if (chat_history !== undefined)
@@ -333,7 +339,7 @@ export class PromptPipeline {
             // We want to use the new info, since 'vars' could have changed even though
             // the prompt text is the same (e.g., "this is a tool -> this is a {x} where x='tool'")
             vars: mergeDicts(info, chat_history?.fill_history) ?? {},
-            metavars: withoutReasoningMetavar(
+            metavars: withoutResponseMetavars(
               mergeDicts(metavars, chat_history?.metavars) ?? {},
             ),
           };
@@ -341,6 +347,7 @@ export class PromptPipeline {
             resp.reasoning = cached_resp.reasoning.slice(0, n);
           if (cached_resp.reasoning_state)
             resp.reasoning_state = cached_resp.reasoning_state.slice(0, n);
+          if (cached_resp.stats) resp.stats = cached_resp.stats.slice(0, n);
           if (chat_history !== undefined)
             resp.chat_history = chat_history.messages;
           yield resp;
@@ -435,6 +442,7 @@ export class PromptPipeline {
       params.chat_history = chat_history.messages;
     let query: Dict | undefined;
     let response: Dict | LLMResponseError;
+    let elapsed_ms: number | undefined;
 
     // Array of images (as media UIDs) to send to the LLM
     const images: string[] = [];
@@ -457,8 +465,11 @@ export class PromptPipeline {
       [query, response] = await RateLimiter.throttle(
         llm,
         provider,
-        () =>
-          call_llm(
+        async () => {
+          // Timed once the rate limiter lets the call through, so the stats
+          // measure the model rather than ChainForge's own queue.
+          const start = performance.now();
+          const result = await call_llm(
             llm,
             provider,
             prompt.toString(),
@@ -467,7 +478,10 @@ export class PromptPipeline {
             params,
             should_cancel,
             images.length > 0 ? images : undefined,
-          ),
+          );
+          elapsed_ms = performance.now() - start;
+          return result;
+        },
         should_cancel,
       );
 
@@ -492,6 +506,7 @@ export class PromptPipeline {
       response,
       past_resp_obj,
       past_resp_obj_cache_idx,
+      elapsed_ms,
     };
   }
 }
