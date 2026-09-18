@@ -56,6 +56,7 @@ import {
 import { Status } from "./StatusIndicatorComponent";
 import {
   InvalidScores,
+  JudgeStats,
   clearCachedScores,
   countEvalQueries,
   evalWithLLM,
@@ -74,6 +75,7 @@ import {
   findDisagreements,
   formatInstruction,
   judgeAgreement,
+  reliability,
   runTooltipFor,
   scoreSpecFrom,
 } from "./backend/scorerFormat";
@@ -156,6 +158,8 @@ export interface LLMEvaluatorComponentProps {
   onLLMGradersChange?: (newGraders: LLMSpec[]) => void;
   /** Called after each run with the judges' answers that didn't fit the format. */
   onInvalidScores?: (invalid: InvalidScores[]) => void;
+  /** Called after each run with each judge's cost, time and tokens. */
+  onJudgeStats?: (stats: JudgeStats[]) => void;
   id?: string;
   showUserInstruction?: boolean;
   onPromptEdit?: (newPrompt: string) => void;
@@ -190,6 +194,7 @@ export const LLMEvaluatorComponent = forwardRef<
     onCategoriesChange,
     onScaleChange,
     onInvalidScores,
+    onJudgeStats,
     modelContainerBgColor,
     reasonBeforeScoring,
     onReasonBeforeScoringChange,
@@ -386,6 +391,7 @@ export const LLMEvaluatorComponent = forwardRef<
 
         // Success!
         if (onInvalidScores) onInvalidScores(res.invalid ?? []);
+        if (onJudgeStats) onJudgeStats(res.judge_stats ?? []);
         return res.responses;
       });
   };
@@ -557,6 +563,8 @@ export interface LLMEvaluatorNodeProps {
     scale?: string;
     /** The input variable (or "__meta_"-prefixed metavariable) holding each response's true label. */
     labelVar?: string | null;
+    /** Each judge's cost, time and tokens over the last run. */
+    judgeStats?: JudgeStats[];
     title: string;
     refresh: boolean;
     reasonBeforeScoring?: boolean;
@@ -662,6 +670,33 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
           ),
     [lastResponses, scoredJudges, scoreSpec, data.labelVar],
   );
+  // Reliability tables for judges that state probabilities (e.g. Jev), against the label
+  const reliabilityByJudge = useMemo(() => {
+    const labelVar = data.labelVar;
+    if (!labelVar || lastResponses.length === 0) return {};
+    const withProbs = scoredJudges.judges.filter((judge) =>
+      lastResponses.some((r) =>
+        (r.eval_res?.probs ?? []).some((p) =>
+          scoredJudges.keyed
+            ? typeof p === "object" && p !== null && judge in p
+            : typeof p === "number",
+        ),
+      ),
+    );
+    return Object.fromEntries(
+      withProbs.map((judge) => [
+        judge,
+        reliability(
+          lastResponses,
+          judge,
+          scoredJudges.keyed,
+          scoreSpec,
+          labelVar,
+        ),
+      ]),
+    );
+  }, [lastResponses, scoredJudges, scoreSpec, data.labelVar]);
+
   const agreement = useMemo(() => {
     if (lastResponses.length === 0 || scoreSpec.format === "open")
       return undefined;
@@ -731,6 +766,10 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
     }
   };
 
+  // What a run will do, for the Run button's tooltip. Set on hovering over it,
+  // and cleared once a run starts, since the run changes what's cached.
+  const [runTooltip, setRunTooltip] = useState<string | undefined>(undefined);
+
   const handleRunClick = useCallback(() => {
     // Get the ids from the connected input nodes:
     const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
@@ -740,6 +779,7 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
     }
 
     setStatus(Status.LOADING);
+    setRunTooltip(undefined);
     setProgress({ success: 2, error: 0 });
 
     const handleError = (err: Error | string) => {
@@ -785,7 +825,6 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
   ]);
 
   // What a run will do, for the Run button's tooltip, as the Prompt Node shows
-  const [runTooltip, setRunTooltip] = useState<string | undefined>(undefined);
   const handleRunHover = useCallback(() => {
     const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
     if (input_node_ids.length === 0) {
@@ -810,6 +849,7 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
         text: "Clear cached scores",
         onClick: () => {
           clearCachedScores(id);
+          setDataPropsForNode(id, { judgeStats: [] });
           setLastResponses([]);
           setInvalidScores([]);
           setStatus(Status.NONE);
@@ -902,6 +942,8 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
             invalid={invalidScores}
             disagreements={disagreements}
             judges={scoredJudges.judges}
+            judgeStats={data.judgeStats}
+            reliabilityByJudge={reliabilityByJudge}
           />
         }
       />
@@ -942,6 +984,9 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
             setStatus(Status.WARNING);
           }}
           onInvalidScores={setInvalidScores}
+          onJudgeStats={(judgeStats) =>
+            setDataPropsForNode(id, { judgeStats: judgeStats as Dict[] })
+          }
           grader={data.grader}
           graders={data.graders}
           allowMultipleJudges={true}

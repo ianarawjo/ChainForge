@@ -1068,11 +1068,14 @@ export async function call_openrouter_decision(
 }
 
 /**
- * A decision model's answer as a score an LLM Scorer reads: "true" or "false"
- * for a yes/no question (at probability 0.5), the chosen category, or the
- * position on the scale. The scale's levels come back numbered from 0, and
- * the position is a probability-weighted mean that can land between levels,
- * so it's shifted to the scorer's 1-to-N numbering.
+ * A decision model's answers, as JSON an LLM Scorer reads (see
+ * readJudgeAnswer in backend.ts): {"answer": ..., "p": ...}. The answer is
+ * "true" or "false" for a yes/no question (at probability 0.5), the chosen
+ * category, or the position on the scale. `p` is how likely the model thinks
+ * its answer is right, where that's one number: for a yes/no question or a
+ * choice. The scale's levels come back numbered from 0, and the position is a
+ * probability-weighted mean that can land between levels, so it's shifted to
+ * the scorer's 1-to-N numbering.
  */
 function _extract_openrouter_decision_responses(
   responses: Array<Dict>,
@@ -1080,11 +1083,22 @@ function _extract_openrouter_decision_responses(
   return responses.map((r) => {
     const a = r?.answers?.score ?? {};
     if (a.type === "noul" && typeof a.noul === "number")
-      return a.noul >= 0.5 ? "true" : "false";
-    if (a.type === "choice" && typeof a.choice === "string") return a.choice;
+      return JSON.stringify(
+        a.noul >= 0.5
+          ? { answer: "true", p: a.noul }
+          : { answer: "false", p: 1 - a.noul },
+      );
+    if (a.type === "choice" && typeof a.choice === "string") {
+      const p = a.probabilities?.[a.choice];
+      return JSON.stringify(
+        typeof p === "number" ? { answer: a.choice, p } : { answer: a.choice },
+      );
+    }
     if (a.type === "score" && typeof a.score === "number")
-      return String(Math.round((a.score + 1) * 1000) / 1000);
-    return JSON.stringify(a);
+      return JSON.stringify({
+        answer: String(Math.round((a.score + 1) * 1000) / 1000),
+      });
+    return JSON.stringify({ answer: JSON.stringify(a) });
   });
 }
 

@@ -348,6 +348,8 @@ export interface Disagreement {
   label?: EvaluationScore;
   /** Each judge's answer, by judge name. */
   answers: Dict<EvaluationScore | undefined>;
+  /** Each judge's probability for its answer, where it gives one (e.g. Jev). */
+  probs: Dict<number | undefined>;
   /** The judges whose answer differs from the label (or, without one, from the most common answer). */
   outliers: string[];
 }
@@ -378,6 +380,10 @@ export function findDisagreements(
     for (let j = 0; j < count; j++) {
       const answers: Dict<EvaluationScore | undefined> = {};
       judges.forEach((judge, k) => (answers[judge] = scores[k][i][j]));
+      const probs: Dict<number | undefined> = {};
+      judges.forEach(
+        (judge) => (probs[judge] = judgeProb(r, j, keyed ? judge : undefined)),
+      );
       // What each answer is compared against: the label, or else the most common answer
       let reference: string;
       if (label !== undefined) reference = key(label);
@@ -402,6 +408,7 @@ export function findDisagreements(
             : "(media)",
         ...(label !== undefined ? { label } : {}),
         answers,
+        probs,
         outliers,
       });
     }
@@ -488,4 +495,86 @@ export function runTooltipFor(by_judge: Dict<number>): string {
       : `Will send ${plural(counts[0])} to each of ${sending.length} judges${others}`;
   const total = counts.reduce((a, b) => a + b, 0);
   return `Will send ${plural(total)} to ${sending.length} judges${others}`;
+}
+
+/** A judge's probability for its answer to response `index`, if it gave one. */
+function judgeProb(
+  r: LLMResponse,
+  index: number,
+  judge?: string,
+): number | undefined {
+  const p = r.eval_res?.probs?.[index];
+  if (typeof p === "number") return judge === undefined ? p : undefined;
+  if (p && typeof p === "object" && judge !== undefined) return p[judge];
+  return undefined;
+}
+
+/** Bounds of the reliability table's bins of stated probability: [low, high). */
+const RELIABILITY_BINS: [number, number][] = [
+  [0, 0.5],
+  [0.5, 0.75],
+  [0.75, 0.9],
+  [0.9, 0.99],
+  [0.99, 1.0000001],
+];
+
+export interface ReliabilityRow {
+  /** The bin, e.g. "90–99%". */
+  range: string;
+  /** Answers whose stated probability falls in the bin, with a label to check against. */
+  n: number;
+  /** How many of them match the label. */
+  correct: number;
+  /** The judge's mean stated probability over them. */
+  mean_p: number;
+}
+
+/**
+ * How often a judge is right when it states a given probability, for judges
+ * that give one (e.g. Jev), checked against the ground-truth label. A judge
+ * whose answers are right about as often as it says is well calibrated.
+ * Binary and categorical scores only. Empty bins are left out.
+ */
+export function reliability(
+  responses: LLMResponse[],
+  judge: string,
+  keyed: boolean,
+  spec: ScoreSpec,
+  labelVar: string,
+): ReliabilityRow[] {
+  if (spec.format !== "bin" && spec.format !== "cat") return [];
+  const scores = judgeScores(responses, keyed ? judge : undefined);
+  const bins = RELIABILITY_BINS.map(() => ({ n: 0, correct: 0, sum_p: 0 }));
+  responses.forEach((r, i) => {
+    const label = parseLabel(getVarOrMetavar(r, labelVar), spec);
+    if (label === undefined) return;
+    const count = r.eval_res?.items.length ?? 0;
+    for (let j = 0; j < count; j++) {
+      const p = judgeProb(r, j, keyed ? judge : undefined);
+      const answer = scores[i][j];
+      if (p === undefined || answer === undefined) continue;
+      const b = RELIABILITY_BINS.findIndex(([lo, hi]) => p >= lo && p < hi);
+      if (b < 0) continue;
+      bins[b].n++;
+      bins[b].sum_p += p;
+      const same =
+        typeof answer === "string" && typeof label === "string"
+          ? answer.toLowerCase() === label.toLowerCase()
+          : answer === label;
+      if (same) bins[b].correct++;
+    }
+  });
+  const pct = (x: number) => Math.round(x * 100);
+  return bins.flatMap((b, k) => {
+    if (b.n === 0) return [];
+    const [lo, hi] = RELIABILITY_BINS[k];
+    return [
+      {
+        range: `${pct(lo)}–${Math.min(100, pct(hi))}%`,
+        n: b.n,
+        correct: b.correct,
+        mean_p: b.sum_p / b.n,
+      },
+    ];
+  });
 }

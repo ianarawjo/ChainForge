@@ -5,8 +5,10 @@ import {
   judgeAgreement,
   parseCategories,
   parseScore,
+  reliability,
   scoreSpecFrom,
 } from "../scorerFormat";
+import { formatCost, statsFromReply } from "../responseStats";
 import { EvaluationScore, LLMResponse } from "../typing";
 
 const CATS = scoreSpecFrom(
@@ -200,5 +202,71 @@ describe("listing disagreements", () => {
     const found = findDisagreements(single, ["J"], false, CATS, "__meta_team");
     expect(found.map((d) => d.uid)).toEqual(["1"]);
     expect(found[0].outliers).toEqual(["J"]);
+  });
+});
+
+describe("a judge's stated confidence vs. the label", () => {
+  const withProbs = (
+    uid: string,
+    answer: string,
+    p: number,
+    label: string,
+  ): LLMResponse => ({
+    ...resp(uid, [answer], label),
+    eval_res: { items: [answer], probs: [p], dtype: "Categorical" },
+  });
+
+  test("bins answers by stated probability, and counts how many are right", () => {
+    const rows = reliability(
+      [
+        withProbs("1", "billing", 0.995, "billing"),
+        withProbs("2", "billing", 0.999, "technical"),
+        withProbs("3", "technical", 0.6, "technical"),
+        withProbs("4", "billing", 0.3, "technical"),
+      ],
+      "Jev",
+      false,
+      CATS,
+      "__meta_team",
+    );
+    expect(
+      rows.map(({ range, n, correct }) => ({ range, n, correct })),
+    ).toEqual([
+      { range: "0–50%", n: 1, correct: 0 },
+      { range: "50–75%", n: 1, correct: 1 },
+      { range: "99–100%", n: 2, correct: 1 },
+    ]);
+    expect(rows[2].mean_p).toBeCloseTo(0.997);
+  });
+
+  test("only for binary and categorical scores", () => {
+    expect(
+      reliability(
+        [withProbs("1", "2", 0.9, "2")],
+        "Jev",
+        false,
+        { format: "num" },
+        "__meta_team",
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe("cost", () => {
+  test("is read from OpenRouter's usage.cost", () => {
+    expect(statsFromReply({ usage: { cost: 0.000021714 } }).cost_usd).toBe(
+      0.000021714,
+    );
+    expect(statsFromReply({ usage: {} }).cost_usd).toBeUndefined();
+  });
+
+  test("is shown legibly at any size", () => {
+    expect([1.2449, 0.0031, 0.000021714, 0.00078, 0].map(formatCost)).toEqual([
+      "$1.24",
+      "$0.0031",
+      "$0.0000217",
+      "$0.00078",
+      "$0",
+    ]);
   });
 });

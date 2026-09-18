@@ -14,6 +14,7 @@ import {
   EvaluationResults,
   EvaluationScore,
   LLMSpec,
+  ResponseStats,
   EvaluatedResponsesResults,
   CustomLLMProviderSpec,
   LLMResponseData,
@@ -1510,6 +1511,82 @@ export function clearCachedScores(id: string): void {
   StorageCache.clear(`${id}.json`);
 }
 
+/**
+ * A judge's answer, and its probability when it gives one. Decision models
+ * (e.g. Jev) answer with JSON, {"answer": ..., "p": ...}: see
+ * _extract_openrouter_decision_responses. Other judges answer in plain text.
+ */
+function readJudgeAnswer(raw: string): { answer: string; p?: number } {
+  if (raw.startsWith("{") && raw.includes('"answer"')) {
+    try {
+      const d = JSON.parse(raw);
+      if (d && typeof d === "object" && "answer" in d)
+        return {
+          answer: String(d.answer),
+          ...(typeof d.p === "number" ? { p: d.p } : {}),
+        };
+    } catch {
+      // not JSON after all: a text judge's answer
+    }
+  }
+  return { answer: raw };
+}
+
+/** A judge's cost, time and tokens over the answers it gave in a run. */
+export interface JudgeStats {
+  judge: string;
+  /** Answers given, including ones loaded from the cache. */
+  answers: number;
+  /** Total cost in US dollars, over the answers whose cost is known. */
+  cost_usd?: number;
+  /** How many answers the cost covers (the provider may not report it for all). */
+  priced: number;
+  /** Median time per answer, in milliseconds. */
+  median_latency_ms?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+}
+
+type JudgeStatsTally = JudgeStats & { latencies: number[] };
+
+function tallyJudgeStats(
+  tallies: Dict<JudgeStats>,
+  judge: string,
+  stats?: ResponseStats | null,
+) {
+  if (!(judge in tallies))
+    tallies[judge] = {
+      judge,
+      answers: 0,
+      priced: 0,
+      latencies: [],
+    } as JudgeStatsTally;
+  const t = tallies[judge] as JudgeStatsTally;
+  t.answers++;
+  if (!stats) return;
+  if (stats.cost_usd !== undefined) {
+    t.cost_usd = (t.cost_usd ?? 0) + stats.cost_usd;
+    t.priced++;
+  }
+  if (stats.latency_ms !== undefined) t.latencies.push(stats.latency_ms);
+  if (stats.input_tokens !== undefined)
+    t.input_tokens = (t.input_tokens ?? 0) + stats.input_tokens;
+  if (stats.output_tokens !== undefined)
+    t.output_tokens = (t.output_tokens ?? 0) + stats.output_tokens;
+}
+
+function finishJudgeStats(t: JudgeStats): JudgeStats {
+  const { latencies, ...rest } = t as JudgeStatsTally;
+  if (latencies.length === 0) return rest;
+  const sorted = [...latencies].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return {
+    ...rest,
+    median_latency_ms:
+      sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2,
+  };
+}
+
 /** A judge's answers that didn't fit the scorer's format, e.g. a category not on its list. */
 export interface InvalidScores {
   judge: string;
@@ -1543,6 +1620,8 @@ export async function evalWithLLM(
   responses?: LLMResponse[];
   errors: string[];
   invalid?: InvalidScores[];
+  /** Each judge's cost, time and tokens, over the answers it gave (cached ones included). */
+  judge_stats?: JudgeStats[];
 }> {
   // Check format of response_ids
   if (!Array.isArray(response_ids)) response_ids = [response_ids];
@@ -1565,6 +1644,7 @@ export async function evalWithLLM(
   // Load all responses with the given ID:
   let all_evald_responses: LLMResponse[] = [];
   let all_errors: string[] = [];
+  const judge_stats: Dict<JudgeStats> = {};
 
   const _runOverResponses = async (
     resp_objs: LLMResponse[],
@@ -1652,6 +1732,7 @@ export async function evalWithLLM(
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
     const keyed_objs = new Set<LLMResponse>();
+    const scored_objs = new Set<LLMResponse>();
     responses.forEach((r: LLMResponse) => {
       const __i = parseInt(StringLookup.get(r.metavars.__i as number) ?? "");
       const __j = parseInt(StringLookup.get(r.metavars.__j as number) ?? "");
@@ -1663,26 +1744,45 @@ export async function evalWithLLM(
         return; // Skip this response
       }
       const resp_obj = resp_objs[__i];
+      const judge = judgeName(r);
+      const { answer, p } = readJudgeAnswer(
+        llmResponseDataToString(r.responses[0]),
+      );
+      tallyJudgeStats(judge_stats, judge, r.stats?.[0]);
       if (keyed) {
         // Start from scratch, rather than from any scores the input already had
         if (!keyed_objs.has(resp_obj)) {
           keyed_objs.add(resp_obj);
           resp_obj.eval_res = { items: [], dtype: "KeyValue_Mixed" };
         }
-        const items = (resp_obj.eval_res as EvaluationResults).items;
-        const prev = items[__j];
-        items[__j] = {
+        const eval_res = resp_obj.eval_res as EvaluationResults;
+        const prev = eval_res.items[__j];
+        eval_res.items[__j] = {
           ...(typeof prev === "object" ? prev : {}),
-          [judgeName(r)]: llmResponseDataToString(r.responses[0]),
+          [judge]: answer,
         };
-      } else if (resp_obj.eval_res !== undefined)
-        resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
-      else {
-        resp_obj.eval_res = {
-          items: [],
-          dtype: "Categorical",
-        };
-        resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
+        if (p !== undefined) {
+          if (!eval_res.probs) eval_res.probs = [];
+          const prev_p = eval_res.probs[__j];
+          eval_res.probs[__j] = {
+            ...(typeof prev_p === "object" && prev_p !== null ? prev_p : {}),
+            [judge]: p,
+          };
+        }
+      } else {
+        if (resp_obj.eval_res === undefined || !scored_objs.has(resp_obj)) {
+          // Keep the input's own scores' length, as before, but not its probabilities
+          resp_obj.eval_res = {
+            items: resp_obj.eval_res?.items ?? [],
+            dtype: resp_obj.eval_res?.dtype ?? "Categorical",
+          };
+          scored_objs.add(resp_obj);
+        }
+        resp_obj.eval_res.items[__j] = answer;
+        if (p !== undefined) {
+          if (!resp_obj.eval_res.probs) resp_obj.eval_res.probs = [];
+          resp_obj.eval_res.probs[__j] = p;
+        }
       }
     });
 
@@ -1788,9 +1888,12 @@ export async function evalWithLLM(
   if (load_resps_from_cache)
     StorageCache.store(`${id}.json`, all_evald_responses);
 
-  return invalid && invalid.length > 0
-    ? { responses: all_evald_responses, errors: all_errors, invalid }
-    : { responses: all_evald_responses, errors: all_errors };
+  const res = {
+    responses: all_evald_responses,
+    errors: all_errors,
+    judge_stats: Object.values(judge_stats).map(finishJudgeStats),
+  };
+  return invalid && invalid.length > 0 ? { ...res, invalid } : res;
 }
 
 /**

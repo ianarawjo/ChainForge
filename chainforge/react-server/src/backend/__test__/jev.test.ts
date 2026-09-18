@@ -128,12 +128,17 @@ describe("asking Jev a question", () => {
       questions: { score: question },
     });
     expect(query.questions.score).toEqual(question);
-    // Yes/no at 0.5, the chosen category, and the scale position numbered from 1
-    expect(extract_responses(replies, JEV, LLMProvider.OpenRouter)).toEqual([
-      "true",
-      "false",
-      "billing",
-      "2.3",
+    // Yes/no at 0.5, the chosen category, and the scale position numbered
+    // from 1, each with how likely Jev thinks it's right (where that's one number)
+    expect(
+      extract_responses(replies, JEV, LLMProvider.OpenRouter).map((r) =>
+        JSON.parse(r as string),
+      ),
+    ).toEqual([
+      { answer: "true", p: 0.93 },
+      { answer: "false", p: 0.8 },
+      { answer: "billing", p: 0.84 },
+      { answer: "2.3" },
     ]);
   });
 
@@ -216,19 +221,26 @@ describe("Jev as a judge beside an LLM", () => {
 
   test("Jev gets the response and a typed question; the LLM gets the full prompt", async () => {
     mockOpenRouter(
-      (body) => ({
-        type: "choice",
-        choice: body.state.response.includes("charged")
+      (body) => {
+        const choice = body.state.response.includes("charged")
           ? "billing"
-          : "technical",
-      }),
+          : "technical";
+        return {
+          type: "choice",
+          choice,
+          probabilities: {
+            billing: choice === "billing" ? 0.9 : 0.3,
+            technical: choice === "billing" ? 0.1 : 0.7,
+          },
+        };
+      },
       (body) =>
         body.messages.at(-1).content.includes("charged")
           ? "Billing"
           : "billing",
     );
 
-    const { responses, errors } = await evalWithLLM(
+    const { responses, errors, judge_stats } = await evalWithLLM(
       "llmeval-jev",
       [
         judge("Jev", JEV),
@@ -251,7 +263,18 @@ describe("Jev as a judge beside an LLM", () => {
         { Jev: "billing", Sonnet: "billing" },
         { Jev: "technical", Sonnet: "billing" },
       ],
+      // Only Jev states probabilities
+      probs: [{ Jev: 0.9 }, { Jev: 0.7 }],
       dtype: "KeyValue_Categorical",
+    });
+    // Jev's replies report their cost; the mocked chat replies don't
+    const jev = judge_stats?.find((s) => s.judge === "Jev");
+    expect(jev).toMatchObject({ judge: "Jev", answers: 2, priced: 2 });
+    expect(jev?.cost_usd).toBeCloseTo(1e-5);
+    expect(jev?.input_tokens).toBe(240);
+    expect(judge_stats?.find((s) => s.judge === "Sonnet")).toMatchObject({
+      answers: 2,
+      priced: 0,
     });
 
     const decisions = calls.filter((c) => c.url === DECISIONS_URL);
