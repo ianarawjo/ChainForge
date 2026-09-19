@@ -12,6 +12,7 @@
     "@codemirror/lang-python": "^6.1.2",
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
+    "@emotion/react": "^11.14.0",
     "@fontsource/geist-mono": "^5.0.1",
     "@google/genai": "^2.22.0",
     "@huggingface/transformers": "^4.2.0",
@@ -19,6 +20,7 @@
     "@mantine/dates": "^6.0.13",
     "@mantine/dropzone": "^6.0.19",
     "@mantine/form": "^6.0.11",
+    "@mantine/hooks": "^6.0.22",
     "@mantine/prism": "^6.0.15",
     "@mlc-ai/web-llm": "^0.2.84",
     "@reactflow/background": "^11.2.0",
@@ -159,6 +161,7 @@
     "eslint-plugin-react": "^7.33.2",
     "fake-indexeddb": "^6.2.5",
     "jest": "^27.5.1",
+    "prettier": "^3.2.5",
     "worker-loader": "^3.0.8"
   }
 }
