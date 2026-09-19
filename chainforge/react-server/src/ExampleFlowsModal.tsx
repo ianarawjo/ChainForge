@@ -1,4 +1,11 @@
-import React, { forwardRef, useImperativeHandle } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import {
   SimpleGrid,
   Card,
@@ -322,6 +329,50 @@ const OAIEVALS = {
     "Example eval that checks sampled text matches the expected output.",
 } as Dict<string | null>;
 
+/** How far, in pixels, a scrolling description fades out at its bottom edge. */
+const DESCRIPTION_FADE_PX = 18;
+
+/**
+ * A card's description, which scrolls when it's too long for the card, so it
+ * never pushes the button out. While there's more below, its bottom edge fades
+ * out, to show it's cut off.
+ */
+const ScrollingDescription: React.FC<{ text: string }> = ({ text }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [moreBelow, setMoreBelow] = useState(false);
+  const update = useCallback(() => {
+    const el = ref.current;
+    if (el) setMoreBelow(el.scrollTop + el.clientHeight < el.scrollHeight - 1);
+  }, []);
+  useEffect(() => {
+    update();
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [update, text]);
+
+  const fade = `linear-gradient(to bottom, black calc(100% - ${DESCRIPTION_FADE_PX}px), transparent)`;
+  return (
+    <div
+      ref={ref}
+      className="nowheel"
+      onScroll={update}
+      style={{
+        flex: "1 1 auto",
+        minHeight: 0,
+        overflowY: "auto",
+        ...(moreBelow ? { maskImage: fade, WebkitMaskImage: fade } : {}),
+      }}
+    >
+      <Text size="sm" color="dimmed" lh={1.1} align="center">
+        {text}
+      </Text>
+    </div>
+  );
+};
+
 interface ExampleFlowCardProps {
   title: string;
   description: string;
@@ -346,15 +397,11 @@ const ExampleFlowCard: React.FC<ExampleFlowCardProps> = ({
       style={{ padding: "16px 10px 16px 10px" }}
     >
       <Stack justify="space-between" spacing="sm" h={160}>
-        <div>
-          <Text mb="xs" weight={500} lh={1.1} align="center">
-            {title}
-          </Text>
+        <Text weight={500} lh={1.1} align="center" style={{ flexShrink: 0 }}>
+          {title}
+        </Text>
 
-          <Text size="sm" color="dimmed" lh={1.1} align="center">
-            {description}
-          </Text>
-        </div>
+        <ScrollingDescription text={description} />
 
         <Button
           onClick={() => {
@@ -364,6 +411,7 @@ const ExampleFlowCard: React.FC<ExampleFlowCardProps> = ({
           color="blue"
           h={32}
           mih={32}
+          style={{ flexShrink: 0 }}
           fullWidth
           size="sm"
           radius="md"
@@ -447,6 +495,12 @@ const ExampleFlowsModal = forwardRef<
               title="📊 Compare prompt across models"
               description="A prompt template, a few inputs, and four models to prompt. Visualizes how response length varies across three samples from each."
               filename="basic-comparison"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
+              title="🧑‍⚖️ Compare LLM judges, with Jev"
+              description="Route bank support questions and catch scam texts with three judges (TypeSafe's Jev, GPT-5.4 Mini and Claude Sonnet 5), checked against human labels, with cost and speed."
+              filename="jev-judges"
               onSelect={onSelect}
             />
             <ExampleFlowCard

@@ -599,6 +599,8 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
               };
             });
             res_obj.eval_res.dtype = "KeyValue_Mixed"; // "KeyValue_Mixed" enum;
+            // Probabilities (e.g. Jev's) are per LLM Scorer, not per evaluator here
+            delete res_obj.eval_res.probs;
             merged_res_objs_by_uid[uid] = res_obj; // we don't make a copy, to save time
           } else {
             // It is already in the merged dict, so add the new eval results
@@ -833,6 +835,14 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
               }
               onFormatChange={(format) =>
                 updateEvalState(idx, (e) => (e.state.format = format))
+              }
+              categories={e.state?.categories}
+              scale={e.state?.scale}
+              onCategoriesChange={(categories) =>
+                updateEvalState(idx, (e) => (e.state.categories = categories))
+              }
+              onScaleChange={(scale) =>
+                updateEvalState(idx, (e) => (e.state.scale = scale))
               }
             />
           ) : (

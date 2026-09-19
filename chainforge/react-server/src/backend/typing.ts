@@ -261,6 +261,8 @@ export interface ResponseStats {
   tokens_per_s?: number;
   /** How fast the model generated once it started, as measured by the server itself. Only local servers that report it (Ollama, llama.cpp, WebLLM). */
   decode_tokens_per_s?: number;
+  /** What the request cost, in US dollars, where the provider reports it (e.g. OpenRouter's usage.cost). */
+  cost_usd?: number;
   /**
    * Set when the provider reported one total for several responses, e.g. one
    * request that returned n of them: how many responses the total was shared
@@ -298,6 +300,12 @@ export type EvaluationScore =
 
 export type EvaluationResults = {
   items: EvaluationScore[];
+  /**
+   * The judge's probability for each score in `items`, where it gives one
+   * (e.g. Jev): a number, or one per judge when scores are keyed by judge.
+   * How likely the judge thinks its answer is right.
+   */
+  probs?: (number | Dict<number> | null)[];
   dtype:
     | "KeyValue"
     | "KeyValue_Numeric"

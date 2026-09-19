@@ -33,6 +33,7 @@ import {
   IconLetterCaseToggle,
   IconFilter,
   IconChartBar,
+  IconScale,
   IconLayoutGrid,
 } from "@tabler/icons-react";
 import ResponseGridView, {
@@ -399,6 +400,8 @@ export interface LLMResponseInspectorProps {
   viewFormat?: string;
   /** Called when the user picks a different tab, so the host can save it. */
   onViewFormatChange?: (viewFormat: string) => void;
+  /** Content for a "Judges" tab, e.g. how often an LLM Scorer's judges agree. */
+  judgesPanel?: React.ReactNode;
 }
 
 const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
@@ -413,6 +416,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   defaultTableColVar,
   viewFormat: rememberedViewFormat,
   onViewFormatChange,
+  judgesPanel,
 }) => {
   // Responses
   const [responseDivs, setResponseDivs] = useState<React.ReactNode>([]);
@@ -433,6 +437,10 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
   const [viewFormat, setViewFormat] = useState(
     rememberedViewFormat ?? (wideFormat ? "table" : "hierarchy"),
   );
+  // Follow the host when it asks for a tab, e.g. to open straight on "Judges"
+  useEffect(() => {
+    if (rememberedViewFormat !== undefined) setViewFormat(rememberedViewFormat);
+  }, [rememberedViewFormat]);
 
   // The MultiSelect so people can dynamically set what vars they care about
   const [multiSelectVars, setMultiSelectVars] = useState<
@@ -941,6 +949,12 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             r.responses.length > 0
           )
             return group + "|" + llmResponseDataToString(r.responses[0]);
+          // Score columns show one response object's scores per row, so each
+          // gets its own row. Otherwise responses with the same vars (e.g.
+          // items from a Split Node, which have none) share a row, and all
+          // but the first lose their scores.
+          else if (effectiveTableColVar === "$EVAL_RES")
+            return group + "|" + r.uid;
           else return group;
         })[0];
 
@@ -1207,7 +1221,7 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             } else if ("type" in val && val.type === "eval") {
               // One score per line, for n > 1 responses per prompt.
               return (
-                <div className="cf-table-cell">
+                <div className="cf-table-cell cf-table-score-cell">
                   {(
                     val.data as [
                       string | JSX.Element,
@@ -1638,9 +1652,9 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
         value={viewFormat}
         onTabChange={(val) => {
           if (viewFormat === val) return;
-          setResponseDivs([]);
-          setShowLoadingSpinner(true);
           const next = val ?? "hierarchy";
+          setResponseDivs([]);
+          setShowLoadingSpinner(next !== "judges");
           setViewFormat(next);
           onViewFormatChange?.(next);
         }}
@@ -1678,6 +1692,15 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             </Tabs.Tab>
           ) : (
             <></>
+          )}
+          {judgesPanel !== undefined && (
+            <Tabs.Tab value="judges">
+              <IconScale
+                size="10pt"
+                style={{ marginBottom: wideFormat ? "0px" : "-4px" }}
+              />
+              {wideFormat ? " Judges" : ""}
+            </Tabs.Tab>
           )}
         </Tabs.List>
 
@@ -1741,6 +1764,8 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
                 metrics={tableLightboxMetrics}
               />
             </>
+          ) : viewFormat === "judges" ? (
+            judgesPanel
           ) : viewFormat === "grid" ? (
             <Box pt="xs">
               <ResponseGridView

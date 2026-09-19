@@ -11,8 +11,10 @@ import {
   isEqualChatHistory,
   PromptVarsDict,
   QueryProgress,
+  EvaluationResults,
   EvaluationScore,
   LLMSpec,
+  ResponseStats,
   EvaluatedResponsesResults,
   CustomLLMProviderSpec,
   LLMResponseData,
@@ -20,7 +22,13 @@ import {
   StringOrHash,
   JSONCompatible,
 } from "./typing";
-import { LLM, LLMProvider, getEnumName, getProvider } from "./models";
+import {
+  LLM,
+  LLMProvider,
+  getEnumName,
+  getProvider,
+  isDecisionModel,
+} from "./models";
 import {
   APP_IS_RUNNING_LOCALLY,
   set_api_keys,
@@ -46,6 +54,7 @@ import {
   escapeBraces,
 } from "./template";
 import { UserForcedPrematureExit } from "./errors";
+import { ScoreSpec, decisionQuestion, parseScore } from "./scorerFormat";
 import CancelTracker from "./canceler";
 import { execPy } from "./pyodide/exec-py";
 import { baseModelToProvider } from "../ModelSettingSchemas";
@@ -182,17 +191,31 @@ function to_standard_format(r: RawLLMResponseObject | Dict): LLMResponse {
   return resp_obj;
 }
 
+/**
+ * The cache files an index lists: those of its last run (`cache_files`), and
+ * also those of earlier runs (`stale_cache_files`), which are kept so that
+ * switching a model's settings back reuses its cached responses.
+ */
+function all_cache_files(cache?: Dict): Dict<string | LLMSpec> {
+  return { ...(cache?.stale_cache_files ?? {}), ...(cache?.cache_files ?? {}) };
+}
+
+/**
+ * The storage keys of the cache files for `cache_id`. Only the last run's
+ * files, unless `include_stale`: exports leave out earlier runs' responses,
+ * e.g. of models since removed, while clearing the cache removes them too.
+ */
 function get_cache_keys_related_to_id(
   cache_id: string,
   include_basefile = true,
+  include_stale = false,
 ): string[] {
   // Load the base cache 'file' for cache_id
   const base_file = `${cache_id}.json`;
   const data = StorageCache.get(base_file);
-  if (data?.cache_files !== undefined)
-    return Object.keys(data.cache_files).concat(
-      include_basefile ? [base_file] : [],
-    );
+  const files = include_stale ? all_cache_files(data) : data?.cache_files;
+  if (files !== undefined)
+    return Object.keys(files).concat(include_basefile ? [base_file] : []);
   else return include_basefile ? [base_file] : [];
 }
 // eslint-disable-next-line
@@ -640,7 +663,7 @@ export async function countQueries(
   let cache_file_lookup: Dict = {};
   if (id !== undefined) {
     const cache_data = load_from_cache(`${id}.json`);
-    cache_file_lookup = cache_data?.cache_files || {};
+    cache_file_lookup = all_cache_files(cache_data);
   }
 
   const missing_queries: Dict<Dict<number>> = {};
@@ -874,9 +897,8 @@ export async function queryLLM(
   if (no_cache) cache = {};
 
   const llm_to_cache_filename: Dict<string> = {};
-  const past_cache_files: Dict<string | LLMSpec> = {};
   if (typeof cache === "object" && cache.cache_files !== undefined) {
-    const past_cache_files: Dict = cache.cache_files;
+    const past_cache_files: Dict = all_cache_files(cache);
     const past_cache_filenames: Array<string> = Object.keys(past_cache_files);
     llms.forEach((llm_spec) => {
       let found_cache = false;
@@ -1088,16 +1110,22 @@ export async function queryLLM(
     return 0;
   });
 
-  // Save the responses *of this run* to the storage cache, for further recall:
-  const cache_filenames = past_cache_files;
+  // Save the responses *of this run* to the storage cache, for further recall.
+  // Earlier runs' cache files stay listed apart, as stale, so that switching a
+  // model's settings back (e.g. a judge's rubric) reuses its cached responses,
+  // but exports only include this run's.
+  const cache_filenames: Dict<string | LLMSpec> = {};
   llms.forEach((llm_spec: string | LLMSpec) => {
     const filename = llm_to_cache_filename[extract_llm_key(llm_spec)];
     cache_filenames[filename] = llm_spec;
   });
+  const stale_cache_files = all_cache_files(cache);
+  Object.keys(cache_filenames).forEach((f) => delete stale_cache_files[f]);
 
   if (!no_cache)
     StorageCache.store(`${id}.json`, {
       cache_files: cache_filenames,
+      stale_cache_files,
       responses_last_run: res,
     });
 
@@ -1374,6 +1402,218 @@ export async function executepy(
 }
 
 /**
+ * The queries an LLM Scorer makes: one for its text judges, with the full
+ * grader prompt, and one for its decision judges (e.g. Jev), which are asked a
+ * typed question built from the rubric and format, about the response alone.
+ * Each has its own cache, under the scorer's id plus `suffix`.
+ */
+function evalQueryRuns(
+  judges: (string | LLMSpec)[],
+  root_prompt: string,
+  score_spec?: ScoreSpec,
+  rubric?: string,
+): { suffix: string; judges: (string | LLMSpec)[]; template: string }[] {
+  const isDecisionJudge = (j: string | LLMSpec) =>
+    typeof j !== "string" && isDecisionModel(j.model);
+  const text_judges = judges.filter((j) => !isDecisionJudge(j));
+  const decision_judges = (judges.filter(isDecisionJudge) as LLMSpec[]).map(
+    (j) => {
+      if (!score_spec || rubric === undefined)
+        throw new Error(
+          `${j.name} can only be used as a judge in an LLM Scorer.`,
+        );
+      return {
+        ...j,
+        settings: {
+          ...j.settings,
+          decision_question: decisionQuestion(score_spec, rubric, j.name),
+        },
+      };
+    },
+  );
+  return [
+    { suffix: "", judges: text_judges, template: root_prompt },
+    { suffix: "-decisions", judges: decision_judges, template: "{__input}" },
+  ].filter((r) => r.judges.length > 0);
+}
+
+/**
+ * The responses to score, as values of the grader prompt's {__input}. Each
+ * carries its position in the response objects (__i, __j), to map scores back.
+ */
+function evalInputs(resp_objs: LLMResponse[]) {
+  return resp_objs
+    .map((obj, __i) =>
+      obj.responses.map((r: LLMResponseData, __j: number) => ({
+        text:
+          typeof r === "string" || typeof r === "number"
+            ? escapeBraces(StringLookup.get(r) ?? "(string lookup failed)")
+            : undefined,
+        image: typeof r === "object" && r.t === "img" ? r.d : undefined,
+        fill_history: obj.vars,
+        metavars: {
+          ...withResponseMetavars(obj.metavars, obj, __j),
+          __i: __i.toString(),
+          __j: __j.toString(),
+        },
+      })),
+    )
+    .flat();
+}
+
+/** A system message in the chat history format queries take. */
+function systemMessageHistory(
+  system_msg?: string,
+): ChatHistoryInfo[] | undefined {
+  return system_msg
+    ? [
+        {
+          messages: [{ role: "system", content: system_msg }],
+          fill_history: {},
+        },
+      ]
+    : undefined;
+}
+
+/**
+ * How many new requests an LLM Scorer would send to each judge, given what's
+ * already cached, e.g. for its Run button's tooltip. Keyed by judge key.
+ * Throws when the scorer can't run as set up (e.g. Jev with an open-ended format).
+ */
+export async function countEvalQueries(
+  id: string,
+  llm: LLMSpec | LLMSpec[],
+  root_prompt: string,
+  response_ids: string[],
+  system_msg?: string,
+  score_spec?: ScoreSpec,
+  rubric?: string,
+): Promise<Dict<number>> {
+  const judges = Array.isArray(llm) ? llm : [llm];
+  const runs = evalQueryRuns(judges, root_prompt, score_spec, rubric);
+  const new_requests: Dict<number> = {};
+  judges.forEach((j) => (new_requests[extract_llm_key(j)] = 0));
+  for (const cache_id of response_ids) {
+    const fname = `${cache_id}.json`;
+    if (!StorageCache.has(fname)) continue;
+    const inputs = evalInputs(load_cache_responses(fname) as LLMResponse[]);
+    for (const { suffix, judges: js, template } of runs) {
+      const { counts } = await countQueries(
+        template,
+        { __input: inputs },
+        js,
+        1,
+        systemMessageHistory(system_msg),
+        `eval-${id}-${cache_id}${suffix}`,
+      );
+      for (const [llm_key, by_prompt] of Object.entries(counts))
+        new_requests[llm_key] =
+          (new_requests[llm_key] ?? 0) +
+          Object.values(by_prompt).reduce((a, b) => a + b, 0);
+    }
+  }
+  return new_requests;
+}
+
+/**
+ * Clears an LLM Scorer's cached scores: its saved results, and every judge's
+ * cached answers (under "eval-<id>-"), so the next run asks the judges again.
+ */
+export function clearCachedScores(id: string): void {
+  // Judges' cached answers, and the responses made from any data inputs
+  const prefixes = [`eval-${id}-`, `${id}__input__`];
+  Object.keys(
+    StorageCache.getAllMatching((k) => prefixes.some((p) => k.startsWith(p))),
+  ).forEach((k) => StorageCache.clear(k));
+  StorageCache.clear(`${id}.json`);
+}
+
+/**
+ * A decision model's (e.g. Jev's) answer, and its probability when it gives
+ * one, from the JSON it answers with, {"answer": ..., "p": ...}: see
+ * _extract_openrouter_decision_responses. Only for decision judges: other
+ * judges' answers are plain text, even when they happen to be JSON.
+ */
+function readJudgeAnswer(raw: string): { answer: string; p?: number } {
+  if (raw.startsWith("{") && raw.includes('"answer"')) {
+    try {
+      const d = JSON.parse(raw);
+      if (d && typeof d === "object" && "answer" in d)
+        return {
+          answer: String(d.answer),
+          ...(typeof d.p === "number" ? { p: d.p } : {}),
+        };
+    } catch {
+      // not JSON after all: a text judge's answer
+    }
+  }
+  return { answer: raw };
+}
+
+/** A judge's cost, time and tokens over the answers it gave in a run. */
+export interface JudgeStats {
+  judge: string;
+  /** Answers given, including ones loaded from the cache. */
+  answers: number;
+  /** Total cost in US dollars, over the answers whose cost is known. */
+  cost_usd?: number;
+  /** How many answers the cost covers (the provider may not report it for all). */
+  priced: number;
+  /** Median time per answer, in milliseconds. */
+  median_latency_ms?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+}
+
+type JudgeStatsTally = JudgeStats & { latencies: number[] };
+
+function tallyJudgeStats(
+  tallies: Dict<JudgeStats>,
+  judge: string,
+  stats?: ResponseStats | null,
+) {
+  if (!(judge in tallies))
+    tallies[judge] = {
+      judge,
+      answers: 0,
+      priced: 0,
+      latencies: [],
+    } as JudgeStatsTally;
+  const t = tallies[judge] as JudgeStatsTally;
+  t.answers++;
+  if (!stats) return;
+  if (stats.cost_usd !== undefined) {
+    t.cost_usd = (t.cost_usd ?? 0) + stats.cost_usd;
+    t.priced++;
+  }
+  if (stats.latency_ms !== undefined) t.latencies.push(stats.latency_ms);
+  if (stats.input_tokens !== undefined)
+    t.input_tokens = (t.input_tokens ?? 0) + stats.input_tokens;
+  if (stats.output_tokens !== undefined)
+    t.output_tokens = (t.output_tokens ?? 0) + stats.output_tokens;
+}
+
+function finishJudgeStats(t: JudgeStats): JudgeStats {
+  const { latencies, ...rest } = t as JudgeStatsTally;
+  if (latencies.length === 0) return rest;
+  const sorted = [...latencies].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return {
+    ...rest,
+    median_latency_ms:
+      sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2,
+  };
+}
+
+/** A judge's answers that didn't fit the scorer's format, e.g. a category not on its list. */
+export interface InvalidScores {
+  judge: string;
+  count: number;
+  total: number;
+  examples: string[];
+}
+
+/**
  * Runs an LLM over responses as a grader/evaluator.
  *
  * @param id a unique ID to refer to this information. Used when cache'ing evaluation results.
@@ -1384,7 +1624,7 @@ export async function executepy(
  */
 export async function evalWithLLM(
   id: string,
-  llm: string | LLMSpec,
+  llm: string | LLMSpec | LLMSpec[],
   root_prompt: string,
   response_ids: string | string[] | LLMResponse[],
   api_keys?: Dict,
@@ -1392,26 +1632,45 @@ export async function evalWithLLM(
   cancel_id?: string | number,
   system_msg?: string,
   useReasoning?: boolean,
-): Promise<{ responses?: LLMResponse[]; errors: string[] }> {
+  score_spec?: ScoreSpec,
+  rubric?: string,
+): Promise<{
+  responses?: LLMResponse[];
+  errors: string[];
+  invalid?: InvalidScores[];
+  /** Each judge's cost, time and tokens, over the answers it gave (cached ones included). */
+  judge_stats?: JudgeStats[];
+}> {
   // Check format of response_ids
   if (!Array.isArray(response_ids)) response_ids = [response_ids];
   if (response_ids.length === 0) return { responses: [], errors: [] };
 
+  // Several judges score each response side by side, their scores keyed by judge name.
+  const judges = Array.isArray(llm) ? llm : [llm];
+  const keyed = judges.length > 1;
+  const runs = evalQueryRuns(judges, root_prompt, score_spec, rubric);
+  // Only decision judges (e.g. Jev) answer with JSON to read; see readJudgeAnswer
+  const decision_judge_names = new Set(
+    judges
+      .filter(
+        (j): j is LLMSpec => typeof j !== "string" && isDecisionModel(j.model),
+      )
+      .map((j) => j.name),
+  );
+  const judgeName = (r: LLMResponse): string =>
+    typeof r.llm === "object"
+      ? r.llm.name
+      : StringLookup.get(r.llm) ?? String(r.llm);
+
   const load_resps_from_cache = typeof response_ids[0] === "string";
-  const system_message: ChatHistoryInfo[] | undefined = system_msg
-    ? [
-        {
-          messages: [{ role: "system", content: system_msg }],
-          fill_history: {},
-        },
-      ]
-    : undefined;
+  const system_message = systemMessageHistory(system_msg);
 
   if (api_keys !== undefined) set_api_keys(api_keys);
 
   // Load all responses with the given ID:
   let all_evald_responses: LLMResponse[] = [];
   let all_errors: string[] = [];
+  const judge_stats: Dict<JudgeStats> = {};
 
   const _runOverResponses = async (
     resp_objs: LLMResponse[],
@@ -1419,43 +1678,34 @@ export async function evalWithLLM(
   ) => {
     console.log("Running LLM evaluator over response objects:", resp_objs);
 
-    // We need to keep track of the index of each response in the response object.
-    // We can generate var dicts with metadata to store the indices:
-    const inputs = resp_objs
-      .map((obj, __i) =>
-        obj.responses.map((r: LLMResponseData, __j: number) => ({
-          text:
-            typeof r === "string" || typeof r === "number"
-              ? escapeBraces(StringLookup.get(r) ?? "(string lookup failed)")
-              : undefined,
-          image: typeof r === "object" && r.t === "img" ? r.d : undefined,
-          fill_history: obj.vars,
-          metavars: {
-            ...withResponseMetavars(obj.metavars, obj, __j),
-            __i: __i.toString(),
-            __j: __j.toString(),
-          },
-        })),
-      )
-      .flat();
+    const inputs = evalInputs(resp_objs);
 
-    // Now run all inputs through the LLM grader!:
-    const { responses, errors } = await queryLLM(
-      `eval-${id}-${cache_id ?? "provided"}`,
-      [llm],
-      1,
-      root_prompt,
-      { __input: inputs },
-      system_message, // if there's a sys_message, we pass it in chat history format
-      undefined,
-      !cache_id, // if there's no cache_id, we don't want to cache the responses
-      progress_listener,
-      undefined,
-      cancel_id,
-      // Grader responses are cached for this session only, never exported, so
-      // don't intern their prompts: each pastes in a whole response, and the
-      // StringLookup table (which is exported) would keep a second copy of it.
-      false,
+    // Now run all inputs through the LLM grader(s)!
+    const results = await Promise.all(
+      runs.map(({ suffix, judges: js, template }) =>
+        queryLLM(
+          `eval-${id}-${cache_id ?? "provided"}${suffix}`,
+          js,
+          1,
+          template,
+          { __input: inputs },
+          system_message, // if there's a sys_message, we pass it in chat history format
+          undefined,
+          !cache_id, // if there's no cache_id, we don't want to cache the responses
+          progress_listener,
+          undefined,
+          cancel_id,
+          // Grader responses are cached for this session only, never exported, so
+          // don't intern their prompts: each pastes in a whole response, and the
+          // StringLookup table (which is exported) would keep a second copy of it.
+          false,
+        ),
+      ),
+    );
+    const responses = results.flatMap((r) => r.responses);
+    const errors: Dict<string[]> = Object.assign(
+      {},
+      ...results.map((r) => r.errors),
     );
 
     const err_vals: string[] = Object.values(errors).flat();
@@ -1507,6 +1757,8 @@ export async function evalWithLLM(
 
     // Now we need to apply each response as an eval_res (a score) back to each response object,
     // using the aforementioned mapping metadata:
+    const keyed_objs = new Set<LLMResponse>();
+    const scored_objs = new Set<LLMResponse>();
     responses.forEach((r: LLMResponse) => {
       const __i = parseInt(StringLookup.get(r.metavars.__i as number) ?? "");
       const __j = parseInt(StringLookup.get(r.metavars.__j as number) ?? "");
@@ -1518,14 +1770,46 @@ export async function evalWithLLM(
         return; // Skip this response
       }
       const resp_obj = resp_objs[__i];
-      if (resp_obj.eval_res !== undefined)
-        resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
-      else {
-        resp_obj.eval_res = {
-          items: [],
-          dtype: "Categorical",
+      const judge = judgeName(r);
+      const raw = llmResponseDataToString(r.responses[0]);
+      const { answer, p } = decision_judge_names.has(judge)
+        ? readJudgeAnswer(raw)
+        : { answer: raw, p: undefined };
+      tallyJudgeStats(judge_stats, judge, r.stats?.[0]);
+      if (keyed) {
+        // Start from scratch, rather than from any scores the input already had
+        if (!keyed_objs.has(resp_obj)) {
+          keyed_objs.add(resp_obj);
+          resp_obj.eval_res = { items: [], dtype: "KeyValue_Mixed" };
+        }
+        const eval_res = resp_obj.eval_res as EvaluationResults;
+        const prev = eval_res.items[__j];
+        eval_res.items[__j] = {
+          ...(typeof prev === "object" ? prev : {}),
+          [judge]: answer,
         };
-        resp_obj.eval_res.items[__j] = llmResponseDataToString(r.responses[0]);
+        if (p !== undefined) {
+          if (!eval_res.probs) eval_res.probs = [];
+          const prev_p = eval_res.probs[__j];
+          eval_res.probs[__j] = {
+            ...(typeof prev_p === "object" && prev_p !== null ? prev_p : {}),
+            [judge]: p,
+          };
+        }
+      } else {
+        if (resp_obj.eval_res === undefined || !scored_objs.has(resp_obj)) {
+          // Keep the input's own scores' length, as before, but not its probabilities
+          resp_obj.eval_res = {
+            items: resp_obj.eval_res?.items ?? [],
+            dtype: resp_obj.eval_res?.dtype ?? "Categorical",
+          };
+          scored_objs.add(resp_obj);
+        }
+        resp_obj.eval_res.items[__j] = answer;
+        if (p !== undefined) {
+          if (!resp_obj.eval_res.probs) resp_obj.eval_res.probs = [];
+          resp_obj.eval_res.probs[__j] = p;
+        }
       }
     });
 
@@ -1559,53 +1843,84 @@ export async function evalWithLLM(
     all_evald_responses = all_evald_responses.concat(evald_resp_objs);
   }
 
-  // Do additional processing to check if all evaluations are
-  // boolean-ish (e.g., 'true' and 'false') or all numeric-ish (parseable as numbers)
-  const all_eval_res: Set<string> = new Set();
-  for (const resp_obj of all_evald_responses) {
-    if (!resp_obj.eval_res) continue;
-    for (const score of resp_obj.eval_res.items) {
+  // Applies fn to every score, or to each judge's score when scores are keyed by judge
+  const mapScores = (
+    fn: (v: EvaluationScore, judge: string) => EvaluationScore,
+  ) =>
+    all_evald_responses.forEach((resp_obj) => {
+      if (!resp_obj.eval_res?.items) return;
+      resp_obj.eval_res.items = resp_obj.eval_res.items.map((item) => {
+        if (!keyed || typeof item !== "object") return fn(item, "");
+        return Object.fromEntries(
+          Object.entries(item).map(([judge, v]) => [judge, fn(v, judge)]),
+        ) as Dict<boolean | number | string>;
+      });
+    });
+  const setDtype = (dtype: "Categorical" | "Numeric") =>
+    all_evald_responses.forEach((resp_obj) => {
+      if (resp_obj.eval_res)
+        resp_obj.eval_res.dtype = keyed ? `KeyValue_${dtype}` : dtype;
+    });
+
+  let invalid: InvalidScores[] | undefined;
+  if (score_spec && score_spec.format !== "open") {
+    // The format is known: read each answer against it, and count the ones that don't fit
+    const by_judge: Dict<InvalidScores> = {};
+    mapScores((v, judge) => {
+      const name =
+        judge || (typeof judges[0] === "string" ? judges[0] : judges[0].name);
+      if (!(name in by_judge))
+        by_judge[name] = { judge: name, count: 0, total: 0, examples: [] };
+      const tally = by_judge[name];
+      tally.total++;
+      if (typeof v !== "string") return v;
+      const parsed = parseScore(v, score_spec);
+      if (!parsed.valid) {
+        tally.count++;
+        if (tally.examples.length < 3 && !tally.examples.includes(v))
+          tally.examples.push(v);
+      }
+      return parsed.value;
+    });
+    invalid = Object.values(by_judge).filter((t) => t.count > 0);
+    setDtype(score_spec.format === "num" ? "Numeric" : "Categorical");
+  } else {
+    // Otherwise, check if all evaluations are boolean-ish (e.g., 'true' and 'false')
+    // or all numeric-ish (parseable as numbers), and store them as such
+    const all_eval_res: Set<string> = new Set();
+    mapScores((score) => {
       if (score !== undefined)
         all_eval_res.add(
           stripWrappingQuotes(score.toString().trim().toLowerCase()),
         );
-    }
-  }
+      return score;
+    });
 
-  // Check if the results are boolean-ish:
-  if (scoresAreBooleanish(all_eval_res)) {
-    // Convert all eval results to boolean datatypes:
-    all_evald_responses.forEach((resp_obj) => {
-      if (!resp_obj.eval_res?.items) return;
-      resp_obj.eval_res.items = resp_obj.eval_res.items.map(
-        (i: EvaluationScore) => {
-          if (typeof i !== "string") return i;
-          const li = i.toLowerCase();
-          return li === "true" || li === "yes";
-        },
-      );
-      resp_obj.eval_res.dtype = "Categorical";
-    });
-    // Check if the results are all numeric-ish:
-  } else if (allStringsAreNumeric(Array.from(all_eval_res))) {
-    // Convert all eval results to numeric datatypes:
-    all_evald_responses.forEach((resp_obj) => {
-      if (!resp_obj.eval_res?.items) return;
-      resp_obj.eval_res.items = resp_obj.eval_res.items.map(
-        (i: EvaluationScore) => {
-          if (typeof i !== "string") return i;
-          return parseFloat(i);
-        },
-      );
-      resp_obj.eval_res.dtype = "Numeric";
-    });
+    if (scoresAreBooleanish(all_eval_res)) {
+      mapScores((i) => {
+        if (typeof i !== "string") return i;
+        const li = stripWrappingQuotes(i.trim().toLowerCase());
+        return li === "true" || li === "yes";
+      });
+      setDtype("Categorical");
+    } else if (allStringsAreNumeric(Array.from(all_eval_res))) {
+      mapScores((i) => (typeof i === "string" ? parseFloat(i) : i));
+      setDtype("Numeric");
+    } else if (keyed) {
+      setDtype("Categorical");
+    }
   }
 
   // Store the evaluated responses in a new cache json:
   if (load_resps_from_cache)
     StorageCache.store(`${id}.json`, all_evald_responses);
 
-  return { responses: all_evald_responses, errors: all_errors };
+  const res = {
+    responses: all_evald_responses,
+    errors: all_errors,
+    judge_stats: Object.values(judge_stats).map(finishJudgeStats),
+  };
+  return invalid && invalid.length > 0 ? { ...res, invalid } : res;
 }
 
 /**
@@ -1649,7 +1964,8 @@ export async function clearCachedResponses(id: string): Promise<boolean> {
   }
 
   // Clear all cache items related to 'id'
-  for (const k of get_cache_keys_related_to_id(id, true)) StorageCache.clear(k);
+  for (const k of get_cache_keys_related_to_id(id, true, true))
+    StorageCache.clear(k);
 
   return true;
 }
@@ -1672,7 +1988,13 @@ export async function exportCache(ids: string[]): Promise<Dict<Dict>> {
       continue;
     }
     cache_keys.forEach((key: string) => {
-      cache_files[key] = load_from_cache(key);
+      const data = load_from_cache(key);
+      // Leave out the index of earlier runs' cache files, which aren't exported
+      if (data && typeof data === "object" && "stale_cache_files" in data) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { stale_cache_files, ...rest } = data as Dict;
+        cache_files[key] = rest;
+      } else cache_files[key] = data;
     });
   }
 

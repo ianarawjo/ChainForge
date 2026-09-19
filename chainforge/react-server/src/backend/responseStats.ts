@@ -28,6 +28,7 @@ export const STATS_METAVARS = {
   tokens_per_s: "stat_tokens_per_s",
   decode_tokens_per_s: "stat_decode_tokens_per_s",
   averaged_over: "stat_averaged_over",
+  cost_usd: "stat_cost_usd",
 } as const;
 
 const STATS_METAVAR_NAMES = new Set<string>(Object.values(STATS_METAVARS));
@@ -90,6 +91,10 @@ export function statsFromReply(reply: Dict): ResponseStats {
   );
   if (output !== undefined) stats.output_tokens = output;
 
+  // What the request cost, where the provider says (OpenRouter, for any model it serves)
+  const cost = num(usage.cost);
+  if (cost !== undefined) stats.cost_usd = cost;
+
   const latency = firstNum(
     r?.[LATENCY_KEY],
     r?.metrics?.latencyMs, // Bedrock
@@ -144,6 +149,9 @@ function finish(stats: ResponseStats): ResponseStats | null {
     res.tokens_per_s = round1(stats.output_tokens / (stats.latency_ms / 1000));
   if (stats.decode_tokens_per_s !== undefined)
     res.decode_tokens_per_s = round1(stats.decode_tokens_per_s);
+  // Requests can cost fractions of a cent, so keep 9 significant digits
+  if (stats.cost_usd !== undefined)
+    res.cost_usd = Number(stats.cost_usd.toPrecision(9));
   if (Object.keys(res).length === 0) return null;
   if (stats.averaged_over !== undefined && stats.averaged_over > 1)
     res.averaged_over = stats.averaged_over;
@@ -220,6 +228,8 @@ export function extract_stats(
           ...s,
           output_tokens:
             s.output_tokens !== undefined ? s.output_tokens / k : undefined,
+          // One request's cost, shared between the responses it returned
+          cost_usd: s.cost_usd !== undefined ? s.cost_usd / k : undefined,
           // A server-measured speed is per sequence already
           decode_tokens_per_s: k === 1 ? s.decode_tokens_per_s : undefined,
           averaged_over: Math.max(k, latencyAveraged ? replies.length : 1),
@@ -258,6 +268,8 @@ export function statsToMetavars(
     res[STATS_METAVARS.decode_tokens_per_s] = stats.decode_tokens_per_s;
   if (stats.averaged_over !== undefined)
     res[STATS_METAVARS.averaged_over] = stats.averaged_over;
+  if (stats.cost_usd !== undefined)
+    res[STATS_METAVARS.cost_usd] = stats.cost_usd;
   return res;
 }
 
@@ -305,9 +317,22 @@ export function describeStats(stats: ResponseStats | undefined): string[] {
     lines.push(
       `Decoding speed: ${stats.decode_tokens_per_s} tokens/s (measured by the server)`,
     );
+  if (stats.cost_usd !== undefined)
+    lines.push(`Cost: ${formatCost(stats.cost_usd)}`);
   if (stats.averaged_over)
     lines.push(
       `≈ Averages: the provider reported one total for ${stats.averaged_over} responses`,
     );
   return lines;
+}
+
+/**
+ * A cost in US dollars, legibly at any size: "$1.24", "$0.0031", "$0.0000217".
+ * Below a cent, three significant digits.
+ */
+export function formatCost(usd: number): string {
+  if (usd === 0) return "$0";
+  if (usd >= 0.01) return `$${usd.toFixed(2)}`;
+  const digits = Math.max(2, 2 - Math.floor(Math.log10(usd)));
+  return `$${Number(usd.toPrecision(3)).toFixed(digits).replace(/0+$/, "")}`;
 }

@@ -341,6 +341,21 @@ export function isOpenRouterImageModel(llm: LLM | string): boolean {
 }
 
 /**
+ * Whether a model is a "decision" model reached through OpenRouter's decisions
+ * endpoint, e.g. TypeSafe's Jev ("openrouter/~typesafe/jev-latest"). Such
+ * models don't generate text: they answer typed questions (yes/no, one of a
+ * set of categories, or a position on a scale) about a piece of text, so
+ * ChainForge only uses them as judges in an LLM Scorer.
+ */
+export function isDecisionModel(llm: LLM | string): boolean {
+  const name = llm.toString();
+  return (
+    name.startsWith(OPENROUTER_PREFIX) &&
+    /^~?typesafe\//i.test(name.substring(OPENROUTER_PREFIX.length))
+  );
+}
+
+/**
  * Emoji for the lab behind an OpenRouter model, so models from different labs
  * are told apart at a glance. Uses ChainForge's emoji for labs it also reaches
  * directly (e.g. Claude, OpenAI, Gemini). Unknown labs get OpenRouter's own.
@@ -355,6 +370,7 @@ const OPENROUTER_LAB_EMOJIS: Record<string, string> = {
   qwen: "🐉",
   moonshotai: "🌙",
   "meta-llama": "🦙",
+  typesafe: "⚖️",
   mistralai: "🌬️",
   cohere: "🖇️",
   microsoft: "🪟",
@@ -362,7 +378,11 @@ const OPENROUTER_LAB_EMOJIS: Record<string, string> = {
 };
 export const OPENROUTER_EMOJI = "🔀";
 export function openRouterEmoji(llm: LLM | string): string {
-  const lab = stripOpenRouterPrefix(llm).split("/")[0].toLowerCase();
+  // "~" marks an alias that always points to a lab's latest model (e.g. "~typesafe/jev-latest")
+  const lab = stripOpenRouterPrefix(llm)
+    .split("/")[0]
+    .replace(/^~/, "")
+    .toLowerCase();
   return OPENROUTER_LAB_EMOJIS[lab] ?? OPENROUTER_EMOJI;
 }
 

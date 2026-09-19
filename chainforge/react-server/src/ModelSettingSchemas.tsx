@@ -633,6 +633,8 @@ export const OpenRouterSettings: ModelSettingsDict = {
           "qwen/qwen3.8-max-0902",
           "qwen/qwen3.8-flash",
           "moonshotai/kimi-k3",
+          // A decision model, for LLM Scorers only: it answers typed questions rather than writing text
+          "~typesafe/jev-latest",
         ],
         default: "anthropic/claude-sonnet-5",
         shortname_map: {
@@ -649,6 +651,7 @@ export const OpenRouterSettings: ModelSettingsDict = {
           "qwen/qwen3.8-max-0902": "Qwen3.8 Max",
           "qwen/qwen3.8-flash": "Qwen3.8 Flash",
           "moonshotai/kimi-k3": "Kimi K3",
+          "~typesafe/jev-latest": "Jev",
         },
       },
       system_msg: {
