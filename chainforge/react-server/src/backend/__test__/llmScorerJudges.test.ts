@@ -32,7 +32,14 @@ jest.mock("../utils", () => ({
 // eslint-disable-next-line import/first
 import { beforeEach, describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
-import { clearCachedScores, countEvalQueries, evalWithLLM } from "../backend";
+import {
+  clearCachedResponses,
+  clearCachedScores,
+  countEvalQueries,
+  evalWithLLM,
+  exportCache,
+  queryLLM,
+} from "../backend";
 // eslint-disable-next-line import/first
 import StorageCache, { StringLookup } from "../cache";
 // eslint-disable-next-line import/first
@@ -346,5 +353,60 @@ describe("scoring data directly (a table column, text fields...)", () => {
     // Cleared with the scorer's other cached scores
     clearCachedScores("llmeval-t");
     expect(StorageCache.has(`${cacheId}.json`)).toBe(false);
+  });
+});
+
+describe("text judges' answers", () => {
+  test("stay as written even when they're JSON, with no probability read from them", async () => {
+    mockAnswers["openrouter/a"] = {
+      "charged twice": '{"answer": "billing", "p": 0.9}',
+      crashes: "technical",
+    };
+    const { responses } = await evalWithLLM(
+      "llmeval-json",
+      judge("A", "a"),
+      root({ format: "open" }),
+      ["prompt-1"],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false,
+      { format: "open" },
+    );
+    expect(responses?.[0].eval_res?.items[0]).toBe(
+      '{"answer": "billing", "p": 0.9}',
+    );
+    expect(responses?.[0].eval_res?.probs).toBeUndefined();
+  });
+});
+
+describe("a Prompt Node's cache across settings changes", () => {
+  const spec = (temperature: number): LLMSpec => ({
+    ...judge("A", "a"),
+    settings: { temperature },
+  });
+  const run = (temperature: number) =>
+    queryLLM("prompt-x", [spec(temperature)], 1, "Say {w}.", { w: ["hi"] });
+
+  test("reuses earlier runs' responses, but exports only the last run's", async () => {
+    await run(1);
+    await run(0);
+    const calls = mockPrompts.length;
+    await run(1); // back to the first settings: from the cache
+    expect(mockPrompts).toHaveLength(calls);
+
+    const exported = await exportCache(["prompt-x"]);
+    const files = Object.keys(exported).filter((k) =>
+      k.startsWith("prompt-x_"),
+    );
+    expect(files).toHaveLength(1); // only the file of the last run's settings
+    expect(exported["prompt-x.json"]).not.toHaveProperty("stale_cache_files");
+
+    // Clearing removes earlier runs' files too
+    await clearCachedResponses("prompt-x");
+    expect(
+      Object.keys(StorageCache.getAllMatching((k) => k.startsWith("prompt-x"))),
+    ).toEqual([]);
   });
 });

@@ -191,17 +191,31 @@ function to_standard_format(r: RawLLMResponseObject | Dict): LLMResponse {
   return resp_obj;
 }
 
+/**
+ * The cache files an index lists: those of its last run (`cache_files`), and
+ * also those of earlier runs (`stale_cache_files`), which are kept so that
+ * switching a model's settings back reuses its cached responses.
+ */
+function all_cache_files(cache?: Dict): Dict<string | LLMSpec> {
+  return { ...(cache?.stale_cache_files ?? {}), ...(cache?.cache_files ?? {}) };
+}
+
+/**
+ * The storage keys of the cache files for `cache_id`. Only the last run's
+ * files, unless `include_stale`: exports leave out earlier runs' responses,
+ * e.g. of models since removed, while clearing the cache removes them too.
+ */
 function get_cache_keys_related_to_id(
   cache_id: string,
   include_basefile = true,
+  include_stale = false,
 ): string[] {
   // Load the base cache 'file' for cache_id
   const base_file = `${cache_id}.json`;
   const data = StorageCache.get(base_file);
-  if (data?.cache_files !== undefined)
-    return Object.keys(data.cache_files).concat(
-      include_basefile ? [base_file] : [],
-    );
+  const files = include_stale ? all_cache_files(data) : data?.cache_files;
+  if (files !== undefined)
+    return Object.keys(files).concat(include_basefile ? [base_file] : []);
   else return include_basefile ? [base_file] : [];
 }
 // eslint-disable-next-line
@@ -649,7 +663,7 @@ export async function countQueries(
   let cache_file_lookup: Dict = {};
   if (id !== undefined) {
     const cache_data = load_from_cache(`${id}.json`);
-    cache_file_lookup = cache_data?.cache_files || {};
+    cache_file_lookup = all_cache_files(cache_data);
   }
 
   const missing_queries: Dict<Dict<number>> = {};
@@ -884,7 +898,7 @@ export async function queryLLM(
 
   const llm_to_cache_filename: Dict<string> = {};
   if (typeof cache === "object" && cache.cache_files !== undefined) {
-    const past_cache_files: Dict = cache.cache_files;
+    const past_cache_files: Dict = all_cache_files(cache);
     const past_cache_filenames: Array<string> = Object.keys(past_cache_files);
     llms.forEach((llm_spec) => {
       let found_cache = false;
@@ -1097,19 +1111,21 @@ export async function queryLLM(
   });
 
   // Save the responses *of this run* to the storage cache, for further recall.
-  // Keep the cache files of earlier runs listed too, so that switching a
-  // model's settings back (e.g. a judge's rubric) reuses its cached responses.
-  const cache_filenames: Dict<string | LLMSpec> = {
-    ...(cache.cache_files ?? {}),
-  };
+  // Earlier runs' cache files stay listed apart, as stale, so that switching a
+  // model's settings back (e.g. a judge's rubric) reuses its cached responses,
+  // but exports only include this run's.
+  const cache_filenames: Dict<string | LLMSpec> = {};
   llms.forEach((llm_spec: string | LLMSpec) => {
     const filename = llm_to_cache_filename[extract_llm_key(llm_spec)];
     cache_filenames[filename] = llm_spec;
   });
+  const stale_cache_files = all_cache_files(cache);
+  Object.keys(cache_filenames).forEach((f) => delete stale_cache_files[f]);
 
   if (!no_cache)
     StorageCache.store(`${id}.json`, {
       cache_files: cache_filenames,
+      stale_cache_files,
       responses_last_run: res,
     });
 
@@ -1513,9 +1529,10 @@ export function clearCachedScores(id: string): void {
 }
 
 /**
- * A judge's answer, and its probability when it gives one. Decision models
- * (e.g. Jev) answer with JSON, {"answer": ..., "p": ...}: see
- * _extract_openrouter_decision_responses. Other judges answer in plain text.
+ * A decision model's (e.g. Jev's) answer, and its probability when it gives
+ * one, from the JSON it answers with, {"answer": ..., "p": ...}: see
+ * _extract_openrouter_decision_responses. Only for decision judges: other
+ * judges' answers are plain text, even when they happen to be JSON.
  */
 function readJudgeAnswer(raw: string): { answer: string; p?: number } {
   if (raw.startsWith("{") && raw.includes('"answer"')) {
@@ -1632,6 +1649,14 @@ export async function evalWithLLM(
   const judges = Array.isArray(llm) ? llm : [llm];
   const keyed = judges.length > 1;
   const runs = evalQueryRuns(judges, root_prompt, score_spec, rubric);
+  // Only decision judges (e.g. Jev) answer with JSON to read; see readJudgeAnswer
+  const decision_judge_names = new Set(
+    judges
+      .filter(
+        (j): j is LLMSpec => typeof j !== "string" && isDecisionModel(j.model),
+      )
+      .map((j) => j.name),
+  );
   const judgeName = (r: LLMResponse): string =>
     typeof r.llm === "object"
       ? r.llm.name
@@ -1746,9 +1771,10 @@ export async function evalWithLLM(
       }
       const resp_obj = resp_objs[__i];
       const judge = judgeName(r);
-      const { answer, p } = readJudgeAnswer(
-        llmResponseDataToString(r.responses[0]),
-      );
+      const raw = llmResponseDataToString(r.responses[0]);
+      const { answer, p } = decision_judge_names.has(judge)
+        ? readJudgeAnswer(raw)
+        : { answer: raw, p: undefined };
       tallyJudgeStats(judge_stats, judge, r.stats?.[0]);
       if (keyed) {
         // Start from scratch, rather than from any scores the input already had
@@ -1938,7 +1964,8 @@ export async function clearCachedResponses(id: string): Promise<boolean> {
   }
 
   // Clear all cache items related to 'id'
-  for (const k of get_cache_keys_related_to_id(id, true)) StorageCache.clear(k);
+  for (const k of get_cache_keys_related_to_id(id, true, true))
+    StorageCache.clear(k);
 
   return true;
 }
@@ -1961,7 +1988,13 @@ export async function exportCache(ids: string[]): Promise<Dict<Dict>> {
       continue;
     }
     cache_keys.forEach((key: string) => {
-      cache_files[key] = load_from_cache(key);
+      const data = load_from_cache(key);
+      // Leave out the index of earlier runs' cache files, which aren't exported
+      if (data && typeof data === "object" && "stale_cache_files" in data) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { stale_cache_files, ...rest } = data as Dict;
+        cache_files[key] = rest;
+      } else cache_files[key] = data;
     });
   }
 

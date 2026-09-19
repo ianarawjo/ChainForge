@@ -1031,12 +1031,19 @@ export async function call_openrouter_decision(
   _temperature = 1.0,
   params?: Dict,
   should_cancel?: () => boolean,
+  images?: string[],
 ): Promise<[Dict, Dict]> {
   if (!OPENROUTER_API_KEY)
     throw new Error(
       "Could not find an OpenRouter API key. Double-check that your API key is set in Settings or in your local environment.",
     );
   const modelname = stripOpenRouterPrefix(model);
+  // Decision models read text only: asked about an image, they'd answer about
+  // an empty string, so say so rather than return a meaningless answer
+  if (images && images.length > 0)
+    throw new Error(
+      `${modelname} reads text only, so it can't score images. Use a judge that takes images, e.g. GPT-5.4 Mini.`,
+    );
   const question = params?.decision_question;
   if (!question)
     throw new Error(

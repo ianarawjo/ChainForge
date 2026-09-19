@@ -142,6 +142,23 @@ describe("asking Jev a question", () => {
     ]);
   });
 
+  test("asked about an image, it says it reads text only, and sends nothing", async () => {
+    mockOpenRouter(() => ({ type: "noul", noul: 0.9 }));
+    await expect(
+      call_llm(
+        JEV,
+        LLMProvider.OpenRouter,
+        "",
+        1,
+        1.0,
+        { decision_question: { type: "noul", instructions: "A cat?" } },
+        undefined,
+        ["media-uid-1"],
+      ),
+    ).rejects.toThrow(/reads text only/);
+    expect(calls).toHaveLength(0);
+  });
+
   test("used outside an LLM Scorer, it says it can't write text", async () => {
     mockOpenRouter(() => ({}));
     await expect(
