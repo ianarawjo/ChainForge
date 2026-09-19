@@ -1504,10 +1504,11 @@ export async function countEvalQueries(
  * cached answers (under "eval-<id>-"), so the next run asks the judges again.
  */
 export function clearCachedScores(id: string): void {
-  const prefix = `eval-${id}-`;
-  Object.keys(StorageCache.getAllMatching((k) => k.startsWith(prefix))).forEach(
-    (k) => StorageCache.clear(k),
-  );
+  // Judges' cached answers, and the responses made from any data inputs
+  const prefixes = [`eval-${id}-`, `${id}__input__`];
+  Object.keys(
+    StorageCache.getAllMatching((k) => prefixes.some((p) => k.startsWith(p))),
+  ).forEach((k) => StorageCache.clear(k));
   StorageCache.clear(`${id}.json`);
 }
 

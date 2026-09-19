@@ -68,7 +68,13 @@ import CancelTracker from "./backend/canceler";
 import { PromptInfo, PromptListModal, PromptListPopover } from "./PromptNode";
 import { useDisclosure } from "@mantine/hooks";
 import { PromptTemplate } from "./backend/template";
-import { StringLookup } from "./backend/cache";
+import StorageCache, { StringLookup } from "./backend/cache";
+import {
+  DATA_INPUT_NODE_TYPES,
+  DataInputValue,
+  dataInputCacheId,
+  dataValuesToResponses,
+} from "./backend/dataInputs";
 import JudgeAgreementView from "./JudgeAgreementView";
 import {
   ScoreSpec,
@@ -596,6 +602,43 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
 
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const inputEdgesForNode = useStore((state) => state.inputEdgesForNode);
+  const getNode = useStore((state) => state.getNode);
+  const nodeOutput = useStore((state) => state.output);
+
+  // The ids of the responses to score, one per input. Values from data nodes
+  // (a table column, text fields, items, images) are made into responses here
+  // (see ./backend/dataInputs) and cached under an id of their own; other
+  // inputs, e.g. Prompt Nodes, have cached their responses already.
+  const resolveInputIds = useCallback(
+    () =>
+      inputEdgesForNode(id).map((e) => {
+        const src = getNode(e.source);
+        if (
+          !src?.type ||
+          !DATA_INPUT_NODE_TYPES.has(src.type) ||
+          !e.sourceHandle
+        )
+          return e.source;
+        const values = (nodeOutput(
+          e.source,
+          e.sourceHandle,
+          e.target,
+          e.targetHandle ?? undefined,
+        ) ?? []) as DataInputValue[];
+        // Name them by their column, or else by the node
+        const label =
+          src.type === "table"
+            ? e.sourceHandle
+            : (src.data?.title as string | undefined) ?? src.type;
+        const cacheId = dataInputCacheId(id, e.source, e.sourceHandle);
+        StorageCache.store(
+          `${cacheId}.json`,
+          dataValuesToResponses(e.source, label, values),
+        );
+        return cacheId;
+      }),
+    [id, inputEdgesForNode, getNode, nodeOutput],
+  );
   const pingOutputNodes = useStore((state) => state.pingOutputNodes);
   const bringNodeToFront = useStore((state) => state.bringNodeToFront);
 
@@ -605,9 +648,20 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
   // Variables and metavariables of the inputs, as candidates for the ground-truth label
   const [labelOptions, setLabelOptions] = useState<
     { value: string; label: string }[]
-  >(data.labelVar ? [{ value: data.labelVar, label: data.labelVar }] : []);
+  >(
+    data.labelVar
+      ? [
+          {
+            value: data.labelVar,
+            label: data.labelVar.startsWith("__meta_")
+              ? `${data.labelVar.slice("__meta_".length)} (metavariable)`
+              : data.labelVar,
+          },
+        ]
+      : [],
+  );
   const refreshLabelOptions = useCallback(() => {
-    const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
+    const input_node_ids = resolveInputIds();
     if (input_node_ids.length === 0) return;
     grabResponses(input_node_ids)
       .then((resps) => {
@@ -632,7 +686,7 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
       .catch(() => {
         // soft fail: the inputs haven't been run yet
       });
-  }, [id, inputEdgesForNode]);
+  }, [id, resolveInputIds]);
 
   // Agreement with the label, and between judges, over the last run's scores
   const scoreSpec = useMemo(
@@ -720,7 +774,7 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
   const [promptPreviews, setPromptPreviews] = useState<PromptInfo[]>([]);
   const handlePreviewHover = () => {
     // Get the ids from the connected input nodes:
-    const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
+    const input_node_ids = resolveInputIds();
     if (input_node_ids.length === 0) {
       console.warn("No inputs for evaluator node.");
       return;
@@ -772,7 +826,7 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
 
   const handleRunClick = useCallback(() => {
     // Get the ids from the connected input nodes:
-    const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
+    const input_node_ids = resolveInputIds();
     if (input_node_ids.length === 0) {
       console.warn("No inputs for evaluator node.");
       return;
@@ -814,7 +868,7 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
       })
       .catch(handleError);
   }, [
-    inputEdgesForNode,
+    resolveInputIds,
     llmEvaluatorRef,
     pingOutputNodes,
     setStatus,
@@ -826,7 +880,7 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
 
   // What a run will do, for the Run button's tooltip, as the Prompt Node shows
   const handleRunHover = useCallback(() => {
-    const input_node_ids = inputEdgesForNode(id).map((e) => e.source);
+    const input_node_ids = resolveInputIds();
     if (input_node_ids.length === 0) {
       setRunTooltip("Connect responses to score first.");
       return;
@@ -838,7 +892,7 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
         setRunTooltip(runTooltipFor(by_judge));
       })
       .catch((err: Error) => setRunTooltip(err.message));
-  }, [id, inputEdgesForNode]);
+  }, [id, resolveInputIds]);
 
   // Right-click menu: clear the cached scores, so the judges are asked again
   const customContextMenuItems = useMemo(

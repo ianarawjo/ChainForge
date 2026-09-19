@@ -40,9 +40,12 @@ import { LLMResponse, LLMSpec } from "../typing";
 // eslint-disable-next-line import/first
 import {
   formatInstruction,
+  judgeAgreement,
   runTooltipFor,
   scoreSpecFrom,
 } from "../scorerFormat";
+// eslint-disable-next-line import/first
+import { dataInputCacheId, dataValuesToResponses } from "../dataInputs";
 
 const judge = (name: string, model: string): LLMSpec => ({
   key: `key-${name}`,
@@ -249,5 +252,99 @@ describe("the Run button's tooltip", () => {
     expect(runTooltipFor({ Jev: 36, Sonnet: 10 })).toBe(
       "Will send 46 requests to 2 judges",
     );
+  });
+});
+
+describe("scoring data directly (a table column, text fields...)", () => {
+  const rows = [
+    {
+      text: "I was charged twice for order A-104.",
+      metavars: { team: "billing" },
+      associate_id: "row-1",
+    },
+    {
+      text: "The app crashes when I upload a photo.",
+      metavars: { team: "technical" },
+      associate_id: "row-2",
+    },
+    { text: "  ", metavars: { team: "billing" }, associate_id: "row-3" },
+    {
+      text: "Why was I billed \\{twice\\}?",
+      metavars: { team: "billing" },
+      associate_id: "row-4",
+    },
+  ];
+
+  test("each row's cell is a response, and its other columns are vars", () => {
+    const resps = dataValuesToResponses("table-1", "message", rows);
+    expect(resps.map((r) => r.uid)).toEqual([
+      "table-1:row-1",
+      "table-1:row-2",
+      "table-1:row-4",
+    ]); // the empty cell is skipped
+    expect(resps[0]).toMatchObject({
+      vars: { team: "billing" },
+      llm: "message",
+      responses: ["I was charged twice for order A-104."],
+    });
+    // The table's escaping of braces for prompt templates is undone
+    expect(resps[2].responses[0]).toBe("Why was I billed {twice}?");
+  });
+
+  test("plain values (text fields, items) and images are responses too", () => {
+    expect(
+      dataValuesToResponses("fields-1", "Text Fields", ["Hello", "", "World"]),
+    ).toMatchObject([
+      { uid: "fields-1:0", vars: {}, llm: "Text Fields", responses: ["Hello"] },
+      { uid: "fields-1:2", responses: ["World"] },
+    ]);
+    expect(
+      dataValuesToResponses("media-1", "Image", [
+        { image: "media-uid-1", metavars: { animal: "cat" } },
+      ]),
+    ).toMatchObject([
+      { vars: { animal: "cat" }, responses: [{ t: "img", d: "media-uid-1" }] },
+    ]);
+  });
+
+  test("its rows are scored, and compared to another column as the label", async () => {
+    mockAnswers["openrouter/a"] = {
+      "charged twice": "billing",
+      crashes: "billing",
+      "billed {twice}": "billing",
+    };
+    const cacheId = dataInputCacheId("llmeval-t", "table-1", "message");
+    StorageCache.store(
+      `${cacheId}.json`,
+      dataValuesToResponses("table-1", "message", rows),
+    );
+    const { responses } = await evalWithLLM(
+      "llmeval-t",
+      judge("A", "a"),
+      root(),
+      [cacheId],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false,
+      SPEC,
+    );
+    expect(responses?.map((r) => r.eval_res?.items)).toEqual([
+      ["billing"],
+      ["billing"],
+      ["billing"],
+    ]);
+    const { withLabel } = judgeAgreement(
+      responses ?? [],
+      ["A"],
+      false,
+      SPEC,
+      "team",
+    );
+    expect(withLabel[0]).toMatchObject({ n: 3, agreement: 2 / 3 });
+    // Cleared with the scorer's other cached scores
+    clearCachedScores("llmeval-t");
+    expect(StorageCache.has(`${cacheId}.json`)).toBe(false);
   });
 });

@@ -450,6 +450,12 @@ const ExampleFlowsModal = forwardRef<
               onSelect={onSelect}
             />
             <ExampleFlowCard
+              title="🧑‍⚖️ Compare LLM judges, with Jev"
+              description="Route bank support questions and catch scam texts with three judges (TypeSafe's Jev, GPT-5.4 Mini and Claude Sonnet 5), checked against human labels, with cost and speed."
+              filename="jev-judges"
+              onSelect={onSelect}
+            />
+            <ExampleFlowCard
               title="🤖 Compare system prompts"
               description="Compares response quality across different system prompts. Visualizes how well it sticks to the instructions to only print Racket code."
               filename="comparing-system-msg"

@@ -949,6 +949,12 @@ const LLMResponseInspector: React.FC<LLMResponseInspectorProps> = ({
             r.responses.length > 0
           )
             return group + "|" + llmResponseDataToString(r.responses[0]);
+          // Score columns show one response object's scores per row, so each
+          // gets its own row. Otherwise responses with the same vars (e.g.
+          // items from a Split Node, which have none) share a row, and all
+          // but the first lose their scores.
+          else if (effectiveTableColVar === "$EVAL_RES")
+            return group + "|" + r.uid;
           else return group;
         })[0];
 
