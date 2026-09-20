@@ -199,20 +199,43 @@ const getUniqueKeysInResponses = (
 const areSetsEqual = (xs: Set<any>, ys: Set<any>) =>
   xs.size === ys.size && [...xs].every((x) => ys.has(x));
 
+/**
+ * Wraps a label to lines of at most `max_line_len` characters, breaking
+ * between words. A word longer than a line is split with a hyphen, as before.
+ */
 function addLineBreaks(str: string, max_line_len: number) {
   if (!str || typeof str !== "string" || str.length === 0) return "";
-  let result = "";
-  const is_alphabetical = (s: string) => /^[A-Za-z]$/.test(s);
-  for (let i = 0; i < str.length; i++) {
-    result += str[i];
-    if ((i + 1) % max_line_len === 0) {
-      const next_char = i + 1 < str.length ? str[i + 1] : "";
-      result +=
-        (is_alphabetical(str[i]) && is_alphabetical(next_char) ? "-" : "") +
-        "<br>";
+
+  // Split an over-long word across lines, hyphenating where it breaks mid-word
+  const splitLongWord = (word: string) => {
+    const pieces: string[] = [];
+    let rest = word;
+    while (rest.length > max_line_len) {
+      const head = rest.slice(0, max_line_len - 1);
+      pieces.push(/[A-Za-z]$/.test(head) ? `${head}-` : head);
+      rest = rest.slice(max_line_len - 1);
+    }
+    pieces.push(rest);
+    return pieces;
+  };
+
+  const lines: string[] = [];
+  let line = "";
+  for (const word of str.split(" ")) {
+    if (word.length > max_line_len) {
+      if (line) lines.push(line);
+      const pieces = splitLongWord(word);
+      lines.push(...pieces.slice(0, -1));
+      line = pieces[pieces.length - 1];
+    } else if (line.length === 0) line = word;
+    else if (line.length + 1 + word.length <= max_line_len) line += " " + word;
+    else {
+      lines.push(line);
+      line = word;
     }
   }
-  return result;
+  if (line) lines.push(line);
+  return lines.join("<br>");
 }
 
 const genUniqueShortnames = (
@@ -798,6 +821,18 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           const yLabelShortnames = genUniqueShortnames(
             new Set(responses.map(resp_to_x)),
           );
+          // For categorical and boolean scores, the y axis lists the score
+          // values themselves, so they need shortening (and line breaks) too.
+          const scoreShortnames = genUniqueShortnames(
+            new Set(
+              responses.flatMap((r) =>
+                get_items(r.eval_res).map((i) => i?.toString() ?? ""),
+              ),
+            ),
+          );
+          // What ends up on the y axis, whichever branch below runs: the left
+          // margin has to fit these, not the series names.
+          const yTickLabels = new Set<string>();
           for (const name of names) {
             let x_items: EvaluationScore[] = [];
             let text_items: string[] = [];
@@ -837,23 +872,40 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               sel_typeof_eval_res === "Categorical"
             ) {
               // Plot a histogram for categorical or boolean data.
+              const y_labels = x_items.map((v) => {
+                const label = v?.toString() ?? "";
+                return plotting_categorical_vars
+                  ? label
+                  : scoreShortnames[label] ?? label;
+              });
+              y_labels.forEach((l) => yTickLabels.add(l));
               spec.push({
                 type: "histogram",
                 histfunc: "sum",
                 name: shortnames[name],
                 marker: { color },
-                y: x_items,
+                y: y_labels,
                 orientation: "h",
               });
               layout.barmode = "stack";
               layout.yaxis = {
+                // Keep what the base layout set, e.g. the axis colour for the
+                // current theme: dropping it leaves Plotly's gray, which is
+                // hard to read in dark mode.
+                ...layout.yaxis,
                 showticklabels: true,
                 dtick: 1,
                 type: "category",
                 showgrid: true,
               };
               layout.xaxis = {
-                title: { font: { size: 12 }, text: "Number of 'true' values" },
+                title: {
+                  font: { size: 12 },
+                  text:
+                    metric_axes_labels.length > 0
+                      ? `Number of scores (${selectedEvalResVar})`
+                      : "Number of scores",
+                },
                 ...layout.xaxis,
               };
             } else {
@@ -872,6 +924,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 d.type = "bar";
                 d.textposition = "none"; // hide the text which appears within each bar
                 d.y = new Array(x_items.length).fill(shortnames[name]);
+                yTickLabels.add(shortnames[name]);
                 setForcedGraphType("bar");
               } else {
                 // If multiple eval results per response object (num generations per prompt n > 1),
@@ -915,9 +968,15 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           layout.hovermode = "closest";
           layout.showlegend = false;
 
-          // Set the left margin to fit the yticks labels
+          // Set the left margin to fit the yticks labels. Which labels those
+          // are depends on the branch above: the score values, the variable's
+          // values, or the series names.
           layout.margin.l = calcLeftPaddingForYLabels(
-            Object.values(shortnames),
+            yTickLabels.size > 0
+              ? Array.from(yTickLabels)
+              : Object.values(
+                  plotting_categorical_vars ? yLabelShortnames : shortnames,
+                ),
           );
 
           if (metric_axes_labels.length > 0)
@@ -1296,35 +1355,73 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     // Previously a new observer was added on every replot and never removed.
     const plotlySpecRef = useRef(plotlySpec);
     plotlySpecRef.current = plotlySpec;
-    const resizeObserverRef = useRef<ResizeObserver | null>(null);
-    const setPlotDivRef = useCallback((elem: HTMLDivElement | null) => {
-      resizeObserverRef.current?.disconnect();
-      resizeObserverRef.current = null;
-      plotDivRef.current = elem;
-      if (!elem || !window.ResizeObserver) return;
 
+    /**
+     * Fits the plot to its div, when there's a plot and it's on screen.
+     *
+     * The plot is told the size to draw at, rather than asked to resize
+     * itself: Plotly.Plots.resize measures the plot's own div, which has no
+     * width or height of its own here, so it simply matches the plot and
+     * nothing changes. The div that carries a size is the one the resize
+     * handle drags.
+     */
+    const fitPlotToDiv = useCallback(() => {
+      const elem = plotDivRef.current;
+      // The plot's div (react-plotly's `el`), resized only while displayed.
+      const gd = (plotlyRef.current as unknown as { el?: HTMLElement } | null)
+        ?.el;
+      if (
+        !elem ||
+        !gd ||
+        plotlySpecRef.current.length === 0 ||
+        elem.offsetWidth === 0 ||
+        gd.offsetParent === null
+      )
+        return;
+      const width = elem.clientWidth;
+      const height = elem.clientHeight;
+      if (width === 0 || height === 0) return;
+      const full = (gd as unknown as { _fullLayout?: Dict })._fullLayout;
+      if (full && full.width === width && full.height === height) return;
+      Promise.resolve(Plotly.relayout(gd, { width, height })).catch(
+        () => undefined,
+      );
+    }, []);
+
+    // The div the resize handle drags, watched for size changes below. It's
+    // state, not just a ref, so that attaching the observer is an effect that
+    // re-runs if the div is replaced -- and whose cleanup is its own. (As a
+    // ref callback, with the cleanup in a separate effect, StrictMode's
+    // double-mount in development disconnected the observer for good: the
+    // effect's cleanup ran, but React doesn't call ref callbacks again.)
+    const [plotDiv, setPlotDiv] = useState<HTMLDivElement | null>(null);
+    const setPlotDivRef = useCallback((elem: HTMLDivElement | null) => {
+      plotDivRef.current = elem;
+      setPlotDiv(elem);
+    }, []);
+    useEffect(() => {
+      if (!plotDiv || !window.ResizeObserver) return;
       let lastSize = "";
       const observer = new window.ResizeObserver((entries) => {
         const { width, height } = entries[0].contentRect;
         const size = `${Math.round(width)}x${Math.round(height)}`;
         if (size === lastSize) return;
         lastSize = size;
-        // The plot's div (react-plotly's `el`), resized only while displayed.
-        const gd = (plotlyRef.current as unknown as { el?: HTMLElement } | null)
-          ?.el;
-        if (
-          !gd ||
-          plotlySpecRef.current.length === 0 ||
-          elem.offsetWidth === 0 ||
-          gd.offsetParent === null
-        )
-          return;
-        Promise.resolve(Plotly.Plots.resize(gd)).catch(() => undefined);
+        fitPlotToDiv();
       });
-      observer.observe(elem);
-      resizeObserverRef.current = observer;
-    }, []);
-    useEffect(() => () => resizeObserverRef.current?.disconnect(), []);
+      observer.observe(plotDiv);
+      return () => observer.disconnect();
+    }, [plotDiv, fitPlotToDiv]);
+
+    // A plot is first drawn while its div is empty (and so hidden), where
+    // Plotly falls back to its default 700x450. The div's size doesn't change
+    // when the data arrives, so the observer above wouldn't fire: fit the new
+    // plot to the div here instead, once it has rendered.
+    useEffect(() => {
+      if (plotlySpec.length === 0) return;
+      const id = requestAnimationFrame(fitPlotToDiv);
+      return () => cancelAnimationFrame(id);
+    }, [plotlySpec, plotlyLayout, fitPlotToDiv]);
 
     return (
       <>
