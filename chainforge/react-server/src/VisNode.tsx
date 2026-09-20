@@ -1355,35 +1355,73 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     // Previously a new observer was added on every replot and never removed.
     const plotlySpecRef = useRef(plotlySpec);
     plotlySpecRef.current = plotlySpec;
-    const resizeObserverRef = useRef<ResizeObserver | null>(null);
-    const setPlotDivRef = useCallback((elem: HTMLDivElement | null) => {
-      resizeObserverRef.current?.disconnect();
-      resizeObserverRef.current = null;
-      plotDivRef.current = elem;
-      if (!elem || !window.ResizeObserver) return;
 
+    /**
+     * Fits the plot to its div, when there's a plot and it's on screen.
+     *
+     * The plot is told the size to draw at, rather than asked to resize
+     * itself: Plotly.Plots.resize measures the plot's own div, which has no
+     * width or height of its own here, so it simply matches the plot and
+     * nothing changes. The div that carries a size is the one the resize
+     * handle drags.
+     */
+    const fitPlotToDiv = useCallback(() => {
+      const elem = plotDivRef.current;
+      // The plot's div (react-plotly's `el`), resized only while displayed.
+      const gd = (plotlyRef.current as unknown as { el?: HTMLElement } | null)
+        ?.el;
+      if (
+        !elem ||
+        !gd ||
+        plotlySpecRef.current.length === 0 ||
+        elem.offsetWidth === 0 ||
+        gd.offsetParent === null
+      )
+        return;
+      const width = elem.clientWidth;
+      const height = elem.clientHeight;
+      if (width === 0 || height === 0) return;
+      const full = (gd as unknown as { _fullLayout?: Dict })._fullLayout;
+      if (full && full.width === width && full.height === height) return;
+      Promise.resolve(Plotly.relayout(gd, { width, height })).catch(
+        () => undefined,
+      );
+    }, []);
+
+    // The div the resize handle drags, watched for size changes below. It's
+    // state, not just a ref, so that attaching the observer is an effect that
+    // re-runs if the div is replaced -- and whose cleanup is its own. (As a
+    // ref callback, with the cleanup in a separate effect, StrictMode's
+    // double-mount in development disconnected the observer for good: the
+    // effect's cleanup ran, but React doesn't call ref callbacks again.)
+    const [plotDiv, setPlotDiv] = useState<HTMLDivElement | null>(null);
+    const setPlotDivRef = useCallback((elem: HTMLDivElement | null) => {
+      plotDivRef.current = elem;
+      setPlotDiv(elem);
+    }, []);
+    useEffect(() => {
+      if (!plotDiv || !window.ResizeObserver) return;
       let lastSize = "";
       const observer = new window.ResizeObserver((entries) => {
         const { width, height } = entries[0].contentRect;
         const size = `${Math.round(width)}x${Math.round(height)}`;
         if (size === lastSize) return;
         lastSize = size;
-        // The plot's div (react-plotly's `el`), resized only while displayed.
-        const gd = (plotlyRef.current as unknown as { el?: HTMLElement } | null)
-          ?.el;
-        if (
-          !gd ||
-          plotlySpecRef.current.length === 0 ||
-          elem.offsetWidth === 0 ||
-          gd.offsetParent === null
-        )
-          return;
-        Promise.resolve(Plotly.Plots.resize(gd)).catch(() => undefined);
+        fitPlotToDiv();
       });
-      observer.observe(elem);
-      resizeObserverRef.current = observer;
-    }, []);
-    useEffect(() => () => resizeObserverRef.current?.disconnect(), []);
+      observer.observe(plotDiv);
+      return () => observer.disconnect();
+    }, [plotDiv, fitPlotToDiv]);
+
+    // A plot is first drawn while its div is empty (and so hidden), where
+    // Plotly falls back to its default 700x450. The div's size doesn't change
+    // when the data arrives, so the observer above wouldn't fire: fit the new
+    // plot to the div here instead, once it has rendered.
+    useEffect(() => {
+      if (plotlySpec.length === 0) return;
+      const id = requestAnimationFrame(fitPlotToDiv);
+      return () => cancelAnimationFrame(id);
+    }, [plotlySpec, plotlyLayout, fitPlotToDiv]);
 
     return (
       <>
