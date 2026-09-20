@@ -798,6 +798,18 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           const yLabelShortnames = genUniqueShortnames(
             new Set(responses.map(resp_to_x)),
           );
+          // For categorical and boolean scores, the y axis lists the score
+          // values themselves, so they need shortening (and line breaks) too.
+          const scoreShortnames = genUniqueShortnames(
+            new Set(
+              responses.flatMap((r) =>
+                get_items(r.eval_res).map((i) => i?.toString() ?? ""),
+              ),
+            ),
+          );
+          // What ends up on the y axis, whichever branch below runs: the left
+          // margin has to fit these, not the series names.
+          const yTickLabels = new Set<string>();
           for (const name of names) {
             let x_items: EvaluationScore[] = [];
             let text_items: string[] = [];
@@ -837,12 +849,19 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               sel_typeof_eval_res === "Categorical"
             ) {
               // Plot a histogram for categorical or boolean data.
+              const y_labels = x_items.map((v) => {
+                const label = v?.toString() ?? "";
+                return plotting_categorical_vars
+                  ? label
+                  : scoreShortnames[label] ?? label;
+              });
+              y_labels.forEach((l) => yTickLabels.add(l));
               spec.push({
                 type: "histogram",
                 histfunc: "sum",
                 name: shortnames[name],
                 marker: { color },
-                y: x_items,
+                y: y_labels,
                 orientation: "h",
               });
               layout.barmode = "stack";
@@ -853,7 +872,13 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 showgrid: true,
               };
               layout.xaxis = {
-                title: { font: { size: 12 }, text: "Number of 'true' values" },
+                title: {
+                  font: { size: 12 },
+                  text:
+                    metric_axes_labels.length > 0
+                      ? `Number of scores (${selectedEvalResVar})`
+                      : "Number of scores",
+                },
                 ...layout.xaxis,
               };
             } else {
@@ -872,6 +897,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 d.type = "bar";
                 d.textposition = "none"; // hide the text which appears within each bar
                 d.y = new Array(x_items.length).fill(shortnames[name]);
+                yTickLabels.add(shortnames[name]);
                 setForcedGraphType("bar");
               } else {
                 // If multiple eval results per response object (num generations per prompt n > 1),
@@ -915,9 +941,15 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           layout.hovermode = "closest";
           layout.showlegend = false;
 
-          // Set the left margin to fit the yticks labels
+          // Set the left margin to fit the yticks labels. Which labels those
+          // are depends on the branch above: the score values, the variable's
+          // values, or the series names.
           layout.margin.l = calcLeftPaddingForYLabels(
-            Object.values(shortnames),
+            yTickLabels.size > 0
+              ? Array.from(yTickLabels)
+              : Object.values(
+                  plotting_categorical_vars ? yLabelShortnames : shortnames,
+                ),
           );
 
           if (metric_axes_labels.length > 0)
