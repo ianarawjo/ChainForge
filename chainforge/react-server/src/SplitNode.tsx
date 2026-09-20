@@ -39,6 +39,7 @@ import { TextResponseCard } from "./TableResponseCell";
 import { Root, RootContent } from "mdast";
 import { Dict, TemplateVarInfo } from "./backend/typing";
 import { generatePrompts } from "./backend/backend";
+import { memoNode } from "./memoNode";
 
 const formattingOptions = [
   { value: "list", label: "- list items" },
@@ -413,4 +414,4 @@ const SplitNode: React.FC<SplitNodeProps> = ({ data, id }) => {
   );
 };
 
-export default SplitNode;
+export default memoNode(SplitNode);

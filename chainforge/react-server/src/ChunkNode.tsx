@@ -33,6 +33,7 @@ import { StringLookup } from "./backend/cache";
 import { canChunkInBrowser, chunkInBrowser } from "./backend/browserChunkers";
 import { FLASK_BASE_URL } from "./backend/utils";
 import { v4 as uuid } from "uuid";
+import { memoNode } from "./memoNode";
 
 interface ChunkNodeProps {
   data: {
@@ -341,4 +342,4 @@ const ChunkNode: React.FC<ChunkNodeProps> = ({ data, id }) => {
   );
 };
 
-export default ChunkNode;
+export default memoNode(ChunkNode);

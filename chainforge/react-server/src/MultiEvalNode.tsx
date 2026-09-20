@@ -69,6 +69,7 @@ import { Status } from "./StatusIndicatorComponent";
 import { EvalFunctionSetReport } from "./backend/evalgen/typing";
 import EvalGenWizard from "./EvalGen/EvalGenWizard";
 import StorageCache from "./backend/cache";
+import { memoNode } from "./memoNode";
 const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // The AI button sits in an evaluator's banner, not a node's header
@@ -1014,4 +1015,4 @@ const MultiEvalNode: React.FC<MultiEvalNodeProps> = ({ data, id }) => {
   );
 };
 
-export default MultiEvalNode;
+export default memoNode(MultiEvalNode);

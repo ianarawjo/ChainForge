@@ -3,6 +3,7 @@ import useStore from "./store";
 import NodeLabel from "./NodeLabelComponent";
 import BaseNode from "./BaseNode";
 import { Textarea } from "@mantine/core";
+import { memoNode } from "./memoNode";
 
 export interface CommentNodeProps {
   data: {
@@ -43,4 +44,4 @@ const CommentNode: React.FC<CommentNodeProps> = ({ data, id }) => {
   );
 };
 
-export default CommentNode;
+export default memoNode(CommentNode);

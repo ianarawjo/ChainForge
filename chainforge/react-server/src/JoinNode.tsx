@@ -44,6 +44,7 @@ import {
   TemplateVarInfo,
 } from "./backend/typing";
 import { generatePrompts } from "./backend/backend";
+import { memoNode } from "./memoNode";
 
 enum JoinFormat {
   DubNewLine = "\n\n",
@@ -634,4 +635,4 @@ const JoinNode: React.FC<JoinNodeProps> = ({ data, id }) => {
   );
 };
 
-export default JoinNode;
+export default memoNode(JoinNode);

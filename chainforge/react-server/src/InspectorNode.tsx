@@ -8,6 +8,7 @@ import { grabResponses } from "./backend/backend";
 import { LLMResponse } from "./backend/typing";
 import { AlertModalContext } from "./AlertModal";
 import ResizeHandle from "./ResizeHandle";
+import { memoNode } from "./memoNode";
 
 export interface InspectorNodeProps {
   data: {
@@ -126,4 +127,4 @@ const InspectorNode: React.FC<InspectorNodeProps> = ({ data, id }) => {
   );
 };
 
-export default InspectorNode;
+export default memoNode(InspectorNode);

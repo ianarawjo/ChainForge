@@ -21,6 +21,7 @@ import {
 import { AIGenReplaceItemsPopover } from "./AiPopover";
 import { cleanEscapedBraces, escapeBraces } from "./backend/template";
 import { TextFieldsNodeProps } from "./TextFieldsNode";
+import { memoNode } from "./memoNode";
 
 const replaceDoubleQuotesWithSingle = (str: string) => str.replaceAll('"', "'");
 const wrapInQuotesIfContainsComma = (str: string) =>
@@ -270,4 +271,4 @@ const ItemsNode: React.FC<ItemsNodeProps> = ({ data, id }) => {
   );
 };
 
-export default ItemsNode;
+export default memoNode(ItemsNode);

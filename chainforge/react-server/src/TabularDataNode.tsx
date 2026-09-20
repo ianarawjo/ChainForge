@@ -46,6 +46,7 @@ import { parseTableData } from "./backend/tableUtils";
 import { StringLookup } from "./backend/cache";
 import { pulledInputsToTable, responsesToTable } from "./LLMResponseInspector";
 import { generatePrompts, grabResponses } from "./backend/backend";
+import { memoNode } from "./memoNode";
 
 const defaultRows: TabularDataRowType[] = [
   {
@@ -941,4 +942,4 @@ const TabularDataNode: React.FC<TabularDataNodeProps> = ({ data, id }) => {
   );
 };
 
-export default TabularDataNode;
+export default memoNode(TabularDataNode);

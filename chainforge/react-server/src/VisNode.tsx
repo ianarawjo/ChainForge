@@ -51,6 +51,7 @@ import { AIPlot } from "./backend/aiPlots";
  * STATS
  */
 import { sum } from "simple-statistics";
+import { memoNode } from "./memoNode";
 // import * as jStat from "jstat"; // jStat is a pure JS library without types
 
 // FUTURE: Including in-progress error bar computation for future use.
@@ -1589,4 +1590,4 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
   );
 };
 
-export default VisNode;
+export default memoNode(VisNode);

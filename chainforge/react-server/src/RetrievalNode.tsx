@@ -36,6 +36,7 @@ import {
   useNodeRunner,
   useTrackedStatus,
 } from "./useNodeRunner";
+import { memoNode } from "./memoNode";
 
 interface RetrievalNodeProps {
   id: string;
@@ -636,4 +637,4 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
     </BaseNode>
   );
 };
-export default RetrievalNode;
+export default memoNode(RetrievalNode);

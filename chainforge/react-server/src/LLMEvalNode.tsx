@@ -85,6 +85,7 @@ import {
   runTooltipFor,
   scoreSpecFrom,
 } from "./backend/scorerFormat";
+import { memoNode } from "./memoNode";
 
 // The default prompt shown in gray highlights to give people a good example of an evaluation prompt.
 const PLACEHOLDER_PROMPT =
@@ -1155,4 +1156,4 @@ const LLMEvaluatorNode: React.FC<LLMEvaluatorNodeProps> = ({ data, id }) => {
   );
 };
 
-export default LLMEvaluatorNode;
+export default memoNode(LLMEvaluatorNode);

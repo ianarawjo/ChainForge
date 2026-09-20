@@ -60,6 +60,7 @@ import { MediaLookup } from "./backend/cache";
 import { dataURLToBlob, DebounceRef, genDebounceFunc } from "./backend/utils";
 import { Status } from "./StatusIndicatorComponent";
 import { useMediaUrl } from "./useMediaUrl";
+import { memoNode } from "./memoNode";
 
 // This function serves to convert the `tableData` and `tableColumns` into objects that
 // the `LLMResponseInspectorModal` and `LLMResponseInspectorDrawer` support.
@@ -1109,4 +1110,4 @@ const MediaNode: React.FC<MediaNodeDataProps> = ({ data, id }) => {
   );
 };
 
-export default MediaNode;
+export default memoNode(MediaNode);
