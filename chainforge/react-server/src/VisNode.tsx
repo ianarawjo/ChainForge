@@ -199,20 +199,43 @@ const getUniqueKeysInResponses = (
 const areSetsEqual = (xs: Set<any>, ys: Set<any>) =>
   xs.size === ys.size && [...xs].every((x) => ys.has(x));
 
+/**
+ * Wraps a label to lines of at most `max_line_len` characters, breaking
+ * between words. A word longer than a line is split with a hyphen, as before.
+ */
 function addLineBreaks(str: string, max_line_len: number) {
   if (!str || typeof str !== "string" || str.length === 0) return "";
-  let result = "";
-  const is_alphabetical = (s: string) => /^[A-Za-z]$/.test(s);
-  for (let i = 0; i < str.length; i++) {
-    result += str[i];
-    if ((i + 1) % max_line_len === 0) {
-      const next_char = i + 1 < str.length ? str[i + 1] : "";
-      result +=
-        (is_alphabetical(str[i]) && is_alphabetical(next_char) ? "-" : "") +
-        "<br>";
+
+  // Split an over-long word across lines, hyphenating where it breaks mid-word
+  const splitLongWord = (word: string) => {
+    const pieces: string[] = [];
+    let rest = word;
+    while (rest.length > max_line_len) {
+      const head = rest.slice(0, max_line_len - 1);
+      pieces.push(/[A-Za-z]$/.test(head) ? `${head}-` : head);
+      rest = rest.slice(max_line_len - 1);
+    }
+    pieces.push(rest);
+    return pieces;
+  };
+
+  const lines: string[] = [];
+  let line = "";
+  for (const word of str.split(" ")) {
+    if (word.length > max_line_len) {
+      if (line) lines.push(line);
+      const pieces = splitLongWord(word);
+      lines.push(...pieces.slice(0, -1));
+      line = pieces[pieces.length - 1];
+    } else if (line.length === 0) line = word;
+    else if (line.length + 1 + word.length <= max_line_len) line += " " + word;
+    else {
+      lines.push(line);
+      line = word;
     }
   }
-  return result;
+  if (line) lines.push(line);
+  return lines.join("<br>");
 }
 
 const genUniqueShortnames = (
@@ -866,6 +889,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               });
               layout.barmode = "stack";
               layout.yaxis = {
+                // Keep what the base layout set, e.g. the axis colour for the
+                // current theme: dropping it leaves Plotly's gray, which is
+                // hard to read in dark mode.
+                ...layout.yaxis,
                 showticklabels: true,
                 dtick: 1,
                 type: "category",
