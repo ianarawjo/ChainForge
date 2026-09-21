@@ -38,6 +38,7 @@ import {
 import { FLASK_BASE_URL } from "./backend/utils";
 import { groupDocumentsForRerank } from "./backend/rerankGroups";
 import { v4 as uuid } from "uuid";
+import { memoNode } from "./memoNode";
 
 // Constants for handle positioning and styling
 const HANDLE_Y_START = 60; // Adjust this value to move the first handle up/down
@@ -544,4 +545,4 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
   );
 };
 
-export default RerankNode;
+export default memoNode(RerankNode);

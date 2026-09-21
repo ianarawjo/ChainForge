@@ -4,6 +4,7 @@ import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
 import { IconSettingsAutomation } from "@tabler/icons-react";
 import { Dict } from "./backend/typing";
+import { memoNode } from "./memoNode";
 
 export interface ScriptNodeProps {
   data: {
@@ -116,4 +117,4 @@ const ScriptNode: React.FC<ScriptNodeProps> = ({ data, id }) => {
   );
 };
 
-export default ScriptNode;
+export default memoNode(ScriptNode);

@@ -30,6 +30,7 @@ import {
   browserTextExtensions,
 } from "./backend/extractText";
 import { TemplateVarInfo } from "./backend/typing";
+import { memoNode } from "./memoNode";
 
 /** Renders a byte count as MB, for the browser storage budget readout. */
 const formatMB = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -329,4 +330,4 @@ const UploadNode: React.FC<UploadNodeProps> = ({ data, id }) => {
   );
 };
 
-export default UploadNode;
+export default memoNode(UploadNode);

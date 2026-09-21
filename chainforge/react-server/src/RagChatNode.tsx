@@ -72,6 +72,7 @@ import {
   isSmallEdit,
   normalizeAnswer,
 } from "./backend/ragChat";
+import { memoNode } from "./memoNode";
 
 /**
  * How many turns are saved with the flow. Each answer keeps the context it was
@@ -817,4 +818,4 @@ const RagChatNode: React.FC<RagChatNodeProps> = ({ data, id }) => {
   );
 };
 
-export default RagChatNode;
+export default memoNode(RagChatNode);

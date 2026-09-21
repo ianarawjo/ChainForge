@@ -94,6 +94,7 @@ import TemplateHighlightTextarea, {
   setTemplateTextareaValue,
 } from "./TemplateHighlightTextarea";
 import { AIGenPromptVariantsPopover } from "./AiPopover";
+import { memoNode } from "./memoNode";
 
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
@@ -1873,4 +1874,4 @@ Soft failing by replacing undefined with empty strings.`,
   );
 };
 
-export default PromptNode;
+export default memoNode(PromptNode);

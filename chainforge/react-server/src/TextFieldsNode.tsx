@@ -28,6 +28,7 @@ import {
   makeSafeForCSLFormat,
   prepareItemsNodeData,
 } from "./ItemsNode";
+import { memoNode } from "./memoNode";
 
 // Helper funcs
 const union = (setA: Set<any>, setB: Set<any>) => {
@@ -468,4 +469,4 @@ const TextFieldsNode: React.FC<TextFieldsNodeProps> = ({ data, id }) => {
   );
 };
 
-export default TextFieldsNode;
+export default memoNode(TextFieldsNode);

@@ -28,6 +28,7 @@ import {
   TemplateVarInfo,
   LLMResponsesByVarDict,
 } from "./backend/typing";
+import { memoNode } from "./memoNode";
 
 const ALWAYS_INCLUDED_KEYS = ["__pt", "id", "signature"];
 
@@ -301,4 +302,4 @@ const SelectVarsNode: React.FC<SelectVarsNodeProps> = ({ data, id }) => {
   );
 };
 
-export default SelectVarsNode;
+export default memoNode(SelectVarsNode);

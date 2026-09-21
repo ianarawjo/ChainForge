@@ -40,6 +40,7 @@ import { AlertModalContext } from "./AlertModal";
 import { Status } from "./StatusIndicatorComponent";
 import { JSONCompatible, LLMResponse } from "./backend/typing";
 import { executejs } from "./backend/backend";
+import { memoNode } from "./memoNode";
 
 type ResponseFormat = "response" | "response in lowercase";
 const RESPONSE_FORMATS: ResponseFormat[] = [
@@ -476,4 +477,4 @@ const SimpleEvalNode: React.FC<SimpleEvalNodeProps> = ({ data, id }) => {
   );
 };
 
-export default SimpleEvalNode;
+export default memoNode(SimpleEvalNode);

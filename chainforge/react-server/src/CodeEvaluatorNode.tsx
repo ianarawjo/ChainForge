@@ -65,6 +65,7 @@ import { Status } from "./StatusIndicatorComponent";
 import { executejs, executepy, grabResponses } from "./backend/backend";
 import { AlertModalContext } from "./AlertModal";
 import { StringLookup } from "./backend/cache";
+import { memoNode } from "./memoNode";
 
 // Whether we are running on localhost or not, and hence whether
 // we have access to the Flask backend for, e.g., Python code evaluation.
@@ -999,4 +1000,4 @@ The Python interpeter in the browser is Pyodide. You may not be able to run some
   );
 };
 
-export default CodeEvaluatorNode;
+export default memoNode(CodeEvaluatorNode);
