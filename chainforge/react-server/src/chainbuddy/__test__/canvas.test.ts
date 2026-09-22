@@ -36,7 +36,7 @@ jest.mock("../../ModelSettingSchemas", () => ({
 /* eslint-enable @typescript-eslint/no-var-requires */
 
 // eslint-disable-next-line import/first
-import { beforeEach, expect, test } from "@jest/globals";
+import { beforeEach, describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
 import useStore from "../../store";
 // eslint-disable-next-line import/first
@@ -269,4 +269,94 @@ test("a loading flow finishes before leftover nodes are removed", async () => {
     "p",
   ]);
   stop();
+});
+
+describe("noticing another flow", () => {
+  const node = (id: string) => ({
+    id,
+    type: "textfields",
+    position: { x: 0, y: 0 },
+    data: {},
+  });
+  const setNodes = (ids: string[]) =>
+    useStore.setState({ nodes: ids.map(node) } as any);
+
+  function watch() {
+    const { canvas } = setUp();
+    let switches = 0;
+    const stop = canvas.watchForFlowSwitch(() => switches++);
+    return { count: () => switches, stop };
+  }
+
+  test("New Flow, which replaces every node at once, is a switch", () => {
+    const w = watch();
+    setNodes(["new-tf", "new-p"]);
+    expect(w.count()).toBe(1);
+    w.stop();
+  });
+
+  test("loading a flow, which empties the canvas first, is one switch", () => {
+    const w = watch();
+    setNodes([]);
+    setNodes(["loaded-1", "loaded-2"]);
+    expect(w.count()).toBe(1);
+    w.stop();
+  });
+
+  test("ordinary edits are not a switch", async () => {
+    const w = watch();
+    setNodes(["tf", "p", "added"]); // a node added
+    setNodes(["p", "added"]); // one removed
+    setNodes([]); // the only nodes rebuilt: removed, then back
+    setNodes(["p", "added"]);
+    expect(w.count()).toBe(0);
+    w.stop();
+  });
+
+  test("a switch handler that changes the canvas runs once", () => {
+    // The panel's handler rejects the waiting proposal, which changes the
+    // store and re-enters the watcher; this once recursed until the stack ran out.
+    const { canvas } = setUp();
+    const { id } = canvas.propose({
+      summary: "Add a node",
+      changes: [
+        {
+          op: "add_node",
+          ref: "more",
+          type: "textfields",
+          settings: { values: ["Oslo"] },
+        },
+      ],
+    });
+    let switches = 0;
+    const stop = canvas.watchForFlowSwitch(() => {
+      switches++;
+      canvas.reject(id);
+    });
+    setNodes(["new-tf", "new-p"]);
+    expect(switches).toBe(1);
+    stop();
+  });
+
+  test("accepting a proposal that replaces every node is not a switch", async () => {
+    const w = watch();
+    const { canvas } = setUp();
+    const { id } = canvas.propose({
+      summary: "Start over",
+      changes: [
+        { op: "remove_node", node: "tf" },
+        { op: "remove_node", node: "p" },
+        {
+          op: "add_node",
+          ref: "fresh",
+          type: "textfields",
+          settings: { values: ["Oslo"] },
+        },
+      ],
+    });
+    await canvas.accept(id);
+    expect((useStore.getState() as any).nodes).toHaveLength(1);
+    expect(w.count()).toBe(0);
+    w.stop();
+  });
 });
