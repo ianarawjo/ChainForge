@@ -155,7 +155,6 @@ export interface CanvasEvents {
 /** The canvas backed by ChainForge's store. One per chat panel. */
 export class StoreCanvas implements CanvasPort {
   private proposals = new Map<string, ProposalState>();
-  private count = 0;
   /**
    * Redrawing a node takes a tick, so redraws run one after another, and
    * accepting waits for them.
@@ -266,7 +265,8 @@ export class StoreCanvas implements CanvasPort {
 
     const flow = this.readFlow();
     const state: ProposalState = {
-      id: `change-set-${++this.count}`,
+      // Unique across canvases, since the chat panel may outlive this one.
+      id: `change-set-${uuid().slice(0, 8)}`,
       summary: changeSet.summary,
       lines: describeChanges(flow, changeSet),
       status: "pending",
