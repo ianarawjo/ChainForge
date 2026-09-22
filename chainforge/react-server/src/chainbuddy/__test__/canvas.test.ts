@@ -1,0 +1,239 @@
+// The store-backed canvas, against a small real zustand store standing in for
+// ChainForge's (whose import graph doesn't load under Jest).
+
+/* eslint-disable @typescript-eslint/no-var-requires */
+jest.mock("../../store", () => {
+  const { create } = require("zustand");
+  const store = create((set: any, get: any) => ({
+    nodes: [],
+    edges: [],
+    apiKeys: { OpenRouter: "sk-or-test" },
+    ollamaModels: [],
+    setDataPropsForNode: (id: string, props: object) =>
+      set({
+        nodes: get().nodes.map((n: any) =>
+          n.id === id ? { ...n, data: { ...n.data, ...props } } : n,
+        ),
+      }),
+  }));
+  return {
+    __esModule: true,
+    default: store,
+    initLLMProviders: [
+      {
+        name: "Claude Haiku 4.5",
+        emoji: "📚",
+        model: "openrouter/anthropic/claude-haiku-4.5",
+        base_model: "openrouter",
+        temp: 1,
+      },
+    ],
+  };
+});
+jest.mock("../../ModelSettingSchemas", () => ({
+  getDefaultModelSettings: () => ({}),
+}));
+/* eslint-enable @typescript-eslint/no-var-requires */
+
+// eslint-disable-next-line import/first
+import { beforeEach, expect, test } from "@jest/globals";
+// eslint-disable-next-line import/first
+import useStore from "../../store";
+// eslint-disable-next-line import/first
+import { PENDING_CLASS, Proposal, StoreCanvas } from "../adapters/canvas";
+// eslint-disable-next-line import/first
+import { ChangeSet } from "../flowApi/types";
+
+const tick = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const haiku = {
+  key: "k1",
+  name: "Claude Haiku 4.5",
+  emoji: "📚",
+  model: "openrouter/anthropic/claude-haiku-4.5",
+  base_model: "openrouter",
+  temp: 1,
+};
+
+beforeEach(() => {
+  useStore.setState({
+    nodes: [
+      {
+        id: "tf",
+        type: "textfields",
+        position: { x: 0, y: 0 },
+        data: { fields: { f1: "Paris" } },
+      },
+      {
+        id: "p",
+        type: "prompt",
+        position: { x: 400, y: 0 },
+        data: { prompt: "Say hi", llms: [haiku], n: 1 },
+      },
+    ],
+    edges: [],
+  } as any);
+});
+
+/** Edits the prompt to add {city}, and connects the TextFields Node to it. */
+const addCity: ChangeSet = {
+  summary: "Add a city",
+  changes: [
+    {
+      op: "update_node",
+      node: "p",
+      settings: { prompts: [{ label: "A", text: "Say hi to {city}" }] },
+    },
+    {
+      op: "connect",
+      from: { node: "tf", output: "values" },
+      to: { node: "p", input: "city" },
+    },
+  ],
+};
+
+function setUp() {
+  const statuses: Proposal[] = [];
+  const canvas = new StoreCanvas({ onProposal: (p) => statuses.push(p) });
+  return { canvas, statuses };
+}
+
+const edgesInto = (id: string) =>
+  (useStore.getState() as any).edges.filter((e: any) => e.target === id);
+
+test("accepting twice at once applies the proposal once", async () => {
+  const { canvas, statuses } = setUp();
+  const { id } = canvas.propose(addCity);
+
+  await Promise.all([canvas.accept(id), canvas.accept(id)]);
+
+  expect(edgesInto("p")).toHaveLength(1);
+  expect(edgesInto("p")[0]).toMatchObject({
+    source: "tf",
+    sourceHandle: "output",
+    targetHandle: "city",
+  });
+  expect(statuses.map((s) => s.status)).toEqual([
+    "pending",
+    "applying",
+    "accepted",
+  ]);
+});
+
+test("rejecting while a proposal applies does nothing", async () => {
+  const { canvas, statuses } = setUp();
+  const { id } = canvas.propose({
+    summary: "Add a node and edit the prompt",
+    changes: [
+      {
+        op: "add_node",
+        ref: "more",
+        type: "textfields",
+        settings: { values: ["Oslo"] },
+      },
+      ...addCity.changes,
+    ],
+  });
+
+  // The edit makes accepting wait while the Prompt Node is rebuilt.
+  const applying = canvas.accept(id);
+  canvas.reject(id);
+  await applying;
+
+  expect(statuses.at(-1)?.status).toBe("accepted");
+  const nodes = (useStore.getState() as any).nodes;
+  expect(nodes).toHaveLength(3);
+  expect(nodes.every((n: any) => n.className === undefined)).toBe(true);
+  expect(edgesInto("p")).toHaveLength(1);
+});
+
+test("a node deleted since the proposal means nothing is applied", async () => {
+  const { canvas, statuses } = setUp();
+  const { id } = canvas.propose({
+    summary: "Add a node and edit the prompt",
+    changes: [
+      {
+        op: "add_node",
+        ref: "more",
+        type: "textfields",
+        settings: { values: ["Oslo"] },
+      },
+      ...addCity.changes,
+    ],
+  });
+  const before = (useStore.getState() as any).nodes.find(
+    (n: any) => n.id === "tf",
+  );
+  // The user deletes the Prompt Node the proposal edits.
+  useStore.setState((s: any) => ({
+    nodes: s.nodes.filter((n: any) => n.id !== "p"),
+  }));
+
+  await canvas.accept(id);
+
+  const last = statuses.at(-1);
+  expect(last?.status).toBe("failed");
+  expect(last?.error).toMatch(/nothing was changed/);
+  const nodes = (useStore.getState() as any).nodes;
+  // The proposed node is gone, and the rest is as it was.
+  expect(nodes.map((n: any) => n.id)).toEqual(["tf"]);
+  expect(nodes[0]).toEqual(before);
+  expect((useStore.getState() as any).edges).toEqual([]);
+});
+
+test("proposed nodes no live proposal owns are removed", async () => {
+  const { canvas } = setUp();
+  useStore.setState((s: any) => ({
+    nodes: [
+      ...s.nodes.map((n: any) =>
+        n.id === "p" ? { ...n, className: PENDING_CLASS.update } : n,
+      ),
+      {
+        id: "ghost",
+        type: "textfields",
+        position: { x: 0, y: 300 },
+        data: {},
+        className: PENDING_CLASS.add,
+      },
+    ],
+    edges: [
+      {
+        id: "e1",
+        source: "ghost",
+        target: "p",
+        className: PENDING_CLASS.add,
+      },
+    ],
+  }));
+
+  const stop = canvas.removeOrphans();
+  await tick();
+
+  const { nodes, edges } = useStore.getState() as any;
+  expect(nodes.map((n: any) => n.id)).toEqual(["tf", "p"]);
+  expect(nodes.find((n: any) => n.id === "p").className).toBeUndefined();
+  expect(edges).toEqual([]);
+  stop();
+});
+
+test("a live proposal's nodes are kept while it applies", async () => {
+  const { canvas, statuses } = setUp();
+  const stop = canvas.removeOrphans();
+  const { id } = canvas.propose({
+    summary: "Add a node",
+    changes: [
+      {
+        op: "add_node",
+        ref: "more",
+        type: "textfields",
+        settings: { values: ["Oslo"] },
+      },
+    ],
+  });
+
+  await canvas.accept(id);
+
+  expect(statuses.at(-1)?.status).toBe("accepted");
+  expect((useStore.getState() as any).nodes).toHaveLength(3);
+  stop();
+});

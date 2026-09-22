@@ -46,6 +46,8 @@ export const PENDING_CLASS = {
 
 export type ProposalStatus =
   | "pending"
+  /** Being applied after the user accepted it. */
+  | "applying"
   | "accepted"
   | "rejected"
   | "replaced"
@@ -72,6 +74,7 @@ interface ProposalState extends Proposal {
 }
 
 const TICK_MS = 20;
+
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const modelResolver: ModelResolver = {
@@ -348,6 +351,20 @@ export class StoreCanvas implements CanvasPort {
   async accept(id: string): Promise<void> {
     const state = this.proposals.get(id);
     if (!state || state.status !== "pending") return;
+    // Applying takes a few ticks. Marking it now stops a second click on
+    // Accept, or a Reject, from working on it at the same time.
+    this.setStatus(state, "applying");
+
+    // Check everything is still there before changing anything, so a node
+    // deleted since the proposal can't leave it half-applied.
+    if (this.missingNodes(state).length > 0) {
+      this.clear(state);
+      state.error =
+        "A node this proposal changes or connects was deleted after it was proposed, so nothing was changed. Ask ChainBuddy again.";
+      this.setStatus(state, "failed");
+      return;
+    }
+
     try {
       const store = useStore.getState();
       // Proposed nodes and edges become ordinary ones.
@@ -411,9 +428,29 @@ export class StoreCanvas implements CanvasPort {
 
       this.setStatus(state, "accepted");
     } catch (err) {
-      state.error = err instanceof Error ? err.message : String(err);
+      const message = err instanceof Error ? err.message : String(err);
+      state.error = `${message} Some of the changes may already have been applied; check the canvas.`;
       this.setStatus(state, "failed");
     }
+  }
+
+  /** Nodes a proposal needs that are no longer on the canvas. */
+  private missingNodes(state: ProposalState): string[] {
+    const present = new Set(useStore.getState().nodes.map((n) => n.id));
+    const resolve = (ref: string) => state.ids.get(ref) ?? ref;
+    const removedEarlier = new Set<string>();
+    const needed = new Set<string>(state.addedNodes);
+    for (const change of state.changes) {
+      if (change.op === "update_node" || change.op === "remove_node") {
+        const id = resolve(change.node);
+        if (!removedEarlier.has(id)) needed.add(id);
+        if (change.op === "remove_node") removedEarlier.add(id);
+      } else if (change.op === "connect") {
+        needed.add(resolve(change.from.node));
+        needed.add(resolve(change.to.node));
+      }
+    }
+    return Array.from(needed).filter((id) => !present.has(id));
   }
 
   /**
@@ -427,7 +464,7 @@ export class StoreCanvas implements CanvasPort {
       const owned = new Set<string>();
       const outlined = new Set<string>();
       for (const p of Array.from(this.proposals.values()))
-        if (p.status === "pending") {
+        if (p.status === "pending" || p.status === "applying") {
           [...p.addedNodes, ...p.addedEdges].forEach((id) => owned.add(id));
           p.outlined.forEach((_, id) => outlined.add(id));
         }
