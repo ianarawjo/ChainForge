@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useEffect,
   useContext,
+  useRef,
 } from "react";
 import {
   TextInput,
@@ -281,6 +282,23 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       aiProvider: "",
       aiModels: {},
     });
+    // The latest settings, for changes made before a re-render.
+    const settingsRef = useRef(settings);
+    // Every change to the settings goes through here.
+    const applySettings = useCallback((next: GlobalSettingsType) => {
+      settingsRef.current = next;
+      setSettings(next);
+    }, []);
+
+    // Nodes read these settings from the store. Synced after each change,
+    // rather than inside a state update, which React runs during render.
+    const setGlobalSettingsInZustandStore = useStore(
+      (state) => state.setGlobalSettings,
+    );
+    useEffect(() => {
+      // A spread makes the interface fit the store's plain dictionary type.
+      setGlobalSettingsInZustandStore({ ...settings });
+    }, [settings]);
 
     // Fetch the global settings from the backend
     const loadSettingsFromBackend = useCallback(() => {
@@ -295,18 +313,14 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
           });
 
           // Set any other settings that are on other pages (not in the form)
-          setSettings((prev) => {
-            const loaded = { ...prev };
-            (Object.keys(prev) as (keyof GlobalSettingsType)[]).forEach(
-              (key) => {
-                if (key in backendSettings)
-                  (loaded as Dict)[key] = backendSettings[key];
-              },
-            );
-            // Nodes read these from the store.
-            setGlobalSettingsInZustandStore(loaded);
-            return loaded;
-          });
+          const loaded = { ...settingsRef.current };
+          (Object.keys(loaded) as (keyof GlobalSettingsType)[]).forEach(
+            (key) => {
+              if (key in backendSettings)
+                (loaded as Dict)[key] = backendSettings[key];
+            },
+          );
+          applySettings(loaded);
 
           // Set any API keys that were custom set in the global settings form,
           // overriding the default ones (including environment variables).
@@ -390,29 +404,19 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       [form, settings],
     );
 
-    // Set the settings in the store and synchronize to backend
-    const setGlobalSettingsInZustandStore = useStore(
-      (state) => state.setGlobalSettings,
-    );
+    // Change one setting, and save it to the backend (or the browser)
     const handleChangeSetting = useCallback(
       (key: string, value: JSONCompatible) => {
-        setSettings((prev) => {
-          const updated = { ...prev, [key]: value };
+        const updated = { ...settingsRef.current, [key]: value };
+        applySettings(updated);
 
-          if (IS_RUNNING_LOCALLY) {
-            // Synchronize the settings to the backend
-            saveGlobalSettingsToBackend({
-              ...form.values,
-              ...updated,
-            });
-          } else saveWebSettings(updated);
-
-          // Store the non-form settings in the Zustand store global state,
-          // so other components can access them and immediately react to the change.
-          setGlobalSettingsInZustandStore(updated);
-
-          return updated;
-        });
+        if (IS_RUNNING_LOCALLY) {
+          // Synchronize the settings to the backend
+          saveGlobalSettingsToBackend({
+            ...form.values,
+            ...updated,
+          });
+        } else saveWebSettings(updated);
       },
       [form],
     );
@@ -541,15 +545,11 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       setRememberKeys(remembered);
 
       const saved = loadWebSettings();
-      setSettings((prev) => {
-        const restored = { ...prev };
-        (Object.keys(prev) as (keyof GlobalSettingsType)[]).forEach((key) => {
-          if (key in saved) (restored as Dict)[key] = saved[key];
-        });
-        // Nodes read these from the store.
-        setGlobalSettingsInZustandStore(restored);
-        return restored;
+      const restored = { ...settingsRef.current };
+      (Object.keys(restored) as (keyof GlobalSettingsType)[]).forEach((key) => {
+        if (key in saved) (restored as Dict)[key] = saved[key];
       });
+      applySettings(restored);
     }, []);
 
     // When the API settings form is submitted

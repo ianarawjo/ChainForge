@@ -1,0 +1,78 @@
+/* Proposed nodes and edges, before the user accepts or rejects them. Each
+   node gets a label, so a proposal is obvious even when only an outline would
+   otherwise show (an edit doesn't change the node until it's accepted,
+   unless the node was unfinished, when it's shown filled in). */
+.react-flow__node.chainbuddy-pending-add,
+.react-flow__node.chainbuddy-pending-update,
+.react-flow__node.chainbuddy-pending-remove,
+.react-flow__node.chainbuddy-pending-fill {
+  outline: 3px dashed var(--chainbuddy-proposal);
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+.react-flow__node.chainbuddy-pending-add,
+.react-flow__node.chainbuddy-pending-fill {
+  --chainbuddy-proposal: #be4bdb;
+}
+.react-flow__node.chainbuddy-pending-update {
+  --chainbuddy-proposal: #f59f00;
+}
+.react-flow__node.chainbuddy-pending-remove {
+  --chainbuddy-proposal: #fa5252;
+  opacity: 0.55;
+}
+.react-flow__node.chainbuddy-pending-add::after,
+.react-flow__node.chainbuddy-pending-update::after,
+.react-flow__node.chainbuddy-pending-remove::after,
+.react-flow__node.chainbuddy-pending-fill::after {
+  position: absolute;
+  top: -34px;
+  left: -6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--chainbuddy-proposal);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.react-flow__node.chainbuddy-pending-add::after {
+  content: "Proposed new node · accept or reject in ChainBuddy";
+}
+.react-flow__node.chainbuddy-pending-update::after {
+  content: "Proposed change · see ChainBuddy for what changes";
+  color: #1a1b1e;
+}
+.react-flow__node.chainbuddy-pending-fill::after {
+  content: "Proposed contents · accept or reject in ChainBuddy";
+}
+.react-flow__node.chainbuddy-pending-remove::after {
+  content: "Proposed removal · accept or reject in ChainBuddy";
+}
+.react-flow__edge.chainbuddy-pending-add .react-flow__edge-path {
+  stroke: #be4bdb;
+  stroke-dasharray: 6 4;
+}
+
+.chainbuddy-panel {
+  width: 390px;
+  height: min(600px, calc(100vh - 120px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chainbuddy-markdown p {
+  margin: 0 0 6px;
+}
+.chainbuddy-markdown p:last-child {
+  margin-bottom: 0;
+}
+.chainbuddy-markdown ul,
+.chainbuddy-markdown ol {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+.chainbuddy-markdown code {
+  font-size: 12px;
+}
