@@ -132,6 +132,10 @@ export default function ChainBuddyPanel() {
   const seenNodes = useRef(new Set<string>());
   const nodeIds = () => canvas.readFlow().nodes.map((n) => n.id);
 
+  // Proposed nodes left over from a flow saved mid-proposal were never
+  // accepted, so they go.
+  useEffect(() => canvas.removeOrphans(), [canvas]);
+
   // Keep the newest message in view.
   useEffect(() => {
     viewport.current?.scrollTo({ top: viewport.current.scrollHeight });

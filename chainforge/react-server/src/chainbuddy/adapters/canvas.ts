@@ -416,6 +416,65 @@ export class StoreCanvas implements CanvasPort {
     }
   }
 
+  /**
+   * Removes proposed nodes and outlines no live proposal owns. They appear
+   * when a flow was saved while a proposal waited, then reloaded: the card to
+   * accept or reject them is gone, so they were never accepted. Returns a
+   * function that stops watching.
+   */
+  removeOrphans(): () => void {
+    const clean = () => {
+      const owned = new Set<string>();
+      const outlined = new Set<string>();
+      for (const p of Array.from(this.proposals.values()))
+        if (p.status === "pending") {
+          [...p.addedNodes, ...p.addedEdges].forEach((id) => owned.add(id));
+          p.outlined.forEach((_, id) => outlined.add(id));
+        }
+      const { nodes, edges } = useStore.getState();
+      const isPending = (cls: string | undefined) =>
+        !!cls && Object.values(PENDING_CLASS).includes(cls);
+      const orphanNodes = new Set(
+        nodes
+          .filter((n) => n.className === PENDING_CLASS.add && !owned.has(n.id))
+          .map((n) => n.id),
+      );
+      const staleOutlines = nodes.some(
+        (n) =>
+          isPending(n.className) &&
+          n.className !== PENDING_CLASS.add &&
+          !outlined.has(n.id),
+      );
+      const orphanEdges = edges.some(
+        (e) =>
+          (e.className === PENDING_CLASS.add && !owned.has(e.id)) ||
+          orphanNodes.has(e.source) ||
+          orphanNodes.has(e.target),
+      );
+      if (orphanNodes.size === 0 && !staleOutlines && !orphanEdges) return;
+      useStore.setState((s) => ({
+        nodes: s.nodes
+          .filter((n) => !orphanNodes.has(n.id))
+          .map((n) =>
+            isPending(n.className) && !outlined.has(n.id) && !owned.has(n.id)
+              ? { ...n, className: undefined }
+              : n,
+          ),
+        edges: s.edges.filter(
+          (e) =>
+            !(e.className === PENDING_CLASS.add && !owned.has(e.id)) &&
+            !orphanNodes.has(e.source) &&
+            !orphanNodes.has(e.target),
+        ),
+      }));
+    };
+    clean();
+    // Also after a flow loads later on.
+    return useStore.subscribe((state, prev) => {
+      if (state.nodes !== prev.nodes) clean();
+    });
+  }
+
   reject(id: string): void {
     const state = this.proposals.get(id);
     if (!state || state.status !== "pending") return;
