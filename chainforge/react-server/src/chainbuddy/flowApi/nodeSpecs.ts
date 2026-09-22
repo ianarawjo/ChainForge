@@ -25,6 +25,15 @@ export interface NodeSpec {
 const title = (value: unknown) =>
   typeof value === "string" ? undefined : "title should be text.";
 
+/**
+ * Models used to other template languages write {{name}}. ChainForge reads
+ * that as a variable named "{name", and sends a stray brace to the model.
+ */
+const doubleBraces = (key: string, texts: string[]) =>
+  texts.some((text) => /\{\{|\}\}/.test(text))
+    ? `${key} use {{...}}. ChainForge variables use single braces, like {country}; write \\{ and \\} for literal braces.`
+    : undefined;
+
 export const NODE_SPECS: Record<string, NodeSpec> = {
   prompt: {
     type: "prompt",
@@ -48,6 +57,10 @@ export const NODE_SPECS: Record<string, NodeSpec> = {
           )
         )
           return "each prompt should be { label, text }, with text that isn't empty.";
+        return doubleBraces(
+          "prompts",
+          value.map((p) => String((p as { text: string }).text)),
+        );
       }
       if (key === "models") {
         if (!Array.isArray(value) || value.length === 0)
@@ -85,6 +98,7 @@ export const NODE_SPECS: Record<string, NodeSpec> = {
           return "values should be a list of at least one piece of text.";
         if (value.some((v) => v.trim() === ""))
           return "values shouldn't include empty text; empty values are still sent downstream.";
+        return doubleBraces("values", value);
       }
       return undefined;
     },
