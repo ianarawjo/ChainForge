@@ -5,8 +5,8 @@
  * knowledge/nodes/) and listing it in nodes/index.ts. Other kinds don't
  * change: what connects to what follows from `output` and `accepts`.
  *
- * A NodeKind is pure: anything that depends on the app, such as ChainForge's
- * template parser or its model list, is passed in.
+ * A NodeKind doesn't touch the store: the user's models, the one thing it
+ * needs from the app, are passed in (see adapters/models.ts).
  */
 
 import { Dict, LLMSpec } from "../../backend/typing";
@@ -25,20 +25,11 @@ export type DataType =
   /** Responses with a score attached to each. */
   | "scored_responses";
 
-/** Finds the {variables} in some texts. */
-export type VarsOf = (texts: string[]) => string[];
-
 /** Turns model IDs (as list_models gives them) into LLMSpecs, and back. */
 export interface ModelResolver {
   idOf(llm: LLMSpec): string;
   /** A new LLMSpec for a model, named so it doesn't clash with `takenNames`. */
   toSpec(id: string, takenNames: string[]): LLMSpec | undefined;
-}
-
-/** What translating between node data and settings needs from the app. */
-export interface KindContext {
-  models: ModelResolver;
-  varsOf: VarsOf;
 }
 
 /** One setting ChainBuddy may read, and change unless it's read-only. */
@@ -73,7 +64,7 @@ export interface NodeKind {
   /** What its inputs accept. */
   accepts: DataType[];
   /** The inputs a node with these settings has. */
-  inputs(settings: Record<string, unknown>, varsOf: VarsOf): string[];
+  inputs(settings: Record<string, unknown>): string[];
   /** What a node with these settings lacks to be usable, e.g. "has no values yet". */
   missing?(settings: Record<string, unknown>): string | undefined;
   /** Added when an input of a new node isn't connected; defaults to advice about {variables}. */
@@ -89,7 +80,7 @@ export interface NodeKind {
     inputs?: Record<string, string>;
   };
   /** ChainBuddy's settings for a node, from its data. */
-  read(data: Dict, ctx: KindContext): Record<string, unknown>;
+  read(data: Dict, models: ModelResolver): Record<string, unknown>;
   /**
    * Node data with settings applied: over `base` for an existing node, or
    * from scratch for a new one. Settings not given are left as they are.
@@ -97,6 +88,6 @@ export interface NodeKind {
   write(
     settings: Record<string, unknown>,
     base: Dict | undefined,
-    ctx: KindContext,
+    models: ModelResolver,
   ): Dict;
 }

@@ -12,11 +12,8 @@
 
 import { Edge, MarkerType, Node } from "reactflow";
 import { v4 as uuid } from "uuid";
-import { getDefaultModelSettings } from "../../ModelSettingSchemas";
-import { OPENROUTER_PREFIX } from "../../backend/models";
 import { Dict } from "../../backend/typing";
-import { ensureUniqueName } from "../../backend/utils";
-import useStore, { initLLMProviders } from "../../store";
+import useStore from "../../store";
 import { ChangeLine, describeChanges } from "../flowApi/describe";
 import {
   CanvasPort,
@@ -28,18 +25,8 @@ import {
   NodeView,
   ProposalReceipt,
 } from "../flowApi/types";
-import { kindOf } from "../nodes";
-import {
-  dataWithSettings,
-  handlesFor,
-  inputName,
-  inputsFor,
-  modelIdOf,
-  ModelResolver,
-  outputName,
-  settingsOf,
-  supportOf,
-} from "./nodeData";
+import { inputsOf, kindOf, supportOf } from "../nodes";
+import { listModels, modelResolver } from "./models";
 
 export const PENDING_CLASS = {
   add: "chainbuddy-pending-add",
@@ -99,51 +86,6 @@ const TICK_MS = 20;
  */
 export const ORPHAN_SETTLE_MS = 1000;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-export const modelResolver: ModelResolver = {
-  idOf: modelIdOf,
-
-  toSpec(id: string, takenNames: string[]) {
-    const { apiKeys } = useStore.getState();
-    if (id.startsWith("ollama/")) {
-      const ollamaModel = id.slice("ollama/".length);
-      const name = ensureUniqueName(ollamaModel, takenNames);
-      const settings: Dict = {
-        ...getDefaultModelSettings("ollama", "ollama"),
-        ollamaModel,
-      };
-      const formData: Dict = { shortname: name, model: "ollama", ollamaModel };
-      if (apiKeys.Ollama_BaseURL) {
-        settings.ollama_url = apiKeys.Ollama_BaseURL;
-        formData.ollama_url = apiKeys.Ollama_BaseURL;
-      }
-      return {
-        key: uuid(),
-        name,
-        emoji: "🦙",
-        model: "ollama",
-        base_model: "ollama",
-        temp: 1.0,
-        settings,
-        formData,
-      };
-    }
-    // As the Prompt Node's model menu builds it (LLMListComponent).
-    const item = initLLMProviders.find(
-      (m) => m.base_model === "openrouter" && m.model === id,
-    );
-    if (!item) return undefined;
-    const name = ensureUniqueName(item.name, takenNames);
-    const shortModel = id.slice(OPENROUTER_PREFIX.length);
-    return {
-      ...item,
-      key: uuid(),
-      name,
-      formData: { shortname: name, model: shortModel },
-      settings: getDefaultModelSettings(item.base_model, shortModel),
-    };
-  },
-};
 
 export interface CanvasEvents {
   /** A proposal appeared or changed status. */
@@ -205,14 +147,14 @@ export class StoreCanvas implements CanvasPort {
               .map((e) => e.sourceHandle),
           ),
         };
-      const settings = settingsOf(n.type, data, modelResolver);
+      const settings = settingsOf(n.type, data);
       return {
         id: n.id,
         type: n.type,
         title: String(settings.title ?? title),
         support,
         settings,
-        inputs: inputsFor(n.type, settings),
+        inputs: inputsOf(n.type, settings),
         outputs: [kindOf(n.type)?.output ?? ""],
       };
     });
@@ -231,27 +173,7 @@ export class StoreCanvas implements CanvasPort {
   }
 
   listModels(): ModelInfo[] {
-    const { apiKeys, ollamaModels } = useStore.getState();
-    return [
-      ...ollamaModels.map((name) => ({
-        id: `ollama/${name}`,
-        name,
-        provider: "Ollama",
-        ready: true,
-      })),
-      ...initLLMProviders
-        .filter((m) => m.base_model === "openrouter")
-        .map((m) => ({
-          id: m.model,
-          name: m.name,
-          provider: "OpenRouter",
-          ready: !!apiKeys.OpenRouter,
-        })),
-    ];
-  }
-
-  inputsFor(type: string, settings: Record<string, unknown>): string[] {
-    return inputsFor(type, settings);
+    return listModels();
   }
 
   propose(changeSet: ChangeSet): ProposalReceipt {
@@ -297,12 +219,7 @@ export class StoreCanvas implements CanvasPort {
       if (change.op === "add_node") {
         const id = `${change.type}Node-${uuid()}`;
         state.ids.set(change.ref, id);
-        const data = dataWithSettings(
-          change.type,
-          change.settings,
-          undefined,
-          modelResolver,
-        );
+        const data = dataWithSettings(change.type, change.settings, undefined);
         newNodes.push({
           id,
           type: change.type,
@@ -310,7 +227,7 @@ export class StoreCanvas implements CanvasPort {
           position: positions.get(change.ref) ?? { x: 0, y: 0 },
           className: PENDING_CLASS.add,
         });
-        inputsNow.set(id, inputsFor(change.type, change.settings));
+        inputsNow.set(id, inputsOf(change.type, change.settings));
         state.addedNodes.push(id);
       } else if (change.op === "update_node" || change.op === "remove_node") {
         const id = state.ids.get(change.node) ?? change.node;
@@ -326,13 +243,9 @@ export class StoreCanvas implements CanvasPort {
             node.type,
             change.settings,
             fills.get(id) ?? flowData(node),
-            modelResolver,
           );
           fills.set(id, data);
-          inputsNow.set(
-            id,
-            inputsFor(node.type, settingsOf(node.type, data, modelResolver)),
-          );
+          inputsNow.set(id, inputsOf(node.type, settingsOf(node.type, data)));
           this.outline(state, id, "fill");
         } else if (!added)
           this.outline(
@@ -346,14 +259,10 @@ export class StoreCanvas implements CanvasPort {
             added.type,
             change.settings,
             added.data,
-            modelResolver,
           );
           inputsNow.set(
             id,
-            inputsFor(
-              added.type,
-              settingsOf(added.type, added.data, modelResolver),
-            ),
+            inputsOf(added.type, settingsOf(added.type, added.data)),
           );
         } else {
           newNodes.splice(newNodes.indexOf(added), 1);
@@ -671,7 +580,7 @@ export class StoreCanvas implements CanvasPort {
     if (!node || !node.type) throw new Error(`The node ${nodeId} is gone.`);
     await this.redrawNow(
       nodeId,
-      dataWithSettings(node.type, settings, node.data, modelResolver),
+      dataWithSettings(node.type, settings, node.data),
     );
   }
 
@@ -689,9 +598,9 @@ export class StoreCanvas implements CanvasPort {
       const node = useStore.getState().nodes.find((n) => n.id === nodeId);
       const next = data ?? node?.data?.[ORIGINAL_KEY];
       if (node && next)
-        await this.redrawNow(nodeId, next, addEdges, dropEdges).catch(() => {
-          // The node was deleted meanwhile; there's nothing to redraw.
-        });
+        await this.redrawNow(nodeId, next, addEdges, dropEdges).catch((err) =>
+          console.error("ChainBuddy couldn't redraw a node:", err),
+        );
     });
   }
 
@@ -699,6 +608,8 @@ export class StoreCanvas implements CanvasPort {
    * Replaces a node's data and redraws it from scratch. Most nodes copy their
    * data into their own state when they first appear, so changing the data
    * of a node already on screen wouldn't show, or be used when it runs.
+   * Everything that can fail happens before the node is taken off, so a
+   * failure leaves it as it was rather than gone.
    */
   private async redrawNow(
     nodeId: string,
@@ -712,28 +623,24 @@ export class StoreCanvas implements CanvasPort {
     const itsEdges = edges.filter(
       (e) => e.source === nodeId || e.target === nodeId,
     );
+    const inputs = inputsOf(node.type, settingsOf(node.type, data));
+    const redrawn = { ...node, data: { ...data, refresh: true } };
+    // Connections to inputs the new data removed go with them.
+    const keptEdges = itsEdges.filter(
+      (e) =>
+        !dropEdges.has(e.id) &&
+        (e.target !== nodeId ||
+          inputs.includes(inputName(node.type, e.targetHandle))),
+    );
+
     useStore.setState((s) => ({
       nodes: s.nodes.filter((n) => n.id !== nodeId),
       edges: s.edges.filter((e) => !itsEdges.includes(e)),
     }));
     await wait(TICK_MS);
-    const inputs = inputsFor(
-      node.type,
-      settingsOf(node.type, data, modelResolver),
-    );
     useStore.setState((s) => ({
-      nodes: [...s.nodes, { ...node, data: { ...data, refresh: true } }],
-      // Connections to inputs the new data removed go with them.
-      edges: [
-        ...s.edges,
-        ...itsEdges.filter(
-          (e) =>
-            !dropEdges.has(e.id) &&
-            (e.target !== nodeId ||
-              inputs.includes(inputName(node.type, e.targetHandle))),
-        ),
-        ...addEdges,
-      ],
+      nodes: [...s.nodes, redrawn],
+      edges: [...s.edges, ...keptEdges, ...addEdges],
     }));
   }
 
@@ -746,6 +653,57 @@ export class StoreCanvas implements CanvasPort {
 function publicView(state: ProposalState): Proposal {
   const { id, summary, lines, status, error } = state;
   return { id, summary, lines, status, error };
+}
+
+// Translating between ChainForge's nodes and ChainBuddy's view of them.
+
+/** ChainBuddy's settings for a node, from its data. */
+function settingsOf(type: string, data: Dict): Record<string, unknown> {
+  return (
+    kindOf(type)?.read(data, modelResolver) ?? { title: data.title ?? type }
+  );
+}
+
+/** Node data with settings applied (see NodeKind.write). */
+function dataWithSettings(
+  type: string,
+  settings: Record<string, unknown>,
+  base: Dict | undefined,
+): Dict {
+  const kind = kindOf(type);
+  if (!kind) throw new Error(`ChainBuddy can't edit ${type} nodes.`);
+  return kind.write(settings, base, modelResolver);
+}
+
+/** ChainBuddy's name for the start of an edge. */
+function outputName(
+  type: string | undefined,
+  handle: string | null | undefined,
+) {
+  return kindOf(type)?.output ?? handle ?? "";
+}
+
+/** ChainBuddy's name for the end of an edge. */
+function inputName(
+  type: string | undefined,
+  handle: string | null | undefined,
+) {
+  const renamed = Object.entries(kindOf(type)?.handles.inputs ?? {}).find(
+    ([, id]) => id === handle,
+  );
+  return renamed?.[0] ?? handle ?? "";
+}
+
+/** The handle ids for a ChainBuddy connection. */
+function handlesFor(sourceType: string, targetType: string, input: string) {
+  const source = kindOf(sourceType);
+  const target = kindOf(targetType);
+  if (!source || !target)
+    throw new Error(`ChainBuddy can't connect ${sourceType} to ${targetType}.`);
+  return {
+    sourceHandle: source.handles.output,
+    targetHandle: target.handles.inputs?.[input] ?? input,
+  };
 }
 
 function makeEdge(
@@ -817,7 +775,7 @@ function isUnfinished(node: Node): boolean {
   const kind = kindOf(type);
   const data = flowData(node);
   if (!kind?.missing || supportOf(type, data) !== "editable") return false;
-  return !!kind.missing(settingsOf(type, data, modelResolver));
+  return !!kind.missing(settingsOf(type, data));
 }
 
 function uniq(values: (string | null | undefined)[]): string[] {

@@ -73,8 +73,6 @@ export interface ProposalReceipt {
 export interface CanvasPort {
   readFlow(): FlowView;
   listModels(): ModelInfo[];
-  /** The inputs a node of this type would have with these settings. */
-  inputsFor(type: string, settings: Record<string, unknown>): string[];
   /** Shows a checked change set for the user to accept or reject. */
   propose(changeSet: ChangeSet): ProposalReceipt;
 }
