@@ -127,6 +127,14 @@ test("accepting twice at once applies the proposal once", async () => {
   ]);
 });
 
+test("proposals from different canvases have different ids", () => {
+  // The chat panel keeps its cards when its canvas is recreated, and knows
+  // them by id.
+  const first = setUp().canvas.propose(addCity);
+  const second = setUp().canvas.propose(addCity);
+  expect(first.id).not.toBe(second.id);
+});
+
 test("rejecting while a proposal applies does nothing", async () => {
   const { canvas, statuses } = setUp();
   const { id } = canvas.propose({

@@ -149,9 +149,11 @@ export function useChainBuddySession(model: ChainBuddyModel) {
       const onEvent = (e: AgentEvent) => {
         if (e.type === "text") {
           setStatus(null);
+          // Read now: React runs the updater later, after streaming is set.
+          const continuing = streaming;
           setItems((its) => {
             const last = its[its.length - 1];
-            if (streaming && last?.kind === "assistant")
+            if (continuing && last?.kind === "assistant")
               return [
                 ...its.slice(0, -1),
                 { ...last, text: last.text + e.delta },
