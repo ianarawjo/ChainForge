@@ -12,6 +12,11 @@ import {
 const POLL_MS = 50;
 const GIVE_UP_MS = 2000;
 const MARGIN = 16;
+/**
+ * The furthest out the view zooms. Nodes are hard to read below this, so a
+ * proposal too wide to fit is shown from its left, running under the panel.
+ */
+const MIN_ZOOM = 0.65;
 
 /**
  * Waits until React Flow has measured the nodes (new nodes have no size at
@@ -44,15 +49,21 @@ export function focusNodes(reactFlow: ReactFlowInstance, ids: string[]) {
     const width = panel
       ? Math.max(panel.left - canvas.left - MARGIN, canvas.width / 3)
       : canvas.width;
+    const rect = getRectOfNodes(nodes);
     const [x, y, zoom] = getTransformForBounds(
-      getRectOfNodes(nodes),
+      rect,
       width,
       canvas.height,
-      0.2,
+      MIN_ZOOM,
       1,
       0.15,
     );
-    reactFlow.setViewport({ x, y, zoom }, { duration: 400 });
+    // At MIN_ZOOM the nodes may not fit; start with the leftmost.
+    const fits = rect.width * zoom <= width;
+    reactFlow.setViewport(
+      { x: fits ? x : MARGIN * 2 - rect.x * zoom, y, zoom },
+      { duration: 400 },
+    );
   };
   attempt();
 }
