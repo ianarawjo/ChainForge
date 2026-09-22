@@ -40,7 +40,12 @@ import { beforeEach, describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
 import useStore from "../../store";
 // eslint-disable-next-line import/first
-import { PENDING_CLASS, Proposal, StoreCanvas } from "../adapters/canvas";
+import {
+  ORIGINAL_KEY,
+  PENDING_CLASS,
+  Proposal,
+  StoreCanvas,
+} from "../adapters/canvas";
 // eslint-disable-next-line import/first
 import { ChangeSet } from "../flowApi/types";
 // eslint-disable-next-line import/first
@@ -358,5 +363,144 @@ describe("noticing another flow", () => {
     expect((useStore.getState() as any).nodes).toHaveLength(1);
     expect(w.count()).toBe(0);
     w.stop();
+  });
+});
+
+describe("unfinished nodes", () => {
+  // As New Flow leaves the canvas.
+  beforeEach(() => {
+    useStore.setState({
+      nodes: [
+        {
+          id: "tf",
+          type: "textfields",
+          position: { x: 0, y: 0 },
+          data: { fields: { f1: "" } },
+        },
+        {
+          id: "p",
+          type: "prompt",
+          position: { x: 400, y: 0 },
+          data: { prompt: "", llms: [haiku], n: 1 },
+        },
+      ],
+      edges: [],
+    } as any);
+  });
+
+  const fillBoth: ChangeSet = {
+    summary: "Ask about cities",
+    changes: [
+      { op: "update_node", node: "tf", settings: { values: ["Paris"] } },
+      {
+        op: "update_node",
+        node: "p",
+        settings: { prompts: [{ label: "A", text: "Describe {city}" }] },
+      },
+      {
+        op: "connect",
+        from: { node: "tf", output: "values" },
+        to: { node: "p", input: "city" },
+      },
+      {
+        op: "add_node",
+        ref: "short",
+        type: "evaluator",
+        settings: {
+          code: "function evaluate(r) { return r.text.length < 9; }",
+        },
+      },
+      {
+        op: "connect",
+        from: { node: "p", output: "responses" },
+        to: { node: "short", input: "responses" },
+      },
+    ],
+  };
+  const nodeById = (id: string) =>
+    (useStore.getState() as any).nodes.find((n: any) => n.id === id);
+
+  test("are shown filled in, while the flow still reads as blank", async () => {
+    const { canvas } = setUp();
+    canvas.propose(fillBoth);
+    await tick(80);
+
+    expect(nodeById("p").className).toBe(PENDING_CLASS.fill);
+    expect(nodeById("p").data.prompt).toBe("Describe {city}");
+    expect(nodeById("tf").data[ORIGINAL_KEY]).toEqual({ fields: { f1: "" } });
+    expect(edgesInto("p")).toHaveLength(1);
+    expect(edgesInto("p")[0].className).toBe(PENDING_CLASS.add);
+    const flow = canvas.readFlow();
+    expect(flow.nodes.find((n) => n.id === "p")?.settings?.prompts).toEqual([
+      { label: "Variant 1", text: "" },
+    ]);
+    expect(flow.connections).toEqual([]);
+  });
+
+  test("go back to how they were when rejected", async () => {
+    const { canvas } = setUp();
+    const { id } = canvas.propose(fillBoth);
+    await tick(80);
+    canvas.reject(id);
+    await tick(80);
+
+    const { nodes, edges } = useStore.getState() as any;
+    expect(nodes.map((n: any) => n.id).sort()).toEqual(["p", "tf"]);
+    expect(nodeById("p").data.prompt).toBe("");
+    expect(nodeById("p").data[ORIGINAL_KEY]).toBeUndefined();
+    expect(nodeById("p").className).toBeUndefined();
+    expect(edges).toEqual([]);
+  });
+
+  test("keep their new contents when accepted, and it's not a new flow", async () => {
+    const { canvas } = setUp();
+    let switches = 0;
+    const stop = canvas.watchForFlowSwitch(() => switches++);
+    const { id } = canvas.propose(fillBoth);
+    await canvas.accept(id);
+
+    expect(nodeById("p").data.prompt).toBe("Describe {city}");
+    expect(nodeById("p").data[ORIGINAL_KEY]).toBeUndefined();
+    expect(nodeById("p").className).toBeUndefined();
+    const { edges } = useStore.getState() as any;
+    expect(edges).toHaveLength(2);
+    expect(edges.every((e: any) => !e.className)).toBe(true);
+    expect(canvas.readFlow().connections).toHaveLength(2);
+    expect(switches).toBe(0);
+    stop();
+  });
+
+  test("finished nodes are only outlined", () => {
+    useStore.setState((s: any) => ({
+      nodes: s.nodes.map((n: any) =>
+        n.id === "p" ? { ...n, data: { ...n.data, prompt: "Hi" } } : n,
+      ),
+    }));
+    const { canvas } = setUp();
+    canvas.propose(addCity);
+    expect(nodeById("p").className).toBe(PENDING_CLASS.update);
+    expect(nodeById("p").data.prompt).toBe("Hi");
+  });
+
+  test("left filled in by a reload go back to how they were", async () => {
+    useStore.setState((s: any) => ({
+      nodes: s.nodes.map((n: any) =>
+        n.id === "p"
+          ? {
+              ...n,
+              className: PENDING_CLASS.fill,
+              data: { prompt: "Describe {city}", [ORIGINAL_KEY]: n.data },
+            }
+          : n,
+      ),
+    }));
+    const { canvas } = setUp();
+    const stop = canvas.removeOrphans(10);
+    await tick(100);
+    stop();
+
+    expect(nodeById("p").data.prompt).toBe("");
+    expect(nodeById("p").data[ORIGINAL_KEY]).toBeUndefined();
+    expect(nodeById("p").className).toBeUndefined();
   });
 });
