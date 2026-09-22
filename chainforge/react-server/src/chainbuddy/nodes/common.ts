@@ -1,7 +1,8 @@
 /** Pieces several node kinds share. */
 
+import { extractTemplateVars } from "../../backend/template";
 import { isPlainObject } from "../runtime/tools";
-import { SettingSpec, VarsOf } from "./types";
+import { SettingSpec } from "./types";
 
 export const titleSetting: SettingSpec = {
   label: "Title",
@@ -38,15 +39,12 @@ export function field(item: unknown, key: string): unknown {
 }
 
 /**
- * {name} variables the simple way: not \{escaped\} braces, and not {#name}
- * references. For tests and prototypes; the app uses ChainForge's own parser.
+ * The {variables} in some texts, as ChainForge's nodes find them: not
+ * \\{escaped\\} braces, and not {#name} references to earlier values.
  */
-export const simpleVarsOf: VarsOf = (texts) => {
+export function templateVars(texts: string[]): string[] {
   const vars = new Set<string>();
-  const pattern = /(^|[^\\])\{([^{}#\\][^{}\\]*)\}/g;
-  for (const text of texts) {
-    let m;
-    while ((m = pattern.exec(text)) !== null) vars.add(m[2]);
-  }
+  for (const text of texts)
+    for (const v of extractTemplateVars(text)) if (v[0] !== "#") vars.add(v);
   return Array.from(vars);
-};
+}

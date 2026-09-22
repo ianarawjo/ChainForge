@@ -1,7 +1,14 @@
 import doc from "../knowledge/nodes/prompt.md";
 import { Dict, LLMSpec } from "../../backend/typing";
 import { isPlainObject } from "../runtime/tools";
-import { doubleBraces, field, hasText, listOf, titleSetting } from "./common";
+import {
+  doubleBraces,
+  field,
+  hasText,
+  listOf,
+  templateVars,
+  titleSetting,
+} from "./common";
 import { NodeKind } from "./types";
 
 type Prompt = { label?: string; text: string };
@@ -73,8 +80,10 @@ export const promptKind: NodeKind = {
     },
   },
 
-  inputs: (settings, varsOf) =>
-    varsOf(listOf(settings.prompts).map((p) => String(field(p, "text") ?? ""))),
+  inputs: (settings) =>
+    templateVars(
+      listOf(settings.prompts).map((p) => String(field(p, "text") ?? "")),
+    ),
 
   missing: (settings) => {
     if (!hasText(settings.prompts, (p) => field(p, "text")))
@@ -83,7 +92,7 @@ export const promptKind: NodeKind = {
     return undefined;
   },
 
-  read(data, { models }) {
+  read(data, models) {
     const texts: string[] = Array.isArray(data.prompt)
       ? data.prompt
       : [data.prompt ?? ""];
@@ -102,7 +111,7 @@ export const promptKind: NodeKind = {
     };
   },
 
-  write(settings, base, { models, varsOf }) {
+  write(settings, base, models) {
     const out: Dict = { ...(base ?? {}) };
     if (typeof settings.title === "string") out.title = settings.title;
     if (Array.isArray(settings.prompts)) {
@@ -114,7 +123,7 @@ export const promptKind: NodeKind = {
       );
       out.idxPromptVariantShown = 0;
       // The node reads its inputs from here when it first appears.
-      out.vars = varsOf(texts);
+      out.vars = templateVars(texts);
     }
     if (Array.isArray(settings.models)) {
       const existing: LLMSpec[] = base?.llms ?? [];

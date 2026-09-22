@@ -1,24 +1,20 @@
-// Checks the translation between node data and ChainBuddy's settings, using
-// the example flows as real node data. If a node's data changes shape, these
-// tests are meant to fail and point at adapters/nodeData.ts.
+// Checks each kind's translation between node data and ChainBuddy's
+// settings, using the example flows as real node data. If a node's data
+// changes shape, these tests are meant to fail and point at its kind in nodes/.
 
 import { describe, expect, test } from "@jest/globals";
 import * as fs from "fs";
 import * as path from "path";
-import {
-  dataWithSettings,
-  inputsFor,
-  modelIdOf,
-  ModelResolver,
-  settingsOf,
-  supportOf,
-} from "../adapters/nodeData";
-import { LLMSpec } from "../../backend/typing";
+import { Dict, LLMSpec } from "../../backend/typing";
+import { inputsOf, kindOf, supportOf } from "../nodes";
+import { ModelResolver } from "../nodes/types";
 
 const EXAMPLES = path.join(__dirname, "..", "..", "..", "..", "examples");
 
+// Stands in for adapters/models.ts, which needs the store. Any ID that tells
+// a node's models apart will do; names are unique within a node.
 const resolver: ModelResolver = {
-  idOf: modelIdOf,
+  idOf: (llm) => llm.name,
   toSpec: (id, taken) => ({
     key: `new-${id}`,
     name: taken.includes(id) ? `${id} (2)` : id,
@@ -45,6 +41,15 @@ const MANAGED: Record<string, string[]> = {
   textfields: ["fields", "fields_visibility", "title"],
   evaluator: ["code", "language", "title"],
 };
+
+const settingsOf = (type: string, data: Dict, models: ModelResolver) =>
+  kindOf(type)?.read(data, models) ?? {};
+const dataWithSettings = (
+  type: string,
+  settings: Record<string, unknown>,
+  base: Dict | undefined,
+  models: ModelResolver,
+) => kindOf(type)?.write(settings, base, models) ?? {};
 
 const pick = (data: any, keys: string[]) =>
   Object.fromEntries(
@@ -123,7 +128,7 @@ describe("dataWithSettings", () => {
     };
     const data = dataWithSettings(
       "prompt",
-      { models: [{ model: "b" }, { model: existing.model }] },
+      { models: [{ model: "b" }, { model: existing.name }] },
       { prompt: "Hi", llms: [existing] },
       resolver,
     );
@@ -176,22 +181,9 @@ test("Python evaluators aren't supported", () => {
 
 test("inputs follow ChainForge's template rules", () => {
   expect(
-    inputsFor("prompt", {
+    inputsOf("prompt", {
       prompts: [{ text: "{a} and \\{not} and {#ref} and {=system_msg}" }],
     }),
   ).toEqual(["a", "=system_msg"]);
-  expect(inputsFor("evaluator", {})).toEqual(["responses"]);
-});
-
-test("model IDs match list_models", () => {
-  expect(
-    modelIdOf({
-      name: "q",
-      emoji: "🦙",
-      model: "ollama",
-      base_model: "ollama",
-      temp: 1,
-      settings: { ollamaModel: "qwen3.5:4b" },
-    }),
-  ).toBe("ollama/qwen3.5:4b");
+  expect(inputsOf("evaluator", {})).toEqual(["responses"]);
 });

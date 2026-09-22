@@ -49,6 +49,10 @@ import {
 // eslint-disable-next-line import/first
 import { ChangeSet } from "../flowApi/types";
 // eslint-disable-next-line import/first
+import { modelIdOf } from "../adapters/models";
+// eslint-disable-next-line import/first
+import { promptKind } from "../nodes/prompt";
+// eslint-disable-next-line import/first
 import { FlowLoadGuard } from "../../backend/flowLoadGuard";
 
 const tick = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -490,6 +494,32 @@ describe("unfinished nodes", () => {
     expect(nodeById("p").data.prompt).toBe("Hi");
   });
 
+  test("stay on the canvas if going back fails", async () => {
+    useStore.setState((s: any) => ({
+      nodes: s.nodes.map((n: any) =>
+        n.id === "p"
+          ? {
+              ...n,
+              className: PENDING_CLASS.fill,
+              data: { prompt: "Describe {city}", [ORIGINAL_KEY]: n.data },
+            }
+          : n,
+      ),
+    }));
+    const read = jest.spyOn(promptKind, "read").mockImplementation(() => {
+      throw new Error("broken");
+    });
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {});
+    const { canvas } = setUp();
+    const stop = canvas.removeOrphans(10);
+    await tick(100);
+    stop();
+    expect(nodeById("p")).toBeDefined();
+    expect(logged).toHaveBeenCalled();
+    read.mockRestore();
+    logged.mockRestore();
+  });
+
   test("left filled in by a reload go back to how they were", async () => {
     useStore.setState((s: any) => ({
       nodes: s.nodes.map((n: any) =>
@@ -511,4 +541,17 @@ describe("unfinished nodes", () => {
     expect(nodeById("p").data[ORIGINAL_KEY]).toBeUndefined();
     expect(nodeById("p").className).toBeUndefined();
   });
+});
+
+test("model IDs match list_models", () => {
+  expect(
+    modelIdOf({
+      name: "q",
+      emoji: "🦙",
+      model: "ollama",
+      base_model: "ollama",
+      temp: 1,
+      settings: { ollamaModel: "qwen3.5:4b" },
+    }),
+  ).toBe("ollama/qwen3.5:4b");
 });

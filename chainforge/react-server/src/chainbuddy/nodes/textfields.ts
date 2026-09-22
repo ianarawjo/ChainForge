@@ -1,6 +1,12 @@
 import doc from "../knowledge/nodes/textfields.md";
 import { Dict } from "../../backend/typing";
-import { doubleBraces, hasText, listOf, titleSetting } from "./common";
+import {
+  doubleBraces,
+  hasText,
+  listOf,
+  templateVars,
+  titleSetting,
+} from "./common";
 import { NodeKind } from "./types";
 
 const valueItems = { key: String, label: (v: unknown) => `"${v}"` };
@@ -38,8 +44,8 @@ export const textfieldsKind: NodeKind = {
     },
   },
 
-  inputs: (settings, varsOf) =>
-    varsOf(
+  inputs: (settings) =>
+    templateVars(
       [...listOf(settings.values), ...listOf(settings.disabled_values)].map(
         String,
       ),
@@ -63,7 +69,7 @@ export const textfieldsKind: NodeKind = {
     };
   },
 
-  write(settings, base, { varsOf }) {
+  write(settings, base) {
     const out: Dict = { ...(base ?? {}) };
     if (typeof settings.title === "string") out.title = settings.title;
     if (Array.isArray(settings.values)) {
@@ -90,7 +96,7 @@ export const textfieldsKind: NodeKind = {
           ([id, v]) => v === false && id in next,
         ),
       );
-      out.vars = varsOf(Object.values(next));
+      out.vars = templateVars(Object.values(next));
     }
     return out;
   },

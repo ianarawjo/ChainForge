@@ -156,7 +156,6 @@ export function createFlowTools({
         const { problems, changes } = checkChanges(
           canvas.readFlow(),
           args.changes as Record<string, unknown>[],
-          canvas,
           canvas.listModels(),
         );
         if (problems.length > 0)
