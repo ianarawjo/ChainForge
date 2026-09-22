@@ -1,10 +1,6 @@
 ---
 type: evaluator
 name: JavaScript Evaluator
-support: editable
-support_only_when:
-  language: javascript
-runnable: true
 ---
 
 # JavaScript Evaluator
@@ -34,19 +30,14 @@ JavaScript evaluators, and treats Python ones as not supported.
 
 ## Inputs
 
-- `responses`: the responses to score, from a Prompt Node.
+- `responses`: the responses to score. Accepts `responses`, such as a Prompt
+  Node's.
 
 ## Outputs
 
 - `scored_responses`: the same responses, each with its score attached. People
   usually connect this to a Vis Node or Inspect Node, which ChainBuddy
   doesn't support yet; suggest the user add one.
-
-## Connects to
-
-| From                         | To          |
-| ---------------------------- | ----------- |
-| `responses` of a Prompt Node | `responses` |
 
 ## Settings
 
@@ -57,6 +48,7 @@ title:
 code:
   type: code
   language: javascript
+  required: true
   description: >
     Must define function evaluate(response) and return a score. See "Writing
     the code" below.
@@ -94,9 +86,9 @@ code: |
 
 ## Watch out for
 
-- **The user must approve the code before its first run.** This code runs
-  inside ChainForge's own page. Write plain, readable functions, and explain
-  what the code checks when proposing it.
+- **The code runs inside ChainForge's own page** when the user runs the
+  node. Write plain, readable functions, and explain what the code checks
+  when proposing it.
 - **No network requests, no browser storage, no imports.** Evaluator code
   should only look at the response it's given.
 - **One thrown error fails the whole run.** Guard against missing values,
