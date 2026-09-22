@@ -10,7 +10,7 @@ export const textfieldsKind: NodeKind = {
   name: "TextFields Node",
   doc,
   output: "values",
-  connectsTo: ["prompt", "textfields"],
+  accepts: ["values"],
   handles: { output: "output" },
 
   settings: {

@@ -6,14 +6,14 @@
  * flowApi/ depends on how nodes store their data.
  */
 
-export type Support = "editable" | "view-only" | "not-supported";
+export type Support = "editable" | "not-supported";
 
 export interface NodeView {
   id: string;
   type: string;
   title: string;
   support: Support;
-  /** Only for editable and view-only nodes. */
+  /** Only for editable nodes. */
   settings?: Record<string, unknown>;
   inputs: string[];
   outputs: string[];
