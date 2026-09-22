@@ -5,6 +5,9 @@
  * Proposed nodes and connections are real nodes and edges, drawn dashed, so
  * the user sees exactly what they'd get. Edits to existing nodes and removals
  * wait until the user accepts; the nodes they touch are outlined meanwhile.
+ * The exception is an unfinished node, such as the blank ones a new flow
+ * starts with: an edit to one is shown filled in, since there is little to
+ * lose, and the node keeps its old data (ORIGINAL_KEY) to go back to.
  */
 
 import { Edge, MarkerType, Node } from "reactflow";
@@ -42,7 +45,18 @@ export const PENDING_CLASS = {
   add: "chainbuddy-pending-add",
   update: "chainbuddy-pending-update",
   remove: "chainbuddy-pending-remove",
+  fill: "chainbuddy-pending-fill",
 };
+
+/**
+ * Where a node shown filled in keeps its data from before, so a reload while
+ * the proposal waits can still put it back.
+ */
+export const ORIGINAL_KEY = "chainbuddyOriginal";
+
+/** A node's data as the flow has it, ignoring a proposal shown filled in. */
+const flowData = (node: Node): Dict =>
+  node.data?.[ORIGINAL_KEY] ?? node.data ?? {};
 
 export type ProposalStatus =
   | "pending"
@@ -71,6 +85,8 @@ interface ProposalState extends Proposal {
   deferred: Extract<Change, { op: "connect" }>[];
   /** Existing nodes this proposal outlines, and the class each had before. */
   outlined: Map<string, string | undefined>;
+  /** Existing nodes shown filled in with their edit. */
+  filled: string[];
 }
 
 const TICK_MS = 20;
@@ -140,6 +156,11 @@ export interface CanvasEvents {
 export class StoreCanvas implements CanvasPort {
   private proposals = new Map<string, ProposalState>();
   private count = 0;
+  /**
+   * Redrawing a node takes a tick, so redraws run one after another, and
+   * accepting waits for them.
+   */
+  private redraws: Promise<void> = Promise.resolve();
 
   private readonly events: CanvasEvents;
 
@@ -165,7 +186,7 @@ export class StoreCanvas implements CanvasPort {
     );
 
     const views: NodeView[] = shown.map((n) => {
-      const data = n.data ?? {};
+      const data = flowData(n);
       const support = supportOf(n.type, data);
       const title = data.title ?? n.type ?? "Node";
       if (support === "not-supported" || !n.type)
@@ -255,6 +276,7 @@ export class StoreCanvas implements CanvasPort {
       addedEdges: [],
       deferred: [],
       outlined: new Map(),
+      filled: [],
     };
     this.proposals.set(state.id, state);
 
@@ -268,6 +290,8 @@ export class StoreCanvas implements CanvasPort {
       "";
     // Inputs each node has on the canvas right now.
     const inputsNow = new Map(flow.nodes.map((n) => [n.id, n.inputs]));
+    // Unfinished nodes shown filled in → their proposed data.
+    const fills = new Map<string, Dict>();
 
     for (const change of changeSet.changes) {
       if (change.op === "add_node") {
@@ -291,7 +315,26 @@ export class StoreCanvas implements CanvasPort {
       } else if (change.op === "update_node" || change.op === "remove_node") {
         const id = state.ids.get(change.node) ?? change.node;
         const added = newNodes.find((n) => n.id === id);
-        if (!added)
+        const node = store.nodes.find((n) => n.id === id);
+        if (
+          !added &&
+          change.op === "update_node" &&
+          node?.type &&
+          (fills.has(id) || isUnfinished(node))
+        ) {
+          const data = dataWithSettings(
+            node.type,
+            change.settings,
+            fills.get(id) ?? flowData(node),
+            modelResolver,
+          );
+          fills.set(id, data);
+          inputsNow.set(
+            id,
+            inputsFor(node.type, settingsOf(node.type, data, modelResolver)),
+          );
+          this.outline(state, id, "fill");
+        } else if (!added)
           this.outline(
             state,
             id,
@@ -342,10 +385,24 @@ export class StoreCanvas implements CanvasPort {
       }
     }
 
+    // Connections to filled-in nodes wait until they're redrawn.
+    const touchesFill = (e: Edge) => fills.has(e.source) || fills.has(e.target);
     useStore.setState((s) => ({
       nodes: [...s.nodes.map((n) => ({ ...n, selected: false })), ...newNodes],
-      edges: [...s.edges, ...newEdges],
+      edges: [...s.edges, ...newEdges.filter((e) => !touchesFill(e))],
     }));
+    state.filled = Array.from(fills.keys());
+    for (const [nodeId, data] of Array.from(fills.entries())) {
+      const node = store.nodes.find((n) => n.id === nodeId) as Node;
+      const withOriginal = { ...data, [ORIGINAL_KEY]: flowData(node) };
+      // Each connection comes back with the node it goes into, or with the
+      // node it comes from when that's the only one filled in.
+      const edges = newEdges.filter(
+        (e) =>
+          e.target === nodeId || (e.source === nodeId && !fills.has(e.target)),
+      );
+      this.redraw(nodeId, withOriginal, edges);
+    }
     this.events.onProposal?.(publicView(state));
     this.events.onFocus?.([
       ...state.addedNodes,
@@ -361,6 +418,7 @@ export class StoreCanvas implements CanvasPort {
     // Applying takes a few ticks. Marking it now stops a second click on
     // Accept, or a Reject, from working on it at the same time.
     this.setStatus(state, "applying");
+    await this.redraws;
 
     // Check everything is still there before changing anything, so a node
     // deleted since the proposal can't leave it half-applied.
@@ -376,10 +434,15 @@ export class StoreCanvas implements CanvasPort {
       const store = useStore.getState();
       // Proposed nodes and edges become ordinary ones.
       const added = new Set([...state.addedNodes, ...state.addedEdges]);
+      // Filled-in nodes already have their new data.
+      const filled = new Set(state.filled);
       useStore.setState((s) => ({
-        nodes: s.nodes.map((n) =>
-          added.has(n.id) ? { ...n, className: undefined } : n,
-        ),
+        nodes: s.nodes.map((n) => {
+          if (added.has(n.id)) return { ...n, className: undefined };
+          if (!filled.has(n.id)) return n;
+          const { [ORIGINAL_KEY]: _, ...data } = n.data ?? {};
+          return { ...n, data };
+        }),
         edges: s.edges.map((e) =>
           added.has(e.id) ? { ...e, className: undefined } : e,
         ),
@@ -399,7 +462,8 @@ export class StoreCanvas implements CanvasPort {
           // Existing nodes map to themselves; refs map to nodes this proposal
           // added, which were already built with their final settings.
           const isExisting = state.ids.get(change.node) === change.node;
-          if (isExisting) await this.rebuild(change.node, change.settings);
+          if (isExisting && !filled.has(change.node))
+            await this.rebuild(change.node, change.settings);
         }
       }
 
@@ -477,6 +541,10 @@ export class StoreCanvas implements CanvasPort {
           p.outlined.forEach((_, id) => outlined.add(id));
         }
       const { nodes, edges } = useStore.getState();
+      // Filled-in nodes go back to how they were.
+      for (const n of nodes)
+        if (n.data?.[ORIGINAL_KEY] && !outlined.has(n.id))
+          this.redraw(n.id, n.data[ORIGINAL_KEY]);
       const isPending = (cls: string | undefined) =>
         !!cls && Object.values(PENDING_CLASS).includes(cls);
       const orphanNodes = new Set(
@@ -557,6 +625,9 @@ export class StoreCanvas implements CanvasPort {
 
   /** Takes a proposal off the canvas, leaving the flow as it was. */
   private clear(state: ProposalState) {
+    const proposed = new Set(state.addedEdges);
+    for (const nodeId of state.filled)
+      this.redraw(nodeId, undefined, [], proposed);
     const nodes = new Set(state.addedNodes);
     const edges = new Set(state.addedEdges);
     useStore.setState((s) => ({
@@ -571,7 +642,7 @@ export class StoreCanvas implements CanvasPort {
   private outline(
     state: ProposalState,
     nodeId: string,
-    kind: "update" | "remove",
+    kind: "update" | "remove" | "fill",
   ) {
     const node = useStore.getState().nodes.find((n) => n.id === nodeId);
     if (!node) return;
@@ -594,21 +665,50 @@ export class StoreCanvas implements CanvasPort {
     state.outlined.clear();
   }
 
+  /** Applies an edit to a node, redrawing it (see redrawNow). */
+  private async rebuild(nodeId: string, settings: Record<string, unknown>) {
+    const node = useStore.getState().nodes.find((n) => n.id === nodeId);
+    if (!node || !node.type) throw new Error(`The node ${nodeId} is gone.`);
+    await this.redrawNow(
+      nodeId,
+      dataWithSettings(node.type, settings, node.data, modelResolver),
+    );
+  }
+
+  /**
+   * Queues a redraw (see redrawNow). With no data, the node goes back to the
+   * data it kept under ORIGINAL_KEY, if it's still shown filled in by then.
+   */
+  private redraw(
+    nodeId: string,
+    data?: Dict,
+    addEdges: Edge[] = [],
+    dropEdges = new Set<string>(),
+  ) {
+    this.redraws = this.redraws.then(async () => {
+      const node = useStore.getState().nodes.find((n) => n.id === nodeId);
+      const next = data ?? node?.data?.[ORIGINAL_KEY];
+      if (node && next)
+        await this.redrawNow(nodeId, next, addEdges, dropEdges).catch(() => {
+          // The node was deleted meanwhile; there's nothing to redraw.
+        });
+    });
+  }
+
   /**
    * Replaces a node's data and redraws it from scratch. Most nodes copy their
    * data into their own state when they first appear, so changing the data
    * of a node already on screen wouldn't show, or be used when it runs.
    */
-  private async rebuild(nodeId: string, settings: Record<string, unknown>) {
+  private async redrawNow(
+    nodeId: string,
+    data: Dict,
+    addEdges: Edge[] = [],
+    dropEdges = new Set<string>(),
+  ) {
     const { nodes, edges } = useStore.getState();
     const node = nodes.find((n) => n.id === nodeId);
     if (!node || !node.type) throw new Error(`The node ${nodeId} is gone.`);
-    const data = dataWithSettings(
-      node.type,
-      settings,
-      node.data,
-      modelResolver,
-    );
     const itsEdges = edges.filter(
       (e) => e.source === nodeId || e.target === nodeId,
     );
@@ -623,14 +723,16 @@ export class StoreCanvas implements CanvasPort {
     );
     useStore.setState((s) => ({
       nodes: [...s.nodes, { ...node, data: { ...data, refresh: true } }],
-      // Connections to inputs the edit removed go with them.
+      // Connections to inputs the new data removed go with them.
       edges: [
         ...s.edges,
         ...itsEdges.filter(
           (e) =>
-            e.target !== nodeId ||
-            inputs.includes(inputName(node.type, e.targetHandle)),
+            !dropEdges.has(e.id) &&
+            (e.target !== nodeId ||
+              inputs.includes(inputName(node.type, e.targetHandle))),
         ),
+        ...addEdges,
       ],
     }));
   }
@@ -707,6 +809,15 @@ function layout(changes: Change[], existing: Node[]) {
     positions.set(ref, { x: right + col * 480, y: top + row * 320 });
   }
   return positions;
+}
+
+/** Whether a node isn't finished yet, such as a blank Prompt Node. */
+function isUnfinished(node: Node): boolean {
+  const type = node.type ?? "";
+  const kind = kindOf(type);
+  const data = flowData(node);
+  if (!kind?.missing || supportOf(type, data) !== "editable") return false;
+  return !!kind.missing(settingsOf(type, data, modelResolver));
 }
 
 function uniq(values: (string | null | undefined)[]): string[] {
