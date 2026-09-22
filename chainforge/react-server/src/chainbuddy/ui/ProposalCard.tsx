@@ -27,6 +27,7 @@ const ICONS = {
 };
 
 const STATUS: Record<string, { label: string; color: string }> = {
+  applying: { label: "Applying…", color: "grape" },
   accepted: { label: "Accepted", color: "green" },
   rejected: { label: "Rejected", color: "gray" },
   replaced: { label: "Replaced by a newer proposal", color: "gray" },
