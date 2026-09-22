@@ -87,7 +87,8 @@ this list and the code agree, so changing a rule means changing both.
 
 1. **Nothing changes until you accept it.** Every edit arrives as a change set,
    shown on the canvas with new, changed, and removed nodes highlighted.
-   Rejecting it leaves the canvas exactly as it was. Accepting it can be undone.
+   Unfinished nodes, such as the blank ones a new flow starts with, are shown
+   filled in. Rejecting it leaves the canvas exactly as it was. Accepting it can be undone.
 2. **Nothing runs until you approve it.** Before a run, ChainBuddy shows the
    nodes it wants to run and the estimated number of model calls.
 3. **Code ChainBuddy wrote does not run until you've read it.** When
