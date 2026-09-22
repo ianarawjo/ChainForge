@@ -476,7 +476,7 @@ test("describeChanges shows list edits as items added and removed", () => {
     },
     {
       kind: "add",
-      text: 'Add Evaluator "Is short"',
+      text: 'Add JavaScript Evaluator "Is short"',
       details: [
         { setting: "Code", value: "function evaluate(r) {}", code: true },
       ],
