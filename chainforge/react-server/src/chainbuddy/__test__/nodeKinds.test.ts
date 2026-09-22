@@ -3,9 +3,14 @@
 // ChainBuddy picks it up.
 
 import { afterAll, beforeAll, expect, test } from "@jest/globals";
-import { dataWithSettings, settingsOf, supportOf } from "../adapters/nodeData";
 import { describeChanges } from "../flowApi/describe";
-import { editableTypes, NODE_KINDS, systemPrompt } from "../nodes";
+import {
+  editableTypes,
+  kindOf,
+  NODE_KINDS,
+  supportOf,
+  systemPrompt,
+} from "../nodes";
 import { listOf, titleSetting } from "../nodes/common";
 import { NodeKind } from "../nodes/types";
 import { createStubTools } from "../prototype/stubTools";
@@ -118,18 +123,14 @@ test("a new kind's settings are checked like any other", () => {
   ]);
 });
 
-test("the canvas translates a new kind's data, and the model is told about it", () => {
+test("a new kind is found by its type, and the model is told about it", () => {
   expect(editableTypes()).toContain("csv");
   expect(supportOf("csv", {})).toBe("editable");
   const resolver = { idOf: () => "", toSpec: () => undefined };
-  const data = dataWithSettings(
-    "csv",
-    { values: ["apple", "pear"] },
-    undefined,
-    resolver,
-  );
+  const kind = kindOf("csv") as NodeKind;
+  const data = kind.write({ values: ["apple", "pear"] }, undefined, resolver);
   expect(data).toEqual({ text: "apple, pear", fields: ["apple", "pear"] });
-  expect(settingsOf("csv", data, resolver)).toEqual({
+  expect(kind.read(data, resolver)).toEqual({
     title: "Items Node",
     values: ["apple", "pear"],
   });

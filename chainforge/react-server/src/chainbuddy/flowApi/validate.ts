@@ -4,16 +4,9 @@
  */
 
 import { isPlainObject } from "../runtime/tools";
-import { editableTypes, kindOf } from "../nodes";
+import { editableTypes, inputsOf, kindOf } from "../nodes";
 import { NodeKind } from "../nodes/types";
-import {
-  CanvasPort,
-  Change,
-  ConnectionView,
-  FlowView,
-  ModelInfo,
-  Support,
-} from "./types";
+import { Change, ConnectionView, FlowView, ModelInfo, Support } from "./types";
 
 interface WorkingNode {
   type: string;
@@ -33,7 +26,6 @@ export interface CheckResult {
 export function checkChanges(
   flow: FlowView,
   raw: Record<string, unknown>[],
-  canvas: Pick<CanvasPort, "inputsFor">,
   models: ModelInfo[],
 ): CheckResult {
   const problems: string[] = [];
@@ -228,7 +220,7 @@ export function checkChanges(
               ? `${at}: ${toId} takes ${accepts.join(" or ")}, and ${fromId} gives ${spec.output}.`
               : `${at}: a ${target.type} node has no inputs.`,
           );
-        const inputs = canvas.inputsFor(target.type, target.settings);
+        const inputs = inputsOf(target.type, target.settings);
         if (!inputs.includes(String(to.input)))
           problems.push(
             `${at}: ${toId} has no input "${String(to.input)}". Its inputs are: ${inputs.join(", ") || "(none)"}.`,
@@ -268,7 +260,7 @@ export function checkChanges(
   if (problems.length === 0)
     for (const [id, node] of Array.from(nodes.entries())) {
       if (!node.touched) continue;
-      const inputs = canvas.inputsFor(node.type, node.settings);
+      const inputs = inputsOf(node.type, node.settings);
       for (const input of inputs) {
         if (node.inputsBefore?.includes(input)) continue;
         const fed = connections.some(
