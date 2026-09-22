@@ -16,7 +16,7 @@ export const promptKind: NodeKind = {
   name: "Prompt Node",
   doc,
   output: "responses",
-  connectsTo: ["prompt", "evaluator"],
+  accepts: ["values", "responses"],
   handles: { output: "prompt" },
 
   settings: {

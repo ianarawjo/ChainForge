@@ -217,13 +217,16 @@ export function checkChanges(
         if (problems.length > before) return;
 
         const spec = kindOf(source.type) as NodeKind;
+        const accepts = (kindOf(target.type) as NodeKind).accepts;
         if (from.output !== spec.output)
           problems.push(
             `${at}: ${fromId} has no output "${String(from.output)}"; its output is "${spec.output}".`,
           );
-        if (!spec.connectsTo.includes(target.type))
+        else if (!accepts.includes(spec.output))
           problems.push(
-            `${at}: a ${source.type} node can't connect to a ${target.type} node.`,
+            accepts.length
+              ? `${at}: ${toId} takes ${accepts.join(" or ")}, and ${fromId} gives ${spec.output}.`
+              : `${at}: a ${target.type} node has no inputs.`,
           );
         const inputs = canvas.inputsFor(target.type, target.settings);
         if (!inputs.includes(String(to.input)))

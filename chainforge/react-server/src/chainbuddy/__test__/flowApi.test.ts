@@ -235,6 +235,28 @@ describe("propose_changes", () => {
     ]);
   });
 
+  test("connects an output only to inputs that take what it gives", () => {
+    const { tools } = createStubTools({ models: MODELS });
+    const out = propose(tools, [
+      ...newFlow,
+      {
+        op: "connect",
+        from: { node: "check", output: "scored_responses" },
+        to: { node: "ask", input: "fact" },
+      },
+      {
+        op: "connect",
+        from: { node: "ask", output: "responses" },
+        to: { node: "facts", input: "fact" },
+      },
+    ]);
+    expect(out.problems).toEqual([
+      "changes[5] (connect): ask takes values or responses, and check gives scored_responses.",
+      "changes[6] (connect): facts takes values, and ask gives responses.",
+      'changes[6] (connect): facts has no input "fact". Its inputs are: (none).',
+    ]);
+  });
+
   test("a removed node can't be used later in the list", () => {
     const { tools } = createStubTools({ flow: EXAMPLE_FLOW, models: MODELS });
     const out = propose(tools, [

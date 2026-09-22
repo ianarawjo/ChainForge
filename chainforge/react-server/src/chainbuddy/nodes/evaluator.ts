@@ -7,7 +7,7 @@ export const evaluatorKind: NodeKind = {
   name: "JavaScript Evaluator",
   doc,
   output: "scored_responses",
-  connectsTo: [],
+  accepts: ["responses"],
   handles: { output: "output", inputs: { responses: "responseBatch" } },
   unconnectedHint: "Connect a Prompt Node's responses to it.",
 
