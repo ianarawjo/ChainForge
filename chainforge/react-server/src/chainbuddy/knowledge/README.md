@@ -62,15 +62,15 @@ file.
 These are the only actions ChainBuddy has. It has no other way to reach the
 canvas, your files, or the internet.
 
-| Action            | What it does                                                               | Needs your approval          |
-| ----------------- | -------------------------------------------------------------------------- | ---------------------------- |
-| `get_flow`        | Reads a summary of the canvas: nodes, their settings, and connections      | No                           |
-| `describe_node`   | Reads one node type's file from this folder                                | No                           |
-| `list_models`     | Lists the models you can use, as they appear in ChainForge's model menu    | No                           |
-| `get_results`     | Reads a node's latest results, summarized, with a sample of rows           | No                           |
-| `propose_changes` | Proposes adding, editing, connecting, or removing nodes, as one change set | Yes, before anything changes |
-| `run_nodes`       | Runs nodes, after showing how many model calls that will make              | Yes, before running          |
-| `ask_user`        | Asks you questions in the chat panel, as a short form                      | You answer, or skip          |
+| Action            | What it does                                                                                                                             | Needs your approval          |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `get_flow`        | Reads a summary of the canvas: nodes, their settings, and connections                                                                    | No                           |
+| `describe_node`   | Reads one node type's file from this folder                                                                                              | No                           |
+| `list_models`     | Lists the models you can use, as they appear in ChainForge's model menu                                                                  | No                           |
+| `get_results`     | Reads a node's latest results, summarized, with a sample of rows                                                                         | No                           |
+| `propose_changes` | Proposes adding, editing, connecting, or removing nodes, as one change set. Refused unless `get_flow` was called since your last message | Yes, before anything changes |
+| `run_nodes`       | Runs nodes, after showing how many model calls that will make                                                                            | Yes, before running          |
+| `ask_user`        | Asks you questions in the chat panel, as a short form                                                                                    | You answer, or skip          |
 
 ## Rules
 

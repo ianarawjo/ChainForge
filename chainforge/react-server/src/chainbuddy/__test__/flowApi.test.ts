@@ -3,6 +3,7 @@ import { describeChanges } from "../flowApi/describe";
 import { ModelInfo } from "../flowApi/types";
 import { AgentTool } from "../runtime/tools";
 import {
+  BLANK_FLOW,
   createStubTools,
   EXAMPLE_FLOW,
   stubNode,
@@ -35,8 +36,11 @@ function run(tools: AgentTool[], name: string, args: object = {}) {
   return tool.run(args as Record<string, unknown>, {}) as Record<string, any>;
 }
 
-const propose = (tools: AgentTool[], changes: unknown[]) =>
-  run(tools, "propose_changes", { summary: "test", changes });
+/** Reads the canvas, as ChainBuddy must, then proposes. */
+const propose = (tools: AgentTool[], changes: unknown[]) => {
+  run(tools, "get_flow");
+  return run(tools, "propose_changes", { summary: "test", changes });
+};
 
 const newFlow = [
   {
@@ -250,6 +254,128 @@ describe("propose_changes", () => {
       replaced: "change-set-1",
     });
   });
+});
+
+describe("reading the canvas first", () => {
+  test("propose_changes refuses until get_flow has been called", () => {
+    const { tools, proposals } = createStubTools({ models: MODELS });
+    const out = run(tools, "propose_changes", {
+      summary: "test",
+      changes: newFlow,
+    });
+    expect(out.status).toBe("invalid");
+    expect(out.problems[0]).toMatch(/^Call get_flow first/);
+    expect(proposals).toHaveLength(0);
+  });
+
+  test("each new message needs a fresh read", () => {
+    const { tools, startTurn } = createStubTools({ models: MODELS });
+    expect(propose(tools, newFlow).status).toBe("awaiting_approval");
+    startTurn();
+    const out = run(tools, "propose_changes", {
+      summary: "test",
+      changes: newFlow,
+    });
+    expect(out.status).toBe("invalid");
+  });
+});
+
+describe("blank nodes, as New Flow makes", () => {
+  const evaluatorOnBlankPrompt = [
+    {
+      op: "add_node",
+      ref: "check",
+      type: "evaluator",
+      settings: { code: "function evaluate(r) { return 1; }" },
+    },
+    {
+      op: "connect",
+      from: { node: "prompt-1", output: "responses" },
+      to: { node: "check", input: "responses" },
+    },
+  ];
+
+  test("won't connect an evaluator to a Prompt Node left blank", () => {
+    const { tools } = createStubTools({ flow: BLANK_FLOW, models: MODELS });
+    expect(propose(tools, evaluatorOnBlankPrompt).problems).toEqual([
+      "prompt-1 has no prompt text yet. Fill it in with update_node in this change set, or connect to a different node.",
+    ]);
+  });
+
+  test("filling the blank nodes in the same change set is fine", () => {
+    const { tools } = createStubTools({ flow: BLANK_FLOW, models: MODELS });
+    const out = propose(tools, [
+      {
+        op: "update_node",
+        node: "textfields-1",
+        settings: { values: ["What is the capital of France?"] },
+      },
+      {
+        op: "update_node",
+        node: "prompt-1",
+        settings: {
+          prompts: [{ label: "Ask", text: "Answer briefly: {question}" }],
+          models: [{ model: "openrouter/anthropic/claude-haiku-4.5" }],
+        },
+      },
+      {
+        op: "connect",
+        from: { node: "textfields-1", output: "values" },
+        to: { node: "prompt-1", input: "question" },
+      },
+      ...evaluatorOnBlankPrompt,
+    ]);
+    expect(out.status).toBe("awaiting_approval");
+  });
+
+  test("won't connect from a TextFields Node with no values", () => {
+    const { tools } = createStubTools({ flow: BLANK_FLOW, models: MODELS });
+    const out = propose(tools, [
+      {
+        op: "update_node",
+        node: "prompt-1",
+        settings: { prompts: [{ label: "Ask", text: "Answer: {q}" }] },
+      },
+      {
+        op: "connect",
+        from: { node: "textfields-1", output: "values" },
+        to: { node: "prompt-1", input: "q" },
+      },
+    ]);
+    expect(out.problems).toEqual([
+      "textfields-1 has no values yet. Fill it in with update_node in this change set, or connect to a different node.",
+    ]);
+  });
+});
+
+test("a read-only setting repeated back unchanged is ignored, not an error", () => {
+  const { tools, proposals } = createStubTools({
+    flow: EXAMPLE_FLOW,
+    models: MODELS,
+  });
+  const out = propose(tools, [
+    {
+      op: "update_node",
+      node: "textfields-1",
+      settings: { values: ["one", "two"], disabled_values: [] },
+    },
+  ]);
+  expect(out.status).toBe("awaiting_approval");
+  expect(proposals[0].changes[0]).toEqual({
+    op: "update_node",
+    node: "textfields-1",
+    settings: { values: ["one", "two"] },
+  });
+  // Changing it is still refused.
+  expect(
+    propose(tools, [
+      {
+        op: "update_node",
+        node: "textfields-1",
+        settings: { disabled_values: ["x"] },
+      },
+    ]).problems,
+  ).toEqual(["changes[0] (update_node): disabled_values is read-only."]);
 });
 
 test("list_models offers only models that are set up", () => {
