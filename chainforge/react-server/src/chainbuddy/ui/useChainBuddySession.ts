@@ -13,6 +13,7 @@ import { createOpenAICompatibleClient } from "../model/openaiCompatible";
 import { AgentMessage } from "../model/types";
 import { systemPrompt } from "../nodes";
 import { AgentEvent, runAgent, StopReason } from "../runtime/agentLoop";
+import { focusNodes } from "./focusNodes";
 
 export type Item =
   | { kind: "user"; text: string }
@@ -88,17 +89,7 @@ export function useChainBuddySession(model: ChainBuddyModel) {
           if (p.status === "accepted" || p.status === "rejected")
             decisions.current.push(`The user ${p.status} ${p.id}.`);
         },
-        onFocus: (ids) =>
-          setTimeout(
-            () =>
-              reactFlow.fitView({
-                nodes: ids.map((id) => ({ id })),
-                padding: 0.4,
-                duration: 400,
-                maxZoom: 1,
-              }),
-            60,
-          ),
+        onFocus: (ids) => focusNodes(reactFlow, ids),
       }),
     [reactFlow],
   );

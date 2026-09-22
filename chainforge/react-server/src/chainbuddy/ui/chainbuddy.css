@@ -1,19 +1,47 @@
-/* Proposed nodes and edges, before the user accepts or rejects them. */
-.react-flow__node.chainbuddy-pending-add {
-  outline: 2px dashed #be4bdb;
+/* Proposed nodes and edges, before the user accepts or rejects them. Each
+   node gets a label, so a proposal is obvious even when only an outline would
+   otherwise show (an edit doesn't change the node until it's accepted). */
+.react-flow__node.chainbuddy-pending-add,
+.react-flow__node.chainbuddy-pending-update,
+.react-flow__node.chainbuddy-pending-remove {
+  outline: 3px dashed var(--chainbuddy-proposal);
   outline-offset: 6px;
   border-radius: 8px;
+}
+.react-flow__node.chainbuddy-pending-add {
+  --chainbuddy-proposal: #be4bdb;
 }
 .react-flow__node.chainbuddy-pending-update {
-  outline: 2px dashed #f59f00;
-  outline-offset: 6px;
-  border-radius: 8px;
+  --chainbuddy-proposal: #f59f00;
 }
 .react-flow__node.chainbuddy-pending-remove {
-  outline: 2px dashed #fa5252;
-  outline-offset: 6px;
-  border-radius: 8px;
+  --chainbuddy-proposal: #fa5252;
   opacity: 0.55;
+}
+.react-flow__node.chainbuddy-pending-add::after,
+.react-flow__node.chainbuddy-pending-update::after,
+.react-flow__node.chainbuddy-pending-remove::after {
+  position: absolute;
+  top: -34px;
+  left: -6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--chainbuddy-proposal);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.react-flow__node.chainbuddy-pending-add::after {
+  content: "Proposed new node · accept or reject in ChainBuddy";
+}
+.react-flow__node.chainbuddy-pending-update::after {
+  content: "Proposed change · see ChainBuddy for what changes";
+  color: #1a1b1e;
+}
+.react-flow__node.chainbuddy-pending-remove::after {
+  content: "Proposed removal · accept or reject in ChainBuddy";
 }
 .react-flow__edge.chainbuddy-pending-add .react-flow__edge-path {
   stroke: #be4bdb;
