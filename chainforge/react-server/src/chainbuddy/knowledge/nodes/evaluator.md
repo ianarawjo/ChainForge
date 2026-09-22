@@ -1,13 +1,13 @@
 ---
 type: evaluator
-name: Evaluator Node (JavaScript)
+name: JavaScript Evaluator
 support: editable
 support_only_when:
   language: javascript
 runnable: true
 ---
 
-# Evaluator Node (JavaScript)
+# JavaScript Evaluator
 
 ## Purpose
 

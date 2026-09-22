@@ -35,7 +35,8 @@ import {
 import { Proposal, StoreCanvas } from "../adapters/canvas";
 import { useChainBuddyModel } from "../adapters/settings";
 import { createFlowTools } from "../flowApi/tools";
-import { INSTRUCTIONS, NODE_DOCS } from "../knowledge";
+import { INSTRUCTIONS } from "../knowledge";
+import { systemPrompt } from "../nodes";
 import { createOpenAICompatibleClient } from "../model/openaiCompatible";
 import { AgentMessage } from "../model/types";
 import { AgentEvent, runAgent } from "../runtime/agentLoop";
@@ -125,7 +126,7 @@ export default function ChainBuddyPanel() {
     [reactFlow],
   );
   const { tools, startTurn } = useMemo(
-    () => createFlowTools({ canvas, nodeDocs: NODE_DOCS }),
+    () => createFlowTools({ canvas }),
     [canvas],
   );
   // Nodes on the canvas when ChainBuddy last replied, to notice another flow.
@@ -232,7 +233,7 @@ export default function ChainBuddyPanel() {
       const client = createOpenAICompatibleClient(model.config);
       const result = await runAgent({
         client,
-        system: INSTRUCTIONS,
+        system: systemPrompt(INSTRUCTIONS),
         messages: [...conversation.current, userMessage],
         tools,
         maxSteps: 12,

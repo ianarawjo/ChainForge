@@ -21,6 +21,7 @@ import {
 } from "../model/openaiCompatible";
 import { AgentEvent, runAgent } from "../runtime/agentLoop";
 import { FlowView, ModelInfo } from "../flowApi/types";
+import { systemPrompt } from "../nodes";
 import {
   BLANK_FLOW,
   createStubTools,
@@ -142,7 +143,7 @@ function clip(text: string, max = 600) {
       const started = Date.now();
       const result = await runAgent({
         client,
-        system: INSTRUCTIONS,
+        system: systemPrompt(INSTRUCTIONS),
         messages: [{ role: "user", content: request }],
         tools,
         maxSteps: 12,

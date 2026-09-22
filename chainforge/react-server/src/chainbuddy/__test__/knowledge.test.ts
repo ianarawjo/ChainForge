@@ -8,7 +8,7 @@ import * as path from "path";
 // A dependency of ESLint and Jest; only tests use it.
 // eslint-disable-next-line import/no-extraneous-dependencies
 import yaml from "js-yaml";
-import { NODE_SPECS } from "../flowApi/nodeSpecs";
+import { NODE_KINDS } from "../nodes";
 
 const DIR = path.join(__dirname, "..", "knowledge");
 
@@ -27,28 +27,36 @@ test("every editable node type has a knowledge file, and every file a node type"
     .readdirSync(path.join(DIR, "nodes"))
     .map((f) => path.basename(f, ".md"))
     .sort();
-  expect(files).toEqual(Object.keys(NODE_SPECS).sort());
+  expect(files).toEqual(NODE_KINDS.map((k) => k.type).sort());
 });
 
-test.each(Object.keys(NODE_SPECS))(
-  "%s: the knowledge file's settings match what the code allows",
-  (type) => {
+const kinds = NODE_KINDS.map((k) => [k.type, k] as const);
+
+test.each(kinds)(
+  "%s: the guide's header and settings match its NodeKind",
+  (type, kind) => {
     const { header, settings } = nodeFile(type);
     expect(header.type).toBe(type);
+    expect(header.name).toBe(kind.name);
     expect(header.support).toBe("editable");
-    const readOnly = Object.keys(settings).filter((k) => settings[k].read_only);
-    const editable = Object.keys(settings).filter(
-      (k) => !settings[k].read_only,
+    const readOnly = (s: Record<string, any>, ro: (v: any) => boolean) =>
+      Object.keys(s)
+        .filter((k) => ro(s[k]))
+        .sort();
+    expect(Object.keys(settings).sort()).toEqual(
+      Object.keys(kind.settings).sort(),
     );
-    expect(editable.sort()).toEqual([...NODE_SPECS[type].editable].sort());
-    expect(readOnly.sort()).toEqual([...NODE_SPECS[type].readOnly].sort());
+    expect(readOnly(settings, (v) => v.read_only)).toEqual(
+      readOnly(kind.settings, (v) => v.readOnly),
+    );
   },
 );
 
-test("each node file's Outputs section names the output the code uses", () => {
-  for (const [type, spec] of Object.entries(NODE_SPECS)) {
+test.each(kinds)(
+  "%s: the guide's Outputs section names the kind's output",
+  (type, kind) => {
     const text = fs.readFileSync(path.join(DIR, "nodes", `${type}.md`), "utf8");
     const outputs = text.split("## Outputs")[1].split("\n## ")[0];
-    expect(outputs).toContain(`\`${spec.output}\``);
-  }
-});
+    expect(outputs).toContain(`\`${kind.output}\``);
+  },
+);

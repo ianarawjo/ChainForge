@@ -4,14 +4,14 @@
  */
 
 import { AgentTool } from "../runtime/tools";
-import { EDITABLE_TYPES } from "./nodeSpecs";
+import { editableTypes, NODE_KINDS } from "../nodes";
 import { CanvasPort } from "./types";
 import { checkChanges } from "./validate";
 
 export interface FlowToolsOptions {
   canvas: CanvasPort;
-  /** Node type → the contents of its file in knowledge/nodes/. */
-  nodeDocs: Record<string, string>;
+  /** Node type → its guide. Defaults to each NodeKind's doc. */
+  nodeDocs?: Record<string, string>;
 }
 
 export interface FlowTools {
@@ -26,8 +26,9 @@ export interface FlowTools {
 
 export function createFlowTools({
   canvas,
-  nodeDocs,
+  nodeDocs = Object.fromEntries(NODE_KINDS.map((k) => [k.type, k.doc])),
 }: FlowToolsOptions): FlowTools {
+  const types = editableTypes();
   let readThisTurn = false;
   const tools: AgentTool[] = [
     {
@@ -47,7 +48,7 @@ export function createFlowTools({
       parameters: {
         type: "object",
         required: ["type"],
-        properties: { type: { type: "string", enum: EDITABLE_TYPES } },
+        properties: { type: { type: "string", enum: types } },
       },
       run: (args) => {
         const doc = nodeDocs[args.type as string];
@@ -107,7 +108,7 @@ export function createFlowTools({
                 },
                 type: {
                   type: "string",
-                  enum: EDITABLE_TYPES,
+                  enum: types,
                   description: "add_node only: the node type.",
                 },
                 node: {

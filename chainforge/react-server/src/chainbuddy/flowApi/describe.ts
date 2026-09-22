@@ -3,7 +3,8 @@
  * existing nodes are shown as before → after, per setting.
  */
 
-import { isPlainObject } from "../runtime/tools";
+import { kindOf } from "../nodes";
+import { SettingSpec } from "../nodes/types";
 import { ChangeSet, FlowView } from "./types";
 
 /**
@@ -31,29 +32,15 @@ export interface ChangeLine {
   edits?: Edit[];
 }
 
-const LIST_SETTINGS = ["values", "prompts", "models"];
-
-const TYPE_NAMES: Record<string, string> = {
-  prompt: "Prompt Node",
-  textfields: "TextFields Node",
-  evaluator: "Evaluator",
-};
-
-const SETTING_NAMES: Record<string, string> = {
-  title: "Title",
-  prompts: "Prompts",
-  models: "Models",
-  responses_per_prompt: "Responses per prompt",
-  values: "Values",
-  code: "Code",
-};
-
 export function describeChanges(
   flow: FlowView,
   changeSet: ChangeSet,
 ): ChangeLine[] {
   const names = new Map(flow.nodes.map((n) => [n.id, n.title]));
   const current = new Map(flow.nodes.map((n) => [n.id, n]));
+  // Node types by id, and by ref for nodes this change set adds.
+  const types = new Map(flow.nodes.map((n) => [n.id, n.type]));
+  const settingsOf = (id: string) => kindOf(types.get(id))?.settings ?? {};
   const name = (id: string) => `"${names.get(id) ?? id}"`;
 
   return changeSet.changes.map((change): ChangeLine => {
@@ -64,16 +51,20 @@ export function describeChanges(
             ? change.settings.title
             : change.ref;
         names.set(change.ref, title);
+        types.set(change.ref, change.type);
         return {
           kind: "add",
-          text: `Add ${TYPE_NAMES[change.type] ?? change.type} "${title}"`,
+          text: `Add ${kindOf(change.type)?.name ?? change.type} "${title}"`,
           details: Object.entries(change.settings)
             .filter(([key]) => key !== "title")
-            .map(([key, value]) => ({
-              setting: SETTING_NAMES[key] ?? key,
-              value: show(key, value),
-              code: key === "code" || undefined,
-            })),
+            .map(([key, value]) => {
+              const spec = settingsOf(change.ref)[key];
+              return {
+                setting: spec?.label ?? key,
+                value: show(spec, value),
+                code: spec?.code || undefined,
+              };
+            }),
         };
       }
       case "update_node": {
@@ -87,7 +78,9 @@ export function describeChanges(
           kind: "update",
           text: `Change ${name(change.node)}`,
           edits: Object.entries(change.settings)
-            .map(([key, value]) => editOf(key, before[key], value))
+            .map(([key, value]) =>
+              editOf(settingsOf(change.node)[key], key, before[key], value),
+            )
             .filter((e): e is Edit => e !== undefined),
         };
         if (typeof change.settings.title === "string")
@@ -111,22 +104,20 @@ export function describeChanges(
 
 /** How one setting changes, or undefined if it doesn't. */
 function editOf(
+  spec: SettingSpec | undefined,
   key: string,
   before: unknown,
   after: unknown,
 ): Edit | undefined {
-  const setting = SETTING_NAMES[key] ?? key;
-  if (LIST_SETTINGS.includes(key) && Array.isArray(after)) {
-    // Models are compared by ID, since only existing ones have nicknames.
-    const idOf = (item: unknown) =>
-      key === "models" && isPlainObject(item)
-        ? String(item.model)
-        : show(key, [item]);
+  const setting = spec?.label ?? key;
+  const items = spec?.items;
+  if (items && Array.isArray(after)) {
     const names = new Map<string, string>();
     for (const item of [...(Array.isArray(before) ? before : []), ...after])
-      if (!names.has(idOf(item))) names.set(idOf(item), show(key, [item]));
-    const was = Array.isArray(before) ? before.map(idOf) : [];
-    const now = after.map(idOf);
+      if (!names.has(items.key(item)))
+        names.set(items.key(item), items.label(item));
+    const was = Array.isArray(before) ? before.map(items.key) : [];
+    const now = after.map(items.key);
     const added = now.filter((id) => !was.includes(id));
     const removed = was.filter((id) => !now.includes(id));
     if (added.length === 0 && removed.length === 0 && was.length === now.length)
@@ -134,39 +125,24 @@ function editOf(
     const name = (id: string) => names.get(id) ?? id;
     return {
       setting,
-      before: show(key, before),
-      after: show(key, after),
+      before: show(spec, before),
+      after: show(spec, after),
       added: added.map(name),
       removed: removed.map(name),
       kept: now.length - added.length,
     };
   }
-  const was = show(key, before);
-  const now = show(key, after);
+  const was = show(spec, before);
+  const now = show(spec, after);
   if (was === now) return undefined;
-  return {
-    setting,
-    before: was,
-    after: now,
-    code: key === "code" || undefined,
-  };
+  return { setting, before: was, after: now, code: spec?.code || undefined };
 }
 
-/** A setting's value, as a short line. Code and long text are summarized. */
-function show(key: string, value: unknown): string {
+/** A setting's value, as a line: list items by their labels, anything else as text. */
+function show(spec: SettingSpec | undefined, value: unknown): string {
   if (value === undefined) return "(none)";
-  if (key === "prompts" && Array.isArray(value))
-    return value
-      .map((p) =>
-        isPlainObject(p) ? `${p.label ? `${p.label}: ` : ""}${p.text}` : "",
-      )
-      .join(" | ");
-  if (key === "models" && Array.isArray(value))
-    return value
-      .map((m) => (isPlainObject(m) ? String(m.nickname ?? m.model) : ""))
-      .join(", ");
-  if (key === "values" && Array.isArray(value))
-    return value.map((v) => `"${v}"`).join(", ");
-  if (key === "code" && typeof value === "string") return value;
+  const items = spec?.items;
+  if (items && Array.isArray(value))
+    return value.map(items.label).join(items.separator ?? ", ");
   return String(value);
 }
