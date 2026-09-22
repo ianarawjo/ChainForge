@@ -378,6 +378,22 @@ test("a read-only setting repeated back unchanged is ignored, not an error", () 
   ).toEqual(["changes[0] (update_node): disabled_values is read-only."]);
 });
 
+test("double-brace variables are refused, with ChainForge's syntax", () => {
+  const { tools } = createStubTools({ flow: EXAMPLE_FLOW, models: MODELS });
+  const out = propose(tools, [
+    {
+      op: "update_node",
+      node: "prompt-1",
+      settings: {
+        prompts: [{ label: "A", text: "What is the capital of {{text}}?" }],
+      },
+    },
+  ]);
+  expect(out.problems).toEqual([
+    "changes[0] (update_node): prompts use {{...}}. ChainForge variables use single braces, like {country}; write \\{ and \\} for literal braces.",
+  ]);
+});
+
 test("list_models offers only models that are set up", () => {
   const { tools } = createStubTools({ models: MODELS });
   expect(run(tools, "list_models")).toEqual({
