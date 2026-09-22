@@ -9,6 +9,7 @@ import * as path from "path";
 // eslint-disable-next-line import/no-extraneous-dependencies
 import yaml from "js-yaml";
 import { NODE_KINDS } from "../nodes";
+import { SettingSpec } from "../nodes/types";
 
 const DIR = path.join(__dirname, "..", "knowledge");
 
@@ -36,27 +37,50 @@ test.each(kinds)(
   "%s: the guide's header and settings match its NodeKind",
   (type, kind) => {
     const { header, settings } = nodeFile(type);
-    expect(header.type).toBe(type);
-    expect(header.name).toBe(kind.name);
-    expect(header.support).toBe("editable");
-    const readOnly = (s: Record<string, any>, ro: (v: any) => boolean) =>
+    expect(header).toEqual({ type, name: kind.name });
+    // Which settings have a property, in the guide and in the kind.
+    const which = (s: Record<string, any>, has: (v: any) => boolean) =>
       Object.keys(s)
-        .filter((k) => ro(s[k]))
+        .filter((k) => has(s[k]))
         .sort();
-    expect(Object.keys(settings).sort()).toEqual(
-      Object.keys(kind.settings).sort(),
+    const both = (
+      inGuide: (v: any) => boolean,
+      inKind: (v: SettingSpec) => boolean,
+    ) => expect(which(settings, inGuide)).toEqual(which(kind.settings, inKind));
+    both(
+      () => true,
+      () => true,
     );
-    expect(readOnly(settings, (v) => v.read_only)).toEqual(
-      readOnly(kind.settings, (v) => v.readOnly),
+    both(
+      (v) => v.read_only,
+      (v) => !!v.readOnly,
+    );
+    both(
+      (v) => v.required,
+      (v) => !!v.required,
+    );
+    both(
+      (v) => v.type === "list",
+      (v) => !!v.items,
+    );
+    both(
+      (v) => v.type === "code",
+      (v) => !!v.code,
     );
   },
 );
 
+/** A section of a guide, up to the next heading of the same level. */
+function section(type: string, heading: string) {
+  const text = fs.readFileSync(path.join(DIR, "nodes", `${type}.md`), "utf8");
+  return text.split(`## ${heading}`)[1].split("\n## ")[0];
+}
+
 test.each(kinds)(
-  "%s: the guide's Outputs section names the kind's output",
+  "%s: the guide's Inputs and Outputs say what the kind accepts and gives",
   (type, kind) => {
-    const text = fs.readFileSync(path.join(DIR, "nodes", `${type}.md`), "utf8");
-    const outputs = text.split("## Outputs")[1].split("\n## ")[0];
-    expect(outputs).toContain(`\`${kind.output}\``);
+    expect(section(type, "Outputs")).toContain(`\`${kind.output}\``);
+    for (const accepted of kind.accepts)
+      expect(section(type, "Inputs")).toContain(`\`${accepted}\``);
   },
 );

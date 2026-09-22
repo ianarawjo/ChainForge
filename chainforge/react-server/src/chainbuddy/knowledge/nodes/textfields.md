@@ -1,8 +1,6 @@
 ---
 type: textfields
 name: TextFields Node
-support: editable
-runnable: false
 ---
 
 # TextFields Node
@@ -32,17 +30,11 @@ inputs.
 ## Inputs
 
 One input per `{variable}` found in any value, named after the variable.
+Each accepts `values`, such as another TextFields Node's.
 
 ## Outputs
 
 - `values`: the enabled values, filled in if they contain variables.
-
-## Connects to
-
-| From     | To                                    |
-| -------- | ------------------------------------- |
-| `values` | a variable input of a Prompt Node     |
-| `values` | a variable input of a TextFields Node |
 
 ## Settings
 
@@ -52,6 +44,7 @@ title:
   description: Name shown at the top of the node.
 values:
   type: list
+  required: true
   min: 1
   description: >
     The enabled values, in order. Each one is sent downstream on its own.

@@ -1,8 +1,6 @@
 ---
 type: prompt
 name: Prompt Node
-support: editable
-runnable: true
 ---
 
 # Prompt Node
@@ -23,8 +21,8 @@ variables.
 
 ## Don't use it for
 
-- Grading or scoring responses. Use an Evaluator Node for checks code can
-  decide. Judging by a model (the LLM Scorer Node) isn't supported by
+- Grading or scoring responses. Use a JavaScript Evaluator for checks code
+  can decide. Judging by a model (the LLM Scorer Node) isn't supported by
   ChainBuddy yet.
 - Multi-turn conversations. That's the Chat Turn Node, which ChainBuddy
   doesn't support yet.
@@ -34,6 +32,11 @@ variables.
 One input per `{variable}` in any of the node's prompts, named after the
 variable. Inputs appear and disappear as variables are added to or removed
 from the prompts. Every input must be connected before the node can run.
+
+Each input accepts `values`, such as a TextFields Node's, or `responses` from
+another Prompt Node. Connecting responses sends each response on as a value
+to fill that variable (chaining). The variable values that produced it travel
+along too, so later nodes can still read them.
 
 Two special forms don't create an input:
 
@@ -46,17 +49,6 @@ Two special forms don't create an input:
   text, the exact prompt sent, the variable values used to fill it, and the
   model's nickname.
 
-## Connects to
-
-| From        | To                                     |
-| ----------- | -------------------------------------- |
-| `responses` | a variable input of a Prompt Node      |
-| `responses` | `responses` input of an Evaluator Node |
-
-Connecting `responses` to another Prompt Node's variable sends each response
-on as a value to fill that variable. The variable values that produced it
-travel along too, so later nodes can still read them.
-
 ## Settings
 
 ```yaml
@@ -65,6 +57,7 @@ title:
   description: Name shown at the top of the node.
 prompts:
   type: list
+  required: true
   min: 1
   description: >
     The prompts to send. With one prompt, this is a plain prompt. With two or
@@ -81,6 +74,7 @@ prompts:
         description: The prompt. {name} marks a variable.
 models:
   type: list
+  required: true
   min: 1
   description: The models to send every prompt to.
   of:
@@ -127,20 +121,19 @@ responses_per_prompt: 3
 
 - **Running costs money.** The number of model calls is
   prompts × combinations of input values × models × responses per prompt.
-  Two prompts, 10 texts, 2 models and 3 responses each is 120 calls. Estimate
-  before proposing a run, and keep first runs small.
+  Two prompts, 10 texts, 2 models and 3 responses each is 120 calls. Keep
+  flows small, and say how many calls a flow will make when it's more than a
+  few dozen.
 - **Every variable needs a connection.** A prompt with `{text}` and nothing
   connected to `text` won't run.
 - **Variable names must be unique along a chain**, ignoring case. If an
   upstream node already fills `{Text}`, a later `{text}` causes an error.
 - **Literal braces need escaping.** A prompt asking for JSON such as
   `{"answer": ...}` creates a variable unless written `\{"answer": ...\}`.
-- **Changing a prompt doesn't clear old responses.** The node keeps its last
-  results, marked as out of date, until it runs again. Don't read results
-  from a node changed since its last run as if they came from the new
-  prompts.
 - **A model can only run if its provider is set up** (an API key, or Ollama
-  running locally). `list_models` says which models are ready.
+  running locally). `list_models` lists only models that are set up.
+- **A blank Prompt Node usually already has a model**, the user's default.
+  Keep it unless the user asks for other models.
 - **Model settings such as temperature** can't be changed by ChainBuddy yet.
   Ask the user to change them in the model's settings.
 - **Variables starting with `=`**, such as `{=system_msg}`, set a model
