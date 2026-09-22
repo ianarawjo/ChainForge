@@ -29,9 +29,17 @@ accept or reject first.
 Planned, not yet written: `playbooks/` (evaluation practice, such as how to
 compare two prompts fairly, loaded only when relevant).
 
-To add a node type, write its file in `nodes/`, then add it to `index.ts`,
-`flowApi/nodeSpecs.ts` and `adapters/nodeData.ts`. The tests in
-`__test__/knowledge.test.ts` check the file and the code agree.
+To add a node type:
+
+1. Write its guide here, in `nodes/<type>.md`.
+2. Write its `NodeKind` in `src/chainbuddy/nodes/<type>.ts`: its settings and
+   their checks, its inputs and output, and how its settings map to the
+   node's data. The existing kinds are the templates.
+3. List it in `NODE_KINDS`, in `src/chainbuddy/nodes/index.ts`.
+
+The checks, the proposal card, the canvas and the model's list of node types
+all read from the registry, so nothing else needs to change. The tests in
+`__test__/knowledge.test.ts` check each guide agrees with its `NodeKind`.
 
 ## Which nodes ChainBuddy supports
 
@@ -45,13 +53,13 @@ Each node type has one of three levels of support:
 - **Not supported.** ChainBuddy sees only that a node of this type exists and
   what it is connected to.
 
-| Node                       | Type         | Support       |
-| -------------------------- | ------------ | ------------- |
-| Prompt Node                | `prompt`     | Editable      |
-| TextFields Node            | `textfields` | Editable      |
-| Evaluator Node, JavaScript | `evaluator`  | Editable      |
-| Evaluator Node, Python     | `evaluator`  | Not supported |
-| Every other node type      |              | Not supported |
+| Node                   | Type         | Support       |
+| ---------------------- | ------------ | ------------- |
+| Prompt Node            | `prompt`     | Editable      |
+| TextFields Node        | `textfields` | Editable      |
+| JavaScript Evaluator   | `evaluator`  | Editable      |
+| Evaluator Node, Python | `evaluator`  | Not supported |
+| Every other node type  |              | Not supported |
 
 A node type with no file here is treated as not supported. A new node added to
 ChainForge therefore stays out of ChainBuddy's reach until someone writes its

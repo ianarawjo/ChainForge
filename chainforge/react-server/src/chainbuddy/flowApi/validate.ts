@@ -4,7 +4,8 @@
  */
 
 import { isPlainObject } from "../runtime/tools";
-import { EDITABLE_TYPES, NODE_SPECS } from "./nodeSpecs";
+import { editableTypes, kindOf } from "../nodes";
+import { NodeKind } from "../nodes/types";
 import {
   CanvasPort,
   Change,
@@ -68,28 +69,31 @@ export function checkChanges(
     const at = `changes[${i}] (${String(change.op)})`;
     const before = problems.length;
 
-    const checkSettings = (type: string, settings: unknown, isNew: boolean) => {
-      const spec = NODE_SPECS[type];
+    const checkSettings = (
+      kind: NodeKind,
+      settings: unknown,
+      isNew: boolean,
+    ) => {
       if (!isPlainObject(settings)) {
         problems.push(`${at}: settings should be an object.`);
         return;
       }
       for (const [key, value] of Object.entries(settings)) {
-        if (spec.readOnly.includes(key))
-          problems.push(`${at}: ${key} is read-only.`);
-        else if (!spec.editable.includes(key))
+        const spec = kind.settings[key];
+        if (spec?.readOnly) problems.push(`${at}: ${key} is read-only.`);
+        else if (!spec)
           problems.push(
-            `${at}: a ${type} node has no setting "${key}". Its settings are: ${spec.editable.join(", ")}.`,
+            `${at}: a ${kind.type} node has no setting "${key}". Its settings are: ${editableSettings(kind).join(", ")}.`,
           );
         else {
-          const problem = spec.checkSetting(key, value);
+          const problem = spec.check?.(value);
           if (problem) problems.push(`${at}: ${problem}`);
         }
       }
       if (isNew)
-        for (const key of spec.required)
-          if (settings[key] === undefined)
-            problems.push(`${at}: a new ${type} node needs ${key}.`);
+        for (const [key, spec] of Object.entries(kind.settings))
+          if (spec.required && settings[key] === undefined)
+            problems.push(`${at}: a new ${kind.type} node needs ${key}.`);
       if (Array.isArray(settings.models))
         for (const m of settings.models) {
           if (!isPlainObject(m) || typeof m.model !== "string") continue;
@@ -109,9 +113,9 @@ export function checkChanges(
       case "add_node": {
         const type = change.type;
         const ref = change.ref;
-        if (typeof type !== "string" || !EDITABLE_TYPES.includes(type)) {
+        if (typeof type !== "string" || !kindOf(type)) {
           problems.push(
-            `${at}: type should be one of ${EDITABLE_TYPES.join(", ")}.`,
+            `${at}: type should be one of ${editableTypes().join(", ")}.`,
           );
           return;
         }
@@ -122,10 +126,11 @@ export function checkChanges(
             `${at}: "${ref}" is already the name of a node; pick another ref.`,
           );
         const refProblem = problems.length > before;
+        const kind = kindOf(type) as NodeKind;
         const given = isPlainObject(change.settings)
-          ? withoutUnchangedReadOnly(type, change.settings, {})
+          ? withoutUnchangedReadOnly(kind, change.settings, {})
           : change.settings ?? {};
-        checkSettings(type, given, true);
+        checkSettings(kind, given, true);
         if (refProblem || typeof ref !== "string") return;
         const settings = isPlainObject(given) ? { ...given } : {};
         // Known even if its settings have problems, so later changes that
@@ -155,12 +160,13 @@ export function checkChanges(
           problems.push(`${at}: needs the settings to change.`);
           return;
         }
+        const kind = kindOf(node.type) as NodeKind;
         const settings = withoutUnchangedReadOnly(
-          node.type,
+          kind,
           change.settings,
           node.settings,
         );
-        checkSettings(node.type, settings, false);
+        checkSettings(kind, settings, false);
         if (problems.length === before) {
           Object.assign(node.settings, settings);
           node.touched = true;
@@ -210,7 +216,7 @@ export function checkChanges(
             );
         if (problems.length > before) return;
 
-        const spec = NODE_SPECS[source.type];
+        const spec = kindOf(source.type) as NodeKind;
         if (from.output !== spec.output)
           problems.push(
             `${at}: ${fromId} has no output "${String(from.output)}"; its output is "${spec.output}".`,
@@ -265,10 +271,11 @@ export function checkChanges(
         const fed = connections.some(
           (c) => c.to.node === id && c.to.input === input,
         );
+        const hint = kindOf(node.type)?.unconnectedHint;
         if (!fed)
           problems.push(
-            node.type === "evaluator"
-              ? `${id}: nothing is connected to its "responses" input. Connect a Prompt Node's responses to it.`
+            hint
+              ? `${id}: nothing is connected to its "${input}" input. ${hint}`
               : `${id}: its input "${input}" isn't connected. Connect a node to it, or take {${input}} out of the text.`,
           );
       }
@@ -279,7 +286,7 @@ export function checkChanges(
   if (problems.length === 0)
     for (const id of Array.from(connected)) {
       const node = nodes.get(id);
-      const blank = node && blankness(node.type, node.settings);
+      const blank = node && kindOf(node.type)?.missing?.(node.settings);
       if (blank)
         problems.push(
           `${id} ${blank}. Fill it in with update_node in this change set, or connect to a different node.`,
@@ -295,13 +302,14 @@ export function checkChanges(
  * the check can say they're read-only.
  */
 function withoutUnchangedReadOnly(
-  type: string,
+  kind: NodeKind,
   settings: Record<string, unknown>,
   current: Record<string, unknown>,
 ): Record<string, unknown> {
   const out = { ...settings };
-  for (const key of NODE_SPECS[type].readOnly)
+  for (const [key, spec] of Object.entries(kind.settings))
     if (
+      spec.readOnly &&
       key in out &&
       JSON.stringify(out[key]) === JSON.stringify(current[key] ?? [])
     )
@@ -309,21 +317,8 @@ function withoutUnchangedReadOnly(
   return out;
 }
 
-/** What a node is missing to be usable, or undefined if nothing is. */
-function blankness(
-  type: string,
-  settings: Record<string, unknown>,
-): string | undefined {
-  const hasText = (list: unknown, text: (item: unknown) => unknown) =>
-    Array.isArray(list) &&
-    list.some((item) => String(text(item) ?? "").trim() !== "");
-  if (type === "prompt") {
-    if (!hasText(settings.prompts, (p) => (isPlainObject(p) ? p.text : "")))
-      return "has no prompt text yet";
-    if (!Array.isArray(settings.models) || settings.models.length === 0)
-      return "has no models yet";
-  }
-  if (type === "textfields" && !hasText(settings.values, (v) => v))
-    return "has no values yet";
-  return undefined;
+function editableSettings(kind: NodeKind): string[] {
+  return Object.entries(kind.settings)
+    .filter(([, spec]) => !spec.readOnly)
+    .map(([key]) => key);
 }

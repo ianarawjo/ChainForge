@@ -3,7 +3,8 @@
  * against real models without the app (see __test__/liveAgent.test.ts).
  */
 
-import { NODE_SPECS, simpleInputsFor } from "../flowApi/nodeSpecs";
+import { kindOf } from "../nodes";
+import { simpleVarsOf } from "../nodes/common";
 import { createFlowTools } from "../flowApi/tools";
 import {
   CanvasPort,
@@ -79,8 +80,13 @@ export function stubNode(
     support: "editable",
     settings,
     inputs: simpleInputsFor(type, settings),
-    outputs: [NODE_SPECS[type].output],
+    outputs: [kindOf(type)?.output ?? ""],
   };
+}
+
+/** A node's inputs, found with the simple variable parser. */
+function simpleInputsFor(type: string, settings: Record<string, unknown>) {
+  return kindOf(type)?.inputs(settings, simpleVarsOf) ?? [];
 }
 
 export function createStubCanvas(options: {
@@ -115,7 +121,7 @@ export function createStubTools(options: {
   const { canvas, proposals } = createStubCanvas(options);
   const { tools, startTurn } = createFlowTools({
     canvas,
-    nodeDocs: options.nodeDocs ?? {},
+    nodeDocs: options.nodeDocs,
   });
   return { tools, startTurn, proposals };
 }

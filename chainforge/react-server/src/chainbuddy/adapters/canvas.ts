@@ -25,7 +25,7 @@ import {
   NodeView,
   ProposalReceipt,
 } from "../flowApi/types";
-import { NODE_SPECS } from "../flowApi/nodeSpecs";
+import { kindOf } from "../nodes";
 import {
   dataWithSettings,
   handlesFor,
@@ -193,7 +193,7 @@ export class StoreCanvas implements CanvasPort {
         support,
         settings,
         inputs: inputsFor(n.type, settings),
-        outputs: [NODE_SPECS[n.type].output],
+        outputs: [kindOf(n.type)?.output ?? ""],
       };
     });
 
