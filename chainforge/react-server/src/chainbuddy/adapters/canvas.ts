@@ -529,6 +529,25 @@ export class StoreCanvas implements CanvasPort {
     };
   }
 
+  /**
+   * Calls `onSwitch` when another flow replaces the one on the canvas: a
+   * change that leaves none of the last nodes. New Flow replaces every node
+   * at once; loading a flow empties the canvas first, so empty canvases are
+   * skipped. Returns a function that stops watching.
+   */
+  watchForFlowSwitch(onSwitch: () => void): () => void {
+    let last = new Set(useStore.getState().nodes.map((n) => n.id));
+    return useStore.subscribe((state, prev) => {
+      if (state.nodes === prev.nodes || state.nodes.length === 0) return;
+      const ids = state.nodes.map((n) => n.id);
+      const switched = last.size > 0 && !ids.some((id) => last.has(id));
+      // Recorded before calling onSwitch, which may change the store and
+      // bring us straight back here.
+      last = new Set(ids);
+      if (switched) onSwitch();
+    });
+  }
+
   reject(id: string): void {
     const state = this.proposals.get(id);
     if (!state || state.status !== "pending") return;
