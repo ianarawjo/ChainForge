@@ -131,6 +131,16 @@ export default function ChainBuddyPanel() {
   // Nodes on the canvas when ChainBuddy last replied, to notice another flow.
   const seenNodes = useRef(new Set<string>());
   const nodeIds = () => canvas.readFlow().nodes.map((n) => n.id);
+  // The nodes an accepted proposal leaves count as seen too, so accepting
+  // one that replaces every node isn't taken for opening another flow.
+  const handledAccepts = useRef(new Set<string>());
+  useEffect(() => {
+    for (const p of Object.values(proposals))
+      if (p.status === "accepted" && !handledAccepts.current.has(p.id)) {
+        handledAccepts.current.add(p.id);
+        nodeIds().forEach((id) => seenNodes.current.add(id));
+      }
+  }, [proposals]);
 
   // Proposed nodes left over from a flow saved mid-proposal were never
   // accepted, so they go.
