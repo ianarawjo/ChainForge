@@ -21,7 +21,11 @@ import {
 } from "../model/openaiCompatible";
 import { AgentEvent, runAgent } from "../runtime/agentLoop";
 import { FlowView, ModelInfo } from "../flowApi/types";
-import { createStubTools, EXAMPLE_FLOW } from "../prototype/stubTools";
+import {
+  BLANK_FLOW,
+  createStubTools,
+  EXAMPLE_FLOW,
+} from "../prototype/stubTools";
 
 const LIVE = process.env.CHAINBUDDY_LIVE ?? "";
 const separator = LIVE.indexOf(":");
@@ -51,6 +55,11 @@ const SCENARIOS: { name: string; flow: FlowView; request: string }[] = [
     name: "create a flow on an empty canvas",
     flow: { nodes: [], connections: [] },
     request: `I want to compare how two models summarize three short science facts in one sentence each, and check that every summary really is one sentence. Use the models ${FLOW_MODELS[provider]}. Make up the three facts.`,
+  },
+  {
+    name: "fill in the blank flow New Flow creates",
+    flow: BLANK_FLOW,
+    request: `Check whether ${FLOW_MODELS[provider]} answer three trivia questions correctly. Make up the questions.`,
   },
   {
     name: "edit the example flow",

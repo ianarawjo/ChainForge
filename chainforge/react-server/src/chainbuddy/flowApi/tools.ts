@@ -14,17 +14,31 @@ export interface FlowToolsOptions {
   nodeDocs: Record<string, string>;
 }
 
+export interface FlowTools {
+  tools: AgentTool[];
+  /**
+   * Call when the user sends a message. The canvas may have changed since
+   * ChainBuddy last looked, so propose_changes refuses until get_flow has
+   * been called again.
+   */
+  startTurn(): void;
+}
+
 export function createFlowTools({
   canvas,
   nodeDocs,
-}: FlowToolsOptions): AgentTool[] {
-  return [
+}: FlowToolsOptions): FlowTools {
+  let readThisTurn = false;
+  const tools: AgentTool[] = [
     {
       name: "get_flow",
       description:
-        "Reads the flow on the canvas: its nodes with their settings, inputs and outputs, and the connections between them. Nodes ChainBuddy doesn't support show only their type and title.",
+        "Reads the flow on the canvas: its nodes with their settings, inputs and outputs, and the connections between them. Nodes ChainBuddy doesn't support show only their type and title. Call it at the start of every request: the canvas may have changed.",
       parameters: { type: "object", properties: {} },
-      run: () => canvas.readFlow(),
+      run: () => {
+        readThisTurn = true;
+        return canvas.readFlow();
+      },
     },
     {
       name: "describe_node",
@@ -130,6 +144,14 @@ export function createFlowTools({
         },
       },
       run: (args) => {
+        if (!readThisTurn)
+          return {
+            status: "invalid",
+            problems: [
+              "Call get_flow first. The canvas may have changed since you last read it, for example if the user opened another flow or edited it.",
+            ],
+            note: "Nothing was shown to the user.",
+          };
         const { problems, changes } = checkChanges(
           canvas.readFlow(),
           args.changes as Record<string, unknown>[],
@@ -155,4 +177,10 @@ export function createFlowTools({
       },
     },
   ];
+  return {
+    tools,
+    startTurn: () => {
+      readThisTurn = false;
+    },
+  };
 }
