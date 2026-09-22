@@ -15,7 +15,7 @@ const itemsKind: NodeKind = {
   name: "Items Node",
   doc: "# Items Node\n\nA comma-separated list of values.",
   output: "values",
-  connectsTo: ["prompt"],
+  accepts: [],
   handles: { output: "output" },
   settings: {
     title: titleSetting,
@@ -133,5 +133,7 @@ test("the canvas translates a new kind's data, and the model is told about it", 
     title: "Items Node",
     values: ["apple", "pear"],
   });
-  expect(systemPrompt("Be helpful.")).toMatch(/Items Node \(`csv`\)/);
+  expect(systemPrompt("Be helpful.")).toMatch(
+    /- Items Node \(`csv`\): gives values; no inputs\./,
+  );
 });

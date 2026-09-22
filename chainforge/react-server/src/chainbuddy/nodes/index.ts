@@ -27,8 +27,17 @@ export function editableTypes(): string[] {
   return NODE_KINDS.map((k) => k.type);
 }
 
-/** The model's instructions, ending with the node types it may use. */
+/**
+ * The model's instructions, ending with the node types it may use and what
+ * each gives and accepts, which is what decides what connects to what.
+ */
 export function systemPrompt(instructions: string): string {
-  const names = NODE_KINDS.map((k) => `${k.name} (\`${k.type}\`)`);
-  return `${instructions.trim()}\n\nThe node types available to you: ${names.join(", ")}.\n`;
+  const lines = NODE_KINDS.map(
+    (k) =>
+      `- ${k.name} (\`${k.type}\`): gives ${k.output}; ` +
+      (k.accepts.length
+        ? `its inputs take ${k.accepts.join(" or ")}.`
+        : "no inputs."),
+  );
+  return `${instructions.trim()}\n\nThe node types available to you. An output can connect to any input that takes what it gives:\n\n${lines.join("\n")}\n`;
 }
