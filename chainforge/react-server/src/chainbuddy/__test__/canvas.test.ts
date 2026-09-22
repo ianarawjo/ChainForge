@@ -43,6 +43,8 @@ import useStore from "../../store";
 import { PENDING_CLASS, Proposal, StoreCanvas } from "../adapters/canvas";
 // eslint-disable-next-line import/first
 import { ChangeSet } from "../flowApi/types";
+// eslint-disable-next-line import/first
+import { FlowLoadGuard } from "../../backend/flowLoadGuard";
 
 const tick = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -206,7 +208,7 @@ test("proposed nodes no live proposal owns are removed", async () => {
     ],
   }));
 
-  const stop = canvas.removeOrphans();
+  const stop = canvas.removeOrphans(0);
   await tick();
 
   const { nodes, edges } = useStore.getState() as any;
@@ -218,7 +220,7 @@ test("proposed nodes no live proposal owns are removed", async () => {
 
 test("a live proposal's nodes are kept while it applies", async () => {
   const { canvas, statuses } = setUp();
-  const stop = canvas.removeOrphans();
+  const stop = canvas.removeOrphans(0);
   const { id } = canvas.propose({
     summary: "Add a node",
     changes: [
@@ -235,5 +237,36 @@ test("a live proposal's nodes are kept while it applies", async () => {
 
   expect(statuses.at(-1)?.status).toBe("accepted");
   expect((useStore.getState() as any).nodes).toHaveLength(3);
+  stop();
+});
+
+test("a loading flow finishes before leftover nodes are removed", async () => {
+  // App.tsx refuses saves until a loaded flow's nodes render exactly as
+  // loaded. Removing leftovers straight away kept saves off for good.
+  const { canvas } = setUp();
+  const guard = new FlowLoadGuard();
+  const stop = canvas.removeOrphans(20);
+  const loaded = [
+    ...(useStore.getState() as any).nodes,
+    {
+      id: "ghost",
+      type: "textfields",
+      position: { x: 0, y: 300 },
+      data: {},
+      className: PENDING_CLASS.add,
+    },
+  ];
+
+  guard.awaitNodes(loaded);
+  useStore.setState({ nodes: loaded } as any);
+  // App.tsx reports each render's nodes to the guard.
+  guard.nodesRendered((useStore.getState() as any).nodes);
+  expect(guard.isLoading).toBe(false);
+
+  await tick(40);
+  expect((useStore.getState() as any).nodes.map((n: any) => n.id)).toEqual([
+    "tf",
+    "p",
+  ]);
   stop();
 });
