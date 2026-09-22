@@ -75,6 +75,13 @@ interface ProposalState extends Proposal {
 
 const TICK_MS = 20;
 
+/**
+ * How long the canvas must be still before leftover proposed nodes are
+ * removed. Loading a flow counts as finished (and saving resumes) only once
+ * its nodes render exactly as loaded (see backend/flowLoadGuard.ts), so
+ * removing nodes straight away would keep saves refused for the session.
+ */
+export const ORPHAN_SETTLE_MS = 1000;
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const modelResolver: ModelResolver = {
@@ -456,10 +463,11 @@ export class StoreCanvas implements CanvasPort {
   /**
    * Removes proposed nodes and outlines no live proposal owns. They appear
    * when a flow was saved while a proposal waited, then reloaded: the card to
-   * accept or reject them is gone, so they were never accepted. Returns a
-   * function that stops watching.
+   * accept or reject them is gone, so they were never accepted. Waits until
+   * the canvas has been still for `settleMs`, so a loading flow finishes
+   * first. Returns a function that stops watching.
    */
-  removeOrphans(): () => void {
+  removeOrphans(settleMs = ORPHAN_SETTLE_MS): () => void {
     const clean = () => {
       const owned = new Set<string>();
       const outlined = new Set<string>();
@@ -505,11 +513,20 @@ export class StoreCanvas implements CanvasPort {
         ),
       }));
     };
-    clean();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const cleanWhenSettled = () => {
+      clearTimeout(timer);
+      timer = setTimeout(clean, settleMs);
+    };
+    cleanWhenSettled();
     // Also after a flow loads later on.
-    return useStore.subscribe((state, prev) => {
-      if (state.nodes !== prev.nodes) clean();
+    const unsubscribe = useStore.subscribe((state, prev) => {
+      if (state.nodes !== prev.nodes) cleanWhenSettled();
     });
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }
 
   reject(id: string): void {
