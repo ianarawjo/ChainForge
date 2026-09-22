@@ -45,6 +45,27 @@ export const EXAMPLE_FLOW: FlowView = {
   ],
 };
 
+/** What New Flow creates: a blank TextFields Node and a blank Prompt Node. */
+export const BLANK_FLOW: FlowView = {
+  nodes: [
+    stubNode("textfields-1", "textfields", "TextFields Node", {
+      values: [""],
+      disabled_values: [],
+    }),
+    stubNode("prompt-1", "prompt", "Prompt Node", {
+      prompts: [{ label: "Variant 1", text: "" }],
+      models: [
+        {
+          model: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+          nickname: "Qwen2.5 0.5B",
+        },
+      ],
+      responses_per_prompt: 1,
+    }),
+  ],
+  connections: [],
+};
+
 export function stubNode(
   id: string,
   type: string,
@@ -92,8 +113,9 @@ export function createStubTools(options: {
   nodeDocs?: Record<string, string>;
 }) {
   const { canvas, proposals } = createStubCanvas(options);
-  return {
-    tools: createFlowTools({ canvas, nodeDocs: options.nodeDocs ?? {} }),
-    proposals,
-  };
+  const { tools, startTurn } = createFlowTools({
+    canvas,
+    nodeDocs: options.nodeDocs ?? {},
+  });
+  return { tools, startTurn, proposals };
 }

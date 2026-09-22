@@ -50,6 +50,8 @@ export function checkChanges(
     ]),
   );
   let connections: ConnectionView[] = [...flow.connections];
+  // Nodes this change set connects to or from.
+  const connected = new Set<string>();
 
   // Models already in the flow may stay, even if list_models doesn't offer them.
   const knownModels = new Map(models.map((m) => [m.id, m]));
@@ -120,11 +122,12 @@ export function checkChanges(
             `${at}: "${ref}" is already the name of a node; pick another ref.`,
           );
         const refProblem = problems.length > before;
-        checkSettings(type, change.settings ?? {}, true);
+        const given = isPlainObject(change.settings)
+          ? withoutUnchangedReadOnly(type, change.settings, {})
+          : change.settings ?? {};
+        checkSettings(type, given, true);
         if (refProblem || typeof ref !== "string") return;
-        const settings = isPlainObject(change.settings)
-          ? { ...change.settings }
-          : {};
+        const settings = isPlainObject(given) ? { ...given } : {};
         // Known even if its settings have problems, so later changes that
         // refer to it aren't reported as problems too.
         nodes.set(ref, { type, support: "editable", settings, touched: true });
@@ -152,15 +155,16 @@ export function checkChanges(
           problems.push(`${at}: needs the settings to change.`);
           return;
         }
-        checkSettings(node.type, change.settings, false);
+        const settings = withoutUnchangedReadOnly(
+          node.type,
+          change.settings,
+          node.settings,
+        );
+        checkSettings(node.type, settings, false);
         if (problems.length === before) {
-          Object.assign(node.settings, change.settings);
+          Object.assign(node.settings, settings);
           node.touched = true;
-          changes.push({
-            op: "update_node",
-            node: id,
-            settings: change.settings,
-          });
+          changes.push({ op: "update_node", node: id, settings });
         }
         return;
       }
@@ -237,6 +241,8 @@ export function checkChanges(
           problems.push(`${at}: that connection already exists.`);
         else {
           connections.push(connection);
+          connected.add(fromId);
+          connected.add(toId);
           changes.push({ op: "connect", ...connection });
         }
         return;
@@ -268,5 +274,56 @@ export function checkChanges(
       }
     }
 
+  // Nor should it connect to a node that stays blank, such as the empty
+  // Prompt Node a new flow starts with: the flow couldn't run.
+  if (problems.length === 0)
+    for (const id of Array.from(connected)) {
+      const node = nodes.get(id);
+      const blank = node && blankness(node.type, node.settings);
+      if (blank)
+        problems.push(
+          `${id} ${blank}. Fill it in with update_node in this change set, or connect to a different node.`,
+        );
+    }
+
   return { problems, changes };
+}
+
+/**
+ * Settings without read-only ones repeated back unchanged, which models often
+ * do when copying a node's settings. Changed read-only values are kept, so
+ * the check can say they're read-only.
+ */
+function withoutUnchangedReadOnly(
+  type: string,
+  settings: Record<string, unknown>,
+  current: Record<string, unknown>,
+): Record<string, unknown> {
+  const out = { ...settings };
+  for (const key of NODE_SPECS[type].readOnly)
+    if (
+      key in out &&
+      JSON.stringify(out[key]) === JSON.stringify(current[key] ?? [])
+    )
+      delete out[key];
+  return out;
+}
+
+/** What a node is missing to be usable, or undefined if nothing is. */
+function blankness(
+  type: string,
+  settings: Record<string, unknown>,
+): string | undefined {
+  const hasText = (list: unknown, text: (item: unknown) => unknown) =>
+    Array.isArray(list) &&
+    list.some((item) => String(text(item) ?? "").trim() !== "");
+  if (type === "prompt") {
+    if (!hasText(settings.prompts, (p) => (isPlainObject(p) ? p.text : "")))
+      return "has no prompt text yet";
+    if (!Array.isArray(settings.models) || settings.models.length === 0)
+      return "has no models yet";
+  }
+  if (type === "textfields" && !hasText(settings.values, (v) => v))
+    return "has no values yet";
+  return undefined;
 }

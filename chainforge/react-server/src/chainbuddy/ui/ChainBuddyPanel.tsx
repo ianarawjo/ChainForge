@@ -124,10 +124,13 @@ export default function ChainBuddyPanel() {
       }),
     [reactFlow],
   );
-  const tools = useMemo(
+  const { tools, startTurn } = useMemo(
     () => createFlowTools({ canvas, nodeDocs: NODE_DOCS }),
     [canvas],
   );
+  // Nodes on the canvas when ChainBuddy last replied, to notice another flow.
+  const seenNodes = useRef(new Set<string>());
+  const nodeIds = () => canvas.readFlow().nodes.map((n) => n.id);
 
   // Keep the newest message in view.
   useEffect(() => {
@@ -138,7 +141,29 @@ export default function ChainBuddyPanel() {
     const text = draft.trim();
     if (!text || running || !model.config) return;
     setDraft("");
+
+    // None of the nodes it saw are left: another flow is open. What the model
+    // remembers is about the old one, so start the conversation over.
+    const ids = nodeIds();
+    if (
+      conversation.current.length > 0 &&
+      seenNodes.current.size > 0 &&
+      !ids.some((id) => seenNodes.current.has(id))
+    ) {
+      for (const p of Object.values(proposals))
+        if (p.status === "pending") canvas.reject(p.id);
+      conversation.current = [];
+      decisions.current = [];
+      setItems((its) => [
+        ...its,
+        {
+          kind: "activity",
+          text: "The canvas shows a different flow now, so ChainBuddy started a new conversation.",
+        },
+      ]);
+    }
     setItems((its) => [...its, { kind: "user", text }]);
+    startTurn();
 
     // Tell the model what the user did with its proposals since it last spoke.
     const note = decisions.current.length
@@ -205,6 +230,7 @@ export default function ChainBuddyPanel() {
         userMessage,
         ...result.messages,
       ];
+      seenNodes.current = new Set(nodeIds());
       const ending: Record<string, string | undefined> = {
         done: undefined,
         cancelled: "Stopped.",
@@ -234,7 +260,7 @@ export default function ChainBuddyPanel() {
       setRunning(false);
       setStatus(null);
     }
-  }, [draft, running, model.config, tools]);
+  }, [draft, running, model.config, tools, startTurn, proposals]);
 
   const clear = () => {
     abort.current?.abort();
@@ -242,6 +268,7 @@ export default function ChainBuddyPanel() {
       if (p.status === "pending") canvas.reject(p.id);
     conversation.current = [];
     decisions.current = [];
+    seenNodes.current = new Set();
     setItems([]);
   };
 
