@@ -13,6 +13,7 @@ from chainforge.local_access import (
     normalize_origin, origin_allowed, token_valid,
 )
 from chainforge.idle_shutdown import IdleWatchdog, idle_shutdown_message, stop_this_server
+from chainforge import offline_mode, local_models
 import requests as py_requests
 from platformdirs import user_data_dir
 import copy
@@ -457,6 +458,8 @@ def page_globals_script() -> str:
               f' window.__CF_SESSION_TOKEN="{SESSION_TOKEN}";')
     if IDLE_WATCHDOG is not None:
         script += f' window.__CF_IDLE_SHUTDOWN_MINUTES={IDLE_WATCHDOG.timeout_seconds / 60:g};'
+    if offline_mode.is_locked():
+        script += ' window.__CF_OFFLINE_LOCKED=true;'
     return f"<script>{script}</script>"
 
 # Serve React app (static; no hot reloading)
@@ -721,7 +724,13 @@ def makeFetchCall():
     headers = data['headers']
     body = data['body']
 
-    response = py_requests.post(url, headers=headers, json=body)
+    blocked = offline_mode.block_reason_for_url(url)
+    if blocked:
+        return jsonify({'error': blocked})
+
+    # A redirect could send the request somewhere offline mode doesn't allow
+    response = py_requests.post(url, headers=headers, json=body,
+                                allow_redirects=not offline_mode.is_offline())
 
     if response.status_code == 200:
         ret = jsonify({'response': response.json()})
@@ -915,6 +924,27 @@ async def callCustomProvider():
 
     # Return the response
     return jsonify({'response': response})
+
+"""
+    LOCAL MODELS AND OFFLINE MODE
+"""
+@app.route('/app/offlineMode', methods=['POST'])
+def offline_mode_setting():
+    """Reports offline mode, and sets it when given {'on': bool}. See chainforge/offline_mode.py."""
+    data = request.get_json(silent=True) or {}
+    if 'on' in data:
+        on = bool(data['on'])
+        if not on and offline_mode.is_locked():
+            return jsonify({'error': 'ChainForge was started with --offline, so offline mode stays on.',
+                            'offline': True, 'locked': True}), 403
+        offline_mode.set_enabled(on)
+    return jsonify({'offline': offline_mode.is_offline(), 'locked': offline_mode.is_locked()})
+
+@app.route('/app/discoverLocalModels', methods=['POST'])
+def discover_local_models():
+    """Finds OpenAI-compatible servers running on this machine, and their models. See chainforge/local_models.py."""
+    servers = local_models.discover_local_models(own_port=PORT)
+    return jsonify({'servers': servers})
 
 """ 
     LOCALLY SAVED FLOWS
@@ -1164,6 +1194,8 @@ def save_settings(name):
         )
         if not success:
             return jsonify({"error": "Failed to save settings."}), 500
+        if name == "settings" and isinstance(data.get("offlineMode"), bool):
+            offline_mode.set_enabled(data["offlineMode"])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     return jsonify({"message": "Settings saved successfully!"})
@@ -1779,6 +1811,9 @@ def retrieve():
             # from the menu, which set the top-level value; the form's wins.
             embedding_provider = ((method.get("settings") or {}).get("embeddingProvider")
                                   or method.get("embeddingProvider", None))
+            blocked = offline_mode.block_reason_for_embedding_provider(embedding_provider)
+            if blocked:
+                return jsonify({"error": blocked}), 403
             if embedding_provider:
                 # This is an embedding-based method
                 embedding_model = method.get("settings", {}).get("embeddingModel", "default")
@@ -2113,6 +2148,9 @@ def rerank():
         return jsonify({"error": "Missing 'baseMethod' in form data"}), 400
     if not documents_json:
         return jsonify({"error": "Missing 'documents' in form data"}), 400
+    blocked = offline_mode.block_reason_for_reranker(base_method)
+    if blocked:
+        return jsonify({"error": blocked}), 403
     
     try:
         # Parse documents JSON
@@ -2191,10 +2229,14 @@ def proxy_image():
     url = request.args.get('url')
     if not url:
         return jsonify({"error": "URL parameter is required"}), 400
+
+    blocked = offline_mode.block_reason_for_url(url)
+    if blocked:
+        return jsonify({"error": blocked}), 403
     
     try:
         # Use Python requests to fetch the image
-        response = py_requests.get(url, stream=True)
+        response = py_requests.get(url, stream=True, allow_redirects=not offline_mode.is_offline())
 
         if not response.ok:
             return jsonify({"error": f"Failed to fetch image: {response.status_code} {response.reason}"}), response.status_code
@@ -2217,12 +2259,28 @@ def proxy_image():
         return jsonify({"error": f"Error fetching image: {str(e)}"}), 500
 
 
+def saved_offline_mode() -> bool:
+    """Whether offline mode is on in the saved settings."""
+    filepath = os.path.join(FLOWS_DIR, "settings.json")
+    if not (os.path.exists(filepath) or os.path.exists(filepath + ".enc")):
+        return False  # nothing saved yet, e.g. on first run
+    secure_mode = SECURE_MODE in ("all", "settings")
+    try:
+        settings, _ = load_json_file(
+            filepath_w_ext=filepath,
+            secure=secure_mode,
+            password=FLOWS_DIR_PWD if secure_mode else None,
+        )
+    except Exception:
+        return False
+    return isinstance(settings, dict) and settings.get("offlineMode") is True
+
 """ 
     SPIN UP SERVER
 """
 def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "settings", "all"] = "off",
                allowed_hosts: Iterable[str] = (), dev_origins: Iterable[str] = (),
-               idle_shutdown_minutes: Optional[float] = None):
+               idle_shutdown_minutes: Optional[float] = None, offline: bool = False):
     global HOSTNAME, PORT, FLOWS_DIR, MEDIA_DIR, SECURE_MODE, FLOWS_DIR_PWD, ALLOWED_HOSTNAMES, DEV_ORIGINS, IDLE_WATCHDOG
     HOSTNAME = host
     PORT = port
@@ -2257,6 +2315,12 @@ def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "setti
     if host.strip() in ("", "0.0.0.0", "::"):
         print("Listening on all network interfaces. To reach ChainForge from another machine, "
               "add the name or IP address you use with --allowed-hosts.")
+    # Offline mode holds from startup, before any page has told the server about it
+    offline_mode.set_enabled(saved_offline_mode())
+    if offline:
+        offline_mode.lock()
+        print("Offline mode is on: ChainForge only uses models and services on this machine or "
+              "your local network, and it can't be turned off in the app.")
     if idle_shutdown_minutes:
         IDLE_WATCHDOG = IdleWatchdog(
             idle_shutdown_minutes * 60,

@@ -45,6 +45,18 @@ export const embeddingProviders = [
     ],
   },
   {
+    // Served by Ollama, on this machine or the local network. Pull a model first.
+    label: "🦙 Ollama Embeddings",
+    value: "ollama",
+    models: [
+      "nomic-embed-text",
+      "mxbai-embed-large",
+      "bge-m3",
+      "snowflake-arctic-embed",
+      "all-minilm",
+    ],
+  },
+  {
     label: "🧠 Sentence Transformers",
     value: "sentence-transformers",
     models: [
@@ -834,6 +846,18 @@ export const retrievalMethodGroups: RetrievalMethodGroup[] = [
         embeddingProvider: "cohere",
         description:
           "Retrieve documents using Cohere embeddings. Multilingual support and optimized for search.",
+      },
+      {
+        baseMethod: "embedding",
+        runsIn: "backend" as RunsIn,
+        methodName: "Ollama Embedding",
+        library: "EmbeddingSimilarity",
+        emoji: "🦙",
+        group: "Embedding-based Retrieval",
+        needsEmbeddingModel: true,
+        embeddingProvider: "ollama",
+        description:
+          "Retrieve documents using an embedding model served by Ollama (e.g. nomic-embed-text), on your machine. Pull the model first with `ollama pull`.",
       },
       {
         baseMethod: "embedding",

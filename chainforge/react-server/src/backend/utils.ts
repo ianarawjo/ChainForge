@@ -17,6 +17,7 @@ import {
   stripHuggingFacePrefix,
   stripTogetherPrefix,
   stripOpenRouterPrefix,
+  stripOpenAICompatiblePrefix,
 } from "./models";
 import {
   Dict,
@@ -60,6 +61,7 @@ import {
   statsAt,
   statsToMetavars,
 } from "./responseStats";
+import { assertProviderAllowedOffline } from "./offlineMode";
 import { Annotations } from "plotly.js";
 
 /**
@@ -689,7 +691,12 @@ export async function call_chatgpt(
 
   // Get the correct function to call
   let openai_call: any;
-  if (modelname.includes("davinci") || modelname.includes("instruct")) {
+  // OpenAI's legacy completion models. Other servers' model names often contain
+  // "instruct" too (e.g. Qwen2.5-7B-Instruct), but are chat models.
+  if (
+    BASE_URL === undefined &&
+    (modelname.includes("davinci") || modelname.includes("instruct"))
+  ) {
     if ("response_format" in query) delete query.response_format;
     // Create call to text completions model
     openai_call = openai.completions.create.bind(openai.completions);
@@ -2403,6 +2410,7 @@ export async function call_ollama_provider(
     "system_msg",
     "chat_history",
     "format",
+    "parallel_requests",
   ])
     if (params && name in params) delete params[name];
 
@@ -2469,7 +2477,8 @@ export async function call_ollama_provider(
     }
   }
 
-  // Ollama's reply also carries its timings and token counts, which extract_stats reads
+  // Ollama's reply also carries its timings and token counts, which extract_stats
+  // reads, and a reasoning model's reasoning, in `thinking` or <think> tags.
   const OLLAMA_STATS = [
     "total_duration",
     "load_duration",
@@ -2478,14 +2487,33 @@ export async function call_ollama_provider(
     "eval_count",
     "eval_duration",
   ];
-  const parse_response = (body: string, latency_ms: number) => {
-    const json = JSON.parse(body);
+  const parse_response = (resp: Response, body: string, latency_ms: number) => {
+    let json: Dict | undefined;
+    try {
+      json = JSON.parse(body);
+    } catch {
+      json = undefined;
+    }
+    if (!json || json.error || resp.ok === false)
+      throw new Error(
+        `Ollama returned an error (${resp.status}): ${json?.error ?? body.slice(0, 300)}`,
+      );
+    const reply: Dict = json;
     const stats = Object.fromEntries(
-      OLLAMA_STATS.filter((key) => key in json).map((key) => [key, json[key]]),
+      OLLAMA_STATS.filter((key) => key in reply).map((key) => [
+        key,
+        reply[key],
+      ]),
     );
+    // chat models reply with a message; text-only models with a response
+    const split = split_think_tags(
+      (json.message ? json.message.content : json.response) ?? "",
+    );
+    const reasoning =
+      json.message?.thinking ?? json.thinking ?? split.reasoning;
     return {
-      // chat models reply with a message; text-only models with a response
-      generated_text: json.message ? json.message.content : json.response,
+      generated_text: split.content,
+      ...(reasoning ? { thinking: reasoning } : {}),
       ...stats,
       [LATENCY_KEY]: latency_ms,
     };
@@ -2524,14 +2552,122 @@ export async function call_ollama_provider(
       resps.push(response);
     }
 
-    responses = await Promise.all(resps.map((resp) => resp.text())).then(
-      (bodies) => bodies.map((body, i) => parse_response(body, latencies[i])),
+    responses = await Promise.all(
+      resps.map(async (resp, i) =>
+        parse_response(resp, await resp.text(), latencies[i]),
+      ),
     );
   } catch (err) {
     if (controller.signal.aborted) throw new UserForcedPrematureExit();
     throw err;
   } finally {
     if (watcher !== undefined) clearInterval(watcher);
+  }
+
+  return [query, responses];
+}
+
+/**
+ * Splits a leading <think>...</think> block, which reasoning models served
+ * locally often write into their reply, from the answer. A block that never
+ * closes (the model ran out of tokens while reasoning) is all reasoning.
+ */
+export function split_think_tags(text: string): {
+  content: string;
+  reasoning?: string;
+} {
+  if (typeof text !== "string") return { content: text };
+  const match = text.match(/^\s*<think>([\s\S]*?)(?:<\/think>|$)/);
+  if (!match) return { content: text };
+  const reasoning = match[1].trim();
+  return {
+    content: text.slice(match[0].length).trim(),
+    ...(reasoning ? { reasoning } : {}),
+  };
+}
+
+/**
+ * Calls a model on any server with an OpenAI-compatible Chat Completions API:
+ * LM Studio, llama.cpp's llama-server, MLX (mlx_lm.server), vLLM, Ollama's
+ * /v1 endpoint, and many more. Each model carries its own server URL, so
+ * several servers, and cloud models, can be compared side by side.
+ *
+ * The browser calls the server directly, so the server must accept requests
+ * from web pages (CORS): llama-server, mlx_lm.server, vLLM and Ollama do by
+ * default; LM Studio needs "Enable CORS" turned on.
+ */
+export async function call_openai_compatible(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict[]]> {
+  const settings: Dict = { ...(params ?? {}) };
+  const base_url =
+    typeof settings.base_url === "string" ? settings.base_url.trim() : "";
+  if (!base_url)
+    throw new Error(
+      "This model has no server URL. Set the Base URL in its model settings, e.g. http://localhost:1234/v1 for LM Studio.",
+    );
+  const model_name = stripOpenAICompatiblePrefix(model).trim();
+  if (!model_name)
+    throw new Error(
+      "This model has no model ID. Choose or type one in its model settings.",
+    );
+  // The OpenAI SDK wants a key even for servers that don't. Never fall back to
+  // the user's OpenAI key, which would send it to this server.
+  const api_key =
+    (typeof settings.api_key === "string" && settings.api_key.trim()) ||
+    "not-needed";
+  for (const name of ["base_url", "api_key", "parallel_requests"])
+    delete settings[name];
+  for (const [key, value] of Object.entries(settings))
+    if (value === "" || value === null || value === undefined)
+      delete settings[key];
+
+  // Many of these servers ignore `n`, so a request is sent per response.
+  let query: Dict = {};
+  const responses: Dict[] = [];
+  while (responses.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+    const start = performance.now();
+    let reply: Dict;
+    try {
+      [query, reply] = await call_chatgpt(
+        prompt,
+        model_name,
+        1,
+        temperature,
+        deepcopy(settings),
+        should_cancel,
+        images,
+        base_url,
+        api_key,
+      );
+    } catch (err) {
+      const message = (err as Error).message;
+      throw new Error(
+        /connection error|failed to fetch/i.test(message)
+          ? `Could not reach ${base_url}. Check that the server is running and accepts requests from web pages (CORS); in LM Studio, turn on "Enable CORS". (${message})`
+          : message,
+      );
+    }
+    // Servers put reasoning in reasoning_content, reasoning, or <think> tags in the reply.
+    reply.choices = (reply.choices ?? []).map((choice: Dict) => {
+      const split = split_webllm_thinking(choice);
+      const reasoning = split.message?.reasoning;
+      return reasoning && !split.message.reasoning_content
+        ? {
+            ...split,
+            message: { ...split.message, reasoning_content: reasoning },
+          }
+        : split;
+    });
+    reply[LATENCY_KEY] = performance.now() - start;
+    responses.push(reply);
   }
 
   return [query, responses];
@@ -2862,15 +2998,14 @@ async function call_custom_provider(
 export function split_webllm_thinking(choice: Dict): Dict {
   const content = choice?.message?.content;
   if (typeof content !== "string") return choice;
-  const match = content.match(/^\s*<think>([\s\S]*?)(?:<\/think>|$)/);
-  if (!match) return choice;
-  const reasoning = match[1].trim();
+  const split = split_think_tags(content);
+  if (split.content === content) return choice;
   return {
     ...choice,
     message: {
       ...choice.message,
-      content: content.slice(match[0].length).trim(),
-      ...(reasoning ? { reasoning_content: reasoning } : {}),
+      content: split.content,
+      ...(split.reasoning ? { reasoning_content: split.reasoning } : {}),
     },
   };
 }
@@ -2979,6 +3114,8 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.HuggingFace)
     call_api = call_huggingface;
   else if (llm_provider === LLMProvider.Ollama) call_api = call_ollama_provider;
+  else if (llm_provider === LLMProvider.OpenAICompatible)
+    call_api = call_openai_compatible;
   else if (llm_provider === LLMProvider.Custom) call_api = call_custom_provider;
   else if (llm_provider === LLMProvider.Bedrock) call_api = call_bedrock;
   else if (llm_provider === LLMProvider.Together) call_api = call_together;
@@ -2994,6 +3131,7 @@ export async function call_llm(
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
     );
+  assertProviderAllowedOffline(llm_provider, params);
   // Past turns' reasoning state is only for the provider that made it, which handles it itself
   if (params?.chat_history && !PROVIDERS_REPLAYING_REASONING.has(llm_provider))
     params.chat_history = strip_reasoning_state(params.chat_history);
@@ -3266,8 +3404,12 @@ export function extract_reasoning(
           ),
         );
       break;
+    case LLMProvider.Ollama:
+      reasoning = responses.map((r) => readable(r?.thinking));
+      break;
     case LLMProvider.DeepSeek:
     case LLMProvider.WebLLM: // see split_webllm_thinking
+    case LLMProvider.OpenAICompatible: // see call_openai_compatible
       // OpenAI-format chat completions, with the reasoning beside the content
       reasoning = responses.flatMap((r) =>
         (r?.choices ?? []).map((c: Dict) =>
@@ -3507,6 +3649,10 @@ export function extract_responses(
       return _extract_huggingface_responses(response as Dict[]);
     case LLMProvider.Ollama:
       return _extract_ollama_responses(response as Dict[]);
+    case LLMProvider.OpenAICompatible:
+      return (response as Dict[]).flatMap((r) =>
+        _extract_chatgpt_responses(r).map((text) => text ?? ""),
+      );
     case LLMProvider.Bedrock:
       return _extract_bedrock_responses(response as Dict[]);
     case LLMProvider.Together:
