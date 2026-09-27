@@ -235,6 +235,39 @@ test("a table's column connects by its name, and a renamed one reconnects", asyn
   expect(edgesInto("p").map((e: any) => e.sourceHandle)).toEqual(["town"]);
 });
 
+test("a new node that feeds one on the canvas goes to its left", () => {
+  // A table feeding the prompt shouldn't sit right of it, with its
+  // connection running backwards. The TextFields Node there is in the way,
+  // so it moves down.
+  const { canvas } = setUp();
+  canvas.propose({
+    summary: "Ask from a table",
+    changes: [
+      {
+        op: "add_node",
+        ref: "qa",
+        type: "table",
+        settings: { columns: ["city"], rows: [{ city: "Oslo" }] },
+      },
+      {
+        op: "update_node",
+        node: "p",
+        settings: { prompts: [{ label: "A", text: "Say hi to {city}" }] },
+      },
+      {
+        op: "connect",
+        from: { node: "qa", output: "city" },
+        to: { node: "p", input: "city" },
+      },
+    ],
+  });
+  const nodes = (useStore.getState() as any).nodes;
+  const table = nodes.find((n: any) => n.type === "table");
+  const prompt = nodes.find((n: any) => n.id === "p");
+  expect(table.position.x).toBeLessThan(prompt.position.x);
+  expect(table.position.y).toBeGreaterThan(0); // below the TextFields Node
+});
+
 test("rejecting while a proposal applies does nothing", async () => {
   const { canvas, statuses } = setUp();
   const { id } = canvas.propose({

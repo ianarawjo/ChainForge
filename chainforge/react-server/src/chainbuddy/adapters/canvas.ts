@@ -753,9 +753,16 @@ function makeEdge(
   };
 }
 
+/** Room given to a new node, before it's drawn and has a size. */
+const NODE_W = 400;
+const NODE_H = 320;
+const GAP = 80;
+
 /**
- * Places new nodes in columns to the right of the flow, each column after
- * the nodes that feed it.
+ * Places new nodes. One that feeds a node already on the canvas (a table
+ * feeding a prompt, say) goes to the left of it, moved down past anything in
+ * the way. The rest go in columns to the right of the flow, each column after
+ * the new nodes that feed it.
  */
 function layout(changes: Change[], existing: Node[]) {
   const refs = changes.flatMap((c) => (c.op === "add_node" ? [c.ref] : []));
@@ -773,8 +780,24 @@ function layout(changes: Change[], existing: Node[]) {
           ),
         );
 
+  const taken = existing.map((n) => ({
+    x: n.position.x,
+    y: n.position.y,
+    w: n.width ?? NODE_W,
+    h: n.height ?? NODE_H,
+  }));
+  const isFree = (x: number, y: number) =>
+    !taken.some(
+      (b) =>
+        x < b.x + b.w + GAP / 2 &&
+        x + NODE_W + GAP / 2 > b.x &&
+        y < b.y + b.h + GAP / 2 &&
+        y + NODE_H + GAP / 2 > b.y,
+    );
+  const onCanvas = new Map(existing.map((n) => [n.id, n]));
+
   const right = existing.length
-    ? Math.max(...existing.map((n) => n.position.x + (n.width ?? 400))) + 120
+    ? Math.max(...existing.map((n) => n.position.x + (n.width ?? NODE_W))) + 120
     : 100;
   const top = existing.length
     ? Math.min(...existing.map((n) => n.position.y))
@@ -782,10 +805,31 @@ function layout(changes: Change[], existing: Node[]) {
   const rows = new Map<number, number>();
   const positions = new Map<string, { x: number; y: number }>();
   for (const ref of refs) {
+    const fedByNew = feeds.some(
+      (c) => c.to.node === ref && column.has(c.from.node),
+    );
+    const targets = feeds
+      .filter((c) => c.from.node === ref)
+      .map((c) => onCanvas.get(c.to.node))
+      .filter((n): n is Node => n !== undefined)
+      .sort((a, b) => a.position.x - b.position.x);
+    if (targets.length > 0 && !fedByNew) {
+      const x = targets[0].position.x - NODE_W - GAP;
+      let y = targets[0].position.y;
+      for (let tries = 0; tries < 6 && !isFree(x, y); tries++)
+        y += NODE_H + GAP / 2;
+      if (isFree(x, y)) {
+        positions.set(ref, { x, y });
+        taken.push({ x, y, w: NODE_W, h: NODE_H });
+        continue;
+      }
+    }
     const col = column.get(ref) ?? 0;
     const row = rows.get(col) ?? 0;
     rows.set(col, row + 1);
-    positions.set(ref, { x: right + col * 480, y: top + row * 320 });
+    const at = { x: right + col * 480, y: top + row * 360 };
+    positions.set(ref, at);
+    taken.push({ ...at, w: NODE_W, h: NODE_H });
   }
   return positions;
 }
