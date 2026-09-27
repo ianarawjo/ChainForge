@@ -632,6 +632,14 @@ const GRAPH_OPTIONS = [
 ];
 
 /**
+ * The fewest values a violin or density strip needs. With fewer, its shape
+ * mostly shows the smoothing rather than the data, so a box plot (with every
+ * point) is drawn instead.
+ */
+const MIN_VALUES_FOR_DENSITY = 10;
+const isDensityGraph = (key: string) => key === "violin" || key === "gradient";
+
+/**
  * VIS VIEW COMPONENT
  * The inner part of the Vis Node.
  */
@@ -705,6 +713,17 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       return nextGraphType;
     };
     const [disableGraphTypeOption, setDisableGraphTypeOption] = useState(false);
+    // The fewest values in any one box, violin or strip of the plot, if it
+    // has them; below MIN_VALUES_FOR_DENSITY, violins and gradients are off
+    const [fewestPerGroup, setFewestPerGroup] = useState<number | null>(null);
+    const densityTooFew =
+      fewestPerGroup !== null && fewestPerGroup < MIN_VALUES_FOR_DENSITY;
+    // What's drawn: a box plot in place of a violin or gradient with too few
+    // values, though that choice stays saved for when there are enough
+    const shownGraphType =
+      densityTooFew && isDensityGraph(graphType.key)
+        ? GRAPH_OPTIONS.find((o) => o.key === "box") ?? graphType
+        : graphType;
 
     const [placeholderText, setPlaceholderText] = useState(<></>);
 
@@ -1000,6 +1019,32 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       }
 
       startTransition(() => {
+        // Set again below by the plots with boxes, violins or strips
+        setFewestPerGroup(null);
+        /**
+         * The graph type to draw, given how many values each box, violin or
+         * strip has: a box plot for a violin or gradient with too few.
+         */
+        const graphTypeToDraw = (groupSizes: number[]): string => {
+          const nonEmpty = groupSizes.filter((n) => n > 0);
+          const fewest = nonEmpty.length > 0 ? Math.min(...nonEmpty) : null;
+          setFewestPerGroup(fewest);
+          return isDensityGraph(graphType.key) &&
+            fewest !== null &&
+            fewest < MIN_VALUES_FOR_DENSITY
+            ? "box"
+            : graphType.key;
+        };
+        // How many values the responses matching `match` have
+        const countValues = (
+          rs: LLMResponse[],
+          match: (r: LLMResponse) => boolean,
+        ) =>
+          rs.reduce(
+            (n, r) => (match(r) ? n + get_items(r.eval_res).length : n),
+            0,
+          );
+
         const normalizeGroupBucket = (value: unknown): string => {
           if (value === undefined || value === null) return "(missing)";
           return llmResponseDataToString(value as LLMResponseData).trim();
@@ -1315,6 +1360,15 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           const yTickLabels = new Set<string>();
           // For a density gradient: its strips, one row each, drawn after the loop
           const gradientBands: DensityBand[] = [];
+          const plotKey =
+            sel_typeof_eval_res === "Boolean" ||
+            sel_typeof_eval_res === "Categorical"
+              ? graphType.key
+              : graphTypeToDraw(
+                  Array.from(names).map((name) =>
+                    countValues(responses, (r) => resp_to_x(r) === name),
+                  ),
+                );
           for (const name of names) {
             let x_items: EvaluationScore[] = [];
             let text_items: string[] = [];
@@ -1409,7 +1463,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               } else {
                 // If multiple eval results per response object (num generations per prompt n > 1),
                 // let user decide:
-                if (graphType.key === "bar") {
+                if (plotKey === "bar") {
                   d.type = "histogram";
                   d.histfunc = barTotals ? "sum" : "avg";
                   d.y = new Array(x_items.length).fill(shortnames[name]);
@@ -1436,7 +1490,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   //     arrayminus: error_values.map((e) => e[0]), // Lower bound
                   //     visible: true,
                   //   };
-                } else if (graphType.key === "gradient") {
+                } else if (plotKey === "gradient") {
                   gradientBands.push({
                     y: gradientBands.length,
                     halfHeight: 0.35,
@@ -1451,7 +1505,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   d.type = "box";
                   d.boxpoints = "all";
                   d.hoveron = "points";
-                  if (graphType.key === "violin") asViolin(d);
+                  if (plotKey === "violin") asViolin(d);
                 }
               }
 
@@ -1512,6 +1566,16 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           const rowLabels = Object.values(shortnames);
           const gradientBands: DensityBand[] = [];
           const stripHeight = 0.8 / Math.max(1, llm_names.length);
+          const plotKey = graphTypeToDraw(
+            llm_names.flatMap((llm) =>
+              Array.from(names).map((name) =>
+                countValues(
+                  responses_by_llm[llm],
+                  (r) => resp_to_x(r) === name,
+                ),
+              ),
+            ),
+          );
 
           llm_names.forEach((llm, llmIdx) => {
             // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
@@ -1550,7 +1614,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 ...layout.xaxis,
               };
               setForcedGraphType("bar");
-            } else if (graphType.key === "gradient") {
+            } else if (plotKey === "gradient") {
               const color = getColorForLLMAndSetIfNotFound(llm);
               rowLabels.forEach((label, row) => {
                 const idxs = y_items
@@ -1595,7 +1659,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               // If only one result, plot a bar chart:
               // if (max_num_results_per_prompt === 1) {
               let xaxis_title = "score";
-              if (graphType.key === "bar") {
+              if (plotKey === "bar") {
                 d.type = "bar";
                 d.textposition = "none"; // hide the text which appears within each bar
                 xaxis_title =
@@ -1642,7 +1706,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 d.type = "box";
                 d.hoveron = "points";
                 d.offsetgroup = llm;
-                if (graphType.key === "violin") asViolin(d);
+                if (plotKey === "violin") asViolin(d);
               }
 
               spec.push(d);
@@ -2048,7 +2112,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               size="xs"
               compact
               color="gray"
-              leftIcon={graphType.icon}
+              leftIcon={shownGraphType.icon}
               disabled={disableGraphTypeOption}
               // The same height and line as the header's other buttons
               // (inline, since Mantine's compact size sets its own height)
@@ -2060,17 +2124,17 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 top: 5,
               }}
             >
-              {graphType.label}
+              {shownGraphType.label}
             </Button>
           ) : (
             <Button
               variant="outline"
               size="xs"
               color="gray"
-              leftIcon={graphType.icon}
+              leftIcon={shownGraphType.icon}
               disabled={disableGraphTypeOption}
             >
-              {graphType.label}
+              {shownGraphType.label}
             </Button>
           )}
         </Menu.Target>
@@ -2080,12 +2144,19 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             <Menu.Item
               key={option.key}
               icon={option.icon}
+              disabled={densityTooFew && isDensityGraph(option.key)}
               onClick={() => {
                 setGraphType(option);
                 if (id) setDataPropsForNode(id, { graph_type: option.key });
               }}
             >
               {option.label}
+              {densityTooFew && isDensityGraph(option.key) && (
+                <div style={{ fontSize: 11 }}>
+                  Needs {MIN_VALUES_FOR_DENSITY}+ scores per group; the smallest
+                  has {fewestPerGroup}
+                </div>
+              )}
             </Menu.Item>
           ))}
         </Menu.Dropdown>
