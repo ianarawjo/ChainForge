@@ -64,6 +64,7 @@ describe("measuring local models' energy", () => {
     const { beginEnergy, endEnergy } = load();
     const id = await beginEnergy("http://localhost:11434/api/chat");
     expect(id).toBe("7");
+    const before = Date.now();
     const energy = await endEnergy(id, performance.now() - 20, {
       load_s: 1.58,
       generation_s: 5.49,
@@ -77,7 +78,9 @@ describe("measuring local models' energy", () => {
       generation_s: 5.49,
       total_s: 7.1,
     });
-    expect(params.since_reply_ms).toBeGreaterThanOrEqual(20);
+    // When the reply arrived (20 ms ago), by the machine's clock
+    expect(params.reply_epoch_ms).toBeLessThanOrEqual(before - 19);
+    expect(params.reply_epoch_ms).toBeGreaterThan(before - 1000);
   });
 
   test("asks whether energy can be measured only once", async () => {
@@ -157,6 +160,13 @@ describe("showing measured energy", () => {
     );
     expect(lines).toContain("  GPU 46 · CPU 20 · memory 19 mWh");
     expect(lines).toContain("Loading the model: 3 mWh (not included above)");
+    // Parts in the same unit as the total
+    expect(
+      describeStats({
+        energy_wh: 1500,
+        energy_parts_wh: { gpu: 1000, cpu: 500 },
+      }),
+    ).toContain("  GPU 1 · CPU 0.5 kWh");
     expect(describeStats({ ...stats, energy_shared: true })).toContain(
       "  Shared with requests generating at the same time",
     );

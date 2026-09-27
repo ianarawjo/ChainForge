@@ -17,16 +17,22 @@ _looked = False
 def get_monitor() -> Tuple[Optional[EnergyMonitor], str]:
     """This machine's energy monitor, started, or None and why not.
 
-    Nothing is read until the first call, so a ChainForge that never runs a
-    local model never reads the meter.
+    The server calls this when it starts, so idle power is known by the
+    first request. Unused, the monitor reads the meter only every few seconds
+    (see monitor.py); on a machine without a meter, it does nothing.
     """
     global _monitor, _unavailable_reason, _looked
     with _lock:
         if not _looked:
             _looked = True
-            from chainforge.energy.meters import find_meter
-            meter, _unavailable_reason = find_meter()
-            if meter is not None:
-                _monitor = EnergyMonitor(meter)
-                _monitor.start()
+            try:
+                from chainforge.energy.meters import find_meter
+                meter, _unavailable_reason = find_meter()
+                if meter is not None:
+                    _monitor = EnergyMonitor(meter)
+            except Exception as err:  # a missing meter is never an error
+                meter, _monitor = None, None
+                _unavailable_reason = f"Could not start measuring energy: {err}"
+        if _monitor is not None:
+            _monitor.start()
         return _monitor, _unavailable_reason

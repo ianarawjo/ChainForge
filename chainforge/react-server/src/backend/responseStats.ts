@@ -462,14 +462,12 @@ function describeMeasuredEnergy(stats: ResponseStats): string[] {
     .filter(([, v]) => v > 0 && v >= wh * 0.005)
     .sort(([, a], [, b]) => b - a);
   if (parts.length > 0) {
-    const scale = wh < 1 ? 1000 : 1;
+    // In the same unit as the total above
+    const [unit, scale] = energyUnit(wh);
     lines.push(
       `  ${parts
-        .map(
-          ([c, v]) =>
-            `${ENERGY_PARTS[c] ?? c} ${String(Number((v * scale).toPrecision(2)))}`,
-        )
-        .join(" · ")} ${wh < 1 ? "mWh" : "Wh"}`,
+        .map(([c, v]) => `${ENERGY_PARTS[c] ?? c} ${twoDigits(v * scale)}`)
+        .join(" · ")} ${unit}`,
     );
   }
   if (stats.energy_shared)

@@ -10,7 +10,7 @@ import sys
 import pytest
 
 from chainforge.energy.attribution import (
-    GENERATION, LOAD, Window, attribute, energy_between, idle_baseline,
+    GENERATION, LOAD, Readings, Window, attribute, idle_baseline,
 )
 from chainforge.energy.monitor import EnergyMonitor
 from chainforge.energy.meters.base import EnergyMeter
@@ -19,6 +19,10 @@ from chainforge.energy.meters.base import EnergyMeter
 def readings(power_at, t0=0.0, t1=60.0, step=0.1):
     """Meter readings every `step` s for a machine drawing `power_at(t)` watts
     (a dict per component)."""
+    return Readings.of(raw_readings(power_at, t0, t1, step))
+
+
+def raw_readings(power_at, t0=0.0, t1=60.0, step=0.1):
     samples, totals, t = [], {}, t0
     samples.append((t, dict(totals)))
     while t < t1 - 1e-9:
@@ -38,11 +42,17 @@ def idle_then(busy_power, busy_spans, idle=None):
 class TestEnergyBetween:
     def test_constant_power(self):
         samples = readings(lambda t: {"gpu": 10.0}, t1=5)
-        assert energy_between(samples, 1.0, 3.0)["gpu"] == pytest.approx(20.0)
+        assert samples.energy(1.0, 3.0)["gpu"] == pytest.approx(20.0)
 
     def test_part_of_a_reading_interval(self):
-        samples = [(0.0, {"gpu": 0.0}), (1.0, {"gpu": 8.0})]
-        assert energy_between(samples, 0.25, 0.75)["gpu"] == pytest.approx(4.0)
+        samples = Readings.of([(0.0, {"gpu": 0.0}), (1.0, {"gpu": 8.0})])
+        assert samples.energy(0.25, 0.75)["gpu"] == pytest.approx(4.0)
+
+    def test_trimming_keeps_the_interval_spanning_the_cutoff(self):
+        samples = readings(lambda t: {"gpu": 10.0}, t1=10, step=1.0)
+        samples.trim(4.5)
+        assert samples.times[0] == 4.0
+        assert samples.energy(4.5, 5.0)["gpu"] == pytest.approx(5.0)
 
 
 class TestIdleBaseline:
@@ -207,6 +217,63 @@ class TestMonitor:
         # ...and idle power can be measured again
         assert monitor.status()["idle_w"] == pytest.approx(1.0)
 
+    def test_timings_that_dont_fit_the_request_are_rejected(self):
+        monitor, clock = self.make()
+        run_monitor_until(monitor, clock, 1005.0)
+        for bad in [dict(load_s=float("nan"), generation_s=1.0, total_s=1.0),
+                    dict(load_s=0.0, generation_s=-1.0, total_s=1.0),
+                    dict(load_s=0.0, generation_s=9.0, total_s=1.0),  # more than all of it
+                    dict(load_s=0.0, generation_s=60.0, total_s=60.0)]:  # began before the request
+            req = monitor.begin()
+            run_monitor_until(monitor, clock, clock.now + 1.0)
+            assert monitor.end(req, 0.0, **bad) is None
+            assert req not in monitor._in_flight
+
+    def test_waiting_for_a_busy_model_isnt_counted_as_loading_it(self):
+        # b generates 10-15; a arrives at 11, waits for the model ("load" 11-15), generates 15-17
+        monitor, clock = self.make(busy_spans=[(10.0, 17.0)])
+        run_monitor_until(monitor, clock, 1010.0)
+        b = monitor.begin()
+        run_monitor_until(monitor, clock, 1011.0)
+        a = monitor.begin()
+        run_monitor_until(monitor, clock, 1015.0)
+        monitor.end(b, 0.0, 0.0, 5.0, 5.0)
+        run_monitor_until(monitor, clock, 1017.0)
+        result = monitor.end(a, 0.0, load_s=4.0, generation_s=2.0, total_s=6.0)
+        assert result["load_energy_wh"] is None
+        assert result["energy_wh"] * 3600 == pytest.approx(116.0, rel=0.03)  # 58 W x 2 s
+
+    def test_reads_rarely_when_not_used(self):
+        from chainforge.energy import monitor as mod
+        monitor, clock = self.make()
+        assert monitor._interval() == mod.IDLE_INTERVAL_S
+        clock.now += mod.ACTIVE_FOR_S + 1
+        assert monitor._interval() == mod.DORMANT_INTERVAL_S
+        req = monitor.begin()
+        assert monitor._interval() == mod.BUSY_INTERVAL_S
+        monitor.cancel(req)
+        assert monitor._interval() == mod.IDLE_INTERVAL_S
+
+    def test_settling_stays_fast_with_a_full_history(self):
+        import time
+        from chainforge.energy import monitor as mod
+        # 15 minutes of back-to-back requests, read at the busy rate
+        monitor, clock = self.make(busy_spans=[(5.0, 2000.0)])
+        run_monitor_until(monitor, clock, 1004.0, step=1.0)
+        t = 1005.0
+        while t < 1000 + mod.HISTORY_S:
+            req = monitor.begin()
+            run_monitor_until(monitor, clock, t + 2.0, step=mod.BUSY_INTERVAL_S)
+            monitor.end(req, 0.0, 0.0, 1.8, 2.0)
+            t += 2.0
+        assert len(monitor._readings) > 8000
+        req = monitor.begin()
+        run_monitor_until(monitor, clock, t + 2.0)
+        start = time.perf_counter()
+        result = monitor.end(req, 0.0, 0.0, 1.8, 2.0)
+        assert time.perf_counter() - start < 0.05
+        assert result["energy_wh"] > 0
+
     def test_time_in_flight_isnt_counted_as_idle(self):
         monitor, clock = self.make(busy_spans=[(10.0, 20.0)])
         run_monitor_until(monitor, clock, 1009.9)
@@ -236,8 +303,9 @@ class TestRoutes:
         assert status["available"] is True and status["meter"] == "Fake meter"
         req = client.post("/app/energyBegin", json={}).get_json()["id"]
         run_monitor_until(*monitor, 1012.0)
+        import time
         energy = client.post("/app/energyEnd", json={
-            "id": req, "since_reply_ms": 0, "load_s": 0, "generation_s": 2, "total_s": 2,
+            "id": req, "reply_epoch_ms": time.time() * 1000, "load_s": 0, "generation_s": 2, "total_s": 2,
         }).get_json()["energy"]
         assert energy["energy_wh"] == pytest.approx(0.0, abs=1e-6)  # idle all along
 
@@ -252,8 +320,14 @@ class TestRoutes:
         assert status["available"] is False
 
 
-@pytest.mark.skipif(not (sys.platform == "darwin" and platform.machine() == "arm64"),
-                    reason="Apple silicon only")
+def _real_apple_silicon():
+    if not (sys.platform == "darwin" and platform.machine() == "arm64"):
+        return False
+    from chainforge.energy.meters import in_macos_vm
+    return not in_macos_vm()  # e.g. GitHub's macOS runners, which have no counters
+
+
+@pytest.mark.skipif(not _real_apple_silicon(), reason="Apple silicon, not in a virtual machine, only")
 def test_apple_silicon_meter_reads_energy():
     import time
     from chainforge.energy.meters import find_meter

@@ -87,8 +87,6 @@ class AppleSiliconMeter(EnergyMeter):
             raise RuntimeError("Could not subscribe to this Mac's energy counters.")
         self._prev = ior.IOReportCreateSamples(self._subscription, self._subscribed, None)
         self._totals = {c: 0.0 for c in _CHANNELS.values()}
-        self._channels: "list[tuple[int, str, float]]" = []
-        self._channel_count = -1
         # Check the channels are there and in units we know
         found = self._delta_joules(self._prev, self._prev)
         if not found:
@@ -105,39 +103,22 @@ class AppleSiliconMeter(EnergyMeter):
         ok = self._cf.CFStringGetCString(ref, buf, len(buf), _UTF8)
         return buf.value.decode() if ok else ""
 
-    def _find_channels(self, arr) -> "list[tuple[int, str, float]]":
-        """Where our channels are in a sample, with their units: (index, component, to joules)."""
-        cf, ior = self._cf, self._ior
-        found = []
-        for i in range(cf.CFArrayGetCount(arr)):
-            ch = cf.CFArrayGetValueAtIndex(arr, i)
-            comp = _CHANNELS.get(self._pystr(ior.IOReportChannelGetChannelName(ch)))
-            scale = _TO_JOULES.get(self._pystr(ior.IOReportChannelGetUnitLabel(ch)).strip())
-            if comp and scale:
-                found.append((i, comp, scale))
-        return found
-
     def _delta_joules(self, prev, cur) -> Dict[str, float]:
-        """Joules per component between two samples."""
+        """Joules per component between two samples. The subscription has
+        only our few channels, so reading each one's name is cheap."""
         cf, ior = self._cf, self._ior
         delta = ior.IOReportCreateSamplesDelta(prev, cur, None)
         if not delta:
             return {}
         try:
-            arr = cf.CFDictionaryGetValue(delta, self._key)
-            if not arr:
-                return {}
-            # Finding our channels means reading every channel's name (~300 of
-            # them), which takes milliseconds: do it once, as they keep their
-            # places, and again only if the channels change
-            count = cf.CFArrayGetCount(arr)
-            if count != self._channel_count:
-                self._channels = self._find_channels(arr)
-                self._channel_count = count
             out: Dict[str, float] = {}
-            for i, comp, scale in self._channels:
+            arr = cf.CFDictionaryGetValue(delta, self._key)
+            for i in range(cf.CFArrayGetCount(arr) if arr else 0):
                 ch = cf.CFArrayGetValueAtIndex(arr, i)
-                out[comp] = out.get(comp, 0.0) + ior.IOReportSimpleGetIntegerValue(ch, 0) * scale
+                comp = _CHANNELS.get(self._pystr(ior.IOReportChannelGetChannelName(ch)))
+                scale = _TO_JOULES.get(self._pystr(ior.IOReportChannelGetUnitLabel(ch)).strip())
+                if comp and scale:
+                    out[comp] = out.get(comp, 0.0) + ior.IOReportSimpleGetIntegerValue(ch, 0) * scale
             return out
         finally:
             cf.CFRelease(delta)
@@ -160,5 +141,5 @@ def try_apple_meter() -> "tuple[Optional[AppleSiliconMeter], str]":
     """The meter, or None and why not."""
     try:
         return AppleSiliconMeter(), ""
-    except (OSError, RuntimeError, AttributeError) as err:
+    except Exception as err:  # a private API: any failure means "not available"
         return None, f"Could not read this Mac's energy counters: {err}"

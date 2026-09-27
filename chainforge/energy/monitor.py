@@ -2,26 +2,33 @@
 request's share when it finishes (see attribution.py for how).
 
 The front end calls `begin()` just before sending a request to a local model
-server (Ollama) and `end()` once it has the reply, passing the server's own
+server (Ollama) and `end()` once it has the reply, with the server's own
 timings. Between requests, the readings give the machine's idle power.
+
+Built to run for as long as the server does, cheaply: reading the meter has a
+cost (about 3 ms on Apple silicon, which would itself show up as energy used),
+so it reads often only while requests run, and rarely when ChainForge isn't
+running local models. The history is bounded (the last 15 minutes).
 """
 
 import itertools
+import math
 import threading
 import time
-from collections import deque
-from typing import Callable, Deque, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from chainforge.energy.attribution import (
-    GENERATION, LOAD, Baseline, Sample, Window, attribute, idle_baseline,
+    GENERATION, LOAD, Baseline, Readings, Window, attribute, idle_baseline,
 )
 from chainforge.energy.meters.base import EnergyMeter
 
-# Readings per second: often while a request runs, to catch when generation
-# starts and stops; rarely otherwise, since reading the meter has a cost
-# (about 3 ms on Apple silicon) that would itself show up as energy used.
+# Seconds between readings: often while a request runs, to catch when
+# generation starts and stops; less often for a while after, to keep track of
+# idle power; rarely once nothing has used the monitor for a while.
 BUSY_INTERVAL_S = 0.1
-IDLE_INTERVAL_S = 0.5
+IDLE_INTERVAL_S = 1.0
+DORMANT_INTERVAL_S = 5.0
+ACTIVE_FOR_S = 10 * 60
 HISTORY_S = 15 * 60
 # Idle power comes from the last few minutes without requests, leaving out a
 # moment after each request while the hardware winds down
@@ -29,18 +36,23 @@ BASELINE_WINDOW_S = 5 * 60
 WIND_DOWN_S = 1.0
 # Shorter than this, a model "load" is just the server finding it already loaded
 MIN_LOAD_S = 0.05
+# Timings further off than this from the request's own span are rejected
+TIMING_SLACK_S = 2.0
 
 
 class EnergyMonitor:
-    def __init__(self, meter: EnergyMeter, clock: Callable[[], float] = time.time):
+    def __init__(self, meter: EnergyMeter, clock: Callable[[], float] = time.monotonic):
         self.meter = meter
         self._clock = clock
         self._lock = threading.Lock()
-        self._samples: Deque[Sample] = deque()
+        self._readings = Readings(meter.components())
         self._in_flight: Dict[str, float] = {}  # request -> when it began
-        self._busy: Deque[Tuple[float, float]] = deque()  # finished requests' spans
-        self._windows: Deque[Window] = deque()  # finished requests' windows
+        self._busy: List[Tuple[float, float]] = []  # finished requests' spans
+        self._windows: List[Window] = []  # finished requests' windows
         self._ids = itertools.count(1)
+        self._last_used = clock()
+        self._wake = threading.Event()
+        self._last_baseline: Optional[Baseline] = None
         self._thread: Optional[threading.Thread] = None
 
     # --- Readings ---------------------------------------------------------
@@ -52,20 +64,27 @@ class EnergyMonitor:
 
     def _sample_locked(self) -> None:
         now = self._clock()
-        self._samples.append((now, self.meter.read()))
+        totals = self.meter.read()
+        self._readings.append(now, tuple(totals.get(c, 0.0) for c in self._readings.components))
         cutoff = now - HISTORY_S
-        while self._samples and self._samples[0][0] < cutoff:
-            self._samples.popleft()
-        while self._busy and self._busy[0][1] < cutoff:
-            self._busy.popleft()
-        while self._windows and self._windows[0].end < cutoff:
-            self._windows.popleft()
+        self._readings.trim(cutoff)
         # A request never ended (e.g. its page closed) would otherwise count
         # as running forever, and leave no idle time to measure idle power from
         for request, began in list(self._in_flight.items()):
             if began < cutoff:
                 del self._in_flight[request]
                 self._busy.append((began, now))
+        if self._busy and self._busy[0][1] < cutoff:
+            self._busy = [s for s in self._busy if s[1] >= cutoff]
+        if self._windows and self._windows[0].end < cutoff:
+            self._windows = [w for w in self._windows if w.end >= cutoff]
+
+    def _interval(self) -> float:
+        with self._lock:
+            if self._in_flight:
+                return BUSY_INTERVAL_S
+            idle_for = self._clock() - self._last_used
+        return IDLE_INTERVAL_S if idle_for < ACTIVE_FOR_S else DORMANT_INTERVAL_S
 
     def start(self) -> None:
         """Starts taking readings in the background, if it hasn't already."""
@@ -78,9 +97,9 @@ class EnergyMonitor:
 
     def _run(self) -> None:
         while True:
-            with self._lock:
-                busy = bool(self._in_flight)
-            time.sleep(BUSY_INTERVAL_S if busy else IDLE_INTERVAL_S)
+            # A request starting wakes this early, to read often from then on
+            self._wake.wait(self._interval())
+            self._wake.clear()
             try:
                 self.sample()
             except Exception:  # a failed reading shouldn't stop the monitor
@@ -93,8 +112,9 @@ class EnergyMonitor:
         with self._lock:
             self._sample_locked()
             request = str(next(self._ids))
-            self._in_flight[request] = self._clock()
-            return request
+            self._in_flight[request] = self._last_used = self._clock()
+        self._wake.set()
+        return request
 
     def cancel(self, request: str) -> None:
         """A request that failed or was cancelled: counts as busy time, gets no energy."""
@@ -113,23 +133,30 @@ class EnergyMonitor:
     ) -> Optional[dict]:
         """A request's energy above idle, once it has finished.
 
-        since_reply_s: how long ago the reply arrived (the front end calls this
-            just after). The server's timings (seconds) are counted back from then:
+        since_reply_s: how long ago the reply arrived. The server's timings
+            (seconds) are counted back from then:
         load_s: loading the model (Ollama's load_duration)
         generation_s: reading the prompt and generating (prompt_eval + eval)
         total_s: all of it (total_duration)
 
-        None if the request isn't known, or there's no idle time yet to
-        measure idle power from.
+        None if the request isn't known, its timings don't fit its span, or
+        there's no idle time yet to measure idle power from.
         """
         with self._lock:
             self._sample_locked()
-            now = self._clock()
+            now = self._last_used = self._clock()
             began = self._in_flight.pop(request, None)
             if began is None:
                 return None
-            replied = now - max(since_reply_s, 0.0)
+            replied = now - since_reply_s
             self._busy.append((began, replied + WIND_DOWN_S))
+            timings = (since_reply_s, load_s, generation_s, total_s)
+            if (not all(math.isfinite(x) and x >= 0 for x in timings)
+                    or replied < began - TIMING_SLACK_S
+                    or generation_s > total_s + TIMING_SLACK_S
+                    or load_s > total_s + TIMING_SLACK_S
+                    or replied - generation_s < began - TIMING_SLACK_S):
+                return None
 
             windows = [Window(request, GENERATION, replied - generation_s, replied)]
             if load_s >= MIN_LOAD_S:
@@ -140,32 +167,40 @@ class EnergyMonitor:
             baseline = self._baseline(now)
             if baseline is None:
                 return None
-            samples = list(self._samples)
-            known = list(self._windows)
+            result = attribute(request, self._windows, self._readings, baseline)
 
-        result = attribute(request, known, samples, baseline)
+        # Ollama counts waiting for a busy model as loading it: where the
+        # "load" came to no more than idle power's swings, nothing was loaded
+        load_wh = None
+        if result.load is not None and result.load_total > max(result.load_noise, 0.0) + 1e-9:
+            load_wh = result.load_total / 3600
         return {
             "energy_wh": result.generation_total / 3600,
             "noise_wh": result.noise / 3600,
             "components_wh": {c: j / 3600 for c, j in result.generation.items()},
-            "load_energy_wh": sum(result.load.values()) / 3600 if result.load is not None else None,
+            "load_energy_wh": load_wh,
             "shared": result.shared,
             "idle_w": baseline.total_watts,
             "meter": self.meter.name,
         }
 
     def _baseline(self, now: float) -> Optional[Baseline]:
-        busy: List[Tuple[float, float]] = list(self._busy)
-        busy.extend((began, float("inf")) for began in self._in_flight.values())
-        samples = list(self._samples)
+        busy = list(self._busy)
+        busy.extend((began, math.inf) for began in self._in_flight.values())
         # The last few minutes' idle time, or, during a long run with none,
-        # whatever idle time is still in the history
-        return (idle_baseline(samples, busy, now - BASELINE_WINDOW_S)
-                or idle_baseline(samples, busy, now - HISTORY_S))
+        # whatever idle time is still in the history, or, for a run longer
+        # than the history, the idle power measured last
+        baseline = (idle_baseline(self._readings, busy, now - BASELINE_WINDOW_S)
+                    or idle_baseline(self._readings, busy, now - HISTORY_S))
+        if baseline is not None:
+            self._last_baseline = baseline
+        return baseline or self._last_baseline
 
     def status(self) -> dict:
         with self._lock:
+            self._last_used = self._clock()
             baseline = self._baseline(self._clock())
+        self._wake.set()  # back from dormant: read at the idle rate
         return {
             "available": True,
             "meter": self.meter.name,

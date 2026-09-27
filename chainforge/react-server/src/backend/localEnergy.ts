@@ -37,10 +37,9 @@ export function isLoopbackUrl(url: string): boolean {
 
 /**
  * Whether this machine's energy can be measured, asking the ChainForge
- * server (once), which starts its monitor. Call early (e.g. on page load),
- * so it has learned the machine's idle power by the first request.
+ * server once. (The server measures idle power from when it starts.)
  */
-export function startEnergyMonitor(): Promise<boolean> {
+function energyMeasurable(): Promise<boolean> {
   if (!APP_IS_RUNNING_LOCALLY()) return Promise.resolve(false);
   if (available === undefined)
     available = call_flask_backend("energyStatus", {})
@@ -51,7 +50,7 @@ export function startEnergyMonitor(): Promise<boolean> {
 
 /** Whether energy can be measured for a model server at `serverUrl`. */
 export async function canMeasureEnergy(serverUrl: string): Promise<boolean> {
-  return isLoopbackUrl(serverUrl) && (await startEnergyMonitor());
+  return isLoopbackUrl(serverUrl) && (await energyMeasurable());
 }
 
 /**
@@ -91,7 +90,13 @@ export async function endEnergy(
     const res = await call_flask_backend(
       "energyEnd",
       valid
-        ? { id, since_reply_ms: performance.now() - repliedAt, ...timings }
+        ? {
+            id,
+            // When the reply arrived, by this machine's clock, so that any
+            // delay in this call reaching the server doesn't shift the windows
+            reply_epoch_ms: Date.now() - (performance.now() - repliedAt),
+            ...timings,
+          }
         : { id, cancelled: true },
     );
     const energy = res?.energy;

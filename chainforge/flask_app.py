@@ -739,8 +739,11 @@ def energyBegin():
 def energyEnd():
     """A finished request's energy above idle.
 
-    POST {id, since_reply_ms, load_s, generation_s, total_s} with the model
+    POST {id, reply_epoch_ms, load_s, generation_s, total_s} with the model
     server's timings, or {id, cancelled: true} for a request that failed.
+    reply_epoch_ms is when the reply arrived, by the page's clock (Date.now()):
+    the page is on this machine, so it's this machine's clock too, and any
+    delay in this call reaching the server doesn't shift the request's windows.
     """
     monitor, reason = _energy_monitor()
     if monitor is None:
@@ -752,11 +755,15 @@ def energyEnd():
         return jsonify({"energy": None})
     try:
         timings = {k: float(data[k]) for k in ("load_s", "generation_s", "total_s")}
-        since_reply_s = float(data.get("since_reply_ms", 0)) / 1000
+        since_reply_s = max(time.time() - float(data["reply_epoch_ms"]) / 1000, 0.0)
     except (KeyError, TypeError, ValueError):
         monitor.cancel(req_id)
-        return jsonify({"error": "energyEnd needs load_s, generation_s and total_s."})
-    return jsonify({"energy": monitor.end(req_id, since_reply_s, **timings)})
+        return jsonify({"error": "energyEnd needs reply_epoch_ms, load_s, generation_s and total_s."})
+    try:
+        return jsonify({"energy": monitor.end(req_id, since_reply_s, **timings)})
+    except Exception as err:  # measuring energy is never worth a failed request
+        monitor.cancel(req_id)
+        return jsonify({"error": f"Could not measure this request's energy: {err}"})
 
 
 @app.route('/app/makeFetchCall', methods=['POST'])
@@ -2325,6 +2332,12 @@ def run_server(host="", port=8000, flows_dir=None, secure: Literal["off", "setti
         IDLE_WATCHDOG.start()
         print(f"Idle shutdown is on: the server stops after {idle_shutdown_minutes:g} "
               "minutes with no ChainForge page open.")
+
+    # Start measuring this machine's idle power, for the energy of local-model
+    # requests (see chainforge/energy). Cheap: rare readings when unused, and
+    # nothing at all on machines without an energy meter.
+    from chainforge.energy import get_monitor
+    threading.Thread(target=get_monitor, name="energy-monitor-start", daemon=True).start()
 
     app.run(host=host, port=port, debug=False)
 
