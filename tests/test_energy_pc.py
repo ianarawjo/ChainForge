@@ -144,16 +144,17 @@ def make_powercap(root, domains):
     for d, (name, uj, max_uj) in domains.items():
         p = root / d
         p.mkdir()
-        (p / "name").write_text(name + "\n")
-        (p / "energy_uj").write_text(f"{uj}\n")
-        (p / "max_energy_range_uj").write_text(f"{max_uj}\n")
+        (p / "name").write_text(name + "\n", encoding="utf-8")
+        (p / "energy_uj").write_text(f"{uj}\n", encoding="utf-8")
+        (p / "max_energy_range_uj").write_text(f"{max_uj}\n", encoding="utf-8")
     return str(root)
 
 
 def set_uj(root, d, uj):
-    (root / d / "energy_uj").write_text(f"{uj}\n")
+    (root / d / "energy_uj").write_text(f"{uj}\n", encoding="utf-8")
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="RAPL is Linux's (its folder names can't exist on Windows)")
 class TestRapl:
     def test_packages_and_dram_but_not_their_sub_domains(self, tmp_path):
         root = make_powercap(tmp_path, {
@@ -336,13 +337,13 @@ def make_sys(root, supplies=(), profile=None):
     for name, kind, files in supplies:
         p = root / "class" / "power_supply" / name
         p.mkdir(parents=True)
-        (p / "type").write_text(kind + "\n")
+        (p / "type").write_text(kind + "\n", encoding="utf-8")
         for f, v in files.items():
-            (p / f).write_text(v + "\n")
+            (p / f).write_text(v + "\n", encoding="utf-8")
     if profile:
         p = root / "firmware" / "acpi"
         p.mkdir(parents=True)
-        (p / "platform_profile").write_text(profile + "\n")
+        (p / "platform_profile").write_text(profile + "\n", encoding="utf-8")
     return str(root)
 
 
@@ -354,7 +355,7 @@ class TestLinuxPower:
         root = make_sys(tmp_path, [("AC", "Mains", {"online": "0"}),
                                    ("BAT0", "Battery", {"status": "Discharging"})])
         assert LinuxPower(root).conditions()["power_source"] == "battery"
-        (tmp_path / "class" / "power_supply" / "AC" / "online").write_text("1\n")
+        (tmp_path / "class" / "power_supply" / "AC" / "online").write_text("1\n", encoding="utf-8")
         assert LinuxPower(root).conditions()["power_source"] == "AC power"
 
     def test_a_ups_or_peripheral_battery_without_mains_isnt_battery_power(self, tmp_path):
@@ -416,15 +417,18 @@ class TestPcMeter:
         engines.per_pid = {os.getpid(): 90.0}
         assert meter.other_gpu_use() == []
 
-    def test_other_programs_from_nvml_since_the_last_check(self):
+    def test_other_programs_from_nvml_since_the_last_check(self, monkeypatch):
+        import chainforge.energy.meters.pc as pc
+        now = iter(range(100, 200))
+        monkeypatch.setattr(pc.time, "time", lambda: next(now))
         nvml = FakeNvml(n=1)
         nvidia = NvidiaMeter(nvml)
         meter = PcMeter([nvidia], nvidia=nvidia)
         nvml.procs[0] = {os.getpid(): 90}
         assert meter.other_gpu_use() == []
-        time.sleep(0.002)
         assert meter.other_gpu_use() == []
-        assert nvml.since[1] > nvml.since[0]
+        # From when it was made, then from the first check
+        assert nvml.since == [100_000_000, 101_000_000]
 
     def test_other_programs_unknown_without_a_way_to_tell(self):
         assert PcMeter([StaticMeter("CPU", {"cpu": 0.0})]).other_gpu_use() is None

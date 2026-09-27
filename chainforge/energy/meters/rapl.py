@@ -28,7 +28,7 @@ class _Counter:
         self.total = 0
 
     def _read(self) -> int:
-        with open(self.path) as f:
+        with open(self.path, encoding="utf-8") as f:
             return int(f.read())
 
     def joules(self) -> float:
@@ -43,7 +43,7 @@ class _Counter:
 
 def _read_text(path: str) -> Optional[str]:
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             return f.read().strip()
     except OSError:
         return None

@@ -30,7 +30,7 @@ def process_name(pid: int) -> str:
     try:
         if sys.platform == "win32":
             return _windows_process_name(pid) or f"process {pid}"
-        with open(f"/proc/{pid}/comm") as f:
+        with open(f"/proc/{pid}/comm", encoding="utf-8") as f:
             name = f.read().strip()
         if name.startswith("python"):  # say which script, e.g. ComfyUI's main.py
             with open(f"/proc/{pid}/cmdline", "rb") as f:
@@ -263,7 +263,7 @@ class LinuxPower:
 
     def _read(self, *path: str) -> Optional[str]:
         try:
-            with open(os.path.join(self._root, *path)) as f:
+            with open(os.path.join(self._root, *path), encoding="utf-8") as f:
                 return f.read().strip()
         except OSError:
             return None

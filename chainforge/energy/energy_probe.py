@@ -218,7 +218,7 @@ def process_name(pid: int) -> str:
             finally:
                 k32.CloseHandle(h)
             return f"pid {pid}"
-        with open(f"/proc/{pid}/comm") as f:
+        with open(f"/proc/{pid}/comm", encoding="utf-8") as f:
             return f.read().strip()
     except Exception:
         return f"pid {pid}"
@@ -346,18 +346,18 @@ def linux_power():
     try:
         for dev in sorted(os.listdir(base)):
             p = os.path.join(base, dev)
-            kind = open(os.path.join(p, "type")).read().strip()
+            kind = open(os.path.join(p, "type"), encoding="utf-8").read().strip()
             if kind == "Mains":
-                online = open(os.path.join(p, "online")).read().strip() == "1"
+                online = open(os.path.join(p, "online"), encoding="utf-8").read().strip() == "1"
                 out.setdefault("power_source", "AC power" if online else "battery")
             elif kind == "Battery" and os.path.exists(os.path.join(p, "status")):
-                out["battery_status"] = open(os.path.join(p, "status")).read().strip()
+                out["battery_status"] = open(os.path.join(p, "status"), encoding="utf-8").read().strip()
     except OSError:
         pass
     out.setdefault("power_source", "AC power (no battery found)")
     for path in ("/sys/firmware/acpi/platform_profile",):
         try:
-            out["platform_profile"] = open(path).read().strip()
+            out["platform_profile"] = open(path, encoding="utf-8").read().strip()
         except OSError:
             pass
     try:
@@ -367,7 +367,7 @@ def linux_power():
         pass
     try:
         gov = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"
-        out["cpu_governor"] = open(gov).read().strip()
+        out["cpu_governor"] = open(gov, encoding="utf-8").read().strip()
     except OSError:
         pass
     return out
@@ -389,18 +389,18 @@ def rapl_domains(root="/sys/class/powercap"):
             continue
         info = {"dir": d}
         try:
-            info["name"] = open(os.path.join(p, "name")).read().strip()
+            info["name"] = open(os.path.join(p, "name"), encoding="utf-8").read().strip()
         except OSError:
             info["name"] = "?"
         # Only whole packages are added up: their sub-domains (core, uncore)
         # are part of them, and intel-rapl-mmio repeats them
         info["top"] = d.count(":") == 1 and d.startswith("intel-rapl:") and info["name"].startswith("package")
         try:
-            info["max_energy_range_uj"] = int(open(os.path.join(p, "max_energy_range_uj")).read())
+            info["max_energy_range_uj"] = int(open(os.path.join(p, "max_energy_range_uj"), encoding="utf-8").read())
         except (OSError, ValueError):
             pass
         try:
-            info["energy_uj"] = int(open(os.path.join(p, "energy_uj")).read())
+            info["energy_uj"] = int(open(os.path.join(p, "energy_uj"), encoding="utf-8").read())
             info["readable"] = True
         except PermissionError:
             info["readable"] = False
@@ -417,7 +417,7 @@ def read_rapl(domains, root="/sys/class/powercap"):
     for d in domains:
         if d.get("readable"):
             try:
-                out[d["dir"]] = int(open(os.path.join(root, d["dir"], "energy_uj")).read())
+                out[d["dir"]] = int(open(os.path.join(root, d["dir"], "energy_uj"), encoding="utf-8").read())
             except (OSError, ValueError):
                 pass
     return out
