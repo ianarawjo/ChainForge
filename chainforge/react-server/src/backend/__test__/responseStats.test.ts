@@ -353,7 +353,10 @@ describe("plotting stats in place of scores", () => {
     const energy = statsAsScores(
       resps,
       plottableStat("__stat_est_energy_mwh")!,
+      (r) => r.llm,
     );
+    // A, which has one response without an estimate, and B and C, which have none
+    expect(energy.missing).toEqual(["A", "B", "C"]);
     const [obj] = energy.responses;
     // Only the response with an estimate, and its text alongside it
     expect(obj.responses).toEqual(["one"]);

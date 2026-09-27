@@ -572,18 +572,22 @@ export function plottableStatsIn(resps: WithStats[]): PlottableStat[] {
  * Response objects with one stat in place of evaluation scores, so anything
  * that plots scores can plot it. Responses without the stat are left out, and
  * `hover` gives each kept response's value, described, in the same order.
+ * `missing` names (by `nameOf`, e.g. their model) the left-out responses.
  */
 export function statsAsScores<T extends WithStats>(
   resps: T[],
   stat: PlottableStat,
+  nameOf?: (r: T) => string,
 ): {
   responses: (T & { eval_res: EvaluationResults })[];
   hover: Map<T, string[]>;
   kept: number;
   total: number;
+  missing: string[];
 } {
   const hover = new Map<T, string[]>();
   const kept: (T & { eval_res: EvaluationResults })[] = [];
+  const missing = new Set<string>();
   let total = 0;
   resps.forEach((r) => {
     total += r.responses.length;
@@ -593,6 +597,7 @@ export function statsAsScores<T extends WithStats>(
         const s = r.stats?.[i];
         return s != null && stat.value(s) !== undefined;
       });
+    if (idxs.length < r.responses.length && nameOf) missing.add(nameOf(r));
     if (idxs.length === 0) return;
     const stats = idxs.map((i) => r.stats?.[i] as ResponseStats);
     const obj: T & { eval_res: EvaluationResults } = {
@@ -612,5 +617,6 @@ export function statsAsScores<T extends WithStats>(
     hover,
     kept: kept.reduce((n, r) => n + r.responses.length, 0),
     total,
+    missing: Array.from(missing),
   };
 }

@@ -13,6 +13,7 @@ import {
   Button,
   Menu,
   NativeSelect,
+  Tooltip,
   useMantineColorScheme,
 } from "@mantine/core";
 import useStore from "./store";
@@ -40,7 +41,11 @@ import {
 import { Status } from "./StatusIndicatorComponent";
 import { grabResponses } from "./backend/backend";
 import { StringLookup } from "./backend/cache";
-import { IconChartBar, IconChartHistogram } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconChartBar,
+  IconChartHistogram,
+} from "@tabler/icons-react";
 import {
   AIGenPlotPopover,
   AIPlotHeaderButtons,
@@ -165,6 +170,12 @@ const boxSummaryTrace = (
     showlegend: false,
   };
 };
+
+/** The name of the model that gave a response. */
+const llmNameOf = (r: LLMResponse): string =>
+  typeof r.llm === "string" || typeof r.llm === "number"
+    ? String(StringLookup.get(r.llm) ?? r.llm)
+    : r.llm?.name ?? "(unknown)";
 
 const findEvalResKeys = (resps: LLMResponse[]): Set<string> => {
   const eval_res_keys = new Set<string>();
@@ -430,7 +441,9 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const selectedStat = plottableStat(selectedEvalResVar);
     const statsView = useMemo(
       () =>
-        selectedStat ? statsAsScores(inputResponses, selectedStat) : undefined,
+        selectedStat
+          ? statsAsScores(inputResponses, selectedStat, llmNameOf)
+          : undefined,
       [inputResponses, selectedStat],
     );
     const responses = statsView?.responses ?? inputResponses;
@@ -1650,12 +1663,37 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         {/* Outside the plot's div: the plot resizes to fill that div, so
             anything else in it would make the plot grow without end. */}
         {statsView && statsView.kept > 0 && statsView.kept < statsView.total ? (
-          <div style={{ ...smallTextStyle, marginTop: "4px" }}>
+          <div
+            style={{
+              ...smallTextStyle,
+              marginTop: "4px",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+          >
             Showing the {statsView.kept} of {statsView.total} responses with{" "}
             {selectedStat?.key === "__stat_est_energy_mwh"
-              ? "an energy estimate (EcoLogits doesn't cover the others' models)"
+              ? "an energy estimate"
               : `a value for ${metricName.toLowerCase()}`}
             .
+            {statsView.missing.length > 0 && (
+              <Tooltip
+                label={
+                  selectedStat?.key === "__stat_est_energy_mwh"
+                    ? `EcoLogits has no estimates for models ${statsView.missing.join(", ")}, hence they are omitted here.`
+                    : `${statsView.missing.join(", ")} didn't report ${metricName.toLowerCase()}, hence they are omitted here.`
+                }
+                multiline
+                width={260}
+                withArrow
+                withinPortal
+              >
+                <span style={{ display: "inline-flex", cursor: "help" }}>
+                  <IconAlertTriangle size={14} color="#e8a33d" />
+                </span>
+              </Tooltip>
+            )}
           </div>
         ) : null}
       </>
