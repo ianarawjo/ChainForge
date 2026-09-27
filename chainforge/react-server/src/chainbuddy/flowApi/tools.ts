@@ -5,31 +5,41 @@
 
 import { AgentTool } from "../runtime/tools";
 import { editableTypes, kindOf, NODE_KINDS } from "../nodes";
-import { CanvasPort, FlowView } from "./types";
+import { ProposalReview, Reviewer } from "./review";
+import { CanvasPort, Change, FlowView } from "./types";
 import { checkChanges, LIST_LIMIT } from "./validate";
 
 export interface FlowToolsOptions {
   canvas: CanvasPort;
   /** Node type → its guide. Defaults to each NodeKind's doc. */
   nodeDocs?: Record<string, string>;
+  /** Checks each proposal before the user sees it. None: proposals go straight to the canvas. */
+  review?: Reviewer;
 }
 
 export interface FlowTools {
   tools: AgentTool[];
   /**
-   * Call when the user sends a message. The canvas may have changed since
-   * ChainBuddy last looked, so propose_changes refuses until get_flow has
-   * been called again.
+   * Call when the user sends a message, with what they've asked for so far
+   * (their messages), which a review of a proposal checks against. The canvas
+   * may have changed since ChainBuddy last looked, so propose_changes refuses
+   * until get_flow has been called again.
    */
-  startTurn(): void;
+  startTurn(request?: string): void;
 }
 
 export function createFlowTools({
   canvas,
   nodeDocs = Object.fromEntries(NODE_KINDS.map((k) => [k.type, k.doc])),
+  review,
 }: FlowToolsOptions): FlowTools {
   const types = editableTypes();
   let readThisTurn = false;
+  let request = "";
+  // Problems a review sent back this turn. Only the first review's go back
+  // to the model; later ones are shown to the user on the card.
+  let sentBack: string[] | undefined;
+  const guide = (type: string) => (nodeDocs[type] ?? "") + settingValues(type);
   const tools: AgentTool[] = [
     {
       name: "get_flow",
@@ -51,9 +61,9 @@ export function createFlowTools({
         properties: { type: { type: "string", enum: types } },
       },
       run: (args) => {
-        const doc = nodeDocs[args.type as string];
-        if (!doc) throw new Error(`There's no guide for "${args.type}".`);
-        return doc + settingValues(args.type as string);
+        if (!nodeDocs[args.type as string])
+          throw new Error(`There's no guide for "${args.type}".`);
+        return guide(args.type as string);
       },
     },
     {
@@ -156,7 +166,7 @@ export function createFlowTools({
           },
         },
       },
-      run: (args) => {
+      run: (args, { signal }) => {
         if (!readThisTurn)
           return {
             status: "invalid",
@@ -165,8 +175,9 @@ export function createFlowTools({
             ],
             note: "Nothing was shown to the user.",
           };
+        const flow = canvas.readFlow();
         const { problems, changes } = checkChanges(
-          canvas.readFlow(),
+          flow,
           args.changes as Record<string, unknown>[],
           canvas.listModels(),
         );
@@ -176,23 +187,60 @@ export function createFlowTools({
             problems,
             note: "Nothing was shown to the user. Fix the problems and call propose_changes again with the full list.",
           };
-        const receipt = canvas.propose({
-          summary: args.summary as string,
-          changes,
-        });
-        return {
-          status: "awaiting_approval",
-          change_set_id: receipt.id,
-          ...(receipt.replaced ? { replaced: receipt.replaced } : {}),
-          note: "Shown to the user on the canvas. Nothing has changed yet, and nothing will run.",
+        const changeSet = { summary: args.summary as string, changes };
+
+        const show = (checked?: ProposalReview) => {
+          const receipt = canvas.propose(changeSet, checked);
+          return {
+            status: "awaiting_approval",
+            change_set_id: receipt.id,
+            ...(receipt.replaced ? { replaced: receipt.replaced } : {}),
+            note: "Shown to the user on the canvas. Nothing has changed yet, and nothing will run.",
+          };
         };
+        if (!review) return show();
+
+        // A second look, before the user sees it.
+        return (async () => {
+          let found: string[] | undefined;
+          try {
+            found = await review(
+              {
+                request,
+                flow: shortened(flow),
+                changeSet,
+                guides: Object.fromEntries(
+                  typesIn(flow, changes).map((t) => [t, guide(t)]),
+                ),
+              },
+              signal,
+            );
+          } catch (err) {
+            if (signal?.aborted) throw err;
+          }
+          if (found && found.length > 0 && sentBack === undefined) {
+            sentBack = found;
+            return {
+              status: "needs_changes",
+              problems: found,
+              note: "A second look at your proposal, before the user saw it, found these problems. Nothing was shown to the user. Fix them and call propose_changes again with the full list. If you're sure one is mistaken, leave it and say why in your reply.",
+            };
+          }
+          return show({
+            fixed: sentBack ?? [],
+            unresolved: found ?? [],
+            ...(found === undefined ? { failed: true } : {}),
+          });
+        })();
       },
     },
   ];
   return {
     tools,
-    startTurn: () => {
+    startTurn: (userRequest = "") => {
       readThisTurn = false;
+      request = userRequest;
+      sentBack = undefined;
     },
   };
 }
@@ -245,4 +293,24 @@ function shortened(flow: FlowView) {
       };
     }),
   };
+}
+
+/** The node types a change set adds or touches. */
+function typesIn(flow: FlowView, changes: Change[]): string[] {
+  const types = new Map(flow.nodes.map((n) => [n.id, n.type]));
+  const found = new Set<string>();
+  const note = (id: string) => {
+    const type = types.get(id);
+    if (type) found.add(type);
+  };
+  for (const change of changes) {
+    if (change.op === "add_node") {
+      types.set(change.ref, change.type);
+      found.add(change.type);
+    } else if (change.op === "connect") {
+      note(change.from.node);
+      note(change.to.node);
+    } else note(change.node);
+  }
+  return Array.from(found).filter((t) => kindOf(t));
 }

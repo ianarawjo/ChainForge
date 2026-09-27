@@ -8,7 +8,9 @@ import { useReactFlow } from "reactflow";
 import { Proposal, StoreCanvas } from "../adapters/canvas";
 import { ChainBuddyModel } from "../adapters/settings";
 import { createFlowTools } from "../flowApi/tools";
-import { INSTRUCTIONS } from "../knowledge";
+import { INSTRUCTIONS, REVIEW_INSTRUCTIONS } from "../knowledge";
+import { Reviewer } from "../flowApi/review";
+import { createReviewer } from "../runtime/reviewer";
 import { createOpenAICompatibleClient } from "../model/openaiCompatible";
 import { AgentMessage } from "../model/types";
 import { systemPrompt } from "../nodes";
@@ -39,10 +41,13 @@ function activityText(
       return "Read a node guide";
     }
   }
-  if (name === "propose_changes")
+  if (name === "propose_changes") {
+    if (content.includes('"needs_changes"'))
+      return "A second look found problems with its proposal; fixing them";
     return content.includes('"invalid"')
       ? "Found problems with its proposal; fixing them"
       : "";
+  }
   return name;
 }
 
@@ -93,8 +98,25 @@ export function useChainBuddySession(model: ChainBuddyModel) {
       }),
     [reactFlow],
   );
+  // Each proposal gets a second look, by the same model, before it's shown.
+  const reviewer = useRef<Reviewer>();
+  useEffect(() => {
+    reviewer.current = model.config
+      ? createReviewer(
+          createOpenAICompatibleClient(model.config),
+          REVIEW_INSTRUCTIONS,
+        )
+      : undefined;
+  }, [model.config]);
   const { tools, startTurn } = useMemo(
-    () => createFlowTools({ canvas }),
+    () =>
+      createFlowTools({
+        canvas,
+        review: (input, signal) =>
+          reviewer.current
+            ? reviewer.current(input, signal)
+            : Promise.reject(new Error("No model is set up.")),
+      }),
     [canvas],
   );
 
@@ -130,7 +152,14 @@ export function useChainBuddySession(model: ChainBuddyModel) {
     async (text: string) => {
       if (!text.trim() || abort.current || !model.config) return;
       add({ kind: "user", text });
-      startTurn();
+      // What the user has asked for, which a review checks proposals against.
+      const asked = [
+        ...conversation.current.flatMap((m) =>
+          m.role === "user" ? [m.content] : [],
+        ),
+        text,
+      ];
+      startTurn(asked.slice(-6).join("\n\n"));
 
       // Tell the model what the user did with its proposals since it last spoke.
       const note = decisions.current.length
@@ -164,7 +193,11 @@ export function useChainBuddySession(model: ChainBuddyModel) {
         } else if (e.type === "reasoning") setStatus("Thinking…");
         else if (e.type === "tool_call_start") {
           streaming = false;
-          setStatus("Working…");
+          setStatus(
+            e.name === "propose_changes"
+              ? "Checking its proposal…"
+              : "Working…",
+          );
         } else if (e.type === "tool_call")
           callArgs.set(e.call.id, e.call.arguments);
         else if (e.type === "tool_result") {

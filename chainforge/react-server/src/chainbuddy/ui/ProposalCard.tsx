@@ -18,6 +18,7 @@ import {
 } from "@tabler/icons-react";
 import { Proposal } from "../adapters/canvas";
 import { ChangeLine } from "../flowApi/describe";
+import { ProposalReview } from "../flowApi/review";
 
 const ICONS = {
   add: IconPlus,
@@ -68,6 +69,7 @@ export default function ProposalCard({
         {proposal.lines.map((line, i) => (
           <LineView key={i} line={line} />
         ))}
+        {proposal.review && <ReviewNote review={proposal.review} />}
         {proposal.error && (
           <Text size="xs" color="red">
             {proposal.error}
@@ -168,5 +170,58 @@ function CodeToggle({ label, code }: { label: string; code: string }) {
         </Code>
       )}
     </Box>
+  );
+}
+
+const problems = (n: number) => (n === 1 ? "1 problem" : `${n} problems`);
+
+/**
+ * What a second look found before the proposal was shown. Problems it still
+ * sees stay in view, since the user should weigh them before accepting.
+ */
+function ReviewNote({ review }: { review: ProposalReview }) {
+  const [shown, setShown] = useState(false);
+  if (review.failed)
+    return (
+      <Text size="xs" color="dimmed">
+        A second look couldn&apos;t check this proposal.
+      </Text>
+    );
+  return (
+    <Stack spacing={2}>
+      {review.fixed.length > 0 ? (
+        <UnstyledButton onClick={() => setShown((s) => !s)}>
+          <Text size="xs" color="dimmed">
+            Checked by a second look, which found{" "}
+            {problems(review.fixed.length)}, since revised.{" "}
+            <Text span color="grape">
+              {shown ? "Hide" : "Show"}
+            </Text>
+          </Text>
+        </UnstyledButton>
+      ) : (
+        <Text size="xs" color="dimmed">
+          Checked by a second look.
+        </Text>
+      )}
+      {shown &&
+        review.fixed.map((p, i) => (
+          <Text key={i} size="xs" color="dimmed" pl="xs">
+            • {p}
+          </Text>
+        ))}
+      {review.unresolved.length > 0 && (
+        <>
+          <Text size="xs" color="orange">
+            It still sees {problems(review.unresolved.length)}:
+          </Text>
+          {review.unresolved.map((p, i) => (
+            <Text key={i} size="xs" color="orange" pl="xs">
+              • {p}
+            </Text>
+          ))}
+        </>
+      )}
+    </Stack>
   );
 }

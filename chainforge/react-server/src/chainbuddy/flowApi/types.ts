@@ -6,6 +6,8 @@
  * flowApi/ depends on how nodes store their data.
  */
 
+import type { ProposalReview } from "./review";
+
 export type Support = "editable" | "not-supported";
 
 export interface NodeView {
@@ -75,6 +77,9 @@ export interface ProposalReceipt {
 export interface CanvasPort {
   readFlow(): FlowView;
   listModels(): ModelInfo[];
-  /** Shows a checked change set for the user to accept or reject. */
-  propose(changeSet: ChangeSet): ProposalReceipt;
+  /**
+   * Shows a checked change set for the user to accept or reject, with what a
+   * review of it found, if it was reviewed.
+   */
+  propose(changeSet: ChangeSet, review?: ProposalReview): ProposalReceipt;
 }

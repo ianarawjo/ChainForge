@@ -4,6 +4,7 @@
  */
 
 import { inputsOf, outputsOf } from "../nodes";
+import { ProposalReview, Reviewer } from "../flowApi/review";
 import { createFlowTools } from "../flowApi/tools";
 import {
   CanvasPort,
@@ -89,11 +90,13 @@ export function createStubCanvas(options: {
 }) {
   const flow = options.flow ?? { nodes: [], connections: [] };
   const proposals: ChangeSet[] = [];
+  const reviews: (ProposalReview | undefined)[] = [];
   const canvas: CanvasPort = {
     readFlow: () => flow,
     listModels: () => options.models,
-    propose: (changeSet) => {
+    propose: (changeSet, review) => {
       proposals.push(changeSet);
+      reviews.push(review);
       return {
         id: `change-set-${proposals.length}`,
         replaced:
@@ -103,18 +106,20 @@ export function createStubCanvas(options: {
       };
     },
   };
-  return { canvas, proposals };
+  return { canvas, proposals, reviews };
 }
 
 export function createStubTools(options: {
   flow?: FlowView;
   models: ModelInfo[];
   nodeDocs?: Record<string, string>;
+  review?: Reviewer;
 }) {
-  const { canvas, proposals } = createStubCanvas(options);
+  const { canvas, proposals, reviews } = createStubCanvas(options);
   const { tools, startTurn } = createFlowTools({
     canvas,
     nodeDocs: options.nodeDocs,
+    review: options.review,
   });
-  return { tools, startTurn, proposals };
+  return { tools, startTurn, proposals, reviews };
 }

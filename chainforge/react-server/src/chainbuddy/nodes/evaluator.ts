@@ -21,6 +21,13 @@ export const evaluatorKind: NodeKind = {
         if (typeof value !== "string") return "code should be JavaScript text.";
         if (!/function\s+evaluate\s*\(/.test(value))
           return "code should define function evaluate(response).";
+        // Parsed, not run: building a Function from text runs none of it.
+        try {
+          // eslint-disable-next-line no-new-func, no-new
+          new Function(value);
+        } catch (err) {
+          return `code isn't valid JavaScript: ${err instanceof Error ? err.message : String(err)}.`;
+        }
         return undefined;
       },
     },

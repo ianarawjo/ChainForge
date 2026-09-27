@@ -15,6 +15,7 @@ It can't run nodes or read their results yet (see [Planned](#planned)).
 | --------------------- | ----------------------------------------------------------- |
 | `README.md`           | This file: what ChainBuddy can do, and the rules it follows |
 | `instructions.md`     | What the model is told at the start of every conversation   |
+| `review.md`           | What the model is told when checking a proposal             |
 | `nodes/prompt.md`     | Prompt Node                                                 |
 | `nodes/textfields.md` | TextFields Node                                             |
 | `nodes/table.md`      | Tabular Data Node                                           |
@@ -51,6 +52,11 @@ someone writes its file.
 
 These are the only actions ChainBuddy has. It has no other way to reach the
 canvas, your files, or the internet.
+
+Before a proposal is shown, the same model takes a second look at it, with
+fresh context: your request, the proposal, and the file for every node type
+it involves (`review.md` says what to check). Problems it finds go back to be
+fixed first, once; any it still sees are shown on the proposal card.
 
 | Action            | What it does                                                                                                                              | Needs your approval          |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
