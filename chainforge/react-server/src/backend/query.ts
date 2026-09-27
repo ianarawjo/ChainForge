@@ -24,9 +24,10 @@ import {
   repairCachedResponses,
   extractMediaVars,
   imageMimeFromBase64,
+  usesCustomOpenAIEndpoint,
 } from "./utils";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
-import { extract_stats } from "./responseStats";
+import { energyEstimator, extract_stats } from "./responseStats";
 import { UserForcedPrematureExit } from "./errors";
 import { typecastSettingsDict } from "../ModelSettingSchemas";
 
@@ -115,7 +116,15 @@ export class PromptPipeline {
     const extracted_resps = extract_responses(response, llm, provider);
     const reasoning = extract_reasoning(response, llm, provider);
     const reasoning_state = extract_reasoning_state(response, llm, provider);
-    const stats = extract_stats(response, elapsed_ms, extracted_resps.length);
+    const stats = extract_stats(
+      response,
+      elapsed_ms,
+      extracted_resps.length,
+      // EcoLogits' estimates are for OpenAI's own data centres, not another server's
+      provider === LLMProvider.OpenAI && usesCustomOpenAIEndpoint()
+        ? undefined
+        : energyEstimator(llm.toString(), provider),
+    );
 
     // Detect any images and intern them to the MediaLookup table.
     // This saves a lot of performance and storage.

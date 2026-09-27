@@ -1,4 +1,6 @@
 import React, {
+  useId,
+  useMemo,
   useState,
   useEffect,
   useCallback,
@@ -12,6 +14,7 @@ import {
   Button,
   Menu,
   NativeSelect,
+  Tooltip,
   useMantineColorScheme,
 } from "@mantine/core";
 import useStore from "./store";
@@ -35,22 +38,33 @@ import {
   JSONCompatible,
   LLMResponse,
   LLMResponseData,
+  LLMSpec,
 } from "./backend/typing";
 import { Status } from "./StatusIndicatorComponent";
 import { grabResponses } from "./backend/backend";
 import { StringLookup } from "./backend/cache";
-import { IconChartBar, IconChartHistogram } from "@tabler/icons-react";
+import {
+  IconAlertTriangle,
+  IconChartBar,
+  IconChartHistogram,
+} from "@tabler/icons-react";
 import {
   AIGenPlotPopover,
   AIPlotHeaderButtons,
   AIPlotView,
 } from "./VisNodeAIPlot";
 import { AIPlot } from "./backend/aiPlots";
+import {
+  ecologitsCovers,
+  plottableStat,
+  plottableStatsIn,
+  statsAsScores,
+} from "./backend/responseStats";
 
 /**
  * STATS
  */
-import { sum } from "simple-statistics";
+import { max, mean, median, min, sum } from "simple-statistics";
 // import * as jStat from "jstat"; // jStat is a pure JS library without types
 
 // FUTURE: Including in-progress error bar computation for future use.
@@ -130,6 +144,94 @@ const castEvalScoreToNum = (score: EvaluationScore): number => {
   else if (typeof score === "boolean") return score === true ? 1 : 0;
   else return 0; // unknown, soft fail
 };
+
+/**
+ * An invisible point on a box's median that shows one summary of the box on
+ * hover. Plotly's own hover over a box labels each of its stats separately
+ * (min, fences, quartiles, median, max), piled on top of each other, and
+ * can't be templated, so boxes hover only on their points (`hoveron`) and
+ * this gives the summary instead.
+ */
+const boxSummaryTrace = (
+  boxes: { y: string; title: string; values: number[] }[],
+  color: string,
+  // For grouped boxes: the boxes' offsetgroup, so the points sit on them
+  // (with the layout's scattermode "group")
+  offsetgroup?: string,
+): Dict | undefined => {
+  const nonEmpty = boxes.filter((b) => b.values.length > 0);
+  if (nonEmpty.length === 0) return undefined;
+  const fmt = (v: number) => String(Number(v.toPrecision(3)));
+  const summary = ({ title, values }: { title: string; values: number[] }) => {
+    const range =
+      values.length > 1
+        ? ` · range ${fmt(min(values))}–${fmt(max(values))}`
+        : "";
+    return `<b>${title}</b><br>median ${fmt(median(values))}${range} · n = ${values.length}`;
+  };
+  return {
+    type: "scatter",
+    mode: "markers",
+    x: nonEmpty.map((b) => median(b.values)),
+    y: nonEmpty.map((b) => b.y),
+    text: nonEmpty.map(summary),
+    orientation: "h",
+    marker: { color, size: 16, opacity: 0 },
+    hoverlabel: { bgcolor: color, align: "left" },
+    hovertemplate: "%{text}<extra></extra>",
+    showlegend: false,
+    ...(offsetgroup !== undefined ? { offsetgroup } : {}),
+  };
+};
+
+/**
+ * The model specs the flow's nodes choose (e.g. a Prompt Node's), by their
+ * nicknames, which is how responses name the model that gave them. Looks in
+ * nested lists too, e.g. a group of models' items. A nickname given to two
+ * different models maps to undefined.
+ */
+const modelSpecsByNickname = (): Map<string, LLMSpec | undefined> => {
+  const specs = new Map<string, LLMSpec | undefined>();
+  const visit = (value: unknown, depth: number) => {
+    if (depth > 4 || value === null || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => visit(item, depth + 1));
+      return;
+    }
+    const item = value as Dict;
+    if (typeof item.name === "string" && typeof item.model === "string") {
+      const prev = specs.get(item.name);
+      specs.set(
+        item.name,
+        specs.has(item.name) && prev?.model !== item.model
+          ? undefined
+          : (item as LLMSpec),
+      );
+    } else if (Array.isArray(item.items)) visit(item.items, depth + 1); // a group
+  };
+  (useStore.getState().nodes ?? []).forEach((node) =>
+    Object.values(node.data ?? {}).forEach((value) => {
+      if (Array.isArray(value)) visit(value, 0);
+    }),
+  );
+  return specs;
+};
+
+/** Hides text on screen while leaving it to screen readers. */
+const visuallyHidden: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
+};
+
+/** The name of the model that gave a response. */
+const llmNameOf = (r: LLMResponse): string =>
+  typeof r.llm === "string" || typeof r.llm === "number"
+    ? String(StringLookup.get(r.llm) ?? r.llm)
+    : r.llm?.name ?? "(unknown)";
 
 const findEvalResKeys = (resps: LLMResponse[]): Set<string> => {
   const eval_res_keys = new Set<string>();
@@ -323,7 +425,7 @@ export interface VisViewRef {
  */
 export const VisView = forwardRef<VisViewRef, VisViewProps>(
   function VisViewComponent(
-    { responses, id, data, whenReplotting, wideFormat },
+    { responses: inputResponses, id, data, whenReplotting, wideFormat },
     ref,
   ) {
     // Color scheme
@@ -389,6 +491,53 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       [id, setDataPropsForNode],
     );
 
+    // The x-axis can also be a response stat (e.g. latency, or estimated
+    // energy), so responses can be plotted without an evaluator. The stat
+    // takes the place of the scores; responses without it are left out.
+    const selectedStat = plottableStat(selectedEvalResVar);
+    const statsView = useMemo(
+      () =>
+        selectedStat ? statsAsScores(inputResponses, selectedStat) : undefined,
+      [inputResponses, selectedStat],
+    );
+    const responses = statsView?.responses ?? inputResponses;
+    const metricName = selectedStat?.label ?? selectedEvalResVar;
+    const isEnergy = selectedStat?.key === "__stat_est_energy_mwh";
+    const omittedNoteId = useId();
+
+    // Why some responses aren't in a plot of a stat, for the note below it.
+    // For energy, only the models EcoLogits doesn't cover are its doing;
+    // other responses may just predate estimates, or lack a token count.
+    const omittedNote = useMemo(() => {
+      if (!statsView || statsView.kept === 0 || statsView.missing.length === 0)
+        return undefined;
+      const names = (rs: LLMResponse[]) =>
+        Array.from(new Set(rs.map(llmNameOf))).join(", ");
+      // Responses name their model by nickname: find what it is from the flow
+      const specs = isEnergy ? modelSpecsByNickname() : undefined;
+      const uncovered = specs
+        ? statsView.missing.filter(
+            (r) =>
+              ecologitsCovers(
+                typeof r.llm === "object" ? r.llm : specs.get(llmNameOf(r)),
+              ) === false,
+          )
+        : [];
+      const others = statsView.missing.filter((r) => !uncovered.includes(r));
+      const sentences: string[] = [];
+      if (uncovered.length > 0)
+        sentences.push(
+          `EcoLogits has no estimates for models ${names(uncovered)}, hence they are omitted here.`,
+        );
+      if (others.length > 0)
+        sentences.push(
+          isEnergy
+            ? `Some responses from ${names(others)} have no estimate (for instance, ones collected before ChainForge estimated energy, or without a token count), hence they are omitted here.`
+            : `Some responses from ${names(others)} have no ${metricName.toLowerCase()}, hence they are omitted here.`,
+        );
+      return sentences.join(" ");
+    }, [statsView, isEnergy, metricName]);
+
     // Typically, a user will only need the default LLM 'group' --all LLMs in responses.
     // However, when prompts are chained together, the original LLM info is stored in metavars as a key.
     // LLM groups allow you to plot against the original LLMs, even though a 'scorer' LLM might come after.
@@ -441,13 +590,15 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       varnames = Array.from(varnames);
       metavars = Array.from(metavars);
 
-      // Find all keys in eval results
+      // Find all keys in eval results, then any response stats to plot instead
       const eval_res_keys = findEvalResKeys(resps);
-      if (eval_res_keys.size === 0) {
-        eval_res_keys.add("score"); // default to 'score' if no keys found
-      } else if (selectedEvalResVar === "score") {
-        // We need to set the default eval res var to the first one in the list
-        setSelectedEvalResVar(eval_res_keys.values().next().value as string);
+      plottableStatsIn(resps).forEach((stat) => eval_res_keys.add(stat.key));
+      if (eval_res_keys.size === 0) eval_res_keys.add("score"); // default to 'score' if no keys found
+      if (!eval_res_keys.has(selectedEvalResVar)) {
+        // Default to the first in the list: a score if there are any, else a stat
+        const first = eval_res_keys.values().next().value as string;
+        setSelectedEvalResVar(first);
+        if (id) setDataPropsForNode(id, { selected_eval_res_var: first });
       }
 
       // Get all vars for the y-axis dropdown, merging metavars and vars into one list,
@@ -476,33 +627,36 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         available_llm_groups[0] = { value: "LLM", label: "LLMs (last)" };
       setAvailableLLMGroups(available_llm_groups);
 
-      // Check for a change in available parameters
+      // Check for a change in available parameters. The y-axis choice is reset
+      // only when the y-axis options change: new x-axis options (e.g. a stat a
+      // newly added model reports) leave it alone.
       if (
         !multiSelectVars ||
         !multiSelectValue ||
-        !evalResVars ||
         !areSetsEqual(
           new Set(msvars.map((o) => o.value)),
           new Set(multiSelectVars.map((o) => o.value)),
-        ) ||
-        !areSetsEqual(new Set(evalResVars), eval_res_keys)
+        )
       ) {
         setMultiSelectValue("LLM (default)");
         setMultiSelectVars(msvars);
-        setEvalResVars(Array.from(eval_res_keys));
         if (id)
           setDataPropsForNode(id, {
             vars: msvars,
             selected_vars: [],
             llm_groups: available_llm_groups,
-            eval_res_vars: Array.from(eval_res_keys),
           });
+      }
+      if (!evalResVars || !areSetsEqual(new Set(evalResVars), eval_res_keys)) {
+        setEvalResVars(Array.from(eval_res_keys));
+        if (id)
+          setDataPropsForNode(id, { eval_res_vars: Array.from(eval_res_keys) });
       }
     };
 
     // On init, run resetControls
     useEffect(() => {
-      resetControls(responses);
+      resetControls(inputResponses);
     }, []);
 
     const castData = (v: LLMResponseData) =>
@@ -523,7 +677,17 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
     // Re-plot responses when any responses or settings change
     useEffect(() => {
-      if (!responses || responses.length === 0 || !multiSelectValue) return;
+      if (!multiSelectValue) return;
+      if (selectedStat && inputResponses.length > 0 && responses.length === 0) {
+        setPlotlySpec([]);
+        setPlaceholderText(
+          <p style={{ maxWidth: "220px", fontSize: "13px" }}>
+            None of these responses have {metricName.toLowerCase()}.
+          </p>,
+        );
+        return;
+      }
+      if (!responses || responses.length === 0) return;
 
       // Check if there are evaluation results
       if (responses.every((r) => r?.eval_res === undefined)) {
@@ -665,7 +829,8 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
         const plot_legend: React.ReactNode | null = null;
         let metric_axes_labels: string[] = [];
-        if (
+        if (selectedStat) metric_axes_labels = [metricName];
+        else if (
           typeof_eval_res.includes("KeyValue") &&
           responses.some((r) => r.eval_res !== undefined)
         ) {
@@ -693,6 +858,25 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           if (v !== undefined) return v.trim();
           else return v;
         };
+
+        // Hover text for each response: its text, after the stat's value when
+        // plotting a stat. Per response, since one response can give several texts.
+        const hoverTexts = (r: LLMResponse) => {
+          const values = statsView?.hover.get(r);
+          return r.responses.flatMap((resp, i) => {
+            const texts = createHoverTexts([castData(resp)]);
+            return values
+              ? texts.map((t) => `<b>${values[i]}</b><br>${t}`)
+              : texts;
+          });
+        };
+
+        // A bar chart of a stat shows its mean per response, so models are
+        // compared fairly however many responses each has (scores are summed)
+        const barTotals = !selectedStat;
+        const barTitle = selectedStat
+          ? `Mean ${metricName.charAt(0).toLowerCase()}${metricName.slice(1)} per response`
+          : undefined;
 
         const get_items = (eval_res_obj?: EvaluationResults) => {
           if (eval_res_obj === undefined) return [];
@@ -787,7 +971,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
           if (metric_axes_labels.length > 0)
             layout.xaxis = {
-              title: { font: { size: 12 }, text: selectedEvalResVar },
+              title: { font: { size: 12 }, text: metricName },
               ...layout.xaxis,
             };
           else
@@ -853,9 +1037,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               responses.forEach((r) => {
                 if (resp_to_x(r) !== name) return;
                 x_items = x_items.concat(get_items(r.eval_res));
-                text_items = text_items.concat(
-                  createHoverTexts(r.responses.map(castData)),
-                );
+                text_items = text_items.concat(hoverTexts(r));
               });
             }
 
@@ -903,7 +1085,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   font: { size: 12 },
                   text:
                     metric_axes_labels.length > 0
-                      ? `Number of scores (${selectedEvalResVar})`
+                      ? `Number of scores (${metricName})`
                       : "Number of scores",
                 },
                 ...layout.xaxis,
@@ -931,13 +1113,14 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 // let user decide:
                 if (graphType.key === "bar") {
                   d.type = "histogram";
-                  d.histfunc = "sum";
+                  d.histfunc = barTotals ? "sum" : "avg";
                   d.y = new Array(x_items.length).fill(shortnames[name]);
                   d.textposition = "none"; // hide the text which appears within each bar
                   const xaxis_title =
-                    metric_axes_labels.length > 0
-                      ? "Sum of '" + selectedEvalResVar + "'"
-                      : "Sum of scores";
+                    barTitle ??
+                    (metric_axes_labels.length > 0
+                      ? "Sum of '" + metricName + "'"
+                      : "Sum of scores");
                   layout.xaxis = {
                     title: { font: { size: 12 }, text: xaxis_title },
                     ...layout.xaxis,
@@ -959,10 +1142,24 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   // Box-and-whiskers plot
                   d.type = "box";
                   d.boxpoints = "all";
+                  d.hoveron = "points";
                 }
               }
 
               spec.push(d);
+              if (d.type === "box") {
+                const summary = boxSummaryTrace(
+                  [
+                    {
+                      y: shortnames[name],
+                      title: shortnames[name],
+                      values: x_items.map(castEvalScoreToNum),
+                    },
+                  ],
+                  color,
+                );
+                if (summary) spec.push(summary);
+              }
             }
           }
           layout.hovermode = "closest";
@@ -981,7 +1178,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
           if (metric_axes_labels.length > 0)
             layout.xaxis = {
-              title: { font: { size: 12 }, text: selectedEvalResVar },
+              title: { font: { size: 12 }, text: metricName },
               ...layout.xaxis,
             };
         };
@@ -1006,9 +1203,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 if (resp_to_x(r) !== name) return;
                 const items = get_items(r.eval_res);
                 x_items = x_items.concat(items).flat();
-                text_items = text_items
-                  .concat(createHoverTexts(r.responses.map(castData)))
-                  .flat();
+                text_items = text_items.concat(hoverTexts(r)).flat();
                 y_items = y_items
                   .concat(Array(items.length).fill(shortnames[name]))
                   .flat();
@@ -1052,9 +1247,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 d.type = "bar";
                 d.textposition = "none"; // hide the text which appears within each bar
                 xaxis_title =
-                  metric_axes_labels.length > 0
-                    ? "Sum of '" + selectedEvalResVar + "'"
-                    : "Sum of scores";
+                  barTitle ??
+                  (metric_axes_labels.length > 0
+                    ? "Sum of '" + metricName + "'"
+                    : "Sum of scores");
 
                 if (sel_typeof_eval_res === "Numeric") {
                   // To make error bars work, we need to sum the numbers, instead of relying
@@ -1067,7 +1263,9 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                     const xs_for_y = x_items
                       .filter((_, idx) => y_items[idx] === name)
                       .map(castEvalScoreToNum);
-                    sum_x_items = sum_x_items.concat(sum(xs_for_y));
+                    sum_x_items = sum_x_items.concat(
+                      barTotals ? sum(xs_for_y) : mean(xs_for_y),
+                    );
                     // error_bars = error_bars.concat([
                     //   computeErrorBar(xs_for_y, 1.0, sum),
                     // ]);
@@ -1087,11 +1285,31 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   // };
                 }
               } else {
-                // Box-and-whiskers plot
+                // Box-and-whiskers plot. Hovering the box itself would label
+                // each of its stats separately (see boxSummaryTrace)
                 d.type = "box";
+                d.hoveron = "points";
+                d.offsetgroup = llm;
               }
 
               spec.push(d);
+              if (d.type === "box") {
+                const summary = boxSummaryTrace(
+                  Object.values(shortnames).map((y) => ({
+                    y,
+                    title: `${llm} · ${y}`,
+                    values: x_items
+                      .filter((_, idx) => y_items[idx] === y)
+                      .map(castEvalScoreToNum),
+                  })),
+                  getColorForLLMAndSetIfNotFound(llm),
+                  llm,
+                );
+                if (summary) {
+                  spec.push(summary);
+                  layout.scattermode = "group";
+                }
+              }
               layout.xaxis = {
                 title: { font: { size: 12 }, text: xaxis_title },
                 ...layout.xaxis,
@@ -1108,7 +1326,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
           if (metric_axes_labels.length > 0)
             layout.xaxis = {
-              title: { font: { size: 12 }, text: selectedEvalResVar },
+              title: { font: { size: 12 }, text: metricName },
               ...layout.xaxis,
             };
         };
@@ -1341,6 +1559,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       selectedEvalResVar,
       selectedLLMGroup,
       responses,
+      statsView,
       selectedLegendItems,
       plotDivRef,
       // By key, so only a real change of graph type replots.
@@ -1457,7 +1676,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             <span style={smallTextStyle}>x-axis:</span>
             <NativeSelect
               className="nodrag nowheel"
-              data={evalResVars}
+              data={evalResVars.map((v) => ({
+                value: v,
+                label: plottableStat(v)?.label ?? v,
+              }))}
               size="xs"
               value={selectedEvalResVar}
               onChange={handleChangeSelectedEvalResVar}
@@ -1556,6 +1778,48 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           {plotLegend ?? <></>}
           <ResizeHandle targetRef={plotDivRef} minWidth={150} minHeight={100} />
         </div>
+        {/* Outside the plot's div: the plot resizes to fill that div, so
+            anything else in it would make the plot grow without end. */}
+        {omittedNote ? (
+          <Tooltip
+            label={omittedNote}
+            multiline
+            width={260}
+            withArrow
+            withinPortal
+            position="bottom-start"
+            // Keyboard users reach the details by focusing the note
+            events={{ hover: true, focus: true, touch: true }}
+          >
+            <div
+              tabIndex={0}
+              aria-describedby={omittedNoteId}
+              style={{
+                ...smallTextStyle,
+                marginTop: "4px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                cursor: "help",
+              }}
+            >
+              <IconAlertTriangle
+                size={14}
+                color="#e8a33d"
+                style={{ flexShrink: 0 }}
+              />
+              {isEnergy
+                ? "Some estimates could not be shown."
+                : "Some values could not be shown."}
+            </div>
+          </Tooltip>
+        ) : null}
+        {/* The details for screen readers, whether or not the tooltip is open */}
+        {omittedNote ? (
+          <span id={omittedNoteId} style={visuallyHidden}>
+            {omittedNote}
+          </span>
+        ) : null}
       </>
     );
   },

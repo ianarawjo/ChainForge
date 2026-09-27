@@ -1,0 +1,11 @@
+{
+  "repo": "https://github.com/mlco2/ecologits",
+  "ref": "0.11.1",
+  "commit": "886d1ebfadb51a2d6407fcea6d9778c997c85c35",
+  "sha256": {
+    "LICENSE": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+    "llm.py": "43428ade6b730b9a6f83adaf61025e4c91f0f6f2a29c63b4379f9712c6daad53",
+    "models.json": "d02e621cfc0006610a4b144aa8888f1de878c57b15b4c63d21d95a9879bbaf5d",
+    "utils.py": "aee6ff9ac03a414fc289c57dc35caab55ab78ffaacd9b49776977ce407f37a67"
+  }
+}

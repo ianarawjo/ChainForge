@@ -1,0 +1,59 @@
+{
+  "constants": {
+    "MODEL_QUANTIZATION_BITS": 16,
+    "GPU_ENERGY_ALPHA": 1.1665273170451914e-06,
+    "GPU_ENERGY_BETA": -0.011205921025579175,
+    "GPU_ENERGY_GAMMA": 4.052928146734005e-05,
+    "LATENCY_ALPHA": 0.0006785088094353663,
+    "LATENCY_BETA": 0.0003119310311688259,
+    "LATENCY_GAMMA": 0.019473717579473387,
+    "GPU_MEMORY": 80,
+    "SERVER_GPUS": 8,
+    "SERVER_POWER": 1.2,
+    "BATCH_SIZE": 64
+  },
+  "providers": {
+    "anthropic": {
+      "datacenter_location": "USA",
+      "datacenter_pue": {
+        "min": 1.09,
+        "max": 1.14
+      },
+      "datacenter_wue": {
+        "min": 0.13,
+        "max": 0.999
+      }
+    },
+    "cohere": {
+      "datacenter_location": "USA",
+      "datacenter_pue": 1.09,
+      "datacenter_wue": 0.999
+    },
+    "google_genai": {
+      "datacenter_location": "USA",
+      "datacenter_pue": 1.09,
+      "datacenter_wue": 0.999
+    },
+    "huggingface_hub": {
+      "datacenter_location": "USA",
+      "datacenter_pue": {
+        "min": 1.09,
+        "max": 1.14
+      },
+      "datacenter_wue": {
+        "min": 0.13,
+        "max": 0.99
+      }
+    },
+    "mistralai": {
+      "datacenter_location": "SWE",
+      "datacenter_pue": 1.16,
+      "datacenter_wue": 0.09
+    },
+    "openai": {
+      "datacenter_location": "USA",
+      "datacenter_pue": 1.2,
+      "datacenter_wue": 0.569
+    }
+  }
+}

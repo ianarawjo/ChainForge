@@ -7,7 +7,25 @@
  * always knows is how long its own request took; the rest is read from the
  * provider's reply where it has it.
  */
-import { Dict, LLMResponseData, ResponseStats } from "./typing";
+import {
+  Dict,
+  EvaluationResults,
+  LLMResponseData,
+  ResponseStats,
+} from "./typing";
+import {
+  getProvider,
+  isOpenRouterImageModel,
+  LLM,
+  LLMProvider,
+  stripHuggingFacePrefix,
+  stripOpenRouterPrefix,
+} from "./models";
+import {
+  EnergyRange,
+  estimateEnergyWh,
+  findModel,
+} from "./ecologits/ecologits";
 
 /**
  * The key under which call functions that send one request per response record
@@ -29,6 +47,8 @@ export const STATS_METAVARS = {
   decode_tokens_per_s: "stat_decode_tokens_per_s",
   averaged_over: "stat_averaged_over",
   cost_usd: "stat_cost_usd",
+  est_energy_wh_min: "stat_est_energy_wh_min",
+  est_energy_wh_max: "stat_est_energy_wh_max",
 } as const;
 
 const STATS_METAVAR_NAMES = new Set<string>(Object.values(STATS_METAVARS));
@@ -153,11 +173,22 @@ function finish(stats: ResponseStats): ResponseStats | null {
   // Requests can cost fractions of a cent, so keep 9 significant digits
   if (stats.cost_usd !== undefined)
     res.cost_usd = Number(stats.cost_usd.toPrecision(9));
+  if (stats.est_energy_wh !== undefined)
+    res.est_energy_wh = {
+      min: Number(stats.est_energy_wh.min.toPrecision(3)),
+      max: Number(stats.est_energy_wh.max.toPrecision(3)),
+    };
   if (Object.keys(res).length === 0) return null;
   if (stats.averaged_over !== undefined && stats.averaged_over > 1)
     res.averaged_over = stats.averaged_over;
   return res;
 }
+
+/** Estimates one request's energy in Wh from its output tokens and latency. */
+export type EnergyEstimator = (
+  outputTokens: number,
+  latencyMs: number,
+) => EnergyRange | undefined;
 
 /**
  * Each response's stats, in the same order as `extract_responses`.
@@ -165,17 +196,21 @@ function finish(stats: ResponseStats): ResponseStats | null {
  * @param response The raw reply from `call_llm`: one reply, or one per request.
  * @param elapsed_ms How long the call to `call_llm` took, in total.
  * @param count How many responses were extracted from the reply.
+ * @param estimateEnergy Estimates a request's energy from its output tokens
+ * and latency, where the model has an estimate (see `energyEstimator`).
  *
  * A reply with several choices (one request asked for n responses) gives each
  * the request's latency, the average of its output tokens, and the speed that
  * average makes. Several replies (a request per response) each count on their
  * own; without a per-request time, each gets the average. Averaged stats are
- * marked with `averaged_over`.
+ * marked with `averaged_over`. A request's energy is estimated once, for the
+ * whole request, and shared between its responses like its cost.
  */
 export function extract_stats(
   response: unknown,
   elapsed_ms: number | undefined,
   count: number,
+  estimateEnergy?: EnergyEstimator,
 ): (ResponseStats | null)[] | undefined {
   if (count <= 0) return undefined;
 
@@ -223,6 +258,12 @@ export function extract_stats(
     if (s.latency_ms === undefined && elapsed_ms !== undefined)
       s.latency_ms = elapsed_ms / replies.length;
     const k = sizes[i];
+    const energy =
+      estimateEnergy &&
+      s.output_tokens !== undefined &&
+      s.latency_ms !== undefined
+        ? estimateEnergy(s.output_tokens, s.latency_ms)
+        : undefined;
     for (let j = 0; j < k; j++)
       stats.push(
         finish({
@@ -231,6 +272,7 @@ export function extract_stats(
             s.output_tokens !== undefined ? s.output_tokens / k : undefined,
           // One request's cost, shared between the responses it returned
           cost_usd: s.cost_usd !== undefined ? s.cost_usd / k : undefined,
+          est_energy_wh: energy && { min: energy.min / k, max: energy.max / k },
           // A server-measured speed is per sequence already
           decode_tokens_per_s: k === 1 ? s.decode_tokens_per_s : undefined,
           averaged_over: Math.max(k, latencyAveraged ? replies.length : 1),
@@ -271,6 +313,10 @@ export function statsToMetavars(
     res[STATS_METAVARS.averaged_over] = stats.averaged_over;
   if (stats.cost_usd !== undefined)
     res[STATS_METAVARS.cost_usd] = stats.cost_usd;
+  if (stats.est_energy_wh !== undefined) {
+    res[STATS_METAVARS.est_energy_wh_min] = stats.est_energy_wh.min;
+    res[STATS_METAVARS.est_energy_wh_max] = stats.est_energy_wh.max;
+  }
   return res;
 }
 
@@ -294,6 +340,11 @@ export function formatStats(
     parts.push(`${stats.output_tokens} tok`);
   if (stats.tokens_per_s !== undefined)
     parts.push(`${Math.round(stats.tokens_per_s)} tok/s`);
+  // The middle of the estimate's range (as EcoLogits' own mean); the tooltip has the range
+  if (stats.est_energy_wh !== undefined)
+    parts.push(
+      `~${formatEnergy((stats.est_energy_wh.min + stats.est_energy_wh.max) / 2)}`,
+    );
   const summary = parts.join(" · ");
   return stats.averaged_over && summary ? `≈ ${summary}` : summary;
 }
@@ -322,6 +373,10 @@ export function describeStats(stats: ResponseStats | undefined): string[] {
     );
   if (stats.cost_usd !== undefined)
     lines.push(`Cost: ${formatCost(stats.cost_usd)}`);
+  if (stats.est_energy_wh !== undefined)
+    lines.push(
+      `Energy: ${formatEnergyRange(stats.est_energy_wh)} (estimated by EcoLogits)`,
+    );
   if (stats.averaged_over)
     lines.push(
       `≈ Averages: the provider reported one total for ${stats.averaged_over} responses`,
@@ -338,4 +393,251 @@ export function formatCost(usd: number): string {
   if (usd >= 0.01) return `$${usd.toFixed(2)}`;
   const digits = Math.max(2, 2 - Math.floor(Math.log10(usd)));
   return `$${Number(usd.toPrecision(3)).toFixed(digits).replace(/0+$/, "")}`;
+}
+
+/** The unit that keeps an energy of `wh` Wh to a few digits: mWh below 1 Wh, kWh from 1,000. */
+function energyUnit(wh: number): [string, number] {
+  if (wh < 1) return ["mWh", 1000];
+  if (wh >= 1000) return ["kWh", 0.001];
+  return ["Wh", 1];
+}
+
+/** A number to two significant digits, e.g. 7.8, 20, 0.53. */
+const twoDigits = (x: number) =>
+  x === 0 ? "0" : String(Number(x.toPrecision(2)));
+
+/** An energy given in Wh, in the unit that suits its size, e.g. "14 mWh", "1.8 Wh". */
+export function formatEnergy(wh: number): string {
+  const [unit, scale] = energyUnit(wh);
+  return `${twoDigits(wh * scale)} ${unit}`;
+}
+
+/**
+ * An estimated energy range given in Wh, both ends in the unit that suits
+ * the larger, e.g. "7.8–20 mWh", or "23 mWh" when it isn't a range.
+ */
+export function formatEnergyRange(range: { min: number; max: number }): string {
+  const [unit, scale] = energyUnit(range.max);
+  const min = twoDigits(range.min * scale);
+  const max = twoDigits(range.max * scale);
+  return min === max ? `${min} ${unit}` : `${min}–${max} ${unit}`;
+}
+
+// The labs of OpenRouter model IDs that are EcoLogits providers
+const OPENROUTER_LABS: Dict<string> = {
+  openai: "openai",
+  anthropic: "anthropic",
+  google: "google_genai",
+  mistralai: "mistralai",
+  cohere: "cohere",
+};
+
+/**
+ * The EcoLogits provider and model name of a ChainForge model, where EcoLogits
+ * has the model. EcoLogits estimates for its providers' data centres, so local
+ * models, and providers it doesn't cover, have none.
+ */
+export function ecologitsModel(
+  llm: string,
+  provider: LLMProvider | undefined,
+): [string, string] | undefined {
+  const candidates: [string, string][] = [];
+  if (provider === LLMProvider.OpenAI) candidates.push(["openai", llm]);
+  else if (provider === LLMProvider.Anthropic)
+    candidates.push(["anthropic", llm]);
+  else if (provider === LLMProvider.Google)
+    candidates.push(["google_genai", llm.replace(/^models\//, "")]);
+  else if (provider === LLMProvider.HuggingFace)
+    // A ":provider" suffix picks which Inference Provider serves the model
+    candidates.push([
+      "huggingface_hub",
+      stripHuggingFacePrefix(llm).split(":")[0],
+    ]);
+  else if (
+    provider === LLMProvider.OpenRouter &&
+    !isOpenRouterImageModel(llm)
+  ) {
+    // e.g. "anthropic/claude-sonnet-4.5", or "meta-llama/llama-3.1-8b-instruct:free"
+    const id = stripOpenRouterPrefix(llm).split(":")[0];
+    const slash = id.indexOf("/");
+    const lab = OPENROUTER_LABS[id.substring(0, slash).toLowerCase()];
+    if (lab) candidates.push([lab, id.substring(slash + 1)]);
+    // Open-weights models go by their Hugging Face ID
+    candidates.push(["huggingface_hub", id]);
+  }
+  return candidates.find(([p, name]) => findModel(p, name) !== undefined);
+}
+
+/**
+ * EcoLogits' energy estimate for a model's requests, or undefined where
+ * EcoLogits doesn't cover the model. The estimate is a nicety: if it fails,
+ * the response keeps its other stats rather than being lost.
+ */
+export function energyEstimator(
+  llm: string,
+  provider: LLMProvider | undefined,
+): EnergyEstimator | undefined {
+  const model = ecologitsModel(llm, provider);
+  if (!model) return undefined;
+  const [ecoProvider, name] = model;
+  return (outputTokens, latencyMs) => {
+    try {
+      return estimateEnergyWh(
+        ecoProvider,
+        name,
+        outputTokens,
+        latencyMs / 1000,
+      );
+    } catch (err) {
+      console.warn(`Could not estimate the energy of ${llm}:`, err);
+      return undefined;
+    }
+  };
+}
+
+/** A response stat the Vis Node can plot in place of an evaluator's score. */
+export interface PlottableStat {
+  /** The Vis Node's name for it, unlike any evaluator's score name. */
+  key: string;
+  /** What the axis and menu call it. */
+  label: string;
+  value: (s: ResponseStats) => number | undefined;
+  /** The response's value, for when hovering over its point. */
+  describe: (s: ResponseStats) => string;
+}
+
+const plainStat = (
+  key: string,
+  label: string,
+  value: (s: ResponseStats) => number | undefined,
+): PlottableStat => ({
+  key,
+  label,
+  value,
+  describe: (s) => `${label}: ${value(s)}`,
+});
+
+const msToS = (ms: number | undefined) =>
+  ms === undefined ? undefined : ms / 1000;
+
+export const PLOTTABLE_STATS: PlottableStat[] = [
+  plainStat("__stat_latency_s", "Latency (s)", (s) => msToS(s.latency_ms)),
+  plainStat("__stat_ttft_s", "Before output (s)", (s) => msToS(s.ttft_ms)),
+  plainStat("__stat_input_tokens", "Input tokens", (s) => s.input_tokens),
+  plainStat("__stat_output_tokens", "Output tokens", (s) => s.output_tokens),
+  plainStat("__stat_tokens_per_s", "Speed (tokens/s)", (s) => s.tokens_per_s),
+  plainStat(
+    "__stat_decode_tokens_per_s",
+    "Decoding speed (tokens/s)",
+    (s) => s.decode_tokens_per_s,
+  ),
+  {
+    ...plainStat("__stat_cost_usd", "Cost ($)", (s) => s.cost_usd),
+    describe: (s) => `Cost: ${formatCost(s.cost_usd ?? 0)}`,
+  },
+  {
+    // One number per response: the middle of the estimate's range, as on the
+    // response's stats label. Hovering shows the range.
+    key: "__stat_est_energy_mwh",
+    label: "Energy, estimated (mWh)",
+    value: (s) =>
+      s.est_energy_wh === undefined
+        ? undefined
+        : ((s.est_energy_wh.min + s.est_energy_wh.max) / 2) * 1000,
+    describe: (s) =>
+      s.est_energy_wh === undefined
+        ? ""
+        : `Energy: ${formatEnergyRange(s.est_energy_wh)} (estimated by EcoLogits)`,
+  },
+];
+
+/** The plottable stat with this key, if it is one. */
+export function plottableStat(key: string): PlottableStat | undefined {
+  return PLOTTABLE_STATS.find((s) => s.key === key);
+}
+
+type WithStats = {
+  responses: LLMResponseData[];
+  stats?: (ResponseStats | null)[];
+  reasoning?: unknown[];
+  reasoning_state?: unknown[];
+};
+
+/** The stats that at least one of these responses has, in PLOTTABLE_STATS's order. */
+export function plottableStatsIn(resps: WithStats[]): PlottableStat[] {
+  return PLOTTABLE_STATS.filter((stat) =>
+    resps.some((r) =>
+      r.stats?.some((s) => s !== null && stat.value(s) !== undefined),
+    ),
+  );
+}
+
+/**
+ * Response objects with one stat in place of evaluation scores, so anything
+ * that plots scores can plot it. Responses without the stat are left out
+ * (along with their reasoning, so what's kept stays in step), and `hover`
+ * gives each kept response's value, described, in the same order. `missing`
+ * lists the response objects that had responses left out.
+ */
+export function statsAsScores<T extends WithStats>(
+  resps: T[],
+  stat: PlottableStat,
+): {
+  responses: (T & { eval_res: EvaluationResults })[];
+  hover: Map<T, string[]>;
+  kept: number;
+  total: number;
+  missing: T[];
+} {
+  const hover = new Map<T, string[]>();
+  const kept: (T & { eval_res: EvaluationResults })[] = [];
+  const missing: T[] = [];
+  let total = 0;
+  resps.forEach((r) => {
+    total += r.responses.length;
+    const idxs = r.responses
+      .map((_, i) => i)
+      .filter((i) => {
+        const s = r.stats?.[i];
+        return s != null && stat.value(s) !== undefined;
+      });
+    if (idxs.length < r.responses.length) missing.push(r);
+    if (idxs.length === 0) return;
+    const pick = <V>(arr: V[]) => idxs.map((i) => arr[i]);
+    const stats = pick(r.stats ?? []) as ResponseStats[];
+    const obj: T & { eval_res: EvaluationResults } = {
+      ...r,
+      responses: pick(r.responses),
+      stats,
+      eval_res: {
+        dtype: "Numeric",
+        items: stats.map((s) => stat.value(s) as number),
+      },
+    };
+    // Every other per-response list, e.g. each response's reasoning
+    if (Array.isArray(r.reasoning)) obj.reasoning = pick(r.reasoning);
+    if (Array.isArray(r.reasoning_state))
+      obj.reasoning_state = pick(r.reasoning_state);
+    kept.push(obj);
+    hover.set(obj, stats.map(stat.describe));
+  });
+  return {
+    responses: kept,
+    hover,
+    kept: kept.reduce((n, r) => n + r.responses.length, 0),
+    total,
+    missing,
+  };
+}
+
+/**
+ * Whether EcoLogits covers the model that gave a response, i.e. whether
+ * responses from it get energy estimates. Undefined when the response doesn't
+ * say which model it was (only a name).
+ */
+export function ecologitsCovers(llm: unknown): boolean | undefined {
+  const model =
+    llm !== null && typeof llm === "object" ? (llm as Dict).model : undefined;
+  if (typeof model !== "string") return undefined;
+  return ecologitsModel(model, getProvider(model as LLM)) !== undefined;
 }
