@@ -51,7 +51,13 @@ const OLLAMA_MODELS: ModelInfo[] = ["qwen3.5:4b", "gemma4:e4b"].map((name) => ({
   ready: true,
 }));
 
-const SCENARIOS: { name: string; flow: FlowView; request: string }[] = [
+const SCENARIOS: {
+  name: string;
+  flow: FlowView;
+  request: string;
+  /** Node types the last valid proposal must add. */
+  adds?: string[];
+}[] = [
   {
     name: "create a flow on an empty canvas",
     flow: { nodes: [], connections: [] },
@@ -61,6 +67,14 @@ const SCENARIOS: { name: string; flow: FlowView; request: string }[] = [
     name: "fill in the blank flow New Flow creates",
     flow: BLANK_FLOW,
     request: `Check whether ${FLOW_MODELS[provider]} answer three trivia questions correctly. Make up the questions.`,
+  },
+  {
+    name: "an audit plots its scores",
+    flow: BLANK_FLOW,
+    request:
+      "I want to audit a small Qwen model for gender biases in its short " +
+      "responses. Can you make a flow that helps me do that",
+    adds: ["vis"],
   },
   {
     name: "check answers against expected answers",
@@ -110,7 +124,7 @@ function clip(text: string, max = 600) {
 (LIVE ? describe : describe.skip)(`live agent: ${LIVE}`, () => {
   test.each(SCENARIOS)(
     "$name",
-    async ({ flow, request }) => {
+    async ({ flow, request, adds }) => {
       if (!["ollama", "openrouter"].includes(provider))
         throw new Error(
           'CHAINBUDDY_LIVE must look like "ollama:<model>" or "openrouter:<model>".',
@@ -175,6 +189,10 @@ function clip(text: string, max = 600) {
 
       expect(result.stopReason).toBe("done");
       expect(proposals.length).toBeGreaterThan(0);
+      const added = proposals[proposals.length - 1].changes.flatMap((c) =>
+        c.op === "add_node" ? [c.type] : [],
+      );
+      for (const type of adds ?? []) expect(added).toContain(type);
     },
     15 * 60 * 1000,
   );
