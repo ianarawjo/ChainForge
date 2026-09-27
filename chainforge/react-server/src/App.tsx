@@ -116,6 +116,7 @@ import {
   browserTabIsActive,
   FLASK_BASE_URL,
 } from "./backend/utils";
+import { startEnergyMonitor } from "./backend/localEnergy";
 import { Dict, JSONCompatible, LLMSpec } from "./backend/typing";
 import {
   ensureUniqueFlowFilename,
@@ -1681,6 +1682,12 @@ const App = () => {
     return startServerHeartbeat({
       send: () => fetch(`${FLASK_BASE_URL}api/heartbeat`, { method: "POST" }),
     });
+  }, []);
+
+  // Start measuring this machine's idle power now, so the energy of the
+  // first local-model request can be told apart from it (see backend/localEnergy.ts)
+  useEffect(() => {
+    startEnergyMonitor();
   }, []);
 
   const reactFlowUI = useMemo(() => {

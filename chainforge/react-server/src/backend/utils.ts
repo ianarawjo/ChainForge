@@ -55,12 +55,14 @@ import {
 import { UserForcedPrematureExit } from "./errors";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import {
+  ENERGY_KEY,
   LATENCY_KEY,
   isStatsMetavar,
   statsAt,
   statsToMetavars,
 } from "./responseStats";
 import { Annotations } from "plotly.js";
+import { beginEnergy, endEnergy } from "./localEnergy";
 
 /**
  * ChainForge queries models straight from the browser, which the OpenAI SDK
@@ -2387,6 +2389,26 @@ export async function call_huggingface(
   return [query, responses];
 }
 
+/**
+ * An Ollama reply's timings, in seconds, for measuring its energy: loading the
+ * model, then reading the prompt and generating. Undefined if it has none
+ * (e.g. an error).
+ */
+function ollamaTimings(
+  reply: Dict,
+): { load_s: number; generation_s: number; total_s: number } | undefined {
+  const ns = (key: string) =>
+    typeof reply[key] === "number" ? reply[key] / 1e9 : undefined;
+  const total = ns("total_duration");
+  const evalS = ns("eval_duration");
+  if (total === undefined || evalS === undefined) return undefined;
+  return {
+    load_s: ns("load_duration") ?? 0,
+    generation_s: (ns("prompt_eval_duration") ?? 0) + evalS,
+    total_s: total,
+  };
+}
+
 export async function call_ollama_provider(
   prompt: string,
   model: LLM,
@@ -2516,31 +2538,38 @@ export async function call_ollama_provider(
       }, 250)
     : undefined;
 
-  let responses: Dict[];
+  const responses: Dict[] = [];
   try {
     // Call Ollama API
-    const resps: Response[] = [];
-    // How long each request took; Ollama replies once the whole response is ready
-    const latencies: number[] = [];
     for (let i = 0; i < n; i++) {
       // Abort if the user canceled
       if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
-      // Query Ollama and collect the response
+      // Query Ollama and collect the response. Where this machine's energy can
+      // be measured (Ollama running here too), the request is marked as
+      // started and finished, and the reply carries its energy above idle.
+      const energyId = await beginEnergy(url);
       const start = performance.now();
-      const response = await fetch(url, {
-        method: "POST",
-        body: JSON.stringify(query),
-        signal: controller.signal,
-      });
-      latencies.push(performance.now() - start);
-
-      resps.push(response);
+      let reply: Dict;
+      let repliedAt: number;
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          body: JSON.stringify(query),
+          signal: controller.signal,
+        });
+        const body = await response.text();
+        // How long the request took; Ollama replies once the whole response is ready
+        repliedAt = performance.now();
+        reply = parse_response(body, repliedAt - start);
+      } catch (err) {
+        endEnergy(energyId, performance.now()); // drops the request
+        throw err;
+      }
+      const energy = await endEnergy(energyId, repliedAt, ollamaTimings(reply));
+      if (energy) reply[ENERGY_KEY] = energy;
+      responses.push(reply);
     }
-
-    responses = await Promise.all(resps.map((resp) => resp.text())).then(
-      (bodies) => bodies.map((body, i) => parse_response(body, latencies[i])),
-    );
   } catch (err) {
     if (controller.signal.aborted) throw new UserForcedPrematureExit();
     throw err;

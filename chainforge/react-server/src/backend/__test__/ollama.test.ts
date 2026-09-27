@@ -17,6 +17,11 @@ jest.mock("../../store", () => ({
   __esModule: true,
   default: { getState: () => ({ AvailableLLMs: [] }) },
 }));
+// Measuring energy through the ChainForge server: off, unless a test says otherwise
+jest.mock("../localEnergy", () => ({
+  beginEnergy: jest.fn(async () => undefined),
+  endEnergy: jest.fn(async () => undefined),
+}));
 
 // eslint-disable-next-line import/first
 import { afterEach, describe, expect, test } from "@jest/globals";
@@ -26,6 +31,8 @@ import { call_ollama_provider } from "../utils";
 import { UserForcedPrematureExit } from "../errors";
 // eslint-disable-next-line import/first
 import { extract_stats } from "../responseStats";
+// eslint-disable-next-line import/first
+import { beginEnergy, endEnergy } from "../localEnergy";
 
 const realFetch = globalThis.fetch;
 afterEach(() => {
@@ -122,5 +129,82 @@ describe("Ollama", () => {
       ),
     ).rejects.toBeInstanceOf(UserForcedPrematureExit);
     expect(signal?.aborted).toBe(true);
+  });
+});
+
+describe("Ollama energy", () => {
+  const begin = beginEnergy as jest.Mock;
+  const end = endEnergy as jest.Mock;
+  afterEach(() => {
+    begin.mockReset().mockResolvedValue(undefined);
+    end.mockReset().mockResolvedValue(undefined);
+  });
+
+  test("each request's measured energy reaches its stats", async () => {
+    begin.mockResolvedValue("req-1");
+    end.mockResolvedValue({
+      energy_wh: 0.08534,
+      noise_wh: 0.00035,
+      components_wh: { gpu: 0.0464, cpu: 0.0198, dram: 0.0192, ane: 0 },
+      load_energy_wh: 0.00303,
+      shared: false,
+    });
+    globalThis.fetch = jest.fn(async () => ({
+      text: async () =>
+        JSON.stringify({
+          message: { content: "Paris" },
+          total_duration: 7.1e9,
+          load_duration: 1.58e9,
+          prompt_eval_duration: 9e7,
+          eval_count: 507,
+          eval_duration: 5.4e9,
+        }),
+    })) as any;
+
+    const [, responses] = await call_ollama_provider(
+      "Capital of France?",
+      "ollama",
+      1,
+      1.0,
+      params(),
+      () => false,
+    );
+    // The server gets Ollama's own timings, in seconds
+    expect(begin).toHaveBeenCalledWith("http://localhost:11434/api/chat");
+    expect(end.mock.calls[0][0]).toBe("req-1");
+    expect(end.mock.calls[0][2]).toEqual({
+      load_s: 1.58,
+      generation_s: expect.closeTo(5.49, 6),
+      total_s: 7.1,
+    });
+    const [stats] = extract_stats(responses, 999, 1) ?? [];
+    expect(stats).toMatchObject({
+      energy_wh: 0.0853,
+      energy_noise_wh: 0.00035,
+      energy_parts_wh: { gpu: 0.0464, cpu: 0.0198, dram: 0.0192, ane: 0 },
+      load_energy_wh: 0.00303,
+    });
+    expect(stats).not.toHaveProperty("energy_shared");
+  });
+
+  test("a failed request is dropped, so it isn't left running", async () => {
+    begin.mockResolvedValue("req-2");
+    globalThis.fetch = jest.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    }) as any;
+    await expect(
+      call_ollama_provider("Q", "ollama", 1, 1.0, params(), () => false),
+    ).rejects.toThrow("Failed to fetch");
+    // Ended without timings, i.e. dropped
+    expect(end).toHaveBeenCalledWith("req-2", expect.any(Number));
+  });
+
+  test("an error reply has no timings, so it's dropped too", async () => {
+    begin.mockResolvedValue("req-3");
+    globalThis.fetch = jest.fn(async () => ({
+      text: async () => JSON.stringify({ error: "model not found" }),
+    })) as any;
+    await call_ollama_provider("Q", "ollama", 1, 1.0, params(), () => false);
+    expect(end).toHaveBeenCalledWith("req-3", expect.any(Number), undefined);
   });
 });

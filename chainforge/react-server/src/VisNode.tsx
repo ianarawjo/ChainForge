@@ -503,6 +503,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const responses = statsView?.responses ?? inputResponses;
     const metricName = selectedStat?.label ?? selectedEvalResVar;
     const isEnergy = selectedStat?.key === "__stat_est_energy_mwh";
+    const isMeasuredEnergy = selectedStat?.key === "__stat_energy_mwh";
     const omittedNoteId = useId();
 
     // Why some responses aren't in a plot of a stat, for the note below it.
@@ -533,10 +534,12 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         sentences.push(
           isEnergy
             ? `Some responses from ${names(others)} have no estimate (for instance, ones collected before ChainForge estimated energy, or without a token count), hence they are omitted here.`
-            : `Some responses from ${names(others)} have no ${metricName.toLowerCase()}, hence they are omitted here.`,
+            : isMeasuredEnergy
+              ? `Energy is measured only for local models (Ollama) on this machine, where ChainForge can read its energy counters (so far, Apple silicon Macs). Responses from ${names(others)} have no measurement, hence they are omitted here.`
+              : `Some responses from ${names(others)} have no ${metricName.toLowerCase()}, hence they are omitted here.`,
         );
       return sentences.join(" ");
-    }, [statsView, isEnergy, metricName]);
+    }, [statsView, isEnergy, isMeasuredEnergy, metricName]);
 
     // Typically, a user will only need the default LLM 'group' --all LLMs in responses.
     // However, when prompts are chained together, the original LLM info is stored in metavars as a key.
@@ -1810,7 +1813,9 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               />
               {isEnergy
                 ? "Some estimates could not be shown."
-                : "Some values could not be shown."}
+                : isMeasuredEnergy
+                  ? "Some measurements could not be shown."
+                  : "Some values could not be shown."}
             </div>
           </Tooltip>
         ) : null}

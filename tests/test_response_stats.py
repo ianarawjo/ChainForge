@@ -36,3 +36,15 @@ def test_responses_without_stats_are_unchanged():
     responses = [{"responses": ["a"], "prompt": "p", "vars": {}, "llm": "m", "metavars": {"topic": "x"}}]
     flask_app.run_over_responses(lambda r: seen.append(r.meta) or 1, responses, "response", "evaluator")
     assert seen == [{"topic": "x"}]
+
+
+def test_energy_reaches_python_evaluators():
+    seen = []
+    responses = [{"responses": ["a", "b"], "prompt": "p", "vars": {}, "llm": "m", "metavars": {},
+                  "stats": [{"est_energy_wh": {"min": 0.0078, "max": 0.02}},
+                            {"energy_wh": 0.083, "load_energy_wh": 0.0051}]}]
+    flask_app.run_over_responses(lambda r: seen.append(r.meta) or 1, responses, "response", "evaluator")
+    assert seen == [
+        {"stat_est_energy_wh_min": 0.0078, "stat_est_energy_wh_max": 0.02},
+        {"stat_energy_wh": 0.083, "stat_load_energy_wh": 0.0051},
+    ]

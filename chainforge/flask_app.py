@@ -281,9 +281,14 @@ def with_stats_metavars(metavars: dict, stats: list, index: int) -> dict:
         res['stat_latency_s'] = round(s['latency_ms']) / 1000
     if isinstance(s.get('ttft_ms'), (int, float)):
         res['stat_ttft_s'] = round(s['ttft_ms']) / 1000
-    for key in ('input_tokens', 'output_tokens', 'tokens_per_s', 'decode_tokens_per_s', 'averaged_over', 'cost_usd'):
+    for key in ('input_tokens', 'output_tokens', 'tokens_per_s', 'decode_tokens_per_s', 'averaged_over', 'cost_usd',
+                'energy_wh', 'load_energy_wh'):
         if isinstance(s.get(key), (int, float)):
             res['stat_' + key] = s[key]
+    est = s.get('est_energy_wh')
+    if isinstance(est, dict) and all(isinstance(est.get(k), (int, float)) for k in ('min', 'max')):
+        res['stat_est_energy_wh_min'] = est['min']
+        res['stat_est_energy_wh_max'] = est['max']
     return res
 
 def check_typeof_vals(arr: list) -> MetricType:
@@ -697,6 +702,61 @@ def checkRagAvailable():
     """
     ret = jsonify({"rag_available": IS_RAG_AVAILABLE()})
     return ret
+
+
+def _energy_monitor():
+    """This machine's energy monitor, or (None, why not).
+
+    Only for a page open on this same machine: the monitor measures this
+    machine, so it's only meaningful for a model server here too (which the
+    front end checks), queried by a browser here.
+    """
+    if request.remote_addr not in ("127.0.0.1", "::1"):
+        return None, "Energy is measured only for a ChainForge page open on the machine running the server."
+    from chainforge.energy import get_monitor
+    return get_monitor()
+
+
+@app.route('/app/energyStatus', methods=['POST'])
+def energyStatus():
+    """Whether the energy local models use can be measured here, and with what."""
+    monitor, reason = _energy_monitor()
+    if monitor is None:
+        return jsonify({"available": False, "reason": reason})
+    return jsonify(monitor.status())
+
+
+@app.route('/app/energyBegin', methods=['POST'])
+def energyBegin():
+    """Marks the start of a request to a local model server. Returns its id."""
+    monitor, reason = _energy_monitor()
+    if monitor is None:
+        return jsonify({"error": reason})
+    return jsonify({"id": monitor.begin()})
+
+
+@app.route('/app/energyEnd', methods=['POST'])
+def energyEnd():
+    """A finished request's energy above idle.
+
+    POST {id, since_reply_ms, load_s, generation_s, total_s} with the model
+    server's timings, or {id, cancelled: true} for a request that failed.
+    """
+    monitor, reason = _energy_monitor()
+    if monitor is None:
+        return jsonify({"error": reason})
+    data = request.get_json(silent=True) or {}
+    req_id = str(data.get("id", ""))
+    if data.get("cancelled"):
+        monitor.cancel(req_id)
+        return jsonify({"energy": None})
+    try:
+        timings = {k: float(data[k]) for k in ("load_s", "generation_s", "total_s")}
+        since_reply_s = float(data.get("since_reply_ms", 0)) / 1000
+    except (KeyError, TypeError, ValueError):
+        monitor.cancel(req_id)
+        return jsonify({"error": "energyEnd needs load_s, generation_s and total_s."})
+    return jsonify({"energy": monitor.end(req_id, since_reply_s, **timings)})
 
 
 @app.route('/app/makeFetchCall', methods=['POST'])

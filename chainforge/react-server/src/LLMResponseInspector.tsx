@@ -293,6 +293,10 @@ export const responsesToTable = async (
           row["Energy, estimated min (Wh)"] = stats.est_energy_wh.min;
           row["Energy, estimated max (Wh)"] = stats.est_energy_wh.max;
         }
+        if (stats?.energy_wh !== undefined)
+          row["Energy, measured (Wh)"] = stats.energy_wh;
+        if (stats?.load_energy_wh !== undefined)
+          row["Model load energy, measured (Wh)"] = stats.load_energy_wh;
         if (stats?.averaged_over !== undefined)
           row["Stats averaged over"] = stats.averaged_over;
 
