@@ -1,5 +1,6 @@
 import { describe, expect, test } from "@jest/globals";
 import { describeChanges } from "../flowApi/describe";
+import { ReviewInput, Reviewer } from "../flowApi/review";
 import { ModelInfo } from "../flowApi/types";
 import { AgentTool } from "../runtime/tools";
 import {
@@ -700,6 +701,152 @@ describe("tables", () => {
       "changes[2] (connect): look takes responses or scored_responses, and qa gives values.",
     ]);
   });
+});
+
+describe("a second look before the user sees a proposal", () => {
+  // Stands in for the reviewing model: answers with each list in turn, and
+  // records what it was given.
+  function reviewing(...answers: (string[] | Error)[]) {
+    const seen: ReviewInput[] = [];
+    const review: Reviewer = async (input) => {
+      seen.push(input);
+      const answer = answers[Math.min(seen.length, answers.length) - 1];
+      if (answer instanceof Error) throw answer;
+      return answer;
+    };
+    return { review, seen };
+  }
+  const proposeNow = async (tools: AgentTool[]) => {
+    run(tools, "get_flow");
+    return (await run(tools, "propose_changes", {
+      summary: "test",
+      changes: newFlow,
+    })) as Record<string, any>;
+  };
+
+  test("problems go back to the model, and nothing is shown until they're fixed", async () => {
+    const { review, seen } = reviewing(
+      ["The prompt gives the answer away."],
+      [],
+    );
+    const { tools, startTurn, proposals, reviews } = createStubTools({
+      models: MODELS,
+      review,
+    });
+    startTurn("Check some facts.");
+
+    const first = await proposeNow(tools);
+    expect(first).toMatchObject({
+      status: "needs_changes",
+      problems: ["The prompt gives the answer away."],
+    });
+    expect(proposals).toHaveLength(0);
+
+    expect((await proposeNow(tools)).status).toBe("awaiting_approval");
+    expect(reviews[0]).toEqual({
+      fixed: ["The prompt gives the answer away."],
+      unresolved: [],
+    });
+    // It was given the request, and the guides of the types involved only.
+    expect(seen[0].request).toBe("Check some facts.");
+    expect(Object.keys(seen[0].guides).sort()).toEqual([
+      "evaluator",
+      "prompt",
+      "textfields",
+    ]);
+  });
+
+  test("problems found again are shown to the user, not sent back twice", async () => {
+    const { review } = reviewing(["First."], ["Still there."]);
+    const { tools, startTurn, reviews } = createStubTools({
+      models: MODELS,
+      review,
+    });
+    startTurn("x");
+    await proposeNow(tools);
+    expect((await proposeNow(tools)).status).toBe("awaiting_approval");
+    expect(reviews[0]).toEqual({
+      fixed: ["First."],
+      unresolved: ["Still there."],
+    });
+  });
+
+  test("a review that fails doesn't hold the proposal back", async () => {
+    const { review } = reviewing(new Error("rate limited"));
+    const { tools, startTurn, reviews } = createStubTools({
+      models: MODELS,
+      review,
+    });
+    startTurn("x");
+    expect((await proposeNow(tools)).status).toBe("awaiting_approval");
+    expect(reviews[0]).toEqual({ fixed: [], unresolved: [], failed: true });
+  });
+
+  test("each new message gets its own first review", async () => {
+    const { review } = reviewing(["A."], ["B."]);
+    const { tools, startTurn } = createStubTools({ models: MODELS, review });
+    startTurn("x");
+    expect((await proposeNow(tools)).status).toBe("needs_changes");
+    startTurn("y");
+    expect((await proposeNow(tools)).status).toBe("needs_changes");
+  });
+});
+
+test("evaluator code must parse, and isn't run to check it", () => {
+  // A review found a missing closing brace; code can find that for certain.
+  const { tools } = createStubTools({ models: MODELS });
+  const ran: string[] = [];
+  (globalThis as any).ranByCheck = (s: string) => ran.push(s);
+  const out = propose(tools, [
+    {
+      op: "add_node",
+      ref: "check",
+      type: "evaluator",
+      settings: {
+        code: "ranByCheck('top level');\nfunction evaluate(r) {\n  return (1;\n}",
+      },
+    },
+  ]);
+  expect(out.problems).toEqual([
+    "changes[0] (add_node): code isn't valid JavaScript: Unexpected token ';'.",
+  ]);
+  const ok = propose(tools, [
+    {
+      op: "add_node",
+      ref: "check",
+      type: "evaluator",
+      settings: {
+        code: "ranByCheck('top level');\nfunction evaluate(r) { return 1; }",
+      },
+    },
+  ]);
+  expect(ok.problems?.[0]).not.toMatch(/valid JavaScript/);
+  expect(ran).toEqual([]);
+  delete (globalThis as any).ranByCheck;
+});
+
+test("values a change set supplies must be used", () => {
+  // Found by a review: test cases put in the TextFields Node while the prompt
+  // hard-coded one of them, so the rest would never be sent.
+  const { tools } = createStubTools({ flow: BLANK_FLOW, models: MODELS });
+  const out = propose(tools, [
+    {
+      op: "update_node",
+      node: "textfields-1",
+      settings: { values: ["a", "b"] },
+    },
+    {
+      op: "update_node",
+      node: "prompt-1",
+      settings: {
+        prompts: [{ label: "A", text: "Describe a CEO." }],
+        models: [{ model: "openrouter/anthropic/claude-haiku-4.5" }],
+      },
+    },
+  ]);
+  expect(out.problems).toEqual([
+    "textfields-1: nothing uses its values. Connect it to a prompt's {variable}, or remove it.",
+  ]);
 });
 
 test("describe_node refuses types without a guide", () => {

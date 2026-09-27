@@ -15,6 +15,7 @@ import { v4 as uuid } from "uuid";
 import { Dict } from "../../backend/typing";
 import useStore from "../../store";
 import { ChangeLine, describeChanges } from "../flowApi/describe";
+import { ProposalReview } from "../flowApi/review";
 import {
   CanvasPort,
   Change,
@@ -60,6 +61,8 @@ export interface Proposal {
   lines: ChangeLine[];
   status: ProposalStatus;
   error?: string;
+  /** What a review found before the proposal was shown, if it was reviewed. */
+  review?: ProposalReview;
 }
 
 interface ProposalState extends Proposal {
@@ -176,7 +179,7 @@ export class StoreCanvas implements CanvasPort {
     return listModels();
   }
 
-  propose(changeSet: ChangeSet): ProposalReceipt {
+  propose(changeSet: ChangeSet, review?: ProposalReview): ProposalReceipt {
     let replaced: string | undefined;
     for (const p of Array.from(this.proposals.values()))
       if (p.status === "pending") {
@@ -192,6 +195,7 @@ export class StoreCanvas implements CanvasPort {
       summary: changeSet.summary,
       lines: describeChanges(flow, changeSet),
       status: "pending",
+      review,
       changes: changeSet.changes,
       ids: new Map(flow.nodes.map((n) => [n.id, n.id])),
       addedNodes: [],
@@ -659,8 +663,8 @@ export class StoreCanvas implements CanvasPort {
 }
 
 function publicView(state: ProposalState): Proposal {
-  const { id, summary, lines, status, error } = state;
-  return { id, summary, lines, status, error };
+  const { id, summary, lines, status, error, review } = state;
+  return { id, summary, lines, status, error, review };
 }
 
 // Translating between ChainForge's nodes and ChainBuddy's view of them.

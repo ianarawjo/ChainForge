@@ -51,6 +51,12 @@ export function checkChanges(
     ]),
   );
   let connections: ConnectionView[] = [...flow.connections];
+  // Nodes on the canvas that aren't finished yet, such as New Flow's blanks.
+  const blankBefore = new Set(
+    flow.nodes
+      .filter((n) => n.settings && kindOf(n.type)?.missing?.(n.settings))
+      .map((n) => n.id),
+  );
   // Settings of nodes on the canvas too long to have been shown in full.
   const tooLong = new Map(
     flow.nodes.map((n) => [
@@ -396,6 +402,20 @@ export function checkChanges(
         problems.push(
           `${c.to.node}'s "${c.to.input}" input is connected from ${c.from.node}'s "${c.from.output}", which this change removes. Connect it to another output in this change set.`,
         );
+    }
+
+  // Values a change set supplies, in a node it adds or fills in, should go
+  // somewhere: a TextFields Node its prompt doesn't use is wasted, and the
+  // flow isn't testing what it seems to.
+  if (problems.length === 0)
+    for (const [id, node] of Array.from(nodes.entries())) {
+      const supplied = node.inputsBefore === undefined || blankBefore.has(id);
+      if (!node.touched || !supplied) continue;
+      if (kindOf(node.type)?.output !== "values") continue;
+      if (connections.some((c) => c.from.node === id)) continue;
+      problems.push(
+        `${id}: nothing uses its values. Connect it to a prompt's {variable}, or remove it.`,
+      );
     }
 
   // Nor should it connect to a node that stays blank, such as the empty

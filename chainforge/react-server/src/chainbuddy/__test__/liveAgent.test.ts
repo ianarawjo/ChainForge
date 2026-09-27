@@ -20,6 +20,7 @@ import {
   OpenAICompatibleProvider,
 } from "../model/openaiCompatible";
 import { AgentEvent, runAgent } from "../runtime/agentLoop";
+import { createReviewer } from "../runtime/reviewer";
 import { FlowView, ModelInfo } from "../flowApi/types";
 import { systemPrompt } from "../nodes";
 import {
@@ -136,11 +137,17 @@ function clip(text: string, max = 600) {
         apiKey: process.env.OPENROUTER_API_KEY,
         reasoningEffort: provider === "openrouter" ? "low" : undefined,
       });
-      const { tools, proposals } = createStubTools({
+      const { tools, proposals, reviews, startTurn } = createStubTools({
         flow,
         models: [...MODELS, ...(provider === "ollama" ? OLLAMA_MODELS : [])],
         nodeDocs: nodeDocs(),
+        // The same model takes a second look at each proposal, as in the app.
+        review: createReviewer(
+          client,
+          fs.readFileSync(path.join(KNOWLEDGE, "review.md"), "utf8"),
+        ),
       });
+      startTurn(request);
 
       const log: string[] = [`USER: ${request}`];
       let text = "";
@@ -179,6 +186,11 @@ function clip(text: string, max = 600) {
       });
       flushText();
 
+      for (const r of reviews)
+        if (r)
+          log.push(
+            `REVIEW: fixed ${JSON.stringify(r.fixed)}; unresolved ${JSON.stringify(r.unresolved)}${r.failed ? "; FAILED" : ""}`,
+          );
       log.push(
         `STOP: ${result.stopReason}${result.error ? ` (${result.error})` : ""}; ` +
           `${result.usage.inputTokens} in / ${result.usage.outputTokens} out; ` +
