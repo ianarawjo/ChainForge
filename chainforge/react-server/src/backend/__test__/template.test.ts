@@ -157,3 +157,37 @@ test("escaped braces", () => {
     "Why is the set \\{0, 1, 2\\} of size 3?",
   );
 });
+
+test("braces in a metavariable filled as {#name} stay text", () => {
+  // A table's other columns travel as metavariables, unescaped. Filled into a
+  // later prompt as {#answer}, a brace in one (a JSON answer, say) mustn't
+  // leave the prompt looking like a template, or it can't be sent.
+  const prompt_gen = new PromptPermutationGenerator(
+    "Q: {question}\nExpected: {#answer}",
+  );
+  const [prompt] = Array.from(
+    prompt_gen.generate({
+      question: [
+        {
+          text: "Return JSON with a key a set to 1.",
+          fill_history: {},
+          associate_id: "A",
+          metavars: { answer: '{"a": 1}' },
+        },
+      ],
+    }),
+  );
+  expect(prompt.is_concrete()).toBe(true);
+  expect(prompt.toString()).toBe(
+    'Q: Return JSON with a key a set to 1.\nExpected: {"a": 1}',
+  );
+});
+
+test("values in fill_history filled as {#name} aren't escaped twice", () => {
+  // Those were escaped where they were made (a table's connected column, a
+  // response passed along a chain), so they keep a single escape.
+  const prompt = new PromptTemplate("Again: {#question}");
+  prompt.fill_special_vars({ question: escapeBraces("Is {x} a set?") });
+  expect(prompt.is_concrete()).toBe(true);
+  expect(prompt.toString()).toBe("Again: Is {x} a set?");
+});

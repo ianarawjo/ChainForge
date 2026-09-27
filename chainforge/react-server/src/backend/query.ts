@@ -289,10 +289,10 @@ export class PromptPipeline {
       for (const chat_history of _chat_histories) {
         // If there's chat history, we need to fill any special (#) vars from the carried chat_history vars and metavars:
         if (chat_history !== undefined) {
-          prompt.fill_special_vars({
-            ...chat_history?.fill_history,
-            ...chat_history?.metavars,
-          });
+          prompt.fill_special_vars(
+            chat_history?.fill_history ?? {},
+            chat_history?.metavars ?? {},
+          );
           prompt_str = prompt.toString();
         }
 

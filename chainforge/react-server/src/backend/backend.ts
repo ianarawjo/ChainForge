@@ -730,10 +730,10 @@ export async function countQueries(
           for (const chat_hist of chat_hists) {
             // If there's chat history, we need to fill any special (#) vars from the carried chat_history vars and metavars:
             if (chat_hist !== undefined) {
-              prompt.fill_special_vars({
-                ...chat_hist?.fill_history,
-                ...chat_hist?.metavars,
-              });
+              prompt.fill_special_vars(
+                chat_hist?.fill_history ?? {},
+                chat_hist?.metavars ?? {},
+              );
               prompt_str = prompt.toString();
             }
 
