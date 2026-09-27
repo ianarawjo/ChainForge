@@ -347,6 +347,209 @@ describe("Vis Node plotting response stats", () => {
     );
   });
 
+  // Ten values per model: enough for violins and density gradients
+  const mWh = (...values: number[]) =>
+    values.map((v) => energy(v / 1000, v / 1000));
+  const tenEach = [
+    respObj(
+      "Haiku",
+      "openrouter/anthropic/claude-haiku-4.5",
+      mWh(20, 22, 24, 26, 28, 30, 32, 34, 36, 38),
+    ),
+    respObj(
+      "Gemini",
+      "openrouter/google/gemini-3.1-flash-lite",
+      mWh(5, 7, 9, 11, 13, 15, 17, 19, 21, 23),
+    ),
+  ];
+  const chooseGraphType = async (label: string) => {
+    fireEvent.click(screen.getByText("Bar Chart"));
+    fireEvent.click(await screen.findByText(label));
+  };
+  const plotWith = (type: string) =>
+    waitFor(() =>
+      expect(lastPlot()?.data.some((d) => d.type === type)).toBe(true),
+    );
+
+  test("violins keep their points, stop at the data, and hover like boxes", async () => {
+    await renderVis(tenEach);
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_est_energy_mwh" },
+    });
+    await chooseGraphType("Violin");
+    await plotWith("violin");
+    const { data } = lastPlot();
+    const violins = data.filter((d) => d.type === "violin");
+    expect(violins).toHaveLength(2);
+    violins.forEach((d) => {
+      expect(d.points).toBe("all");
+      expect(d.spanmode).toBe("hard");
+      expect(d.hoveron).toBe("points");
+      expect(d.boxpoints).toBeUndefined();
+    });
+    const haiku = data.find(
+      (d) => d.type === "scatter" && d.y?.[0] === "Haiku",
+    );
+    expect(haiku.text[0]).toBe(
+      "<b>Haiku</b><br>median 29 · range 20–38 · n = 10",
+    );
+  });
+
+  test("grouped violins sit side by side, with a summary on each", async () => {
+    await renderVis(tenEach);
+    fireEvent.change(yAxisSelect(), { target: { value: "topic" } });
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_est_energy_mwh" },
+    });
+    await chooseGraphType("Violin");
+    await plotWith("violin");
+    const { data, layout } = lastPlot();
+    const violins = data.filter((d) => d.type === "violin");
+    const summaries = data.filter((d) => d.type === "scatter");
+    expect(layout.violinmode).toBe("group");
+    expect(layout.scattermode).toBe("group");
+    expect(summaries.map((d) => d.offsetgroup).sort()).toEqual(
+      violins.map((d) => d.offsetgroup).sort(),
+    );
+    const haiku = summaries.find((d) => d.offsetgroup === "Haiku");
+    expect(haiku.text[0]).toBe(
+      "<b>Haiku · sky</b><br>median 29 · range 20–38 · n = 10",
+    );
+  });
+
+  test("a density gradient shades a strip per model, with a tick per value", async () => {
+    await renderVis(tenEach);
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_est_energy_mwh" },
+    });
+    await chooseGraphType("Density Gradient");
+    await plotWith("heatmap");
+    const { data, layout } = lastPlot();
+    // One shaded strip per model, darkest at its densest
+    const strips = data.filter((d) => d.type === "heatmap");
+    expect(strips).toHaveLength(2);
+    strips.forEach((d) => expect(Math.max(...d.z[0])).toBe(1));
+    // Rows on a numeric axis, labelled with the models, without tick marks
+    expect(layout.yaxis.type).toBe("linear");
+    expect(layout.yaxis.ticktext).toEqual(["Haiku", "Gemini"]);
+    expect(layout.yaxis.ticks).toBe("");
+    expect(layout.xaxis.ticks).toBe("");
+    // A tick per value, and the same summary on the median as a box plot
+    const ticks = data.filter((d) => d.type === "scatter" && d.text?.length);
+    expect(ticks.map((d) => d.x.length)).toContain(10);
+    const summary = data.find((d) =>
+      String(d.text?.[0]).startsWith("<b>Haiku</b>"),
+    );
+    expect(summary.text[0]).toBe(
+      "<b>Haiku</b><br>median 29 · range 20–38 · n = 10",
+    );
+  });
+
+  test("a density gradient still shades values bunched tightly against the plot's range", async () => {
+    // Gemini's values are 0.001 apart, on a plot 1000 wide: narrower than
+    // a cell of the shading, which used to leave its strip blank
+    await renderVis([
+      respObj(
+        "Haiku",
+        "openrouter/anthropic/claude-haiku-4.5",
+        mWh(0, 100, 200, 300, 400, 600, 700, 800, 900, 1000),
+      ),
+      respObj(
+        "Gemini",
+        "openrouter/google/gemini-3.1-flash-lite",
+        mWh(...Array.from({ length: 10 }, (_, i) => 500 + i * 0.001)),
+      ),
+    ]);
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_est_energy_mwh" },
+    });
+    await chooseGraphType("Density Gradient");
+    await plotWith("heatmap");
+    const strips = lastPlot().data.filter((d) => d.type === "heatmap");
+    expect(strips).toHaveLength(2);
+    strips.forEach((d) => expect(Math.max(...d.z[0])).toBe(1));
+  });
+
+  test("a grouped density gradient splits each row into a strip per model", async () => {
+    await renderVis(tenEach);
+    fireEvent.change(yAxisSelect(), { target: { value: "topic" } });
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_est_energy_mwh" },
+    });
+    await chooseGraphType("Density Gradient");
+    await plotWith("heatmap");
+    const { data, layout } = lastPlot();
+    expect(layout.yaxis.ticktext).toEqual(["sky"]);
+    // Each model's strip within the row, the first model's on top
+    const strips = data.filter((d) => d.type === "heatmap");
+    expect(strips).toHaveLength(2);
+    const [top, bottom] = strips.map((d) => (d.y[0] + d.y[1]) / 2);
+    expect(top).toBeGreaterThan(bottom);
+    strips.forEach((d) => {
+      expect(d.y[0]).toBeGreaterThanOrEqual(-0.5);
+      expect(d.y[1]).toBeLessThanOrEqual(0.5);
+    });
+    // The models are in the legend, since the strips can't be
+    expect(
+      data.filter((d) => d.showlegend !== false).map((d) => d.name),
+    ).toEqual(expect.arrayContaining(["Haiku", "Gemini"]));
+    const summary = data.find((d) =>
+      String(d.text?.[0]).startsWith("<b>Haiku · sky</b>"),
+    );
+    expect(summary.text[0]).toBe(
+      "<b>Haiku · sky</b><br>median 29 · range 20–38 · n = 10",
+    );
+  });
+
+  test("violins and gradients are off with under 10 values in a group, and say why", async () => {
+    await renderVis(); // Haiku and Gemini have 2 estimates each
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_est_energy_mwh" },
+    });
+    await plotWith("histogram");
+    fireEvent.click(screen.getByText("Bar Chart"));
+    for (const label of ["Violin", "Density Gradient"]) {
+      const item = (await screen.findByText(label)).closest("button");
+      expect(item?.disabled).toBe(true);
+    }
+    expect(
+      screen.getAllByText("Needs 10+ scores per group; the smallest has 2"),
+    ).toHaveLength(2);
+    expect(screen.getByText("Box & Whiskers").closest("button")?.disabled).toBe(
+      false,
+    );
+  });
+
+  test("a saved violin with too few values shows a box plot, and keeps the choice", async () => {
+    const store = require("../../store").default;
+    const setData = store.getState().setDataPropsForNode as jest.Mock;
+    setData.mockClear();
+    const data: any = {
+      graph_type: "violin",
+      selected_eval_res_var: "__stat_est_energy_mwh",
+    };
+    const view = (resps: LLMResponse[]) => (
+      <ColorSchemeProvider
+        colorScheme="dark"
+        toggleColorScheme={() => undefined}
+      >
+        <MantineProvider>
+          <VisView responses={resps} id="vis3" data={data} />
+        </MantineProvider>
+      </ColorSchemeProvider>
+    );
+    // Haiku and Gemini have 2 estimates each
+    const { rerender } = render(view(responses));
+    await plotWith("box");
+    expect(lastPlot().data.some((d) => d.type === "violin")).toBe(false);
+    expect(screen.getByText("Box & Whiskers")).toBeTruthy();
+    expect(setData).not.toHaveBeenCalledWith("vis3", { graph_type: "box" });
+    // With enough values (e.g. after a rerun), the violins are back
+    rerender(view(tenEach));
+    await plotWith("violin");
+    expect(screen.getByText("Violin")).toBeTruthy();
+  });
+
   test("puts the chart type button in the node's header, when given one", async () => {
     const header = document.createElement("span");
     document.body.appendChild(header);

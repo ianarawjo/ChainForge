@@ -48,6 +48,8 @@ import {
   IconAlertTriangle,
   IconChartBar,
   IconChartHistogram,
+  IconBlur,
+  IconChartArea,
 } from "@tabler/icons-react";
 import {
   AIGenPlotPopover,
@@ -66,7 +68,15 @@ import {
 /**
  * STATS
  */
-import { max, mean, median, min, sum } from "simple-statistics";
+import {
+  max,
+  mean,
+  median,
+  min,
+  quantile,
+  sampleStandardDeviation,
+  sum,
+} from "simple-statistics";
 // import * as jStat from "jstat"; // jStat is a pure JS library without types
 
 // FUTURE: Including in-progress error bar computation for future use.
@@ -152,10 +162,10 @@ const castEvalScoreToNum = (score: EvaluationScore): number => {
  * hover. Plotly's own hover over a box labels each of its stats separately
  * (min, fences, quartiles, median, max), piled on top of each other, and
  * can't be templated, so boxes hover only on their points (`hoveron`) and
- * this gives the summary instead.
+ * this gives the summary instead. The same goes for violins.
  */
 const boxSummaryTrace = (
-  boxes: { y: string; title: string; values: number[] }[],
+  boxes: { y: string | number; title: string; values: number[] }[],
   color: string,
   // For grouped boxes: the boxes' offsetgroup, so the points sit on them
   // (with the layout's scattermode "group")
@@ -184,6 +194,214 @@ const boxSummaryTrace = (
     showlegend: false,
     ...(offsetgroup !== undefined ? { offsetgroup } : {}),
   };
+};
+
+/**
+ * Makes a box plot trace a violin instead, keeping its points. Its outline
+ * stops at the lowest and highest values (Plotly's default runs past them,
+ * suggesting values no one got), with a small box inside for the quartiles.
+ */
+const asViolin = (d: Dict) => {
+  d.type = "violin";
+  d.points = "all";
+  delete d.boxpoints;
+  d.spanmode = "hard";
+  d.box = { visible: true };
+};
+
+/** One strip of a density gradient plot, at a height on a numeric y axis. */
+interface DensityBand {
+  y: number;
+  halfHeight: number;
+  values: number[];
+  // Hover text for each value
+  texts: string[];
+  title: string;
+  color: string;
+}
+
+/** A colour's red, green and blue, for shading it; gray if it isn't hex. */
+const hexToRgb = (color: string): [number, number, number] => {
+  let hex = color.trim().replace(/^#/, "");
+  if (hex.length === 3)
+    hex = hex
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  if (!/^[0-9a-f]{6}$/i.test(hex)) return [136, 136, 136];
+  return [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [
+    number,
+    number,
+    number,
+  ];
+};
+
+/** A colour mixed with black (negative `amount`) or white (positive). */
+const shade = (color: string, amount: number): string => {
+  const [r, g, b] = hexToRgb(color).map((c) =>
+    Math.round(amount < 0 ? c * (1 + amount) : c + (255 - c) * amount),
+  );
+  return `rgb(${r},${g},${b})`;
+};
+
+/**
+ * The density of values at each point, by a Gaussian kernel density estimate
+ * with Silverman's rule for the bandwidth. `fallbackBandwidth` is for values
+ * with no spread (e.g. all the same), where the rule gives zero.
+ * `minBandwidth` should be the spacing of the points: a narrower kernel can
+ * fall between them, leaving the density 0 (or nearly) at every one.
+ */
+const kernelDensity = (
+  values: number[],
+  points: number[],
+  fallbackBandwidth: number,
+  minBandwidth: number,
+): number[] => {
+  const n = values.length;
+  let bw = 0;
+  if (n > 1) {
+    const sd = sampleStandardDeviation(values);
+    const iqr = quantile(values, 0.75) - quantile(values, 0.25);
+    const spread = iqr > 0 ? Math.min(sd, iqr / 1.34) : sd;
+    bw = 0.9 * spread * Math.pow(n, -1 / 5);
+  }
+  if (!(bw > 0)) bw = fallbackBandwidth;
+  bw = Math.max(bw, minBandwidth);
+  return points.map(
+    (p) =>
+      values.reduce((acc, v) => acc + Math.exp(-0.5 * ((p - v) / bw) ** 2), 0) /
+      (n * bw * Math.sqrt(2 * Math.PI)),
+  );
+};
+
+/**
+ * Traces for a density gradient plot: each band is a strip shaded by how
+ * densely its values fall there (darkest at its densest), with a tick for
+ * every value and a thicker one for the median, in a darker shade of its colour.
+ * On a dark background, ticks where the shading is faint (e.g. outliers) would
+ * disappear in a darker shade, so there they go lighter instead. Descriptive only: the shading
+ * is the data's own distribution, not a confidence interval.
+ *
+ * The y axis must be numeric (bands sit at their `y`); see setDensityStripAxes.
+ */
+const densityStripTraces = (bands: DensityBand[], darkMode: boolean) => {
+  const nonEmpty = bands.filter((b) => b.values.length > 0);
+  if (nonEmpty.length === 0) return [];
+
+  // One x grid for all the bands, over the range of all their values, so
+  // strips line up and none is shaded beyond any value actually seen
+  const all = nonEmpty.flatMap((b) => b.values);
+  let lo = min(all);
+  let hi = max(all);
+  if (hi === lo) {
+    lo -= 0.5;
+    hi += 0.5;
+  }
+  const cells = 120;
+  const step = (hi - lo) / cells;
+  const edges = Array.from({ length: cells + 1 }, (_, i) => lo + i * step);
+  const centers = edges.slice(0, -1).map((e) => e + step / 2);
+
+  const fallbackBandwidth = (hi - lo) * 0.02;
+  const darker = (color: string) => shade(color, -0.45);
+  // A tick's colour, by how dense (0 to 1) the shading is where it sits
+  const tickColor = (color: string, density: number) => {
+    if (!darkMode) return darker(color);
+    // From lighter where faint, through the colour itself, to darker where dense
+    const t = Math.min(1, Math.max(0, (density - 0.1) / 0.5));
+    return shade(color, 0.45 - 0.9 * t);
+  };
+
+  const traces: Dict[] = [];
+  nonEmpty.forEach((b) => {
+    const density = kernelDensity(b.values, centers, fallbackBandwidth, step);
+    const peak = max(density);
+    const shading = density.map((d) => (peak > 0 ? d / peak : 0));
+    // The shading under each value, read off the grid (between its two
+    // nearest cells) rather than worked out again for every value
+    const shadingAt = (v: number) => {
+      const pos = Math.min(cells - 1, Math.max(0, (v - lo) / step - 0.5));
+      const i = Math.floor(pos);
+      const j = Math.min(cells - 1, i + 1);
+      return shading[i] + (shading[j] - shading[i]) * (pos - i);
+    };
+    const [r, g, bl] = hexToRgb(b.color);
+    traces.push({
+      type: "heatmap",
+      // One row of cells, given by its edges
+      x: edges,
+      y: [b.y - b.halfHeight, b.y + b.halfHeight],
+      z: [shading],
+      zmin: 0,
+      zmax: 1,
+      colorscale: [
+        [0, `rgba(${r},${g},${bl},0)`],
+        [1, `rgba(${r},${g},${bl},0.85)`],
+      ],
+      showscale: false,
+      hoverinfo: "skip",
+    });
+    // A tick per value, so the number of values and each one stay visible
+    traces.push({
+      type: "scatter",
+      mode: "markers",
+      x: b.values,
+      y: b.values.map(() => b.y),
+      text: b.texts,
+      hovertemplate: "%{text} <b><i>(%{x})</i></b><extra></extra>",
+      marker: {
+        // An open symbol's stroke takes the marker's colour, not the line's
+        symbol: "line-ns-open",
+        color: b.values.map((v) => tickColor(b.color, shadingAt(v))),
+        size: Math.max(6, 36 * b.halfHeight),
+        opacity: 0.8,
+        line: { width: 1 },
+      },
+      showlegend: false,
+    });
+  });
+
+  traces.push({
+    type: "scatter",
+    mode: "markers",
+    x: nonEmpty.map((b) => median(b.values)),
+    y: nonEmpty.map((b) => b.y),
+    marker: {
+      symbol: "line-ns-open",
+      color: nonEmpty.map((b) => darker(b.color)),
+      size: nonEmpty.map((b) => Math.max(8, 60 * b.halfHeight)),
+      line: { width: 3 },
+    },
+    hoverinfo: "skip",
+    showlegend: false,
+  });
+  nonEmpty.forEach((b) => {
+    const summary = boxSummaryTrace(
+      [{ y: b.y, title: b.title, values: b.values }],
+      b.color,
+    );
+    if (summary) traces.push(summary);
+  });
+  return traces;
+};
+
+/**
+ * Sets up a layout's axes for densityStripTraces: a numeric y axis labelled
+ * like a category one, one row per label. Heatmaps make Plotly add tick marks
+ * to both axes, which the other plots don't have, so those are turned off.
+ */
+const setDensityStripAxes = (layout: Dict, labels: string[]) => {
+  layout.yaxis = {
+    ...layout.yaxis,
+    type: "linear",
+    tickvals: labels.map((_, i) => i),
+    ticktext: labels,
+    range: [-0.5, labels.length - 0.5],
+    zeroline: false,
+    showgrid: false,
+    ticks: "",
+  };
+  layout.xaxis = { ...layout.xaxis, ticks: "" };
 };
 
 /**
@@ -392,7 +610,7 @@ interface VisNodeData {
   title: string;
   // A plot the AI made, shown instead of the default plot until the user goes back
   aiPlot?: AIPlot | null;
-  // Bar chart or box plot, as last chosen (see GRAPH_OPTIONS)
+  // Bar chart, box plot, violin or density gradient, as last chosen (see GRAPH_OPTIONS)
   graph_type?: string;
   // The plot's size, as last resized, in pixels
   plot_size?: { width: number; height: number };
@@ -409,7 +627,17 @@ const GRAPH_OPTIONS = [
     label: "Box & Whiskers",
     icon: <IconChartHistogram size={18} />,
   },
+  { key: "violin", label: "Violin", icon: <IconChartArea size={18} /> },
+  { key: "gradient", label: "Density Gradient", icon: <IconBlur size={18} /> },
 ];
+
+/**
+ * The fewest values a violin or density strip needs. With fewer, its shape
+ * mostly shows the smoothing rather than the data, so a box plot (with every
+ * point) is drawn instead.
+ */
+const MIN_VALUES_FOR_DENSITY = 10;
+const isDensityGraph = (key: string) => key === "violin" || key === "gradient";
 
 /**
  * VIS VIEW COMPONENT
@@ -485,6 +713,17 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       return nextGraphType;
     };
     const [disableGraphTypeOption, setDisableGraphTypeOption] = useState(false);
+    // The fewest values in any one box, violin or strip of the plot, if it
+    // has them; below MIN_VALUES_FOR_DENSITY, violins and gradients are off
+    const [fewestPerGroup, setFewestPerGroup] = useState<number | null>(null);
+    const densityTooFew =
+      fewestPerGroup !== null && fewestPerGroup < MIN_VALUES_FOR_DENSITY;
+    // What's drawn: a box plot in place of a violin or gradient with too few
+    // values, though that choice stays saved for when there are enough
+    const shownGraphType =
+      densityTooFew && isDensityGraph(graphType.key)
+        ? GRAPH_OPTIONS.find((o) => o.key === "box") ?? graphType
+        : graphType;
 
     const [placeholderText, setPlaceholderText] = useState(<></>);
 
@@ -780,6 +1019,32 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       }
 
       startTransition(() => {
+        // Set again below by the plots with boxes, violins or strips
+        setFewestPerGroup(null);
+        /**
+         * The graph type to draw, given how many values each box, violin or
+         * strip has: a box plot for a violin or gradient with too few.
+         */
+        const graphTypeToDraw = (groupSizes: number[]): string => {
+          const nonEmpty = groupSizes.filter((n) => n > 0);
+          const fewest = nonEmpty.length > 0 ? Math.min(...nonEmpty) : null;
+          setFewestPerGroup(fewest);
+          return isDensityGraph(graphType.key) &&
+            fewest !== null &&
+            fewest < MIN_VALUES_FOR_DENSITY
+            ? "box"
+            : graphType.key;
+        };
+        // How many values the responses matching `match` have
+        const countValues = (
+          rs: LLMResponse[],
+          match: (r: LLMResponse) => boolean,
+        ) =>
+          rs.reduce(
+            (n, r) => (match(r) ? n + get_items(r.eval_res).length : n),
+            0,
+          );
+
         const normalizeGroupBucket = (value: unknown): string => {
           if (value === undefined || value === null) return "(missing)";
           return llmResponseDataToString(value as LLMResponseData).trim();
@@ -1093,6 +1358,17 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           // What ends up on the y axis, whichever branch below runs: the left
           // margin has to fit these, not the series names.
           const yTickLabels = new Set<string>();
+          // For a density gradient: its strips, one row each, drawn after the loop
+          const gradientBands: DensityBand[] = [];
+          const plotKey =
+            sel_typeof_eval_res === "Boolean" ||
+            sel_typeof_eval_res === "Categorical"
+              ? graphType.key
+              : graphTypeToDraw(
+                  Array.from(names).map((name) =>
+                    countValues(responses, (r) => resp_to_x(r) === name),
+                  ),
+                );
           for (const name of names) {
             let x_items: EvaluationScore[] = [];
             let text_items: string[] = [];
@@ -1187,7 +1463,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               } else {
                 // If multiple eval results per response object (num generations per prompt n > 1),
                 // let user decide:
-                if (graphType.key === "bar") {
+                if (plotKey === "bar") {
                   d.type = "histogram";
                   d.histfunc = barTotals ? "sum" : "avg";
                   d.y = new Array(x_items.length).fill(shortnames[name]);
@@ -1214,16 +1490,27 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   //     arrayminus: error_values.map((e) => e[0]), // Lower bound
                   //     visible: true,
                   //   };
+                } else if (plotKey === "gradient") {
+                  gradientBands.push({
+                    y: gradientBands.length,
+                    halfHeight: 0.35,
+                    values: x_items.map(castEvalScoreToNum),
+                    texts: text_items,
+                    title: shortnames[name],
+                    color,
+                  });
+                  continue;
                 } else {
-                  // Box-and-whiskers plot
+                  // Box-and-whiskers plot, or a violin
                   d.type = "box";
                   d.boxpoints = "all";
                   d.hoveron = "points";
+                  if (plotKey === "violin") asViolin(d);
                 }
               }
 
               spec.push(d);
-              if (d.type === "box") {
+              if (d.type === "box" || d.type === "violin") {
                 const summary = boxSummaryTrace(
                   [
                     {
@@ -1237,6 +1524,15 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 if (summary) spec.push(summary);
               }
             }
+          }
+          if (gradientBands.length > 0) {
+            spec.push(
+              ...densityStripTraces(gradientBands, colorScheme !== "light"),
+            );
+            setDensityStripAxes(
+              layout,
+              gradientBands.map((b) => b.title),
+            );
           }
           layout.hovermode = "closest";
           layout.showlegend = false;
@@ -1265,8 +1561,23 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           // Get all possible values of the single variable response ('name' vals)
           const names = new Set(responses.map(resp_to_x));
           const shortnames = genUniqueShortnames(names);
+          // For a density gradient: a row per value of the variable, split
+          // into a strip per model (first model at the top), drawn after the loop
+          const rowLabels = Object.values(shortnames);
+          const gradientBands: DensityBand[] = [];
+          const stripHeight = 0.8 / Math.max(1, llm_names.length);
+          const plotKey = graphTypeToDraw(
+            llm_names.flatMap((llm) =>
+              Array.from(names).map((name) =>
+                countValues(
+                  responses_by_llm[llm],
+                  (r) => resp_to_x(r) === name,
+                ),
+              ),
+            ),
+          );
 
-          llm_names.forEach((llm) => {
+          llm_names.forEach((llm, llmIdx) => {
             // Create HTML for hovering over a single datapoint. We must use 'br' to specify line breaks.
             const rs = responses_by_llm[llm];
 
@@ -1303,6 +1614,35 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 ...layout.xaxis,
               };
               setForcedGraphType("bar");
+            } else if (plotKey === "gradient") {
+              const color = getColorForLLMAndSetIfNotFound(llm);
+              rowLabels.forEach((label, row) => {
+                const idxs = y_items
+                  .map((y, idx) => (y === label ? idx : -1))
+                  .filter((idx) => idx >= 0);
+                gradientBands.push({
+                  y: row + 0.4 - (llmIdx + 0.5) * stripHeight,
+                  halfHeight: stripHeight * 0.45,
+                  values: idxs.map((idx) => castEvalScoreToNum(x_items[idx])),
+                  texts: idxs.map((idx) => text_items[idx]),
+                  title: `${llm} · ${label}`,
+                  color,
+                });
+              });
+              // A legend entry for the model, in its colour
+              spec.push({
+                type: "scatter",
+                mode: "markers",
+                x: [null],
+                y: [null],
+                name: llm,
+                marker: { color, symbol: "square", size: 10 },
+                hoverinfo: "skip",
+              });
+              layout.xaxis = {
+                title: { font: { size: 12 }, text: "score" },
+                ...layout.xaxis,
+              };
             } else {
               // Plot a boxplot or bar chart for other cases.
               const d = {
@@ -1319,7 +1659,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               // If only one result, plot a bar chart:
               // if (max_num_results_per_prompt === 1) {
               let xaxis_title = "score";
-              if (graphType.key === "bar") {
+              if (plotKey === "bar") {
                 d.type = "bar";
                 d.textposition = "none"; // hide the text which appears within each bar
                 xaxis_title =
@@ -1366,10 +1706,11 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 d.type = "box";
                 d.hoveron = "points";
                 d.offsetgroup = llm;
+                if (plotKey === "violin") asViolin(d);
               }
 
               spec.push(d);
-              if (d.type === "box") {
+              if (d.type === "box" || d.type === "violin") {
                 const summary = boxSummaryTrace(
                   Object.values(shortnames).map((y) => ({
                     y,
@@ -1392,7 +1733,14 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               };
             }
           });
+          if (gradientBands.length > 0) {
+            spec.push(
+              ...densityStripTraces(gradientBands, colorScheme !== "light"),
+            );
+            setDensityStripAxes(layout, rowLabels);
+          }
           layout.boxmode = "group";
+          layout.violinmode = "group";
           layout.bargap = 0.5;
 
           // Set the left margin to fit the yticks labels
@@ -1764,7 +2112,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               size="xs"
               compact
               color="gray"
-              leftIcon={graphType.icon}
+              leftIcon={shownGraphType.icon}
               disabled={disableGraphTypeOption}
               // The same height and line as the header's other buttons
               // (inline, since Mantine's compact size sets its own height)
@@ -1776,17 +2124,17 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 top: 5,
               }}
             >
-              {graphType.label}
+              {shownGraphType.label}
             </Button>
           ) : (
             <Button
               variant="outline"
               size="xs"
               color="gray"
-              leftIcon={graphType.icon}
+              leftIcon={shownGraphType.icon}
               disabled={disableGraphTypeOption}
             >
-              {graphType.label}
+              {shownGraphType.label}
             </Button>
           )}
         </Menu.Target>
@@ -1796,12 +2144,19 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             <Menu.Item
               key={option.key}
               icon={option.icon}
+              disabled={densityTooFew && isDensityGraph(option.key)}
               onClick={() => {
                 setGraphType(option);
                 if (id) setDataPropsForNode(id, { graph_type: option.key });
               }}
             >
               {option.label}
+              {densityTooFew && isDensityGraph(option.key) && (
+                <div style={{ fontSize: 11 }}>
+                  Needs {MIN_VALUES_FOR_DENSITY}+ scores per group; the smallest
+                  has {fewestPerGroup}
+                </div>
+              )}
             </Menu.Item>
           ))}
         </Menu.Dropdown>
