@@ -36,6 +36,8 @@ export interface ModelInfo {
   provider: string;
   /** Whether it can run now: its API key is set, or Ollama has it. */
   ready: boolean;
+  /** Offered only when nothing else is set up, such as a small in-browser model. */
+  fallback?: boolean;
 }
 
 /** A change, after checking. Node references are ids or refs. */

@@ -1,16 +1,19 @@
 /**
  * The user's models, as ChainBuddy names them: an ID per model (what
  * list_models offers and a Prompt Node's `models` setting holds), and the
- * LLMSpec a Prompt Node stores for it. Reads the store for API keys and
- * Ollama's models.
+ * LLMSpec a Prompt Node stores for it. Reads the store for the model menu,
+ * which API keys are set, and Ollama's models.
  */
 
-import { v4 as uuid } from "uuid";
-import { getDefaultModelSettings } from "../../ModelSettingSchemas";
-import { OPENROUTER_PREFIX } from "../../backend/models";
-import { Dict, LLMSpec } from "../../backend/typing";
-import { ensureUniqueName } from "../../backend/utils";
-import useStore, { initLLMProviders } from "../../store";
+import {
+  getProvider,
+  hasAPIKeysFor,
+  LLM,
+  LLMProvider,
+} from "../../backend/models";
+import { LLMGroup, LLMSpec } from "../../backend/typing";
+import { newModelSpec } from "../../modelSpec";
+import useStore, { initLLMProviderMenu } from "../../store";
 import { ModelInfo } from "../flowApi/types";
 import { ModelResolver } from "../nodes/types";
 
@@ -21,69 +24,92 @@ export function modelIdOf(llm: LLMSpec): string {
   return llm.model;
 }
 
-/** The models ChainBuddy may offer: Ollama's, and those in OpenRouter's menu. */
+/**
+ * Menu entries ChainBuddy leaves out: Azure OpenAI is one entry that needs a
+ * deployment name set in its settings, which ChainBuddy can't do.
+ */
+const NEEDS_SETTING_UP = new Set(["azure-openai"]);
+
+/** The menu group each built-in model is listed under, such as "Claude". */
+function menuGroups(): Map<string, string> {
+  const groups = new Map<string, string>();
+  const walk = (items: (LLMSpec | LLMGroup)[], group?: string) => {
+    for (const item of items)
+      if ("group" in item) walk(item.items, group ?? item.group);
+      else if (group) groups.set(item.model, group);
+  };
+  walk(initLLMProviderMenu);
+  return groups;
+}
+
+/**
+ * The models ChainBuddy may offer: those in ChainForge's model menu, and
+ * Ollama's. A model is ready when its provider's API keys are set, in
+ * Settings or as environment variables; ChainBuddy is told only which, never
+ * the keys. Small in-browser models are marked as a fallback, for when
+ * nothing else is set up.
+ */
 export function listModels(): ModelInfo[] {
-  const { apiKeys, ollamaModels } = useStore.getState();
-  return [
-    ...ollamaModels.map((name) => ({
-      id: `ollama/${name}`,
-      name,
-      provider: "Ollama",
-      ready: true,
-    })),
-    ...initLLMProviders
-      .filter((m) => m.base_model === "openrouter")
-      .map((m) => ({
-        id: m.model,
-        name: m.name,
-        provider: "OpenRouter",
-        ready: !!apiKeys.OpenRouter,
-      })),
-  ];
+  const { apiKeys, ollamaModels, AvailableLLMs } = useStore.getState();
+  const groups = menuGroups();
+  const models: ModelInfo[] = ollamaModels.map((name) => ({
+    id: `ollama/${name}`,
+    name,
+    provider: "Ollama",
+    ready: true,
+  }));
+  const seen = new Set<string>();
+  for (const item of AvailableLLMs) {
+    // Ollama's models come from its server; favorites repeat menu entries.
+    if (item.base_model === "ollama" || NEEDS_SETTING_UP.has(item.model))
+      continue;
+    if (seen.has(item.model)) continue;
+    seen.add(item.model);
+    const provider = getProvider(item.model as LLM);
+    models.push({
+      id: item.model,
+      name: item.name,
+      provider: groups.get(item.model) ?? provider ?? "Custom",
+      ready: provider !== undefined && hasAPIKeysFor(provider, apiKeys),
+      ...(provider === LLMProvider.WebLLM ? { fallback: true } : {}),
+    });
+  }
+  return models;
 }
 
 /** What the Prompt Node's kind uses to read and write its models. */
 export const modelResolver: ModelResolver = {
   idOf: modelIdOf,
 
+  // Built as the Prompt Node's model menu builds them (see modelSpec.ts).
   toSpec(id: string, takenNames: string[]) {
-    const { apiKeys } = useStore.getState();
+    const { apiKeys, AvailableLLMs } = useStore.getState();
     if (id.startsWith("ollama/")) {
       const ollamaModel = id.slice("ollama/".length);
-      const name = ensureUniqueName(ollamaModel, takenNames);
-      const settings: Dict = {
-        ...getDefaultModelSettings("ollama", "ollama"),
-        ollamaModel,
-      };
-      const formData: Dict = { shortname: name, model: "ollama", ollamaModel };
-      if (apiKeys.Ollama_BaseURL) {
-        settings.ollama_url = apiKeys.Ollama_BaseURL;
-        formData.ollama_url = apiKeys.Ollama_BaseURL;
-      }
-      return {
-        key: uuid(),
-        name,
+      const menuItem: LLMSpec = AvailableLLMs.find(
+        (m) => m.base_model === "ollama",
+      ) ?? {
+        name: "Ollama",
         emoji: "🦙",
         model: "ollama",
         base_model: "ollama",
         temp: 1.0,
-        settings,
-        formData,
       };
+      return newModelSpec(
+        {
+          ...menuItem,
+          name: ollamaModel,
+          settings: { ...(menuItem.settings ?? {}), ollamaModel },
+        },
+        takenNames,
+        apiKeys.Ollama_BaseURL,
+      );
     }
-    // As the Prompt Node's model menu builds it (LLMListComponent).
-    const item = initLLMProviders.find(
-      (m) => m.base_model === "openrouter" && m.model === id,
+    const item = AvailableLLMs.find(
+      (m) => m.model === id && m.base_model !== "ollama",
     );
-    if (!item) return undefined;
-    const name = ensureUniqueName(item.name, takenNames);
-    const shortModel = id.slice(OPENROUTER_PREFIX.length);
-    return {
-      ...item,
-      key: uuid(),
-      name,
-      formData: { shortname: name, model: shortModel },
-      settings: getDefaultModelSettings(item.base_model, shortModel),
-    };
+    return item
+      ? newModelSpec(item, takenNames, apiKeys.Ollama_BaseURL)
+      : undefined;
   },
 };

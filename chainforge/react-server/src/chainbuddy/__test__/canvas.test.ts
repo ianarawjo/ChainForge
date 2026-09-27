@@ -4,11 +4,60 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 jest.mock("../../store", () => {
   const { create } = require("zustand");
+  // A small model menu, as ChainForge groups it, with real model names so
+  // ChainForge's getProvider tells their providers apart.
+  const item = (name: string, model: string, base_model: string) => ({
+    name,
+    emoji: "🤖",
+    model,
+    base_model,
+    temp: 1,
+  });
+  const menu = [
+    {
+      group: "In-browser LLMs",
+      emoji: "🌐",
+      items: [
+        item("Qwen2.5 0.5B", "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", "webllm"),
+      ],
+    },
+    {
+      group: "OpenRouter",
+      emoji: "🔀",
+      items: [
+        item(
+          "Claude Haiku 4.5",
+          "openrouter/anthropic/claude-haiku-4.5",
+          "openrouter",
+        ),
+      ],
+    },
+    {
+      group: "OpenAI",
+      emoji: "🤖",
+      items: [item("GPT-5.6 Sol", "gpt-5.6-sol", "gpt-4")],
+    },
+    {
+      group: "Claude",
+      emoji: "📚",
+      items: [item("Claude Sonnet", "claude-sonnet-4-5", "claude-v1")],
+    },
+    {
+      group: "Bedrock",
+      emoji: "⛰️",
+      items: [
+        item("Bedrock Claude", "bedrock/anthropic.claude-3-haiku", "bedrock"),
+      ],
+    },
+    item("Azure OpenAI", "azure-openai", "azure-openai"),
+  ];
+  const flat = menu.flatMap((m: any) => ("group" in m ? m.items : [m]));
   const store = create((set: any, get: any) => ({
     nodes: [],
     edges: [],
     apiKeys: { OpenRouter: "sk-or-test" },
     ollamaModels: [],
+    AvailableLLMs: flat,
     setDataPropsForNode: (id: string, props: object) =>
       set({
         nodes: get().nodes.map((n: any) =>
@@ -35,15 +84,8 @@ jest.mock("../../store", () => {
   return {
     __esModule: true,
     default: store,
-    initLLMProviders: [
-      {
-        name: "Claude Haiku 4.5",
-        emoji: "📚",
-        model: "openrouter/anthropic/claude-haiku-4.5",
-        base_model: "openrouter",
-        temp: 1,
-      },
-    ],
+    initLLMProviderMenu: menu,
+    initLLMProviders: flat,
   };
 });
 jest.mock("../../ModelSettingSchemas", () => ({
@@ -52,7 +94,7 @@ jest.mock("../../ModelSettingSchemas", () => ({
 /* eslint-enable @typescript-eslint/no-var-requires */
 
 // eslint-disable-next-line import/first
-import { beforeEach, describe, expect, test } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
 import useStore from "../../store";
 // eslint-disable-next-line import/first
@@ -65,7 +107,7 @@ import {
 // eslint-disable-next-line import/first
 import { ChangeSet } from "../flowApi/types";
 // eslint-disable-next-line import/first
-import { modelIdOf } from "../adapters/models";
+import { listModels, modelIdOf, modelResolver } from "../adapters/models";
 // eslint-disable-next-line import/first
 import { promptKind } from "../nodes/prompt";
 // eslint-disable-next-line import/first
@@ -683,4 +725,73 @@ test("model IDs match list_models", () => {
       settings: { ollamaModel: "qwen3.5:4b" },
     }),
   ).toBe("ollama/qwen3.5:4b");
+});
+
+describe("models from the providers set up", () => {
+  const setKeys = (apiKeys: Record<string, string>) =>
+    useStore.setState({ apiKeys } as any);
+  const readyIds = () =>
+    listModels()
+      .filter((m) => m.ready)
+      .map((m) => m.id);
+  afterEach(() => setKeys({ OpenRouter: "sk-or-test" }));
+
+  test("only an OpenAI key means only OpenAI's models are ready", () => {
+    setKeys({ OpenAI: "sk-test" });
+    expect(readyIds()).toEqual([
+      "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+      "gpt-5.6-sol",
+    ]);
+  });
+
+  test("an OpenRouter key brings its models, under OpenRouter", () => {
+    expect(readyIds()).toContain("openrouter/anthropic/claude-haiku-4.5");
+    expect(readyIds()).not.toContain("claude-sonnet-4-5");
+    expect(
+      listModels().find((m) => m.id === "claude-sonnet-4-5")?.provider,
+    ).toBe("Claude");
+  });
+
+  test("a provider needing several keys needs them all", () => {
+    setKeys({ AWS_Access_Key_ID: "a", AWS_Secret_Access_Key: "b" });
+    expect(readyIds()).not.toContain("bedrock/anthropic.claude-3-haiku");
+    setKeys({
+      AWS_Access_Key_ID: "a",
+      AWS_Secret_Access_Key: "b",
+      AWS_Region: "us-east-1",
+    });
+    expect(readyIds()).toContain("bedrock/anthropic.claude-3-haiku");
+  });
+
+  test("in-browser models are a fallback, and Azure isn't offered", () => {
+    const models = listModels();
+    expect(models.find((m) => m.provider === "In-browser LLMs")).toMatchObject({
+      ready: true,
+      fallback: true,
+    });
+    expect(models.map((m) => m.id)).not.toContain("azure-openai");
+  });
+
+  test("models are built as the Prompt Node's menu builds them", () => {
+    expect(modelResolver.toSpec("gpt-5.6-sol", ["GPT-5.6 Sol"])).toMatchObject({
+      name: "GPT-5.6 Sol (2)",
+      model: "gpt-5.6-sol",
+      base_model: "gpt-4",
+      formData: { shortname: "GPT-5.6 Sol (2)", model: "gpt-5.6-sol" },
+    });
+    // The settings form shows OpenRouter models without their prefix.
+    expect(
+      modelResolver.toSpec("openrouter/anthropic/claude-haiku-4.5", [])
+        ?.formData,
+    ).toEqual({
+      shortname: "Claude Haiku 4.5",
+      model: "anthropic/claude-haiku-4.5",
+    });
+    expect(modelResolver.toSpec("ollama/qwen3:8b", [])).toMatchObject({
+      name: "qwen3:8b",
+      base_model: "ollama",
+      settings: { ollamaModel: "qwen3:8b" },
+      formData: { ollamaModel: "qwen3:8b" },
+    });
+  });
 });

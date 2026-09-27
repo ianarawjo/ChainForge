@@ -382,7 +382,7 @@ describe("blank nodes, as New Flow makes", () => {
     };
     const { tools } = createStubTools({ flow: BLANK_FLOW, models: MODELS });
     expect(propose(tools, [fill]).problems).toEqual([
-      "changes[0] (update_node): prompt-1 still has Qwen2.5 0.5B, the in-browser model a new Prompt Node starts with, which list_models doesn't offer. Give models: ones from list_models, or the same one to keep it if the user asked for it.",
+      "changes[0] (update_node): prompt-1 still has Qwen2.5 0.5B, the small in-browser model a new Prompt Node starts with. Give models: ones from list_models, or the same one to keep it if the user asked for it.",
     ]);
     // Keeping it on purpose is fine.
     const keep = {
@@ -457,8 +457,31 @@ test("list_models offers only models that are set up", () => {
         provider: "OpenRouter",
       },
     ],
-    note: "1 more models are in ChainForge's menu but not set up.",
+    not_set_up: ["Ollama"],
+    note: "Use these. If the user asks for a provider in not_set_up, say it needs its API key added in Settings, rather than substituting another.",
   });
+});
+
+test("list_models offers in-browser models only when nothing else is set up", () => {
+  const inBrowser = {
+    id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+    name: "Qwen2.5 0.5B",
+    provider: "In-browser LLMs",
+    ready: true,
+    fallback: true,
+  };
+  const withKey = createStubTools({ models: [...MODELS, inBrowser] });
+  expect(
+    run(withKey.tools, "list_models").models.map((m: any) => m.id),
+  ).not.toContain(inBrowser.id);
+
+  const noKeys = createStubTools({
+    models: [...MODELS.map((m) => ({ ...m, ready: false })), inBrowser],
+  });
+  const out = run(noKeys.tools, "list_models");
+  expect(out.models.map((m: any) => m.id)).toEqual([inBrowser.id]);
+  expect(out.not_set_up).toEqual(["OpenRouter", "Ollama"]);
+  expect(out.note).toMatch(/^Only small models that run in the browser/);
 });
 
 describe("nodes that only show results", () => {
