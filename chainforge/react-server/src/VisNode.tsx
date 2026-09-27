@@ -758,6 +758,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           yaxis: {
             showgrid: true,
             color: colorScheme === "light" ? "#444" : "#ddd",
+            // Widen the left margin to fit the labels as drawn: the margin
+            // worked out below estimates their width from their length, which
+            // falls short for wide letters ("gemma4:e4b" lost "ge")
+            automargin: true,
           },
           // Make the plot background transparent
           paper_bgcolor: "rgba(0,0,0,0)",

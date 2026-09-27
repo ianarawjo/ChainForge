@@ -180,6 +180,8 @@ describe("Vis Node plotting response stats", () => {
     expect(lastPlot().layout.xaxis.title.text).toBe(
       "Mean latency (s) per response",
     );
+    // The left margin grows to fit the y-axis labels as Plotly draws them
+    expect(lastPlot().layout.yaxis.automargin).toBe(true);
   });
 
   test("plots energy as each model's mean per response, leaving out responses without one", async () => {
