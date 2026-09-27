@@ -8,6 +8,17 @@
  * provider's reply where it has it.
  */
 import { Dict, LLMResponseData, ResponseStats } from "./typing";
+import {
+  isOpenRouterImageModel,
+  LLMProvider,
+  stripHuggingFacePrefix,
+  stripOpenRouterPrefix,
+} from "./models";
+import {
+  ECOLOGITS_VERSION,
+  estimateEnergyWh,
+  findModel,
+} from "./ecologits/ecologits";
 
 /**
  * The key under which call functions that send one request per response record
@@ -29,6 +40,8 @@ export const STATS_METAVARS = {
   decode_tokens_per_s: "stat_decode_tokens_per_s",
   averaged_over: "stat_averaged_over",
   cost_usd: "stat_cost_usd",
+  est_energy_wh_min: "stat_est_energy_wh_min",
+  est_energy_wh_max: "stat_est_energy_wh_max",
 } as const;
 
 const STATS_METAVAR_NAMES = new Set<string>(Object.values(STATS_METAVARS));
@@ -271,6 +284,10 @@ export function statsToMetavars(
     res[STATS_METAVARS.averaged_over] = stats.averaged_over;
   if (stats.cost_usd !== undefined)
     res[STATS_METAVARS.cost_usd] = stats.cost_usd;
+  if (stats.est_energy_wh !== undefined) {
+    res[STATS_METAVARS.est_energy_wh_min] = stats.est_energy_wh.min;
+    res[STATS_METAVARS.est_energy_wh_max] = stats.est_energy_wh.max;
+  }
   return res;
 }
 
@@ -322,6 +339,10 @@ export function describeStats(stats: ResponseStats | undefined): string[] {
     );
   if (stats.cost_usd !== undefined)
     lines.push(`Cost: ${formatCost(stats.cost_usd)}`);
+  if (stats.est_energy_wh !== undefined)
+    lines.push(
+      `Energy: ${formatEnergyRange(stats.est_energy_wh)} (estimated with EcoLogits ${ECOLOGITS_VERSION}, not measured)`,
+    );
   if (stats.averaged_over)
     lines.push(
       `≈ Averages: the provider reported one total for ${stats.averaged_over} responses`,
@@ -338,4 +359,87 @@ export function formatCost(usd: number): string {
   if (usd >= 0.01) return `$${usd.toFixed(2)}`;
   const digits = Math.max(2, 2 - Math.floor(Math.log10(usd)));
   return `$${Number(usd.toPrecision(3)).toFixed(digits).replace(/0+$/, "")}`;
+}
+
+/** An energy in Wh to two significant digits, e.g. "0.021 Wh", "1.8 Wh". */
+function formatWh(wh: number): string {
+  return wh === 0 ? "0" : String(Number(wh.toPrecision(2)));
+}
+
+/** An estimated energy range, e.g. "0.21–0.58 Wh", or "0.23 Wh" when it isn't one. */
+export function formatEnergyRange(range: { min: number; max: number }): string {
+  const min = formatWh(range.min);
+  const max = formatWh(range.max);
+  return min === max ? `${min} Wh` : `${min}–${max} Wh`;
+}
+
+// The labs of OpenRouter model IDs that are EcoLogits providers
+const OPENROUTER_LABS: Dict<string> = {
+  openai: "openai",
+  anthropic: "anthropic",
+  google: "google_genai",
+  mistralai: "mistralai",
+  cohere: "cohere",
+};
+
+/**
+ * The EcoLogits provider and model name of a ChainForge model, where EcoLogits
+ * has the model. EcoLogits estimates for its providers' data centres, so local
+ * models, and providers it doesn't cover, have none.
+ */
+export function ecologitsModel(
+  llm: string,
+  provider: LLMProvider | undefined,
+): [string, string] | undefined {
+  const candidates: [string, string][] = [];
+  if (provider === LLMProvider.OpenAI) candidates.push(["openai", llm]);
+  else if (provider === LLMProvider.Anthropic)
+    candidates.push(["anthropic", llm]);
+  else if (provider === LLMProvider.Google)
+    candidates.push(["google_genai", llm.replace(/^models\//, "")]);
+  else if (provider === LLMProvider.HuggingFace)
+    // A ":provider" suffix picks which Inference Provider serves the model
+    candidates.push([
+      "huggingface_hub",
+      stripHuggingFacePrefix(llm).split(":")[0],
+    ]);
+  else if (
+    provider === LLMProvider.OpenRouter &&
+    !isOpenRouterImageModel(llm)
+  ) {
+    // e.g. "anthropic/claude-sonnet-4.5", or "meta-llama/llama-3.1-8b-instruct:free"
+    const id = stripOpenRouterPrefix(llm).split(":")[0];
+    const slash = id.indexOf("/");
+    const lab = OPENROUTER_LABS[id.substring(0, slash).toLowerCase()];
+    if (lab) candidates.push([lab, id.substring(slash + 1)]);
+    // Open-weights models go by their Hugging Face ID
+    candidates.push(["huggingface_hub", id]);
+  }
+  return candidates.find(([p, name]) => findModel(p, name) !== undefined);
+}
+
+/**
+ * Adds EcoLogits' estimate of each response's energy to its stats, from its
+ * output tokens and latency, where EcoLogits covers the model.
+ */
+export function withEnergyEstimates(
+  stats: (ResponseStats | null)[] | undefined,
+  llm: string,
+  provider: LLMProvider | undefined,
+): (ResponseStats | null)[] | undefined {
+  const model = stats && ecologitsModel(llm, provider);
+  if (!stats || !model) return stats;
+  const sig3 = (x: number) => Number(x.toPrecision(3));
+  return stats.map((s) => {
+    if (s?.output_tokens === undefined || s.latency_ms === undefined) return s;
+    const wh = estimateEnergyWh(
+      model[0],
+      model[1],
+      s.output_tokens,
+      s.latency_ms / 1000,
+    );
+    return wh
+      ? { ...s, est_energy_wh: { min: sig3(wh.min), max: sig3(wh.max) } }
+      : s;
+  });
 }

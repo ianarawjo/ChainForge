@@ -1,0 +1,73 @@
+name: Sync EcoLogits
+
+# ChainForge's energy estimates use EcoLogits' model data and constants, copied
+# into chainforge/react-server/src/backend/ecologits (see its README). This
+# checks monthly for a new EcoLogits release and opens a pull request to update
+# to it. Needs "Allow GitHub Actions to create and approve pull requests"
+# (Settings > Actions > General).
+on:
+  schedule:
+    - cron: "0 9 1 * *"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "EcoLogits release (default: the latest)"
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: chainforge/react-server/src/backend/ecologits
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          set -o pipefail
+          python sync.py ${REF:+"$REF"} | tee sync.log
+
+      - name: Open a pull request if anything changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- .; then
+            echo "Already up to date."
+            exit 0
+          fi
+          ref=$(python -c "import json; print(json.load(open('upstream.json'))['ref'])")
+          branch="ecologits-sync/$ref"
+          if git ls-remote --exit-code origin "refs/heads/$branch" >/dev/null; then
+            echo "$branch already exists."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add -- . ':!sync.log'
+          git commit -m "Update EcoLogits data to $ref"
+          git push origin "$branch"
+          {
+            echo "Updates the EcoLogits data and constants behind ChainForge's energy estimates to EcoLogits $ref."
+            echo
+            echo '```'
+            cat sync.log
+            echo '```'
+            echo
+            echo "If the log says llm.py changed, check ecologits.ts against it and update the reference values in __test__/ecologits.test.ts."
+            echo "CI doesn't run on pull requests opened by this workflow: close and reopen this one to run it."
+          } > body.md
+          gh pr create --base main --head "$branch" --title "Update EcoLogits data to $ref" --body-file body.md

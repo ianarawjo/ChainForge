@@ -270,6 +270,13 @@ export interface ResponseStats {
   /** What the request cost, in US dollars, where the provider reports it (e.g. OpenRouter's usage.cost). */
   cost_usd?: number;
   /**
+   * The energy the request used in the provider's data centre, in Wh, as
+   * EcoLogits estimates it from the model's size, the output tokens and the
+   * latency (see backend/ecologits). A range, because model sizes and data
+   * centres' overheads are often only known as one. Not measured.
+   */
+  est_energy_wh?: { min: number; max: number };
+  /**
    * Set when the provider reported one total for several responses, e.g. one
    * request that returned n of them: how many responses the total was shared
    * between. The stats it covers (output tokens and speed, or latency) are

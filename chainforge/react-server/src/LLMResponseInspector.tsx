@@ -289,6 +289,10 @@ export const responsesToTable = async (
           row["Tokens/s"] = stats.tokens_per_s;
         if (stats?.decode_tokens_per_s !== undefined)
           row["Decoding tokens/s"] = stats.decode_tokens_per_s;
+        if (stats?.est_energy_wh !== undefined) {
+          row["Energy, estimated min (Wh)"] = stats.est_energy_wh.min;
+          row["Energy, estimated max (Wh)"] = stats.est_energy_wh.max;
+        }
         if (stats?.averaged_over !== undefined)
           row["Stats averaged over"] = stats.averaged_over;
 

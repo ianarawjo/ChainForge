@@ -2,3 +2,5 @@
 build
 public
 **/*.html
+# Copied unchanged from EcoLogits by sync.py
+src/backend/ecologits/*.json
