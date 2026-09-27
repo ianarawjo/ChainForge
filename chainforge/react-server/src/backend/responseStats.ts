@@ -368,7 +368,7 @@ export function describeStats(stats: ResponseStats | undefined): string[] {
     lines.push(`Cost: ${formatCost(stats.cost_usd)}`);
   if (stats.est_energy_wh !== undefined)
     lines.push(
-      `Energy: ${formatEnergyRange(stats.est_energy_wh)} (estimated by EcoLogits, not measured)`,
+      `Energy: ${formatEnergyRange(stats.est_energy_wh)} (estimated by EcoLogits)`,
     );
   if (stats.averaged_over)
     lines.push(

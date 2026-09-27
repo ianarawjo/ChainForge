@@ -170,7 +170,7 @@ describe("energy estimates in extract_stats", () => {
       stat_est_energy_wh_max: 0.0236,
     });
     expect(describeStats(stats!)).toContain(
-      "Energy: 20–24 mWh (estimated by EcoLogits, not measured)",
+      "Energy: 20–24 mWh (estimated by EcoLogits)",
     );
     expect(formatStats(stats!, true)).toBe("4.2 s · 71 tok/s · ⚡ ~22 mWh");
   });
