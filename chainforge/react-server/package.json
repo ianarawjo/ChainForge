@@ -20,7 +20,7 @@
     "@mantine/dates": "^6.0.13",
     "@mantine/dropzone": "^6.0.19",
     "@mantine/form": "^6.0.11",
-    "@mantine/hooks": "^6.0.22",
+    "@mantine/hooks": "^6.0.21",
     "@mantine/prism": "^6.0.15",
     "@mlc-ai/web-llm": "^0.2.84",
     "@reactflow/background": "^11.2.0",
