@@ -44,11 +44,25 @@ const itemsKind: NodeKind = {
   }),
 };
 
+/** A node that only receives, such as ChainForge's Vis and Inspect Nodes. */
+const sinkKind: NodeKind = {
+  type: "inspect",
+  name: "Inspect Node",
+  doc: "# Inspect Node\n\nShows the responses it receives.",
+  accepts: ["responses", "scored_responses"],
+  handles: { inputs: { responses: "input" } },
+  settings: { title: titleSetting },
+  inputs: () => ["responses"],
+  read: (data) => ({ title: data.title ?? "Inspect Node" }),
+  write: (settings, base) => ({ ...(base ?? {}), ...settings }),
+};
+
 beforeAll(() => {
-  NODE_KINDS.push(itemsKind);
+  NODE_KINDS.push(itemsKind, sinkKind);
 });
 afterAll(() => {
-  NODE_KINDS.splice(NODE_KINDS.indexOf(itemsKind), 1);
+  for (const kind of [itemsKind, sinkKind])
+    NODE_KINDS.splice(NODE_KINDS.indexOf(kind), 1);
 });
 
 const models = [
@@ -137,4 +151,60 @@ test("a new kind is found by its type, and the model is told about it", () => {
   expect(systemPrompt("Be helpful.")).toMatch(
     /- Items Node \(`csv`\): gives values; no inputs\./,
   );
+});
+
+test("a kind with no output receives, and nothing can be chained after it", () => {
+  const { tools, proposals } = createStubTools({ models });
+  const run = (name: string, args: object) =>
+    tools
+      .find((t) => t.name === name)
+      ?.run(args as Record<string, unknown>, {}) as any;
+
+  run("get_flow", {});
+  const changes = [
+    {
+      op: "add_node",
+      ref: "ask",
+      type: "prompt",
+      settings: {
+        prompts: [{ label: "A", text: "Say hi" }],
+        models: [{ model: models[0].id }],
+      },
+    },
+    { op: "add_node", ref: "look", type: "inspect", settings: {} },
+    {
+      op: "connect",
+      from: { node: "ask", output: "responses" },
+      to: { node: "look", input: "responses" },
+    },
+  ];
+  expect(
+    run("propose_changes", { summary: "Look at them", changes }).status,
+  ).toBe("awaiting_approval");
+  expect(proposals[0].changes).toHaveLength(3);
+  expect(systemPrompt("Be helpful.")).toMatch(
+    /- Inspect Node \(`inspect`\): gives nothing; its inputs take responses or scored_responses\./,
+  );
+
+  run("get_flow", {});
+  const out = run("propose_changes", {
+    summary: "Chain after it",
+    changes: [
+      ...changes,
+      {
+        op: "add_node",
+        ref: "more",
+        type: "textfields",
+        settings: { values: ["About {x}"] },
+      },
+      {
+        op: "connect",
+        from: { node: "look", output: "responses" },
+        to: { node: "more", input: "x" },
+      },
+    ],
+  });
+  expect(out.problems).toEqual([
+    "changes[4] (connect): look has no output; a inspect node only receives.",
+  ]);
 });

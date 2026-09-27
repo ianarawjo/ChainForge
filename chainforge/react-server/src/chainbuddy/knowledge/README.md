@@ -98,7 +98,8 @@ some of them. An output can connect to any input that accepts what it gives.
 | `responses`        | Model responses, each with the prompt and variable values used |
 | `scored_responses` | Responses with a score attached to each                        |
 
-A node's output is named after what it gives.
+A node's output is named after what it gives. Some nodes only receive and
+give nothing, so nothing can be chained after them.
 
 ## How a node file is written
 
@@ -109,7 +110,8 @@ things in the same place.
 2. **Purpose**, **Use it when**, and **Don't use it for**: plain descriptions.
 3. **Inputs** and **Outputs**: the names ChainBuddy uses to connect nodes, and
    what they accept and give. These can differ from ChainForge's internal
-   handle names; the node's `NodeKind` translates between them.
+   handle names; the node's `NodeKind` translates between them. A node that
+   only receives, such as a Vis Node, says its Outputs are none.
 4. **Settings**: a fenced `yaml` block listing each setting ChainBuddy may
    read or change, its type, and a description. This is what the model reads;
    the `NodeKind` holds the checks.

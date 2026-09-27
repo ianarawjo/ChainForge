@@ -3,7 +3,7 @@
  * against real models without the app (see __test__/liveAgent.test.ts).
  */
 
-import { inputsOf, kindOf } from "../nodes";
+import { inputsOf, outputsOf } from "../nodes";
 import { createFlowTools } from "../flowApi/tools";
 import {
   CanvasPort,
@@ -79,7 +79,7 @@ export function stubNode(
     support: "editable",
     settings,
     inputs: inputsOf(type, settings),
-    outputs: [kindOf(type)?.output ?? ""],
+    outputs: outputsOf(type),
   };
 }
 

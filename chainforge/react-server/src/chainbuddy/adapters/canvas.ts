@@ -25,7 +25,7 @@ import {
   NodeView,
   ProposalReceipt,
 } from "../flowApi/types";
-import { inputsOf, kindOf, supportOf } from "../nodes";
+import { inputsOf, kindOf, outputsOf, supportOf } from "../nodes";
 import { listModels, modelResolver } from "./models";
 
 export const PENDING_CLASS = {
@@ -155,7 +155,7 @@ export class StoreCanvas implements CanvasPort {
         support,
         settings,
         inputs: inputsOf(n.type, settings),
-        outputs: [kindOf(n.type)?.output ?? ""],
+        outputs: outputsOf(n.type),
       };
     });
 
@@ -340,9 +340,20 @@ export class StoreCanvas implements CanvasPort {
     }
 
     try {
-      const store = useStore.getState();
-      // Proposed nodes and edges become ordinary ones.
-      const added = new Set([...state.addedNodes, ...state.addedEdges]);
+      // Proposed connections are made again properly below, so the canvas
+      // does everything it does for a connection drawn by hand.
+      const connections = useStore
+        .getState()
+        .edges.filter((e) => state.addedEdges.includes(e.id))
+        .map((e) => ({
+          source: e.source,
+          sourceHandle: e.sourceHandle ?? null,
+          target: e.target,
+          targetHandle: e.targetHandle ?? null,
+        }));
+      // Proposed nodes become ordinary ones.
+      const added = new Set(state.addedNodes);
+      const proposedEdges = new Set(state.addedEdges);
       // Filled-in nodes already have their new data.
       const filled = new Set(state.filled);
       useStore.setState((s) => ({
@@ -352,9 +363,7 @@ export class StoreCanvas implements CanvasPort {
           const { [ORIGINAL_KEY]: _, ...data } = n.data ?? {};
           return { ...n, data };
         }),
-        edges: s.edges.map((e) =>
-          added.has(e.id) ? { ...e, className: undefined } : e,
-        ),
+        edges: s.edges.filter((e) => !proposedEdges.has(e.id)),
       }));
       this.restoreOutlines(state);
 
@@ -378,33 +387,21 @@ export class StoreCanvas implements CanvasPort {
 
       const typeOf = (nodeId: string) =>
         useStore.getState().nodes.find((n) => n.id === nodeId)?.type ?? "";
-      const deferred = state.deferred.map((c) => {
+      for (const c of state.deferred) {
         const source = state.ids.get(c.from.node) ?? c.from.node;
         const target = state.ids.get(c.to.node) ?? c.to.node;
-        return makeEdge(
+        connections.push({
           source,
           target,
-          typeOf(source),
-          typeOf(target),
-          c.to.input,
-        );
-      });
-      if (deferred.length > 0) {
-        // Let rebuilt nodes draw their new inputs before connecting to them.
-        await wait(TICK_MS);
-        useStore.setState((s) => ({ edges: [...s.edges, ...deferred] }));
+          ...handlesFor(typeOf(source), typeOf(target), c.to.input),
+        });
       }
-
-      // Existing nodes with new inputs have out-of-date results now.
-      const touched = new Set(
-        [
-          ...useStore.getState().edges.filter((e) => added.has(e.id)),
-          ...deferred,
-        ].map((e) => e.target),
-      );
-      for (const nodeId of Array.from(touched))
-        if (!state.addedNodes.includes(nodeId))
-          store.setDataPropsForNode(nodeId, { refresh: true });
+      // Let rebuilt nodes draw their new inputs before connecting to them.
+      if (state.deferred.length > 0) await wait(TICK_MS);
+      // The store's own connect marks the nodes' results out of date, and
+      // tells nodes that read one input, such as a Vis Node, which it is.
+      for (const connection of connections)
+        useStore.getState().onConnect(connection);
 
       this.setStatus(state, "accepted");
     } catch (err) {
@@ -700,6 +697,8 @@ function handlesFor(sourceType: string, targetType: string, input: string) {
   const target = kindOf(targetType);
   if (!source || !target)
     throw new Error(`ChainBuddy can't connect ${sourceType} to ${targetType}.`);
+  if (!source.handles.output)
+    throw new Error(`A ${sourceType} node has no output to connect from.`);
   return {
     sourceHandle: source.handles.output,
     targetHandle: target.handles.inputs?.[input] ?? input,

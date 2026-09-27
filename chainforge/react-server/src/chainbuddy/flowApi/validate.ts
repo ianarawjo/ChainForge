@@ -210,7 +210,11 @@ export function checkChanges(
 
         const spec = kindOf(source.type) as NodeKind;
         const accepts = (kindOf(target.type) as NodeKind).accepts;
-        if (from.output !== spec.output)
+        if (!spec.output)
+          problems.push(
+            `${at}: ${fromId} has no output; a ${source.type} node only receives.`,
+          );
+        else if (from.output !== spec.output)
           problems.push(
             `${at}: ${fromId} has no output "${String(from.output)}"; its output is "${spec.output}".`,
           );

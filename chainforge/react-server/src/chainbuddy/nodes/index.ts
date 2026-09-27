@@ -32,6 +32,12 @@ export function supportOf(type: string | undefined, data: Dict): Support {
     : "not-supported";
 }
 
+/** What a node of this type gives, or nothing at all (a Vis Node, say). */
+export function outputsOf(type: string | undefined): string[] {
+  const output = kindOf(type)?.output;
+  return output ? [output] : [];
+}
+
 /** The inputs a node of this type has with these settings. */
 export function inputsOf(
   type: string,
@@ -52,7 +58,8 @@ export function editableTypes(): string[] {
 export function systemPrompt(instructions: string): string {
   const lines = NODE_KINDS.map(
     (k) =>
-      `- ${k.name} (\`${k.type}\`): gives ${k.output}; ` +
+      `- ${k.name} (\`${k.type}\`): ` +
+      (k.output ? `gives ${k.output}; ` : "gives nothing; ") +
       (k.accepts.length
         ? `its inputs take ${k.accepts.join(" or ")}.`
         : "no inputs."),
