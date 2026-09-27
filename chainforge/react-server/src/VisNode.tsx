@@ -13,7 +13,6 @@ import {
   Button,
   Menu,
   NativeSelect,
-  Tooltip,
   useMantineColorScheme,
 } from "@mantine/core";
 import useStore from "./store";
@@ -1662,7 +1661,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         </div>
         {/* Outside the plot's div: the plot resizes to fill that div, so
             anything else in it would make the plot grow without end. */}
-        {statsView && statsView.kept > 0 && statsView.kept < statsView.total ? (
+        {statsView && statsView.kept > 0 && statsView.missing.length > 0 ? (
           <div
             style={{
               ...smallTextStyle,
@@ -1672,28 +1671,14 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               gap: "4px",
             }}
           >
-            Showing the {statsView.kept} of {statsView.total} responses with{" "}
+            <IconAlertTriangle
+              size={14}
+              color="#e8a33d"
+              style={{ flexShrink: 0 }}
+            />
             {selectedStat?.key === "__stat_est_energy_mwh"
-              ? "an energy estimate"
-              : `a value for ${metricName.toLowerCase()}`}
-            .
-            {statsView.missing.length > 0 && (
-              <Tooltip
-                label={
-                  selectedStat?.key === "__stat_est_energy_mwh"
-                    ? `EcoLogits has no estimates for models ${statsView.missing.join(", ")}, hence they are omitted here.`
-                    : `${statsView.missing.join(", ")} didn't report ${metricName.toLowerCase()}, hence they are omitted here.`
-                }
-                multiline
-                width={260}
-                withArrow
-                withinPortal
-              >
-                <span style={{ display: "inline-flex", cursor: "help" }}>
-                  <IconAlertTriangle size={14} color="#e8a33d" />
-                </span>
-              </Tooltip>
-            )}
+              ? `EcoLogits has no estimates for models ${statsView.missing.join(", ")}, hence they are omitted here.`
+              : `${statsView.missing.join(", ")} didn't report ${metricName.toLowerCase()}, hence they are omitted here.`}
           </div>
         ) : null}
       </>
