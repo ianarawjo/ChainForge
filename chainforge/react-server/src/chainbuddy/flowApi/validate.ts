@@ -43,8 +43,9 @@ export function checkChanges(
     ]),
   );
   let connections: ConnectionView[] = [...flow.connections];
-  // Nodes this change set connects to or from.
+  // Nodes this change set connects to or from, and the connections it makes.
   const connected = new Set<string>();
+  const added = new Set<ConnectionView>();
 
   // Models already in the flow may stay, even if list_models doesn't offer them.
   const knownModels = new Map(models.map((m) => [m.id, m]));
@@ -246,6 +247,7 @@ export function checkChanges(
           problems.push(`${at}: that connection already exists.`);
         else {
           connections.push(connection);
+          added.add(connection);
           connected.add(fromId);
           connected.add(toId);
           changes.push({ op: "connect", ...connection });
@@ -279,6 +281,37 @@ export function checkChanges(
           );
       }
     }
+
+  // What a node accepts can depend on its settings, and some inputs take one
+  // connection only. Both are judged on the flow as the change set leaves it,
+  // since a later change may set what an earlier connection depends on.
+  if (problems.length === 0) {
+    const crowded = new Set<string>();
+    for (const c of connections) {
+      const source = nodes.get(c.from.node);
+      const target = nodes.get(c.to.node);
+      const kind = target && kindOf(target.type);
+      if (!source || !kind || (!added.has(c) && !target.touched)) continue;
+      const gives = kindOf(source.type)?.output;
+      const refused = gives && kind.checkSource?.(gives, target.settings);
+      if (refused) problems.push(`${c.from.node} → ${c.to.node}: ${refused}`);
+      const into = `${c.to.node}.${c.to.input}`;
+      const feeding = connections.filter(
+        (o) => o.to.node === c.to.node && o.to.input === c.to.input,
+      );
+      if (
+        kind.oneSource &&
+        added.has(c) &&
+        feeding.length > 1 &&
+        !crowded.has(into)
+      ) {
+        crowded.add(into);
+        problems.push(
+          `${c.to.node}: its "${c.to.input}" input takes one connection, and would have ${feeding.length} (from ${feeding.map((o) => o.from.node).join(", ")}). ChainForge would use only one. Use one ${target.type} node per source.`,
+        );
+      }
+    }
+  }
 
   // Nor should it connect to a node that stays blank, such as the empty
   // Prompt Node a new flow starts with: the flow couldn't run.

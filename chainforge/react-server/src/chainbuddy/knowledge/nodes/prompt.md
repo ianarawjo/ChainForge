@@ -21,27 +21,28 @@ variables.
 
 ## Don't use it for
 
-- Grading or scoring responses. Use a JavaScript Evaluator for checks code
-  can decide. Judging by a model (the LLM Scorer Node) isn't supported by
-  ChainBuddy yet.
-- Multi-turn conversations. That's the Chat Turn Node, which ChainBuddy
-  doesn't support yet.
+- Grading or scoring responses. That's an evaluator: the JavaScript Evaluator
+  for checks code can decide, or the LLM Scorer to have a model judge.
+- Multi-turn conversations. That's the Chat Turn Node.
 
 ## Inputs
 
 One input per `{variable}` in any of the node's prompts, named after the
 variable. Inputs appear and disappear as variables are added to or removed
-from the prompts. Every input must be connected before the node can run.
+from the prompts, and every input must be connected before the node can run.
 
 Each input accepts `values`, such as a TextFields Node's, or `responses` from
 another Prompt Node. Connecting responses sends each response on as a value
 to fill that variable (chaining). The variable values that produced it travel
 along too, so later nodes can still read them.
 
-Two special forms don't create an input:
+Special forms:
 
-- `{#name}` reuses the value that filled `{name}` earlier in the chain.
+- `{#name}` reuses the value that filled `{name}` earlier in the chain. It
+  creates no input.
 - `\{` and `\}` are literal braces, not a variable.
+- `{=name}` sets a model setting rather than filling text, and needs its own
+  connection. Don't write one unless the user asks.
 
 ## Outputs
 
@@ -68,7 +69,7 @@ prompts:
     fields:
       label:
         type: string
-        description: Short name for this prompt, shown in results, such as "Formal".
+        description: Short name telling this prompt apart from the others, such as "Formal".
       text:
         type: string
         description: The prompt. {name} marks a variable.
@@ -119,22 +120,19 @@ responses_per_prompt: 3
 
 ## Watch out for
 
-- **Running costs money.** The number of model calls is
-  prompts × combinations of input values × models × responses per prompt.
-  Two prompts, 10 texts, 2 models and 3 responses each is 120 calls. Keep
-  flows small, and say how many calls a flow will make when it's more than a
-  few dozen.
-- **Every variable needs a connection.** A prompt with `{text}` and nothing
-  connected to `text` won't run.
-- **Variable names must be unique along a chain**, ignoring case. If an
-  upstream node already fills `{Text}`, a later `{text}` causes an error.
+- **Running costs money.** A run makes at most prompts × combinations of input
+  values × models × responses per prompt calls; two prompts, 10 texts, 2
+  models and 3 responses each is up to 120. Chaining multiplies further:
+  every response becomes a value for the next Prompt Node, which sends each
+  one to each of its own models. Keep flows small, and say how many calls a
+  flow could make when it's more than a few dozen.
+- **Two variables fed by the same node form every pairing**, mismatched ones
+  included: questions and answers from two TextFields Nodes pair every
+  question with every answer. Values that belong together (an input and its
+  expected answer) must come from one row of a Tabular Data Node.
+- **Give every variable in a flow its own name**, ignoring case. `{text}`
+  used on two branches that feed one prompt stops the run.
 - **Literal braces need escaping.** A prompt asking for JSON such as
   `{"answer": ...}` creates a variable unless written `\{"answer": ...\}`.
-- **A model can only run if its provider is set up** (an API key, or Ollama
-  running locally). `list_models` lists only models that are set up.
-- **A blank Prompt Node usually already has a model**, the user's default.
-  Keep it unless the user asks for other models.
-- **Model settings such as temperature** can't be changed by ChainBuddy yet.
+- **Model settings such as temperature** can't be changed through ChainBuddy.
   Ask the user to change them in the model's settings.
-- **Variables starting with `=`**, such as `{=system_msg}`, set a model
-  setting instead of filling text. ChainBuddy doesn't use them yet.

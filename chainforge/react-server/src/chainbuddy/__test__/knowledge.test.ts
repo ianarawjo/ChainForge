@@ -87,3 +87,18 @@ test.each(kinds)(
       expect(section(type, "Inputs")).toContain(`\`${accepted}\``);
   },
 );
+
+test.each(kinds)(
+  "%s: the guide doesn't say which nodes ChainBuddy supports",
+  (type) => {
+    // That changes whenever a node type is added, and the model is told the
+    // current list anyway; a guide saying "not supported yet" goes stale.
+    const text = fs.readFileSync(path.join(DIR, "nodes", `${type}.md`), "utf8");
+    const stale = text
+      .split(/(?<=[.!?])\s+/)
+      .filter(
+        (sentence) => /support/i.test(sentence) && /\byet\b/i.test(sentence),
+      );
+    expect(stale).toEqual([]);
+  },
+);

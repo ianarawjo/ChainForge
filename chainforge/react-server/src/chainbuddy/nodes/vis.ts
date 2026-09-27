@@ -1,27 +1,27 @@
 import doc from "../knowledge/nodes/vis.md";
+import { PLOTTABLE_STATS } from "../../backend/responseStats";
 import { oneOf, titleSetting } from "./common";
 import { NodeKind } from "./types";
 
+/** ChainBuddy's name for a measure, from its label: "Energy, measured (mWh)" → "energy_measured". */
+const nameOf = (label: string) =>
+  label
+    .replace(/\(.*?\)/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
 /**
- * ChainBuddy's name for a measure → the key the node plots by. The node's own
- * keys for what it recorded while running are internal (`__stat_…`, see
- * backend/responseStats.ts), so ChainBuddy names them. Anything else is an
+ * The measures ChainForge records while running prompts, by ChainBuddy's name
+ * → the key the node plots by. Read from ChainForge's own list, so a measure
+ * it adds reaches ChainBuddy with no change here. Any other metric is an
  * evaluator's own key, which only that evaluator knows, and passes through.
  */
-const METRICS: Record<string, string> = {
-  latency: "__stat_latency_s",
-  time_before_output: "__stat_ttft_s",
-  input_tokens: "__stat_input_tokens",
-  output_tokens: "__stat_output_tokens",
-  speed: "__stat_tokens_per_s",
-  decoding_speed: "__stat_decode_tokens_per_s",
-  cost: "__stat_cost_usd",
-  energy_measured: "__stat_energy_mwh",
-  energy_estimated: "__stat_est_energy_mwh",
-};
-const METRIC_NAMES = Object.fromEntries(
-  Object.entries(METRICS).map(([name, key]) => [key, name]),
-);
+const measures = () =>
+  Object.fromEntries(PLOTTABLE_STATS.map((s) => [nameOf(s.label), s.key]));
+const measureName = (key: string) =>
+  Object.entries(measures()).find(([, k]) => k === key)?.[0];
 
 const CHARTS = ["bar", "box"];
 
@@ -30,6 +30,8 @@ export const visKind: NodeKind = {
   name: "Vis Node",
   doc,
   accepts: ["responses", "scored_responses"],
+  // It plots one input; ChainForge ignores any others.
+  oneSource: true,
   handles: { inputs: { responses: "input" } },
   unconnectedHint: "Connect the responses it should plot to it.",
 
@@ -37,24 +39,38 @@ export const visKind: NodeKind = {
     title: titleSetting,
     metric: {
       label: "Plots",
+      values: () => ["score", ...Object.keys(measures())],
       check: (value) => {
         if (typeof value !== "string" || value.trim() === "")
           return "metric should be the name of what to plot.";
         return value.startsWith("__")
-          ? `metric shouldn't be one of the node's own keys. Use ${Object.keys(METRICS).join(", ")}, "score", or an evaluator's own key.`
+          ? `metric shouldn't be one of the node's own keys. Use "score", a measure (${Object.keys(measures()).join(", ")}), or an evaluator's own key.`
           : undefined;
       },
     },
-    chart: { label: "Chart", check: oneOf("chart", CHARTS) },
+    chart: {
+      label: "Chart",
+      values: () => CHARTS,
+      check: oneOf("chart", CHARTS),
+    },
   },
 
   inputs: () => ["responses"],
+
+  // Measures are recorded on a Prompt Node's own responses; an evaluator's
+  // scored responses don't carry them.
+  checkSource: (gives, settings) =>
+    gives === "scored_responses" &&
+    typeof settings.metric === "string" &&
+    measures()[settings.metric]
+      ? `it plots ${settings.metric}, which only a Prompt Node's own responses carry, not an evaluator's. Connect it straight to the Prompt Node, or plot "score".`
+      : undefined,
 
   read(data) {
     const key = data.selected_eval_res_var;
     return {
       title: data.title ?? visKind.name,
-      ...(key ? { metric: METRIC_NAMES[key] ?? key } : {}),
+      ...(key ? { metric: measureName(key) ?? key } : {}),
       chart: CHARTS.includes(data.graph_type) ? data.graph_type : CHARTS[0],
     };
   },
@@ -63,7 +79,8 @@ export const visKind: NodeKind = {
     const out = { ...(base ?? {}) };
     if (typeof settings.title === "string") out.title = settings.title;
     if (typeof settings.metric === "string")
-      out.selected_eval_res_var = METRICS[settings.metric] ?? settings.metric;
+      out.selected_eval_res_var =
+        measures()[settings.metric] ?? settings.metric;
     if (typeof settings.chart === "string" && CHARTS.includes(settings.chart))
       out.graph_type = settings.chart;
     return out;

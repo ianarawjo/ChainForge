@@ -24,6 +24,7 @@ export const inspectKind: NodeKind = {
     title: titleSetting,
     view: {
       label: "View",
+      values: () => Object.keys(VIEWS),
       check: oneOf("view", Object.keys(VIEWS)),
     },
   },
