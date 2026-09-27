@@ -18,6 +18,7 @@ import {
   Text,
   Textarea,
   Tooltip,
+  UnstyledButton,
 } from "@mantine/core";
 import {
   IconMessageChatbot,
@@ -27,6 +28,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import { Proposal } from "../adapters/canvas";
+import { Question } from "../runtime/askUser";
 import { useChainBuddyModel } from "../adapters/settings";
 import ProposalCard from "./ProposalCard";
 import { Item, useChainBuddySession } from "./useChainBuddySession";
@@ -143,6 +145,7 @@ export default function ChainBuddyPanel() {
                 }
                 onAccept={session.accept}
                 onReject={session.reject}
+                onChoose={(option) => session.choose(i, option)}
               />
             ))}
             {status && (
@@ -218,12 +221,16 @@ function ItemView({
   proposal,
   onAccept,
   onReject,
+  onChoose,
 }: {
   item: Item;
   proposal?: Proposal;
   onAccept: (id: string) => void;
   onReject: (id: string) => void;
+  onChoose: (option: number) => void;
 }) {
+  if (item.kind === "question")
+    return <QuestionView question={item} onChoose={onChoose} />;
   if (item.kind === "user")
     return (
       <Box
@@ -273,5 +280,54 @@ function ItemView({
       onAccept={() => onAccept(proposal.id)}
       onReject={() => onReject(proposal.id)}
     />
+  );
+}
+
+/**
+ * A question with options as cards to click. Once answered, by a click or in
+ * the user's own words, the cards stay as a record and can't be clicked.
+ */
+function QuestionView({
+  question,
+  onChoose,
+}: {
+  question: Question & { chosen?: number };
+  onChoose: (option: number) => void;
+}) {
+  const open = question.chosen === undefined;
+  return (
+    <Stack spacing={6}>
+      <Text size="sm">{question.question}</Text>
+      {question.options.map((option, i) => (
+        <UnstyledButton
+          key={i}
+          disabled={!open}
+          onClick={() => onChoose(i)}
+          style={{ cursor: open ? "pointer" : "default" }}
+        >
+          <Paper
+            withBorder
+            p="xs"
+            radius="md"
+            style={{
+              borderColor: question.chosen === i ? "#be4bdb" : undefined,
+              opacity: open || question.chosen === i ? 1 : 0.5,
+            }}
+          >
+            <Text size="sm" weight={500}>
+              {option.title}
+            </Text>
+            <Text size="xs" color="dimmed">
+              {option.detail}
+            </Text>
+          </Paper>
+        </UnstyledButton>
+      ))}
+      {open && (
+        <Text size="xs" color="dimmed">
+          Or answer in your own words below.
+        </Text>
+      )}
+    </Stack>
   );
 }

@@ -11,6 +11,7 @@ import { createFlowTools } from "../flowApi/tools";
 import { INSTRUCTIONS, REVIEW_INSTRUCTIONS } from "../knowledge";
 import { Reviewer } from "../flowApi/review";
 import { createReviewer } from "../runtime/reviewer";
+import { createAskUserTool, Question } from "../runtime/askUser";
 import { createOpenAICompatibleClient } from "../model/openaiCompatible";
 import { AgentMessage } from "../model/types";
 import { systemPrompt } from "../nodes";
@@ -22,6 +23,8 @@ export type Item =
   | { kind: "assistant"; text: string }
   | { kind: "activity"; text: string; failed?: boolean; detail?: string }
   | { kind: "proposal"; id: string }
+  /** A question with options to pick; `chosen` once answered (-1: in their own words). */
+  | ({ kind: "question"; chosen?: number } & Question)
   | { kind: "error"; text: string };
 
 /** How a tool call reads in the chat, or "" to leave it out. */
@@ -41,6 +44,7 @@ function activityText(
       return "Read a node guide";
     }
   }
+  if (name === "ask_user") return ""; // shown as the question itself
   if (name === "propose_changes") {
     if (content.includes('"needs_changes"'))
       return "A second look found problems with its proposal; fixing them";
@@ -108,6 +112,13 @@ export function useChainBuddySession(model: ChainBuddyModel) {
         )
       : undefined;
   }, [model.config]);
+  const askUser = useMemo(
+    () =>
+      createAskUserTool((question) =>
+        setItems((its) => [...its, { kind: "question", ...question }]),
+      ),
+    [],
+  );
   const { tools, startTurn } = useMemo(
     () =>
       createFlowTools({
@@ -151,7 +162,15 @@ export function useChainBuddySession(model: ChainBuddyModel) {
   const send = useCallback(
     async (text: string) => {
       if (!text.trim() || abort.current || !model.config) return;
-      add({ kind: "user", text });
+      // A question still open is answered by whatever the user says next.
+      setItems((its) => [
+        ...its.map((it) =>
+          it.kind === "question" && it.chosen === undefined
+            ? { ...it, chosen: -1 }
+            : it,
+        ),
+        { kind: "user", text },
+      ]);
       // What the user has asked for, which a review checks proposals against.
       const asked = [
         ...conversation.current.flatMap((m) =>
@@ -225,7 +244,7 @@ export function useChainBuddySession(model: ChainBuddyModel) {
           client: createOpenAICompatibleClient(model.config),
           system: systemPrompt(INSTRUCTIONS),
           messages: [...conversation.current, userMessage],
-          tools,
+          tools: [...tools, askUser],
           maxSteps: 12,
           signal: controller.signal,
           onEvent,
@@ -266,6 +285,18 @@ export function useChainBuddySession(model: ChainBuddyModel) {
     status,
     running,
     send,
+    /** Answers a question by picking one of its options. */
+    choose: (itemIndex: number, optionIndex: number) => {
+      const item = items[itemIndex];
+      if (item?.kind !== "question" || item.chosen !== undefined) return;
+      const option = item.options[optionIndex];
+      setItems((its) =>
+        its.map((it, i) =>
+          i === itemIndex ? { ...it, chosen: optionIndex } : it,
+        ),
+      );
+      send(`${option.title}: ${option.detail}`);
+    },
     stop: () => abort.current?.abort(),
     clear,
     accept: (id: string) => canvas.accept(id),

@@ -21,6 +21,8 @@ import {
 } from "../model/openaiCompatible";
 import { AgentEvent, runAgent } from "../runtime/agentLoop";
 import { createReviewer } from "../runtime/reviewer";
+import { createAskUserTool, Question } from "../runtime/askUser";
+import { AgentMessage } from "../model/types";
 import { FlowView, ModelInfo } from "../flowApi/types";
 import { systemPrompt } from "../nodes";
 import {
@@ -40,11 +42,23 @@ const FLOW_MODELS: Record<string, string> = {
 };
 
 // What list_models offers, as the app would with an OpenRouter key and Ollama.
+// As the real menu has them: OpenRouter's models, and the in-browser default,
+// which list_models names apart when anything else is set up.
 const MODELS: ModelInfo[] = [
-  ["openrouter/anthropic/claude-haiku-4.5", "Claude Haiku 4.5"],
-  ["openrouter/openai/gpt-5.4-mini", "GPT-5.4 Mini"],
-  ["openrouter/google/gemini-3.1-flash-lite", "Gemini 3.1 Flash-Lite"],
-].map(([id, name]) => ({ id, name, provider: "OpenRouter", ready: true }));
+  ...[
+    ["openrouter/anthropic/claude-haiku-4.5", "Claude Haiku 4.5"],
+    ["openrouter/openai/gpt-5.4-mini", "GPT-5.4 Mini"],
+    ["openrouter/google/gemini-3.1-flash-lite", "Gemini 3.1 Flash-Lite"],
+    ["openrouter/qwen/qwen3.8-flash", "Qwen3.8 Flash"],
+  ].map(([id, name]) => ({ id, name, provider: "OpenRouter", ready: true })),
+  {
+    id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+    name: "Qwen2.5 0.5B",
+    provider: "In-browser LLMs",
+    ready: true,
+    fallback: true,
+  },
+];
 const OLLAMA_MODELS: ModelInfo[] = ["qwen3.5:4b", "gemma4:e4b"].map((name) => ({
   id: `ollama/${name}`,
   name,
@@ -58,6 +72,8 @@ const SCENARIOS: {
   request: string;
   /** Node types the last valid proposal must add. */
   adds?: string[];
+  /** The user's answer if asked a question, in their own words; else the first option. */
+  answer?: string;
 }[] = [
   {
     name: "create a flow on an empty canvas",
@@ -75,6 +91,7 @@ const SCENARIOS: {
     request:
       "I want to audit a small Qwen model for gender biases in its short " +
       "responses. Can you make a flow that helps me do that",
+    answer: "Score each response automatically with an evaluator.",
     adds: ["vis"],
   },
   {
@@ -125,7 +142,7 @@ function clip(text: string, max = 600) {
 (LIVE ? describe : describe.skip)(`live agent: ${LIVE}`, () => {
   test.each(SCENARIOS)(
     "$name",
-    async ({ flow, request, adds }) => {
+    async ({ flow, request, adds, answer: typed }) => {
       if (!["ollama", "openrouter"].includes(provider))
         throw new Error(
           'CHAINBUDDY_LIVE must look like "ollama:<model>" or "openrouter:<model>".',
@@ -175,15 +192,42 @@ function clip(text: string, max = 600) {
           );
       };
 
+      // A question is answered with its first option, as if clicked.
+      const asked: Question[] = [];
+      const askUser = createAskUserTool((q) => {
+        asked.push(q);
+        log.push(
+          `ASKED: ${q.question}\n${q.options.map((o, i) => `  ${i + 1}. ${o.title}: ${o.detail}`).join("\n")}`,
+        );
+      });
       const started = Date.now();
-      const result = await runAgent({
+      const messages: AgentMessage[] = [{ role: "user", content: request }];
+      let result = await runAgent({
         client,
         system: systemPrompt(INSTRUCTIONS),
-        messages: [{ role: "user", content: request }],
-        tools,
+        messages,
+        tools: [...tools, askUser],
         maxSteps: 12,
         onEvent,
       });
+      if (asked.length > 0 && proposals.length === 0) {
+        flushText();
+        const pick = asked[asked.length - 1].options[0];
+        const answer = typed ?? `${pick.title}: ${pick.detail}`;
+        log.push(
+          `USER (${typed ? "answers" : "clicks the first option"}): ${answer}`,
+        );
+        messages.push(...result.messages, { role: "user", content: answer });
+        startTurn(`${request}\n\n${answer}`);
+        result = await runAgent({
+          client,
+          system: systemPrompt(INSTRUCTIONS),
+          messages,
+          tools: [...tools, askUser],
+          maxSteps: 12,
+          onEvent,
+        });
+      }
       flushText();
 
       for (const r of reviews)

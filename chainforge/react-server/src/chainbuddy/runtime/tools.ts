@@ -15,6 +15,11 @@ export interface AgentTool extends ToolSpec {
     args: Record<string, unknown>,
     context: { signal?: AbortSignal },
   ): Promise<unknown> | unknown;
+  /**
+   * The run stops after this tool succeeds, to wait for the user, as when
+   * ChainBuddy asks them a question. Their answer is their next message.
+   */
+  endsTurn?: boolean;
 }
 
 /**

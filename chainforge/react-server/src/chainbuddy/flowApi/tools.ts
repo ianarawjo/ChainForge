@@ -83,19 +83,28 @@ export function createFlowTools({
             models.filter((m) => !setUp.has(m.provider)).map((m) => m.provider),
           ),
         );
+        // Named, though not offered, so they can be used when asked for.
+        const inBrowser = ready.filter(
+          (m) => m.fallback && !offered.includes(m),
+        );
         return {
           models: offered.map(({ id, name, provider }) => ({
             id,
             name,
             provider,
           })),
+          ...(inBrowser.length > 0
+            ? {
+                in_browser: inBrowser.map(({ id, name }) => ({ id, name })),
+              }
+            : {}),
           not_set_up: notSetUp,
           note:
             offered.length === 0
               ? "No models are set up. Ask the user to add an API key in Settings, or to start Ollama."
               : preferred.length === 0
                 ? "Only small models that run in the browser are set up. Say so, and that adding an API key in Settings gives more capable ones."
-                : "Use these. If the user asks for a provider in not_set_up, say it needs its API key added in Settings, rather than substituting another.",
+                : "Use these. in_browser lists small models that run in the browser: use one only if the user asks for it. If the user asks for a provider in not_set_up, say it needs its API key added in Settings, rather than substituting another.",
         };
       },
     },
