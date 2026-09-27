@@ -87,11 +87,16 @@ export function describeChanges(
           names.set(change.node, change.settings.title);
         return line;
       }
-      case "connect":
+      case "connect": {
+        // Named for a node with several outputs, such as a table's columns.
+        const from = kindOf(types.get(change.from.node))?.outputNames
+          ? `${name(change.from.node)}'s ${change.from.output}`
+          : name(change.from.node);
         return {
           kind: "connect",
-          text: `Connect ${name(change.from.node)} → ${name(change.to.node)}'s ${change.to.input}`,
+          text: `Connect ${from} → ${name(change.to.node)}'s ${change.to.input}`,
         };
+      }
       case "remove_node":
         return {
           kind: "remove",
