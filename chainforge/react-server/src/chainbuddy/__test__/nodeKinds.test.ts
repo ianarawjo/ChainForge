@@ -46,14 +46,14 @@ const itemsKind: NodeKind = {
 
 /** A node that only receives, such as ChainForge's Vis and Inspect Nodes. */
 const sinkKind: NodeKind = {
-  type: "inspect",
-  name: "Inspect Node",
-  doc: "# Inspect Node\n\nShows the responses it receives.",
+  type: "notes",
+  name: "Notes Node",
+  doc: "# Notes Node\n\nShows the responses it receives.",
   accepts: ["responses", "scored_responses"],
   handles: { inputs: { responses: "input" } },
   settings: { title: titleSetting },
   inputs: () => ["responses"],
-  read: (data) => ({ title: data.title ?? "Inspect Node" }),
+  read: (data) => ({ title: data.title ?? "Notes Node" }),
   write: (settings, base) => ({ ...(base ?? {}), ...settings }),
 };
 
@@ -171,7 +171,7 @@ test("a kind with no output receives, and nothing can be chained after it", () =
         models: [{ model: models[0].id }],
       },
     },
-    { op: "add_node", ref: "look", type: "inspect", settings: {} },
+    { op: "add_node", ref: "look", type: "notes", settings: {} },
     {
       op: "connect",
       from: { node: "ask", output: "responses" },
@@ -183,7 +183,7 @@ test("a kind with no output receives, and nothing can be chained after it", () =
   ).toBe("awaiting_approval");
   expect(proposals[0].changes).toHaveLength(3);
   expect(systemPrompt("Be helpful.")).toMatch(
-    /- Inspect Node \(`inspect`\): gives nothing; its inputs take responses or scored_responses\./,
+    /- Notes Node \(`notes`\): gives nothing; its inputs take responses or scored_responses\./,
   );
 
   run("get_flow", {});
@@ -205,6 +205,6 @@ test("a kind with no output receives, and nothing can be chained after it", () =
     ],
   });
   expect(out.problems).toEqual([
-    "changes[4] (connect): look has no output; a inspect node only receives.",
+    "changes[4] (connect): look has no output; a notes node only receives.",
   ]);
 });

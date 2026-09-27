@@ -63,6 +63,13 @@ const SCENARIOS: { name: string; flow: FlowView; request: string }[] = [
     request: `Check whether ${FLOW_MODELS[provider]} answer three trivia questions correctly. Make up the questions.`,
   },
   {
+    name: "plot a run measure, which needs no evaluator",
+    flow: EXAMPLE_FLOW,
+    request:
+      "How fast is this model answering? Show me, and let me read the " +
+      "answers too.",
+  },
+  {
     name: "edit the example flow",
     flow: EXAMPLE_FLOW,
     request:
