@@ -124,6 +124,21 @@ def _percentile(sorted_vals: List[float], q: float) -> float:
     return sorted_vals[i] + (sorted_vals[j] - sorted_vals[i]) * (pos - i)
 
 
+def _idle_gaps(spans: List[Tuple[float, float]], since: float, until: float) -> Iterator[Tuple[float, float]]:
+    """The stretches of [since, until] that no (merged, sorted) busy span covers."""
+    start = since
+    for s, e in spans:
+        if e <= start:
+            continue
+        if s >= until:
+            break
+        if s > start:
+            yield start, s
+        start = max(start, e)
+    if start < until:
+        yield start, until
+
+
 def idle_baseline(
     readings: Readings,
     busy: Sequence[Tuple[float, float]],
@@ -133,24 +148,23 @@ def idle_baseline(
     """Idle power, from reading intervals after `since` that overlap none of
     the `busy` spans. None if there are fewer than `min_seconds` of them.
 
-    One pass over the readings and the (merged, sorted) busy spans together.
+    Only the readings in the gaps between busy spans are looked at (found by
+    binary search), so a long run of requests, with little idle time, costs
+    little to search.
     """
-    spans = merge_spans(busy)
-    j = 0
     per_comp: List[List[float]] = [[] for _ in readings.components]
     totals: List[float] = []
     seconds = 0.0
-    for a, b, watts in readings.powers(since):
-        if a < since:
-            continue
-        while j < len(spans) and spans[j][1] <= a:
-            j += 1  # spans that ended before this interval
-        if j < len(spans) and spans[j][0] < b:
-            continue  # overlaps a busy span
-        seconds += b - a
-        totals.append(sum(watts))
-        for i, w in enumerate(watts):
-            per_comp[i].append(w)
+    if not readings.times:
+        return None
+    for gap_start, gap_end in _idle_gaps(merge_spans(busy), since, readings.times[-1]):
+        for a, b, watts in readings.powers(gap_start, gap_end):
+            if a < gap_start or b > gap_end:
+                continue  # only partly idle
+            seconds += b - a
+            totals.append(sum(watts))
+            for i, w in enumerate(watts):
+                per_comp[i].append(w)
     if seconds < min_seconds or not totals:
         return None
     totals.sort()

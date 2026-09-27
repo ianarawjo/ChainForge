@@ -275,7 +275,9 @@ class TestMonitor:
         run_monitor_until(monitor, clock, t + 2.0)
         start = time.perf_counter()
         result = monitor.end(req, 0.0, 0.0, 1.8, 2.0)
-        assert time.perf_counter() - start < 0.05
+        # ~0.1 ms on an M4 Max; searching every reading took ~40 ms here
+        # and 125 ms on a CI runner
+        assert time.perf_counter() - start < 0.02
         assert result["energy_wh"] > 0
 
     def test_time_in_flight_isnt_counted_as_idle(self):
