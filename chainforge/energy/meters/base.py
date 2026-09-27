@@ -6,7 +6,7 @@ own meter. Nothing outside `meters/` needs to know which one is in use.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 class EnergyMeter(ABC):
@@ -34,6 +34,13 @@ class EnergyMeter(ABC):
         taking longer. Empty if the meter can't tell. Must be cheap: it's
         checked every few seconds, while the monitor holds its lock."""
         return {}
+
+    def other_gpu_use(self) -> Optional[List[str]]:
+        """The programs besides the model server that used the GPU since the
+        last call (e.g. ["ComfyUI"]), whose energy would be counted with a
+        request's; None if the meter can't tell. Called about once a second,
+        outside the monitor's lock, never concurrently with itself."""
+        return None
 
     def refresh_conditions(self) -> None:
         """Updates any conditions too slow to read in `conditions()` (e.g.

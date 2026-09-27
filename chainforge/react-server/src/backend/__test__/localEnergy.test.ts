@@ -14,9 +14,11 @@ jest.mock("../utils", () => ({
 import { beforeEach, describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
 import {
+  ENERGY_KEY,
   describeStats,
   formatStats,
   plottableStat,
+  statsFromReply,
   statsToMetavars,
 } from "../responseStats";
 // eslint-disable-next-line import/first
@@ -253,6 +255,58 @@ describe("showing measured energy", () => {
     expect(describeStats({ ...stats, energy_shared: true })).toContain(
       "  Shared with requests generating at the same time",
     );
+  });
+
+  test("on a PC: each GPU, what isn't measured, and other programs on the GPU", () => {
+    const pc: ResponseStats = {
+      energy_wh: 0.2,
+      energy_parts_wh: { gpu0: 0.15, gpu1: 0.05 },
+      energy_conditions: {
+        power_source: "AC power",
+        power_mode: "Balanced power plan, Best performance",
+        gpu_power_limit: "GPU 1 limited to 300 W (default 450 W)",
+        thermal: "the GPU was slowed by heat",
+      },
+      energy_other_gpu_use: ["ComfyUI", "python"],
+    };
+    expect(describeStats(pc)).toEqual(
+      expect.arrayContaining([
+        "  GPU 0 150 · GPU 1 50 mWh",
+        "  GPU only: this machine's CPU isn't measured",
+        "  Measured on AC power, with the Balanced power plan, Best performance, with GPU 1 limited to 300 W (default 450 W), while the GPU was slowed by heat",
+        "  Other programs used the GPU meanwhile (ComfyUI, python): their energy is counted in this",
+      ]),
+    );
+    const lines = (s: ResponseStats) => describeStats(s).join("\n");
+    // Defaults aren't worth a mention
+    expect(
+      lines({
+        ...pc,
+        energy_conditions: {
+          power_source: "AC power",
+          power_mode: "performance power profile",
+          gpu_power_limit: "default",
+          thermal: "nominal",
+        },
+      }),
+    ).toContain("  Measured on AC power, with the performance power profile\n");
+    expect(
+      lines({ ...pc, energy_conditions: { power_mode: "Battery saver" } }),
+    ).toContain("  Measured with Battery saver on");
+    // A CPU-only machine (Linux without an NVIDIA GPU)
+    expect(
+      describeStats({ energy_wh: 0.1, energy_parts_wh: { cpu: 0.1 } }),
+    ).toContain("  CPU only: this machine's GPU isn't measured");
+    // A Mac measures both
+    expect(lines(stats)).not.toMatch(/only:/);
+  });
+
+  test("keeps the other programs from the server's measurement", () => {
+    const withOthers = (other_gpu_use: unknown) =>
+      statsFromReply({ [ENERGY_KEY]: { energy_wh: 0.1, other_gpu_use } });
+    expect(withOthers(["ComfyUI"])?.energy_other_gpu_use).toEqual(["ComfyUI"]);
+    expect(withOthers([])?.energy_other_gpu_use).toBeUndefined();
+    expect(withOthers(null)?.energy_other_gpu_use).toBeUndefined();
   });
 
   test("as metavars and a Vis Node value, in mWh", () => {

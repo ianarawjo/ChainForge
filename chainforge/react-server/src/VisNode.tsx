@@ -800,7 +800,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           isEnergy
             ? `Some responses from ${names(others)} have no estimate (for instance, ones collected before ChainForge estimated energy, or without a token count), hence they are omitted here.`
             : isMeasuredEnergy
-              ? `Energy is measured only for local models (Ollama) on this machine, where ChainForge can read its energy counters (so far, Apple silicon Macs). Responses from ${names(others)} have no measurement, hence they are omitted here.`
+              ? `Energy is measured only for local models (Ollama) on this machine, where ChainForge can read its energy counters (so far, Apple silicon Macs, and Windows and Linux PCs with NVIDIA GPUs). Responses from ${names(others)} have no measurement, hence they are omitted here.`
               : `Some responses from ${names(others)} have no ${metricName.toLowerCase()}, hence they are omitted here.`,
         );
       return sentences.join(" ");
@@ -820,7 +820,11 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           const key =
             describeConditions(
               c
-                ? { power_source: c.power_source, power_mode: c.power_mode }
+                ? {
+                    power_source: c.power_source,
+                    power_mode: c.power_mode,
+                    gpu_power_limit: c.gpu_power_limit,
+                  }
                 : undefined,
             ) ?? "under unknown power settings";
           counts.set(key, (counts.get(key) ?? 0) + 1);
@@ -831,6 +835,23 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         .map(([conditions, n]) => `${n} ${conditions}`)
         .join("; ");
       return `These were measured under different power settings (${which}), which change the energy the same work takes. Compare them with care.`;
+    }, [isMeasuredEnergy, statsView]);
+
+    // Other programs using the GPU during a request (e.g. an image
+    // generation) add their energy to its measurement
+    const otherUseNote = useMemo(() => {
+      if (!isMeasuredEnergy || !statsView) return undefined;
+      let n = 0;
+      const programs = new Set<string>();
+      statsView.responses.forEach((r) =>
+        r.stats?.forEach((s) => {
+          if (!s?.energy_other_gpu_use) return;
+          n += 1;
+          s.energy_other_gpu_use.forEach((p) => programs.add(p));
+        }),
+      );
+      if (n === 0) return undefined;
+      return `${n} of these ${n === 1 ? "was" : "were"} measured while other programs used the GPU (${Array.from(programs).join(", ")}), whose energy is counted in ${n === 1 ? "it" : "them"}, so ${n === 1 ? "it's" : "they're"} likely too high. Run them again with the GPU otherwise idle to compare.`;
     }, [isMeasuredEnergy, statsView]);
 
     const notes: { text: string; details: string }[] = [];
@@ -847,6 +868,11 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       notes.push({
         text: "Measured under different power settings.",
         details: conditionsNote,
+      });
+    if (otherUseNote)
+      notes.push({
+        text: "Other programs used the GPU during some requests.",
+        details: otherUseNote,
       });
 
     // Typically, a user will only need the default LLM 'group' --all LLMs in responses.
