@@ -280,7 +280,7 @@ export const responsesToTable = async (
         if (stats?.latency_ms !== undefined)
           row["Latency (s)"] = stats.latency_ms / 1000;
         if (stats?.ttft_ms !== undefined)
-          row["Time to first token (s)"] = stats.ttft_ms / 1000;
+          row["Before output (s)"] = stats.ttft_ms / 1000;
         if (stats?.input_tokens !== undefined)
           row["Input tokens"] = stats.input_tokens;
         if (stats?.output_tokens !== undefined)

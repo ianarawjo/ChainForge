@@ -104,7 +104,8 @@ export function statsFromReply(reply: Dict): ResponseStats {
   );
   if (latency !== undefined) stats.latency_ms = latency;
 
-  // Time to first token: Ollama splits out loading the model and reading the prompt.
+  // Time before output: Ollama reports loading the model and reading the prompt,
+  // llama.cpp reading the prompt, and WebLLM its time to first token.
   if (
     num(r?.load_duration) !== undefined ||
     num(r?.prompt_eval_duration) !== undefined
@@ -304,7 +305,9 @@ export function describeStats(stats: ResponseStats | undefined): string[] {
   if (stats.latency_ms !== undefined)
     lines.push(`Latency: ${(stats.latency_ms / 1000).toFixed(2)} s`);
   if (stats.ttft_ms !== undefined)
-    lines.push(`Time to first token: ${(stats.ttft_ms / 1000).toFixed(2)} s`);
+    lines.push(
+      `Before output: ${(stats.ttft_ms / 1000).toFixed(2)} s (loading the model and reading the prompt)`,
+    );
   if (stats.input_tokens !== undefined)
     lines.push(`Input tokens: ${stats.input_tokens}`);
   if (stats.output_tokens !== undefined)

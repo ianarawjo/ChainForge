@@ -251,7 +251,13 @@ export interface BaseLLMResponseObject {
 export interface ResponseStats {
   /** Wall-clock time to get the response. Responses returned together by one request each get that request's time. */
   latency_ms?: number;
-  /** Time until the first output token: loading the model plus reading the prompt. Only local servers that report it. */
+  /**
+   * Time before the model started writing its output, as the server reports
+   * it: loading the model if it wasn't loaded (Ollama) plus reading the prompt
+   * (Ollama, llama.cpp, WebLLM). Only local servers report it. Named `ttft`
+   * for time to first token, though it leaves out the network and the first
+   * token itself.
+   */
   ttft_ms?: number;
   /** Prompt tokens. When one request returned several responses, each gets the full prompt count. */
   input_tokens?: number;
