@@ -10,7 +10,9 @@ import {
   ecologitsModel,
   energyEstimator,
   extract_stats,
+  formatEnergy,
   formatEnergyRange,
+  formatStats,
   LATENCY_KEY,
   statsToMetavars,
 } from "../responseStats";
@@ -168,8 +170,9 @@ describe("energy estimates in extract_stats", () => {
       stat_est_energy_wh_max: 0.0236,
     });
     expect(describeStats(stats!)).toContain(
-      "Energy: 0.019–0.024 Wh (estimated by EcoLogits, not measured)",
+      "Energy: 20–24 mWh (estimated by EcoLogits, not measured)",
     );
+    expect(formatStats(stats!, true)).toBe("4.2 s · 71 tok/s · ⚡ ~22 mWh");
   });
 
   it("estimates a request once, and shares it between the responses it returned", () => {
@@ -229,11 +232,16 @@ describe("energy estimates in extract_stats", () => {
     expect(energyEstimator("llama3.2", LLMProvider.Ollama)).toBeUndefined();
   });
 
-  it("formats ranges and single values", () => {
-    expect(formatEnergyRange({ min: 0.2112, max: 0.5812 })).toBe(
-      "0.21–0.58 Wh",
-    );
-    expect(formatEnergyRange({ min: 0.232, max: 0.232 })).toBe("0.23 Wh");
+  it("formats energy in the unit that suits it", () => {
+    expect(formatEnergy(0.0078)).toBe("7.8 mWh");
+    expect(formatEnergy(0.02)).toBe("20 mWh");
+    expect(formatEnergy(0.00041)).toBe("0.41 mWh");
+    expect(formatEnergy(1.84)).toBe("1.8 Wh");
+    expect(formatEnergy(2500)).toBe("2.5 kWh");
+    // Both ends of a range share the larger's unit
+    expect(formatEnergyRange({ min: 0.0078, max: 0.02 })).toBe("7.8–20 mWh");
+    expect(formatEnergyRange({ min: 0.4, max: 1.2 })).toBe("0.4–1.2 Wh");
+    expect(formatEnergyRange({ min: 0.232, max: 0.232 })).toBe("230 mWh");
     expect(formatEnergyRange({ min: 12.4, max: 18.9 })).toBe("12–19 Wh");
   });
 });

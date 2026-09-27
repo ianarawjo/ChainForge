@@ -333,6 +333,11 @@ export function formatStats(
     parts.push(`${stats.output_tokens} tok`);
   if (stats.tokens_per_s !== undefined)
     parts.push(`${Math.round(stats.tokens_per_s)} tok/s`);
+  // The middle of the estimate's range (as EcoLogits' own mean); the tooltip has the range
+  if (stats.est_energy_wh !== undefined)
+    parts.push(
+      `⚡ ~${formatEnergy((stats.est_energy_wh.min + stats.est_energy_wh.max) / 2)}`,
+    );
   const summary = parts.join(" · ");
   return stats.averaged_over && summary ? `≈ ${summary}` : summary;
 }
@@ -383,16 +388,32 @@ export function formatCost(usd: number): string {
   return `$${Number(usd.toPrecision(3)).toFixed(digits).replace(/0+$/, "")}`;
 }
 
-/** An energy in Wh to two significant digits, e.g. "0.021 Wh", "1.8 Wh". */
-function formatWh(wh: number): string {
-  return wh === 0 ? "0" : String(Number(wh.toPrecision(2)));
+/** The unit that keeps an energy of `wh` Wh to a few digits: mWh below 1 Wh, kWh from 1,000. */
+function energyUnit(wh: number): [string, number] {
+  if (wh < 1) return ["mWh", 1000];
+  if (wh >= 1000) return ["kWh", 0.001];
+  return ["Wh", 1];
 }
 
-/** An estimated energy range, e.g. "0.21–0.58 Wh", or "0.23 Wh" when it isn't one. */
+/** A number to two significant digits, e.g. 7.8, 20, 0.53. */
+const twoDigits = (x: number) =>
+  x === 0 ? "0" : String(Number(x.toPrecision(2)));
+
+/** An energy given in Wh, in the unit that suits its size, e.g. "14 mWh", "1.8 Wh". */
+export function formatEnergy(wh: number): string {
+  const [unit, scale] = energyUnit(wh);
+  return `${twoDigits(wh * scale)} ${unit}`;
+}
+
+/**
+ * An estimated energy range given in Wh, both ends in the unit that suits
+ * the larger, e.g. "7.8–20 mWh", or "23 mWh" when it isn't a range.
+ */
 export function formatEnergyRange(range: { min: number; max: number }): string {
-  const min = formatWh(range.min);
-  const max = formatWh(range.max);
-  return min === max ? `${min} Wh` : `${min}–${max} Wh`;
+  const [unit, scale] = energyUnit(range.max);
+  const min = twoDigits(range.min * scale);
+  const max = twoDigits(range.max * scale);
+  return min === max ? `${min} ${unit}` : `${min}–${max} ${unit}`;
 }
 
 // The labs of OpenRouter model IDs that are EcoLogits providers
