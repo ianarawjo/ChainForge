@@ -255,4 +255,44 @@ describe("Ollama requests", () => {
     expect(first.status).toBe("rejected");
     expect(second.status).toBe("fulfilled");
   });
+
+  test("cancelling one waiting its turn leaves the queue at once", async () => {
+    // The first request takes a while; the second is cancelled while it waits
+    let finishFirst!: () => void;
+    const firstDone = new Promise<void>((r) => (finishFirst = r));
+    let running = 0;
+    let most = 0;
+    globalThis.fetch = jest.fn(async (_url: any, init: any) => {
+      running++;
+      most = Math.max(most, running);
+      if (JSON.parse(init.body).model === "slow") await firstDone;
+      running--;
+      return { text: async () => JSON.stringify({ response: "ok" }) };
+    }) as any;
+    const call = (model: string, cancel: () => boolean) =>
+      call_ollama_provider(
+        "Q",
+        "ollama",
+        1,
+        1.0,
+        { ...params(), ollamaModel: model, model_type: "text" },
+        cancel,
+      );
+    let cancelSecond = false;
+    let firstFinished = false;
+    const first = call("slow", () => false).then((r) => {
+      firstFinished = true;
+      return r;
+    });
+    const second = call("b", () => cancelSecond);
+    const third = call("c", () => false);
+    cancelSecond = true;
+    // Rejected within the cancel check's interval, while the first still runs
+    await expect(second).rejects.toBeInstanceOf(UserForcedPrematureExit);
+    expect(firstFinished).toBe(false);
+    finishFirst();
+    await first;
+    await third;
+    expect(most).toBe(1); // the third still waited for the first
+  });
 });

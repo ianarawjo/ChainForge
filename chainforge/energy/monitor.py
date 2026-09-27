@@ -45,6 +45,10 @@ TIMING_SLACK_S = 2.0
 # How often to check the power source and mode, which change idle power and
 # the energy a request takes (see EnergyMeter.conditions)
 CONDITIONS_EVERY_S = 10.0
+# And how often to refresh any that are slow to read (e.g. by running a
+# command), outside the lock; also at a request's start, if this long since
+REFRESH_CONDITIONS_EVERY_S = 30.0
+REFRESH_AT_REQUEST_AFTER_S = 2.0
 # Idle power is measured afresh when these change (heat is only recorded:
 # a long run warming the chip would otherwise keep discarding it)
 BASELINE_CONDITIONS = ("power_source", "power_mode")
@@ -68,6 +72,7 @@ class EnergyMonitor:
         self._conditions_checked = -math.inf
         self._conditions_since = -math.inf  # when the current power settings began
         self._request_conditions: Dict[str, Dict[str, str]] = {}
+        self._refreshed_at = -math.inf
         self._thread: Optional[threading.Thread] = None
         self._stopped = False
 
@@ -83,17 +88,29 @@ class EnergyMonitor:
         idle power is measured afresh from here on."""
         self._conditions_checked = now
         try:
-            conditions = self.meter.conditions()
+            read = self.meter.conditions()
         except Exception:
-            conditions = {}
+            read = {}
+        # A value that couldn't be read isn't a change: the last one stands
+        conditions = dict(self._conditions)
+        conditions.update({k: v for k, v in read.items() if v and v != "unknown"})
         key = lambda c: tuple(c.get(k) for k in BASELINE_CONDITIONS)  # noqa: E731
-        if key(conditions) != key(self._conditions):
-            if self._conditions:  # a change, not the first check
-                self._conditions_since = now
-            self._conditions = conditions
-        else:
-            self._conditions = conditions  # heat may have changed
+        if key(conditions) != key(self._conditions) and self._conditions:
+            self._conditions_since = now  # a change, not the first check
+        self._conditions = conditions
         return conditions
+
+    def _refresh_conditions(self, if_older_than: float) -> None:
+        """Updates the meter's slow conditions (e.g. pmset's), outside the
+        lock, so a slow command can't hold up readings or requests."""
+        now = self._clock()
+        if now - self._refreshed_at < if_older_than:
+            return
+        self._refreshed_at = now
+        try:
+            self.meter.refresh_conditions()
+        except Exception:
+            pass
 
     def _sample_locked(self) -> None:
         now = self._clock()
@@ -123,6 +140,9 @@ class EnergyMonitor:
 
     def start(self) -> None:
         """Starts taking readings in the background, if it hasn't already."""
+        # Before the first reading, so it's under the right power mode
+        # (rate-limited: this is called on every energy request)
+        self._refresh_conditions(REFRESH_CONDITIONS_EVERY_S)
         with self._lock:
             if self._thread is not None:
                 return
@@ -142,6 +162,7 @@ class EnergyMonitor:
             self._wake.clear()
             if self._stopped:
                 break
+            self._refresh_conditions(REFRESH_CONDITIONS_EVERY_S)
             try:
                 self.sample()
             except Exception:  # a failed reading shouldn't stop the monitor
@@ -151,6 +172,8 @@ class EnergyMonitor:
 
     def begin(self) -> str:
         """Marks a request as started. Returns its id, for `end()`."""
+        # So a power mode just switched to is what it's recorded under
+        self._refresh_conditions(REFRESH_AT_REQUEST_AFTER_S)
         with self._lock:
             self._sample_locked()
             request = str(next(self._ids))

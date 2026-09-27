@@ -464,6 +464,12 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const [graphType, setGraphType] = useState(
       GRAPH_OPTIONS.find((o) => o.key === data?.graph_type) ?? GRAPH_OPTIONS[0],
     );
+    // ...and followed if the node's data changes (e.g. a flow loaded in its place)
+    useEffect(() => {
+      const saved = GRAPH_OPTIONS.find((o) => o.key === data?.graph_type);
+      if (saved)
+        setGraphType((prev) => (prev.key === saved.key ? prev : saved));
+    }, [data?.graph_type]);
     // Called while replotting, to force the graph type some data needs. The
     // replot runs again when the graph type changes, so this must leave state
     // alone when that type is already selected; otherwise the plot redraws in
@@ -1680,13 +1686,21 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const setPlotDivRef = useCallback((elem: HTMLDivElement | null) => {
       plotDivRef.current = elem;
       setPlotDiv(elem);
-      // The size it was last resized to, saved with the node
-      const size = data?.plot_size;
-      if (elem && size && size.width > 0 && size.height > 0) {
-        elem.style.width = `${size.width}px`;
-        elem.style.height = `${size.height}px`;
-      }
     }, []);
+    // The size it was last resized to, saved with the node: when it loads,
+    // and whenever the node's data changes (e.g. a flow loaded in its place)
+    const savedWidth = data?.plot_size?.width;
+    const savedHeight = data?.plot_size?.height;
+    useEffect(() => {
+      if (!plotDiv || !savedWidth || !savedHeight) return;
+      if (
+        plotDiv.offsetWidth === savedWidth &&
+        plotDiv.offsetHeight === savedHeight
+      )
+        return;
+      plotDiv.style.width = `${savedWidth}px`;
+      plotDiv.style.height = `${savedHeight}px`;
+    }, [plotDiv, savedWidth, savedHeight]);
     const savePlotSize = useCallback(() => {
       const el = plotDivRef.current;
       if (id && el)

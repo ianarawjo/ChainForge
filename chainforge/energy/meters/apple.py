@@ -10,7 +10,6 @@ not a wall-plug measurement: the screen, fans and SSD aren't in them.
 import ctypes
 import ctypes.util
 import subprocess
-import time
 from typing import Dict, List, Optional
 
 from chainforge.energy.meters.base import EnergyMeter
@@ -87,10 +86,8 @@ class AppleSiliconMeter(EnergyMeter):
         self._subscription = ior.IOReportCreateSubscription(None, desired, ctypes.byref(self._subscribed), 0, None)
         if not self._subscription:
             raise RuntimeError("Could not subscribe to this Mac's energy counters.")
-        self._prev = ior.IOReportCreateSamples(self._subscription, self._subscribed, None)
-        self._totals = {c: 0.0 for c in _CHANNELS.values()}
         # Check the channels are there and in units we know
-        found = self._delta_joules(self._prev, self._prev)
+        found = self.read_counters()
         if not found:
             raise RuntimeError("This Mac's energy counters are in a form ChainForge doesn't know.")
         self._components = [c for c in _CHANNELS.values() if c in found]
@@ -109,16 +106,18 @@ class AppleSiliconMeter(EnergyMeter):
         ok = self._cf.CFStringGetCString(ref, buf, len(buf), _UTF8)
         return buf.value.decode() if ok else ""
 
-    def _delta_joules(self, prev, cur) -> Dict[str, float]:
-        """Joules per component between two samples. The subscription has
-        only our few channels, so reading each one's name is cheap."""
+    def read_counters(self) -> Dict[str, float]:
+        """Joules per component since the Mac started: the counters in a
+        sample are running totals already. Taking the sample is the ~3 ms
+        cost of a reading; the subscription has only our few channels, so
+        reading each one's name and value is cheap."""
         cf, ior = self._cf, self._ior
-        delta = ior.IOReportCreateSamplesDelta(prev, cur, None)
-        if not delta:
+        sample = ior.IOReportCreateSamples(self._subscription, self._subscribed, None)
+        if not sample:
             return {}
         try:
             out: Dict[str, float] = {}
-            arr = cf.CFDictionaryGetValue(delta, self._key)
+            arr = cf.CFDictionaryGetValue(sample, self._key)
             for i in range(cf.CFArrayGetCount(arr) if arr else 0):
                 ch = cf.CFArrayGetValueAtIndex(arr, i)
                 comp = _CHANNELS.get(self._pystr(ior.IOReportChannelGetChannelName(ch)))
@@ -127,7 +126,7 @@ class AppleSiliconMeter(EnergyMeter):
                     out[comp] = out.get(comp, 0.0) + ior.IOReportSimpleGetIntegerValue(ch, 0) * scale
             return out
         finally:
-            cf.CFRelease(delta)
+            cf.CFRelease(sample)
 
     def components(self) -> List[str]:
         return list(self._components)
@@ -141,23 +140,23 @@ class AppleSiliconMeter(EnergyMeter):
             return {}
 
     def read(self) -> Dict[str, float]:
-        cur = self._ior.IOReportCreateSamples(self._subscription, self._subscribed, None)
-        if cur:
-            for comp, joules in self._delta_joules(self._prev, cur).items():
-                if joules > 0:
-                    self._totals[comp] += joules
-            self._cf.CFRelease(self._prev)
-            self._prev = cur
-        return {c: self._totals[c] for c in self._components}
+        return self.read_counters()
+
+    def refresh_conditions(self) -> None:
+        if self._conditions is not None:
+            try:
+                self._conditions.refresh_pmset()
+            except Exception:
+                pass
 
 
 class _MacConditions:
     """Power source, power mode and thermal state, from macOS itself: IOKit
     and NSProcessInfo (microseconds), and pmset for High Power Mode, which
-    nothing else reports (milliseconds, so at most every 30 s)."""
+    nothing else reports (milliseconds, so refreshed separately, outside the
+    monitor's lock: see refresh_pmset)."""
 
     _THERMAL = ["nominal", "fair", "serious", "critical"]
-    _PMSET_EVERY_S = 30.0
 
     def __init__(self):
         objc = ctypes.CDLL(ctypes.util.find_library("objc"))
@@ -180,7 +179,6 @@ class _MacConditions:
         self._iokit.IOPSGetProvidingPowerSourceType.argtypes = [_CFRef]
         self._cf, _ = _load()
         self._pmset_mode: Optional[str] = None
-        self._pmset_at = float("-inf")
 
     def _power_source(self) -> str:
         info = self._iokit.IOPSCopyPowerSourcesInfo()
@@ -195,24 +193,24 @@ class _MacConditions:
             self._cf.CFRelease(info)
         return {"AC Power": "AC power", "Battery Power": "battery", "UPS Power": "UPS"}.get(kind, kind or "unknown")
 
-    def _pmset_power_mode(self, now: float) -> Optional[str]:
-        """High Power Mode, from pmset's powermode (0 automatic, 1 low, 2 high)."""
-        if now - self._pmset_at >= self._PMSET_EVERY_S:
-            self._pmset_at = now
-            try:
-                out = subprocess.run(["pmset", "-g"], capture_output=True, text=True, timeout=5).stdout
-                modes = {"0": "Automatic", "1": "Low Power", "2": "High Power"}
-                self._pmset_mode = next(
-                    (modes.get(line.split()[-1]) for line in out.splitlines()
-                     if line.strip().startswith("powermode")), None)
-            except (OSError, subprocess.SubprocessError, IndexError):
-                self._pmset_mode = None
-        return self._pmset_mode
+    def refresh_pmset(self) -> None:
+        """High Power Mode, from pmset's powermode (0 automatic, 1 low, 2 high).
+        On failure, the last answer stands: a failed check isn't a change."""
+        try:
+            out = subprocess.run(["pmset", "-g"], capture_output=True, text=True, timeout=5).stdout
+        except (OSError, subprocess.SubprocessError):
+            return
+        modes = {"0": "Automatic", "1": "Low Power", "2": "High Power"}
+        for line in out.splitlines():
+            parts = line.split()
+            if parts and parts[0] == "powermode" and parts[-1] in modes:
+                self._pmset_mode = modes[parts[-1]]
+                return
 
     def read(self) -> Dict[str, str]:
         low = self._bool_msg(self._process_info, self._low_power_sel)
         thermal = self._long_msg(self._process_info, self._thermal_sel)
-        mode = "Low Power" if low else (self._pmset_power_mode(time.monotonic()) or "Automatic")
+        mode = "Low Power" if low else (self._pmset_mode or "Automatic")
         if mode == "Low Power" and not low:
             mode = "Automatic"  # pmset's setting may be for the other power source
         return {

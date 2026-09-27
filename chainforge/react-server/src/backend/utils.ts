@@ -2404,16 +2404,34 @@ const ollamaQueues = new Map<string, Promise<unknown>>();
 async function oneOllamaRequestAtATime<T>(
   url: string,
   run: () => Promise<T>,
+  signal?: AbortSignal,
 ): Promise<T> {
   const key = isLoopbackUrl(url) ? "this machine" : url;
-  const before = ollamaQueues.get(key) ?? Promise.resolve();
-  const mine = before.catch(() => undefined).then(run);
-  ollamaQueues.set(key, mine);
+  const before = (ollamaQueues.get(key) ?? Promise.resolve()).catch(
+    () => undefined,
+  );
+  let finished!: () => void;
+  const mine = new Promise<void>((resolve) => (finished = resolve));
+  // The next request waits for this one and every one before it, even if
+  // this one is cancelled while still waiting its turn
+  const tail = before.then(() => mine);
+  ollamaQueues.set(key, tail);
   try {
-    return await mine;
+    // Cancelling leaves the queue at once, rather than when its turn comes
+    await new Promise<void>((resolve, reject) => {
+      const onAbort = () => reject(new UserForcedPrematureExit());
+      if (signal?.aborted) return onAbort();
+      signal?.addEventListener("abort", onAbort, { once: true });
+      before.then(() => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve();
+      });
+    });
+    return await run();
   } finally {
+    finished();
     // Forget the queue once it's empty
-    if (ollamaQueues.get(key) === mine) ollamaQueues.delete(key);
+    if (ollamaQueues.get(key) === tail) ollamaQueues.delete(key);
   }
 }
 
@@ -2577,35 +2595,39 @@ export async function call_ollama_provider(
       // oneOllamaRequestAtATime). Where this machine's energy can be measured
       // (Ollama running here too), the request is marked as started and
       // finished, and the reply carries its energy above idle.
-      const reply = await oneOllamaRequestAtATime(url, async () => {
-        if (should_cancel && should_cancel())
-          throw new UserForcedPrematureExit();
-        const energyId = await beginEnergy(url);
-        const start = performance.now();
-        let reply: Dict;
-        let repliedAt: number;
-        try {
-          const response = await fetch(url, {
-            method: "POST",
-            body: JSON.stringify(query),
-            signal: controller.signal,
-          });
-          const body = await response.text();
-          // How long the request took; Ollama replies once the whole response is ready
-          repliedAt = performance.now();
-          reply = parse_response(body, repliedAt - start);
-        } catch (err) {
-          endEnergy(energyId, performance.now()); // drops the request
-          throw err;
-        }
-        const energy = await endEnergy(
-          energyId,
-          repliedAt,
-          ollamaTimings(reply),
-        );
-        if (energy) reply[ENERGY_KEY] = energy;
-        return reply;
-      });
+      const reply = await oneOllamaRequestAtATime(
+        url,
+        async () => {
+          if (should_cancel && should_cancel())
+            throw new UserForcedPrematureExit();
+          const energyId = await beginEnergy(url);
+          const start = performance.now();
+          let reply: Dict;
+          let repliedAt: number;
+          try {
+            const response = await fetch(url, {
+              method: "POST",
+              body: JSON.stringify(query),
+              signal: controller.signal,
+            });
+            const body = await response.text();
+            // How long the request took; Ollama replies once the whole response is ready
+            repliedAt = performance.now();
+            reply = parse_response(body, repliedAt - start);
+          } catch (err) {
+            endEnergy(energyId, performance.now()); // drops the request
+            throw err;
+          }
+          const energy = await endEnergy(
+            energyId,
+            repliedAt,
+            ollamaTimings(reply),
+          );
+          if (energy) reply[ENERGY_KEY] = energy;
+          return reply;
+        },
+        controller.signal,
+      );
       responses.push(reply);
     }
   } catch (err) {

@@ -32,5 +32,10 @@ class EnergyMeter(ABC):
         Power", "thermal": "nominal"}: a lower power mode runs the chip at
         lower clock speeds and voltages, using less energy per token but
         taking longer. Empty if the meter can't tell. Must be cheap: it's
-        checked every few seconds."""
+        checked every few seconds, while the monitor holds its lock."""
         return {}
+
+    def refresh_conditions(self) -> None:
+        """Updates any conditions too slow to read in `conditions()` (e.g.
+        by running a command), for it to report. Called now and then, and at
+        each request's start, outside the monitor's lock."""

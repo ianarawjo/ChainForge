@@ -362,30 +362,44 @@ class TestSamplerThread:
         monkeypatch.setattr(mod, "IDLE_INTERVAL_S", 0.2)
         monkeypatch.setattr(mod, "DORMANT_INTERVAL_S", 0.5)
 
+    @staticmethod
+    def wait_until(condition, timeout=5.0):
+        """Waits for `condition()`, with a generous deadline: CI runners can
+        be slow to schedule threads."""
+        import time
+        deadline = time.monotonic() + timeout
+        while not condition():
+            if time.monotonic() > deadline:
+                return False
+            time.sleep(0.005)
+        return True
+
     def test_reads_often_once_a_request_begins(self, fast):
         import time
         meter = self.CountingMeter()
         monitor = EnergyMonitor(meter)
         monitor.start()
         try:
+            # Idle: every 0.2 s, so no more than a few in 0.1 s (however slow the runner)
             time.sleep(0.1)
-            idle_reads = meter.reads
-            assert idle_reads <= 3  # every 0.2 s
+            assert meter.reads <= 3
+            before = meter.reads
+            began = time.monotonic()
             monitor.begin()  # wakes the thread at once
-            time.sleep(0.15)
-            assert meter.reads - idle_reads >= 5  # every 0.01 s
+            assert self.wait_until(lambda: meter.reads - before >= 20)
+            # 20 reads at the busy rate (0.01 s) take ~0.2 s; at the idle
+            # rate they'd take 4 s
+            assert time.monotonic() - began < 2.0
         finally:
             monitor.stop()
 
     def test_keeps_going_after_a_failed_reading(self, fast):
-        import time
         meter = self.CountingMeter(fail_on={3})
         monitor = EnergyMonitor(meter)
         monitor.start()
         try:
             monitor.begin()
-            time.sleep(0.15)
-            assert meter.reads > 5
+            assert self.wait_until(lambda: meter.reads > 10)
             assert monitor._thread.is_alive()
         finally:
             monitor.stop()
@@ -402,6 +416,73 @@ class TestSamplerThread:
         reads = meter.reads
         time.sleep(0.05)
         assert meter.reads == reads
+
+
+class TestSlowConditions:
+    """Conditions that are slow to read (the Mac's pmset) are refreshed
+    outside the monitor's lock, and a value that couldn't be read isn't a
+    change of power settings."""
+
+    class SlowMeter(EnergyMeter):
+        name = "Slow meter"
+
+        def __init__(self):
+            import threading
+            self.cond = {"power_source": "AC power", "power_mode": "Automatic"}
+            self.refreshes = 0
+            self.release = threading.Event()
+            self.refreshing = threading.Event()
+
+        def components(self):
+            return ["gpu"]
+
+        def read(self):
+            return {"gpu": 1.0}
+
+        def conditions(self):
+            return dict(self.cond)
+
+        def refresh_conditions(self):
+            self.refreshes += 1
+            self.refreshing.set()
+            self.release.wait(5.0)  # e.g. pmset taking its time
+
+    def test_a_slow_refresh_doesnt_hold_up_readings_or_requests(self):
+        import threading
+        meter = self.SlowMeter()
+        monitor = EnergyMonitor(meter)
+        t = threading.Thread(target=monitor._refresh_conditions, args=(0.0,))
+        t.start()
+        try:
+            assert meter.refreshing.wait(5.0)
+            done = threading.Event()
+            threading.Thread(target=lambda: (monitor.sample(), done.set())).start()
+            assert done.wait(1.0)  # not waiting for the refresh
+        finally:
+            meter.release.set()
+            t.join()
+
+    def test_refreshed_at_a_requests_start_but_not_for_every_one_in_a_burst(self):
+        meter = self.SlowMeter()
+        meter.release.set()
+        monitor = EnergyMonitor(meter)
+        for _ in range(5):
+            monitor.cancel(monitor.begin())
+        assert meter.refreshes == 1
+
+    def test_a_value_that_couldnt_be_read_isnt_a_change(self):
+        clock = FakeClock()
+        meter = FakeMeter(clock, lambda t: {"gpu": 1.0},
+                          conditions={"power_source": "AC power", "power_mode": "High Power"})
+        monitor = EnergyMonitor(meter, clock=clock)
+        monitor.sample()
+        monitor._check_conditions_locked(clock.now)
+        since = monitor._conditions_since
+        for failed in ({}, {"power_source": "unknown", "power_mode": "High Power"}):
+            meter.cond = failed
+            conditions = monitor._check_conditions_locked(clock.now + 1)
+            assert conditions == {"power_source": "AC power", "power_mode": "High Power"}
+        assert monitor._conditions_since == since
 
 
 class TestPowerConditions:

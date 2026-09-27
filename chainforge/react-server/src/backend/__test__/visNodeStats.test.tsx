@@ -437,4 +437,39 @@ describe("Vis Node plotting response stats", () => {
       }),
     });
   });
+
+  test("follows its saved chart type and size when the node's data changes", async () => {
+    const view = (data: any) => (
+      <ColorSchemeProvider
+        colorScheme="dark"
+        toggleColorScheme={() => undefined}
+      >
+        <MantineProvider>
+          <VisView responses={responses} id="vis2" data={data} />
+        </MantineProvider>
+      </ColorSchemeProvider>
+    );
+    const base = { selected_eval_res_var: "__stat_est_energy_mwh" };
+    const { rerender } = render(
+      view({
+        ...base,
+        graph_type: "bar",
+        plot_size: { width: 300, height: 200 },
+      }),
+    );
+    const plotDiv = screen.getByTestId("plot").parentElement as HTMLElement;
+    expect(plotDiv.style.width).toBe("300px");
+    expect(screen.getByText("Bar Chart")).toBeTruthy();
+    // E.g. a saved flow loaded in its place, without remounting the node
+    rerender(
+      view({
+        ...base,
+        graph_type: "box",
+        plot_size: { width: 410, height: 260 },
+      }),
+    );
+    expect(await screen.findByText("Box & Whiskers")).toBeTruthy();
+    expect(plotDiv.style.width).toBe("410px");
+    expect(plotDiv.style.height).toBe("260px");
+  });
 });
