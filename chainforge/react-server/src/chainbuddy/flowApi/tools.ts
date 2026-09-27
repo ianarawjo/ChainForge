@@ -59,21 +59,33 @@ export function createFlowTools({
     {
       name: "list_models",
       description:
-        "Lists the models a Prompt Node can use right now, with the IDs to put in its models setting.",
+        "Lists the models a Prompt Node can use right now, from the providers the user has set up, with the IDs to put in its models setting. Also names the providers that aren't set up.",
       parameters: { type: "object", properties: {} },
       run: () => {
         const models = canvas.listModels();
         const ready = models.filter((m) => m.ready);
+        // Small in-browser models only when there's nothing else.
+        const preferred = ready.filter((m) => !m.fallback);
+        const offered = preferred.length > 0 ? preferred : ready;
+        const setUp = new Set(ready.map((m) => m.provider));
+        const notSetUp = Array.from(
+          new Set(
+            models.filter((m) => !setUp.has(m.provider)).map((m) => m.provider),
+          ),
+        );
         return {
-          models: ready.map(({ id, name, provider }) => ({
+          models: offered.map(({ id, name, provider }) => ({
             id,
             name,
             provider,
           })),
+          not_set_up: notSetUp,
           note:
-            ready.length === 0
+            offered.length === 0
               ? "No models are set up. Ask the user to add an API key in Settings, or to start Ollama."
-              : `${models.length - ready.length} more models are in ChainForge's menu but not set up.`,
+              : preferred.length === 0
+                ? "Only small models that run in the browser are set up. Say so, and that adding an API key in Settings gives more capable ones."
+                : "Use these. If the user asks for a provider in not_set_up, say it needs its API key added in Settings, rather than substituting another.",
         };
       },
     },

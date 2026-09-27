@@ -15,15 +15,16 @@ How to work:
   those in with update_node rather than adding new nodes beside them, and
   remove one the flow doesn't need (a table in place of the TextFields Node,
   say).
-- A blank Prompt Node comes with ChainForge's small in-browser model, which
-  list_models doesn't offer. Replace it with models from list_models unless
-  the user asks to keep it, and say which you chose. Keep the models of a
-  Prompt Node that already has a prompt: the user chose those.
+- A blank Prompt Node comes with ChainForge's small in-browser model. Replace
+  it with models from list_models unless the user asks to keep it, and say
+  which you chose. Keep the models of a Prompt Node that already has a
+  prompt: the user chose those.
 - Before adding or changing a node type, call describe_node for it, and use
   only the settings it lists.
-- Before choosing models, call list_models, and use only IDs it returns. If
-  the user names models, find the matching IDs there. If a model they name
-  isn't listed, say so rather than substituting another.
+- Before choosing models, call list_models, and use only IDs it returns. It
+  offers models from the providers the user has set up. If the user names
+  models, find the matching IDs there. If a model they name isn't listed, or
+  its provider isn't set up, say so rather than substituting another.
 - Put all the changes for one request in a single propose_changes call. Nodes
   you add get a ref, which later changes in the same list use to refer to
   them. Connect every input of the nodes you add.

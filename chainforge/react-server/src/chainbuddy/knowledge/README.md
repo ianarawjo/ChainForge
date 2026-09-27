@@ -56,7 +56,7 @@ canvas, your files, or the internet.
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
 | `get_flow`        | Reads a summary of the canvas: nodes, their settings, and connections                                                                     | No                           |
 | `describe_node`   | Reads one node type's file from this folder                                                                                               | No                           |
-| `list_models`     | Lists the models you can use, as they appear in ChainForge's model menu                                                                   | No                           |
+| `list_models`     | Lists the models you can use: those from the providers you've set up, as ChainForge's model menu lists them                               | No                           |
 | `propose_changes` | Proposes adding, editing, connecting, or removing nodes, as one change set. Refused unless `get_flow` was called since your last message. | Yes, before anything changes |
 
 ## Rules
@@ -73,7 +73,9 @@ Each rule below is enforced in code, not left to the model.
    and only connect outputs to inputs that accept what they give. Any other
    change is refused before it reaches you. (`flowApi/validate.ts`)
 3. **ChainBuddy never sees API keys.** It reads only the settings listed in
-   its files, and none of them hold keys. (`nodes/`)
+   its files, and none of them hold keys. It is told only which providers
+   have their keys set, in Settings or as environment variables.
+   (`nodes/`, `adapters/models.ts`)
 4. **Deleting a node deletes its results.** A change set that removes a node
    says so, and names the node. (`flowApi/describe.ts`)
 

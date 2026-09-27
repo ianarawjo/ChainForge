@@ -314,6 +314,40 @@ export enum LLMProvider {
 }
 
 /**
+ * The API keys each provider's models need, all of them, by their names in
+ * ChainForge's settings (keys set as environment variables arrive under the
+ * same names). Providers not listed need none: in-browser models, and custom
+ * providers. Ollama needs its server running instead.
+ */
+export const PROVIDER_API_KEYS: Partial<Record<LLMProvider, string[]>> = {
+  [LLMProvider.OpenAI]: ["OpenAI"],
+  [LLMProvider.Azure_OpenAI]: ["Azure_OpenAI", "Azure_OpenAI_Endpoint"],
+  [LLMProvider.Anthropic]: ["Anthropic"],
+  [LLMProvider.Google]: ["Google"],
+  [LLMProvider.HuggingFace]: ["HuggingFace"],
+  [LLMProvider.Bedrock]: [
+    "AWS_Access_Key_ID",
+    "AWS_Secret_Access_Key",
+    "AWS_Region",
+  ],
+  [LLMProvider.Together]: ["Together"],
+  [LLMProvider.DeepSeek]: ["DeepSeek"],
+  [LLMProvider.MiniMax]: ["MiniMax"],
+  [LLMProvider.OpenRouter]: ["OpenRouter"],
+};
+
+/** Whether every API key a provider needs is set (not what they are). */
+export function hasAPIKeysFor(
+  provider: LLMProvider,
+  apiKeys: Record<string, string | null | undefined>,
+): boolean {
+  return (PROVIDER_API_KEYS[provider] ?? []).every((name) => {
+    const key = apiKeys[name];
+    return typeof key === "string" && key.trim() !== "";
+  });
+}
+
+/**
  * Given an LLM, return what the model provider is.
  * @param llm the specific large language model
  * @returns an `LLMProvider` describing what provider hosts the model

@@ -201,10 +201,13 @@ export function checkChanges(
           kind.missing?.(node.settings) &&
           settings.models === undefined &&
           current.length > 0 &&
-          current.every((m) => !knownModels.has(m.id))
+          current.every((m) => {
+            const info = knownModels.get(m.id);
+            return !info || info.fallback;
+          })
         )
           problems.push(
-            `${at}: ${id} still has ${current.map((m) => m.name).join(", ")}, the in-browser model a new Prompt Node starts with, which list_models doesn't offer. Give models: ones from list_models, or the same one to keep it if the user asked for it.`,
+            `${at}: ${id} still has ${current.map((m) => m.name).join(", ")}, the small in-browser model a new Prompt Node starts with. Give models: ones from list_models, or the same one to keep it if the user asked for it.`,
           );
         if (problems.length === before) {
           const problem = kind.checkAll?.(
