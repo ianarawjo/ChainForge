@@ -126,18 +126,18 @@ mockNodes.push({
 
 const lastPlot = () => plots[plots.length - 1];
 
-const renderVis = async () => {
+const renderVis = async (resps: LLMResponse[] = responses) => {
   const ref = React.createRef<any>();
   plots.length = 0;
   render(
     <ColorSchemeProvider colorScheme="dark" toggleColorScheme={() => undefined}>
       <MantineProvider>
-        <VisView ref={ref} responses={responses} />
+        <VisView ref={ref} responses={resps} />
       </MantineProvider>
     </ColorSchemeProvider>,
   );
   await act(async () => {
-    ref.current.resetControls(responses);
+    ref.current.resetControls(resps);
   });
   return ref;
 };
@@ -215,13 +215,56 @@ describe("Vis Node plotting response stats", () => {
     expect(screen.getByTestId("plot").parentElement?.contains(note)).toBe(
       false,
     );
-    fireEvent.mouseEnter(note);
-    const details = await screen.findByText(/EcoLogits has no estimates/);
-    expect(details.textContent).toContain("for models DeepSeek,");
-    expect(details.textContent).toContain(
-      "Some responses from Haiku have no estimate",
+    // The details are the note's description, for screen readers...
+    const trigger = note.closest("[aria-describedby]") as HTMLElement;
+    const details = document.getElementById(
+      trigger.getAttribute("aria-describedby") as string,
+    )?.textContent;
+    expect(details).toContain(
+      "EcoLogits has no estimates for models DeepSeek,",
     );
-    expect(details.textContent).not.toMatch(/models[^.]*Haiku/);
+    expect(details).toContain("Some responses from Haiku have no estimate");
+    expect(details).not.toMatch(/models[^.]*Haiku/);
+    // ...and a tooltip, which keyboard users open by focusing the note
+    expect(trigger.tabIndex).toBe(0);
+    fireEvent.focus(trigger);
+    expect((await screen.findByRole("tooltip")).textContent).toBe(details);
+  });
+
+  test("finds models inside a group of models", async () => {
+    mockNodes.push({
+      id: "grouped",
+      data: {
+        llms: [
+          {
+            group: "Others",
+            items: [spec("Grok", "openrouter/x-ai/grok-4.6")],
+          },
+        ],
+      },
+    });
+    try {
+      await renderVis([
+        ...responses,
+        respObj("Grok", "openrouter/x-ai/grok-4.6", [
+          { latency_ms: 500, output_tokens: 40 },
+        ]),
+      ]);
+      fireEvent.change(xAxisSelect(), {
+        target: { value: "__stat_est_energy_mwh" },
+      });
+      const note = await screen.findByText(
+        "Some estimates could not be shown.",
+      );
+      const trigger = note.closest("[aria-describedby]") as HTMLElement;
+      expect(
+        document.getElementById(
+          trigger.getAttribute("aria-describedby") as string,
+        )?.textContent,
+      ).toContain("for models DeepSeek, Grok,");
+    } finally {
+      mockNodes.pop();
+    }
   });
 
   test("hovering a box shows one summary on its median, not each of its stats", async () => {

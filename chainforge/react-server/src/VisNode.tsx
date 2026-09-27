@@ -1,4 +1,5 @@
 import React, {
+  useId,
   useMemo,
   useState,
   useEffect,
@@ -185,33 +186,45 @@ const boxSummaryTrace = (
 
 /**
  * The model specs the flow's nodes choose (e.g. a Prompt Node's), by their
- * nicknames, which is how responses name the model that gave them. A
- * nickname given to two different models maps to undefined.
+ * nicknames, which is how responses name the model that gave them. Looks in
+ * nested lists too, e.g. a group of models' items. A nickname given to two
+ * different models maps to undefined.
  */
 const modelSpecsByNickname = (): Map<string, LLMSpec | undefined> => {
   const specs = new Map<string, LLMSpec | undefined>();
+  const visit = (value: unknown, depth: number) => {
+    if (depth > 4 || value === null || typeof value !== "object") return;
+    if (Array.isArray(value)) {
+      value.forEach((item) => visit(item, depth + 1));
+      return;
+    }
+    const item = value as Dict;
+    if (typeof item.name === "string" && typeof item.model === "string") {
+      const prev = specs.get(item.name);
+      specs.set(
+        item.name,
+        specs.has(item.name) && prev?.model !== item.model
+          ? undefined
+          : (item as LLMSpec),
+      );
+    } else if (Array.isArray(item.items)) visit(item.items, depth + 1); // a group
+  };
   (useStore.getState().nodes ?? []).forEach((node) =>
     Object.values(node.data ?? {}).forEach((value) => {
-      if (!Array.isArray(value)) return;
-      value.forEach((item) => {
-        if (
-          item &&
-          typeof item === "object" &&
-          typeof item.name === "string" &&
-          typeof item.model === "string"
-        ) {
-          const prev = specs.get(item.name);
-          specs.set(
-            item.name,
-            specs.has(item.name) && prev?.model !== item.model
-              ? undefined
-              : (item as LLMSpec),
-          );
-        }
-      });
+      if (Array.isArray(value)) visit(value, 0);
     }),
   );
   return specs;
+};
+
+/** Hides text on screen while leaving it to screen readers. */
+const visuallyHidden: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
 };
 
 /** The name of the model that gave a response. */
@@ -490,6 +503,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const responses = statsView?.responses ?? inputResponses;
     const metricName = selectedStat?.label ?? selectedEvalResVar;
     const isEnergy = selectedStat?.key === "__stat_est_energy_mwh";
+    const omittedNoteId = useId();
 
     // Why some responses aren't in a plot of a stat, for the note below it.
     // For energy, only the models EcoLogits doesn't cover are its doing;
@@ -1774,8 +1788,12 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             withArrow
             withinPortal
             position="bottom-start"
+            // Keyboard users reach the details by focusing the note
+            events={{ hover: true, focus: true, touch: true }}
           >
             <div
+              tabIndex={0}
+              aria-describedby={omittedNoteId}
               style={{
                 ...smallTextStyle,
                 marginTop: "4px",
@@ -1795,6 +1813,12 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 : "Some values could not be shown."}
             </div>
           </Tooltip>
+        ) : null}
+        {/* The details for screen readers, whether or not the tooltip is open */}
+        {omittedNote ? (
+          <span id={omittedNoteId} style={visuallyHidden}>
+            {omittedNote}
+          </span>
         ) : null}
       </>
     );

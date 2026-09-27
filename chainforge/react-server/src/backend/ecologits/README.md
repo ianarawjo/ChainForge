@@ -11,7 +11,17 @@ It is an estimate, not a measurement. EcoLogits models each request from:
 
 It ignores input tokens. For how, see [EcoLogits' methodology](https://ecologits.ai/latest/methodology/llm_inference/).
 
-It covers what EcoLogits covers: OpenAI, Anthropic, Google Gemini and Hugging Face models, plus OpenRouter models from those labs or with a Hugging Face ID. Models it doesn't list, and local models (Ollama, LM Studio, etc.), have no estimate. A laptop isn't a data centre.
+Which responses get an estimate (see `ecologitsModel` in `../responseStats.ts`):
+
+- **Covered:** models EcoLogits lists from its providers, reached through ChainForge's OpenAI, Anthropic, Google Gemini or Hugging Face providers, or through OpenRouter. On OpenRouter these are models from OpenAI, Anthropic, Google, Mistral and Cohere, or models with a Hugging Face ID. Names are matched exactly, allowing only for case and "." for "-" (OpenRouter's "claude-sonnet-4.5" is EcoLogits' "claude-sonnet-4-5").
+- **Not covered:**
+  - models EcoLogits doesn't list, e.g. ones released after the pinned release;
+  - ChainForge's Azure OpenAI, Amazon Bedrock, Together, DeepSeek and MiniMax providers, and custom providers;
+  - OpenAI models when the OpenAI base URL setting points at another server, since the estimate would be for OpenAI's data centres;
+  - local models (Ollama, LM Studio, llama.cpp, WebLLM, etc.): EcoLogits models data-centre GPUs, and a laptop isn't a data centre.
+- **Per response:** a response also needs its output token count and latency. Responses collected before ChainForge estimated energy have no estimate.
+
+Where some responses have no estimate, the Vis Node leaves them out of energy plots and says so under the plot.
 
 ## What's here
 
