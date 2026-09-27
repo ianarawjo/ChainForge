@@ -49,6 +49,7 @@ import {
   IconChartBar,
   IconChartHistogram,
   IconBlur,
+  IconChartArea,
 } from "@tabler/icons-react";
 import {
   AIGenPlotPopover,
@@ -161,7 +162,7 @@ const castEvalScoreToNum = (score: EvaluationScore): number => {
  * hover. Plotly's own hover over a box labels each of its stats separately
  * (min, fences, quartiles, median, max), piled on top of each other, and
  * can't be templated, so boxes hover only on their points (`hoveron`) and
- * this gives the summary instead.
+ * this gives the summary instead. The same goes for violins.
  */
 const boxSummaryTrace = (
   boxes: { y: string | number; title: string; values: number[] }[],
@@ -193,6 +194,19 @@ const boxSummaryTrace = (
     showlegend: false,
     ...(offsetgroup !== undefined ? { offsetgroup } : {}),
   };
+};
+
+/**
+ * Makes a box plot trace a violin instead, keeping its points. Its outline
+ * stops at the lowest and highest values (Plotly's default runs past them,
+ * suggesting values no one got), with a small box inside for the quartiles.
+ */
+const asViolin = (d: Dict) => {
+  d.type = "violin";
+  d.points = "all";
+  delete d.boxpoints;
+  d.spanmode = "hard";
+  d.box = { visible: true };
 };
 
 /** One strip of a density gradient plot, at a height on a numeric y axis. */
@@ -596,7 +610,7 @@ interface VisNodeData {
   title: string;
   // A plot the AI made, shown instead of the default plot until the user goes back
   aiPlot?: AIPlot | null;
-  // Bar chart, box plot or density gradient, as last chosen (see GRAPH_OPTIONS)
+  // Bar chart, box plot, violin or density gradient, as last chosen (see GRAPH_OPTIONS)
   graph_type?: string;
   // The plot's size, as last resized, in pixels
   plot_size?: { width: number; height: number };
@@ -613,6 +627,7 @@ const GRAPH_OPTIONS = [
     label: "Box & Whiskers",
     icon: <IconChartHistogram size={18} />,
   },
+  { key: "violin", label: "Violin", icon: <IconChartArea size={18} /> },
   { key: "gradient", label: "Density Gradient", icon: <IconBlur size={18} /> },
 ];
 
@@ -1432,15 +1447,16 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   });
                   continue;
                 } else {
-                  // Box-and-whiskers plot
+                  // Box-and-whiskers plot, or a violin
                   d.type = "box";
                   d.boxpoints = "all";
                   d.hoveron = "points";
+                  if (graphType.key === "violin") asViolin(d);
                 }
               }
 
               spec.push(d);
-              if (d.type === "box") {
+              if (d.type === "box" || d.type === "violin") {
                 const summary = boxSummaryTrace(
                   [
                     {
@@ -1626,10 +1642,11 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 d.type = "box";
                 d.hoveron = "points";
                 d.offsetgroup = llm;
+                if (graphType.key === "violin") asViolin(d);
               }
 
               spec.push(d);
-              if (d.type === "box") {
+              if (d.type === "box" || d.type === "violin") {
                 const summary = boxSummaryTrace(
                   Object.values(shortnames).map((y) => ({
                     y,
@@ -1659,6 +1676,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             setDensityStripAxes(layout, rowLabels);
           }
           layout.boxmode = "group";
+          layout.violinmode = "group";
           layout.bargap = 0.5;
 
           // Set the left margin to fit the yticks labels

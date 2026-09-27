@@ -347,6 +347,58 @@ describe("Vis Node plotting response stats", () => {
     );
   });
 
+  test("violins keep their points, stop at the data, and hover like boxes", async () => {
+    await renderVis();
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_est_energy_mwh" },
+    });
+    fireEvent.click(screen.getByText("Bar Chart"));
+    fireEvent.click(await screen.findByText("Violin"));
+    await waitFor(() =>
+      expect(lastPlot()?.data.some((d) => d.type === "violin")).toBe(true),
+    );
+    const { data } = lastPlot();
+    const violins = data.filter((d) => d.type === "violin");
+    expect(violins).toHaveLength(2);
+    violins.forEach((d) => {
+      expect(d.points).toBe("all");
+      expect(d.spanmode).toBe("hard");
+      expect(d.hoveron).toBe("points");
+      expect(d.boxpoints).toBeUndefined();
+    });
+    const haiku = data.find(
+      (d) => d.type === "scatter" && d.y?.[0] === "Haiku",
+    );
+    expect(haiku.text[0]).toBe(
+      "<b>Haiku</b><br>median 25 · range 20–30 · n = 2",
+    );
+  });
+
+  test("grouped violins sit side by side, with a summary on each", async () => {
+    await renderVis();
+    fireEvent.change(yAxisSelect(), { target: { value: "topic" } });
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_est_energy_mwh" },
+    });
+    fireEvent.click(screen.getByText("Bar Chart"));
+    fireEvent.click(await screen.findByText("Violin"));
+    await waitFor(() =>
+      expect(lastPlot()?.data.some((d) => d.type === "violin")).toBe(true),
+    );
+    const { data, layout } = lastPlot();
+    const violins = data.filter((d) => d.type === "violin");
+    const summaries = data.filter((d) => d.type === "scatter");
+    expect(layout.violinmode).toBe("group");
+    expect(layout.scattermode).toBe("group");
+    expect(summaries.map((d) => d.offsetgroup).sort()).toEqual(
+      violins.map((d) => d.offsetgroup).sort(),
+    );
+    const haiku = summaries.find((d) => d.offsetgroup === "Haiku");
+    expect(haiku.text[0]).toBe(
+      "<b>Haiku · sky</b><br>median 25 · range 20–30 · n = 2",
+    );
+  });
+
   test("a density gradient shades a strip per model, with a tick per value", async () => {
     await renderVis();
     fireEvent.change(xAxisSelect(), {
