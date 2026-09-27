@@ -10,6 +10,7 @@ import React, {
   useTransition,
 } from "react";
 import { Handle, Position } from "reactflow";
+import { createPortal } from "react-dom";
 import {
   Button,
   Menu,
@@ -415,6 +416,8 @@ export interface VisViewProps {
   id?: string;
   data?: VisNodeData;
   whenReplotting?: (isReplotting: boolean) => void;
+  /** Where to put the chart type button, e.g. the node's header; else in the toolbar. */
+  headerSlot?: HTMLElement | null;
 }
 export interface VisViewRef {
   resetControls: (responses: LLMResponse[]) => void;
@@ -425,7 +428,14 @@ export interface VisViewRef {
  */
 export const VisView = forwardRef<VisViewRef, VisViewProps>(
   function VisViewComponent(
-    { responses: inputResponses, id, data, whenReplotting, wideFormat },
+    {
+      responses: inputResponses,
+      id,
+      data,
+      whenReplotting,
+      wideFormat,
+      headerSlot,
+    },
     ref,
   ) {
     // Color scheme
@@ -1649,6 +1659,65 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       return () => cancelAnimationFrame(id);
     }, [plotlySpec, plotlyLayout, fitPlotToDiv]);
 
+    // Bar chart or box plot, for data that can be shown either way: a button
+    // with its name, in the toolbar or (compact) in the node's header
+    const graphTypeMenu = (
+      <Menu
+        shadow="md"
+        width={200}
+        withArrow
+        withinPortal
+        disabled={disableGraphTypeOption}
+      >
+        <Menu.Target>
+          {headerSlot ? (
+            <Button
+              className="nodrag"
+              variant="outline"
+              size="xs"
+              compact
+              color="gray"
+              leftIcon={graphType.icon}
+              disabled={disableGraphTypeOption}
+              // The same height and line as the header's other buttons
+              // (inline, since Mantine's compact size sets its own height)
+              style={{
+                height: 20,
+                marginTop: "-7px",
+                marginRight: "4px",
+                position: "relative",
+                top: 5,
+              }}
+            >
+              {graphType.label}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="xs"
+              color="gray"
+              leftIcon={graphType.icon}
+              disabled={disableGraphTypeOption}
+            >
+              {graphType.label}
+            </Button>
+          )}
+        </Menu.Target>
+
+        <Menu.Dropdown>
+          {GRAPH_OPTIONS.map((option) => (
+            <Menu.Item
+              key={option.key}
+              icon={option.icon}
+              onClick={() => setGraphType(option)}
+            >
+              {option.label}
+            </Menu.Item>
+          ))}
+        </Menu.Dropdown>
+      </Menu>
+    );
+
     return (
       <>
         <div
@@ -1656,6 +1725,12 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             display: "flex",
             justifyContent: "center",
             flexWrap: "wrap",
+            // As wide as the plot below makes the node, but no wider: without
+            // this, the controls in one row set the node's width, and the
+            // plot can't be resized narrower than them. This way they wrap.
+            width: 0,
+            minWidth: "100%",
+            rowGap: "4px",
             margin: wideFormat ? "6pt 0 6pt 0" : undefined,
           }}
         >
@@ -1716,45 +1791,22 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           ) : (
             <></>
           )}
-          <div
-            style={{
-              display: "inline-flex",
-              justifyContent: "end",
-              maxWidth: "30%",
-              marginLeft: "10pt",
-            }}
-          >
-            <Menu
-              shadow="md"
-              width={200}
-              withArrow
-              disabled={disableGraphTypeOption}
+          {headerSlot ? (
+            // In the node's header instead (see VisNode), to leave the
+            // toolbar narrow enough for the plot to be resized
+            createPortal(graphTypeMenu, headerSlot)
+          ) : (
+            <div
+              style={{
+                display: "inline-flex",
+                justifyContent: "end",
+                maxWidth: "30%",
+                marginLeft: "10pt",
+              }}
             >
-              <Menu.Target>
-                <Button
-                  variant="outline"
-                  size="xs"
-                  color="gray"
-                  leftIcon={graphType.icon}
-                  disabled={disableGraphTypeOption}
-                >
-                  {graphType.label}
-                </Button>
-              </Menu.Target>
-
-              <Menu.Dropdown>
-                {GRAPH_OPTIONS.map((option) => (
-                  <Menu.Item
-                    key={option.key}
-                    icon={option.icon}
-                    onClick={() => setGraphType(option)}
-                  >
-                    {option.label}
-                  </Menu.Item>
-                ))}
-              </Menu.Dropdown>
-            </Menu>
-          </div>
+              {graphTypeMenu}
+            </div>
+          )}
         </div>
         {!wideFormat && <hr />}
         <div
@@ -1852,6 +1904,10 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
   const [status, setStatus] = useState<Status>(Status.NONE);
   const [pastInputs, setPastInputs] = useState<JSONCompatible>([]);
   const [responses, setResponses] = useState<LLMResponse[]>([]);
+  // Where VisView puts its chart type button, in this node's header
+  const [graphTypeSlot, setGraphTypeSlot] = useState<HTMLSpanElement | null>(
+    null,
+  );
 
   // On load of vis view
   // const setVisViewRef = useCallback((elem: VisViewRef) => {
@@ -1903,6 +1959,12 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         status={status}
         icon={"📊"}
         customButtons={[
+          // The chart type button (see VisView), hidden while an AI plot shows
+          <span
+            key="graph-type"
+            ref={setGraphTypeSlot}
+            style={{ display: data.aiPlot?.code ? "none" : "inline-block" }}
+          />,
           ...(data.aiPlot?.code
             ? [
                 <AIPlotHeaderButtons
@@ -1940,6 +2002,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         <VisView
           ref={visViewRef}
           id={id}
+          headerSlot={graphTypeSlot}
           responses={responses}
           data={data}
           whenReplotting={(isReplotting) =>

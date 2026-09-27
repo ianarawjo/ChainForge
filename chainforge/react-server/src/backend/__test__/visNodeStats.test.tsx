@@ -126,13 +126,16 @@ mockNodes.push({
 
 const lastPlot = () => plots[plots.length - 1];
 
-const renderVis = async (resps: LLMResponse[] = responses) => {
+const renderVis = async (
+  resps: LLMResponse[] = responses,
+  headerSlot?: HTMLElement,
+) => {
   const ref = React.createRef<any>();
   plots.length = 0;
   render(
     <ColorSchemeProvider colorScheme="dark" toggleColorScheme={() => undefined}>
       <MantineProvider>
-        <VisView ref={ref} responses={resps} />
+        <VisView ref={ref} responses={resps} headerSlot={headerSlot} />
       </MantineProvider>
     </ColorSchemeProvider>,
   );
@@ -335,5 +338,28 @@ describe("Vis Node plotting response stats", () => {
     expect(haiku.text[0]).toBe(
       "<b>Haiku · sky</b><br>median 25 · range 20–30 · n = 2",
     );
+  });
+
+  test("puts the chart type button in the node's header, when given one", async () => {
+    const header = document.createElement("span");
+    document.body.appendChild(header);
+    try {
+      await renderVis(responses, header);
+      fireEvent.change(xAxisSelect(), {
+        target: { value: "__stat_est_energy_mwh" },
+      });
+      // In the header, with its name, and not also in the toolbar
+      const button = header.querySelector("button") as HTMLButtonElement;
+      expect(button.textContent).toBe("Bar Chart");
+      expect(screen.getAllByText("Bar Chart")).toHaveLength(1);
+      fireEvent.click(button);
+      fireEvent.click(await screen.findByText("Box & Whiskers"));
+      await waitFor(() =>
+        expect(lastPlot()?.data.some((d) => d.type === "box")).toBe(true),
+      );
+      expect(button.textContent).toBe("Box & Whiskers");
+    } finally {
+      header.remove();
+    }
   });
 });

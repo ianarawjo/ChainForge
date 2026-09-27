@@ -62,7 +62,7 @@ import {
   statsToMetavars,
 } from "./responseStats";
 import { Annotations } from "plotly.js";
-import { beginEnergy, endEnergy } from "./localEnergy";
+import { beginEnergy, endEnergy, isLoopbackUrl } from "./localEnergy";
 
 /**
  * ChainForge queries models straight from the browser, which the OpenAI SDK
@@ -2389,6 +2389,34 @@ export async function call_huggingface(
   return [query, responses];
 }
 
+// The request each Ollama server (or all servers on this machine) is working on
+const ollamaQueues = new Map<string, Promise<unknown>>();
+
+/**
+ * Runs Ollama requests one at a time: all those to servers on this machine
+ * in turn, and to any other server one at a time each.
+ *
+ * Sent together, requests to different models run at the same time, sharing
+ * the machine; and requests to one model wait in Ollama's queue. Either way a
+ * request's latency, and its measured energy (see localEnergy.ts), would
+ * include time spent on other requests. One at a time, each gets its own.
+ */
+async function oneOllamaRequestAtATime<T>(
+  url: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  const key = isLoopbackUrl(url) ? "this machine" : url;
+  const before = ollamaQueues.get(key) ?? Promise.resolve();
+  const mine = before.catch(() => undefined).then(run);
+  ollamaQueues.set(key, mine);
+  try {
+    return await mine;
+  } finally {
+    // Forget the queue once it's empty
+    if (ollamaQueues.get(key) === mine) ollamaQueues.delete(key);
+  }
+}
+
 /**
  * An Ollama reply's timings, in seconds, for measuring its energy: loading the
  * model, then reading the prompt and generating. Undefined if it has none
@@ -2545,29 +2573,39 @@ export async function call_ollama_provider(
       // Abort if the user canceled
       if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
-      // Query Ollama and collect the response. Where this machine's energy can
-      // be measured (Ollama running here too), the request is marked as
-      // started and finished, and the reply carries its energy above idle.
-      const energyId = await beginEnergy(url);
-      const start = performance.now();
-      let reply: Dict;
-      let repliedAt: number;
-      try {
-        const response = await fetch(url, {
-          method: "POST",
-          body: JSON.stringify(query),
-          signal: controller.signal,
-        });
-        const body = await response.text();
-        // How long the request took; Ollama replies once the whole response is ready
-        repliedAt = performance.now();
-        reply = parse_response(body, repliedAt - start);
-      } catch (err) {
-        endEnergy(energyId, performance.now()); // drops the request
-        throw err;
-      }
-      const energy = await endEnergy(energyId, repliedAt, ollamaTimings(reply));
-      if (energy) reply[ENERGY_KEY] = energy;
+      // Query Ollama and collect the response, one request at a time (see
+      // oneOllamaRequestAtATime). Where this machine's energy can be measured
+      // (Ollama running here too), the request is marked as started and
+      // finished, and the reply carries its energy above idle.
+      const reply = await oneOllamaRequestAtATime(url, async () => {
+        if (should_cancel && should_cancel())
+          throw new UserForcedPrematureExit();
+        const energyId = await beginEnergy(url);
+        const start = performance.now();
+        let reply: Dict;
+        let repliedAt: number;
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            body: JSON.stringify(query),
+            signal: controller.signal,
+          });
+          const body = await response.text();
+          // How long the request took; Ollama replies once the whole response is ready
+          repliedAt = performance.now();
+          reply = parse_response(body, repliedAt - start);
+        } catch (err) {
+          endEnergy(energyId, performance.now()); // drops the request
+          throw err;
+        }
+        const energy = await endEnergy(
+          energyId,
+          repliedAt,
+          ollamaTimings(reply),
+        );
+        if (energy) reply[ENERGY_KEY] = energy;
+        return reply;
+      });
       responses.push(reply);
     }
   } catch (err) {

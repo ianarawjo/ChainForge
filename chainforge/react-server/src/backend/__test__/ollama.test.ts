@@ -21,6 +21,7 @@ jest.mock("../../store", () => ({
 jest.mock("../localEnergy", () => ({
   beginEnergy: jest.fn(async () => undefined),
   endEnergy: jest.fn(async () => undefined),
+  isLoopbackUrl: jest.requireActual("../localEnergy").isLoopbackUrl,
 }));
 
 // eslint-disable-next-line import/first
@@ -206,5 +207,52 @@ describe("Ollama energy", () => {
     })) as any;
     await call_ollama_provider("Q", "ollama", 1, 1.0, params(), () => false);
     expect(end).toHaveBeenCalledWith("req-3", expect.any(Number), undefined);
+  });
+});
+
+describe("Ollama requests", () => {
+  test("run one at a time, even across models and calls", async () => {
+    let running = 0;
+    let most = 0;
+    globalThis.fetch = jest.fn(async (_url: any, init: any) => {
+      running++;
+      most = Math.max(most, running);
+      await new Promise((r) => setTimeout(r, 20));
+      running--;
+      const model = JSON.parse(init.body).model;
+      return { text: async () => JSON.stringify({ response: model }) };
+    }) as any;
+    const call = (model: string, n: number) =>
+      call_ollama_provider(
+        "Q",
+        "ollama",
+        n,
+        1.0,
+        { ...params(), ollamaModel: model, model_type: "text" },
+        () => false,
+      );
+    const results = await Promise.all([
+      call("a", 2),
+      call("b", 2),
+      call("c", 1),
+    ]);
+    expect(most).toBe(1);
+    expect(results.map(([, r]) => r.map((x: any) => x.generated_text))).toEqual(
+      [["a", "a"], ["b", "b"], ["c"]],
+    );
+  });
+
+  test("one failing doesn't hold up the next", async () => {
+    globalThis.fetch = jest
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue({
+        text: async () => JSON.stringify({ response: "ok" }),
+      }) as any;
+    const call = () =>
+      call_ollama_provider("Q", "ollama", 1, 1.0, params(), () => false);
+    const [first, second] = await Promise.allSettled([call(), call()]);
+    expect(first.status).toBe("rejected");
+    expect(second.status).toBe("fulfilled");
   });
 });
