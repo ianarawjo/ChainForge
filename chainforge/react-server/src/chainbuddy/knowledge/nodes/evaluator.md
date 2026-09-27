@@ -64,7 +64,7 @@ code:
 | `response.text`   | The response text                                                                             |
 | `response.prompt` | The exact prompt that was sent                                                                |
 | `response.var`    | The variable values that filled the prompt, by name, including ones from earlier in the chain |
-| `response.meta`   | Extra values carried along with the inputs, by name                                           |
+| `response.meta`   | Values carried along with the inputs, by name, such as the rest of a table row                |
 | `response.llm`    | The model's nickname, as shown in the Prompt Node                                             |
 
 Return a number, `true`/`false`, or a short string; or an object whose values
@@ -105,6 +105,6 @@ code: |
   Nodes after it show nothing, or old scores, until it has run.
 - **Never put the expected answer where the model will see it.** Values from
   a TextFields Node go into the prompt, so an answer written next to its
-  question gives it away. Pairing each input with its answer is what a
-  Tabular Data Node is for; without one, keep the answers in the evaluator's
-  code, looked up by the question in `response.var`.
+  question gives it away. Put inputs and answers in a Tabular Data Node,
+  connect only the input column, and read the answer as
+  `response.meta["answer"]` (by its column name).

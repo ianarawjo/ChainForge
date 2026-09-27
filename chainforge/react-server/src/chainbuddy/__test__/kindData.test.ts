@@ -43,6 +43,7 @@ const MANAGED: Record<string, string[]> = {
   evaluator: ["code", "language", "title"],
   vis: ["selected_eval_res_var", "graph_type", "title"],
   inspect: ["viewFormat", "title"],
+  table: ["columns", "rows", "sample", "sampleNum", "title"],
 };
 
 const settingsOf = (type: string, data: Dict, models: ModelResolver) =>
@@ -65,6 +66,7 @@ test("the examples include every supported node type", () => {
     "evaluator",
     "inspect",
     "prompt",
+    "table",
     "textfields",
     "vis",
   ]);
@@ -89,6 +91,13 @@ describe.each(exampleNodes)("%s", (_, type, data) => {
       after.prompt = [after.prompt]; // one variant is stored either way
     if (type === "prompt" && data.promptVariantLabel === undefined)
       delete after.promptVariantLabel;
+    // A table row with no cell for a column is empty there, as ChainForge
+    // reads it; writing it back fills the cell in.
+    if (type === "table")
+      before.rows = before.rows.map((row: any) => ({
+        ...Object.fromEntries(before.columns.map((c: any) => [c.key, ""])),
+        ...row,
+      }));
     expect(after).toEqual(before);
   });
 });
@@ -226,10 +235,76 @@ describe("nodes that only show results", () => {
   });
 });
 
+describe("tables", () => {
+  const write = (settings: Record<string, unknown>, base?: Dict) =>
+    dataWithSettings("table", settings, base, resolver);
+
+  test("rows are kept under column keys, each with its own id", () => {
+    const data = write({
+      columns: ["question", "answer"],
+      rows: [
+        { question: "What is 2+2?", answer: 4 },
+        { question: "What is 7 times 6?" },
+      ],
+    });
+    expect(data.columns).toEqual([
+      { key: "col-0", header: "question" },
+      { key: "col-1", header: "answer" },
+    ]);
+    expect(data.rows.map((r: Dict) => ({ ...r, __uid: undefined }))).toEqual([
+      { __uid: undefined, "col-0": "What is 2+2?", "col-1": "4" },
+      { __uid: undefined, "col-0": "What is 7 times 6?", "col-1": "" },
+    ]);
+    expect(new Set(data.rows.map((r: Dict) => r.__uid)).size).toBe(2);
+    expect(settingsOf("table", data, resolver)).toEqual({
+      title: "Tabular Data Node",
+      columns: ["question", "answer"],
+      rows: [
+        { question: "What is 2+2?", answer: "4" },
+        { question: "What is 7 times 6?", answer: "" },
+      ],
+    });
+  });
+
+  test("a column keeps its key while its name stays, and rows keep their ids", () => {
+    const base = write({
+      columns: ["question", "answer"],
+      rows: [{ question: "Q1", answer: "A1" }],
+    });
+    const data = write({ columns: ["question", "expected", "topic"] }, base);
+    expect(data.columns).toEqual([
+      { key: "col-0", header: "question" },
+      { key: "col-2", header: "expected" },
+      { key: "col-3", header: "topic" },
+    ]);
+    // Cells of the removed column go; new columns start empty.
+    expect(data.rows).toEqual([
+      { __uid: base.rows[0].__uid, "col-0": "Q1", "col-2": "", "col-3": "" },
+    ]);
+  });
+
+  test("sample picks rows at random, and 0 sends them all", () => {
+    expect(write({ sample: 5 }, {})).toMatchObject({
+      sample: true,
+      sampleNum: 5,
+    });
+    expect(write({ sample: 0 }, { sample: true, sampleNum: 5 })).toMatchObject({
+      sample: false,
+    });
+    expect(
+      settingsOf(
+        "table",
+        { columns: [], rows: [], sample: true, sampleNum: 5 },
+        resolver,
+      ),
+    ).toMatchObject({ sample: 5 });
+  });
+});
+
 test("Python evaluators aren't supported", () => {
   expect(supportOf("evaluator", { language: "python" })).toBe("not-supported");
   expect(supportOf("evaluator", { language: "javascript" })).toBe("editable");
-  expect(supportOf("table", {})).toBe("not-supported");
+  expect(supportOf("join", {})).toBe("not-supported");
 });
 
 test("inputs follow ChainForge's template rules", () => {

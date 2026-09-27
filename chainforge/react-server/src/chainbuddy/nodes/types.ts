@@ -65,8 +65,14 @@ export interface NodeKind {
   /** The node's guide (knowledge/nodes/<type>.md), as describe_node returns it. */
   doc: string;
   settings: Record<string, SettingSpec>;
-  /** The node's one output, named after what it carries; sinks have none. */
+  /** What its output gives, named after it; sinks have none. */
   output?: DataType;
+  /**
+   * For a node with one output per something in its settings, such as a
+   * table's columns: their names. Each gives `output`, and each one's handle
+   * id is its name.
+   */
+  outputNames?(settings: Record<string, unknown>): string[];
   /** What its inputs accept. */
   accepts: DataType[];
   /**
@@ -80,6 +86,15 @@ export interface NodeKind {
   ): string | undefined;
   /** Each input takes one connection; ChainForge would ignore the rest. */
   oneSource?: boolean;
+  /**
+   * A problem with its settings taken together, as a change leaves them
+   * (`settings`), given the ones the change sets (`given`): a table row
+   * naming a column the table doesn't have, say.
+   */
+  checkAll?(
+    settings: Record<string, unknown>,
+    given: Record<string, unknown>,
+  ): string | undefined;
   /** The inputs a node with these settings has. */
   inputs(settings: Record<string, unknown>): string[];
   /** What a node with these settings lacks to be usable, e.g. "has no values yet". */

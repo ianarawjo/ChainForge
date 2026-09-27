@@ -17,6 +17,7 @@ It can't run nodes or read their results yet (see [Planned](#planned)).
 | `instructions.md`     | What the model is told at the start of every conversation   |
 | `nodes/prompt.md`     | Prompt Node                                                 |
 | `nodes/textfields.md` | TextFields Node                                             |
+| `nodes/table.md`      | Tabular Data Node                                           |
 | `nodes/evaluator.md`  | JavaScript Evaluator                                        |
 | `nodes/vis.md`        | Vis Node                                                    |
 | `nodes/inspect.md`    | Inspect Node                                                |
@@ -36,6 +37,7 @@ connected to, and can't change, connect or remove it.
 | ---------------------- | ------------ | ------------- |
 | Prompt Node            | `prompt`     | Editable      |
 | TextFields Node        | `textfields` | Editable      |
+| Tabular Data Node      | `table`      | Editable      |
 | JavaScript Evaluator   | `evaluator`  | Editable      |
 | Vis Node               | `vis`        | Editable      |
 | Inspect Node           | `inspect`    | Editable      |
@@ -210,4 +212,4 @@ Not built yet, and not available to the model:
 - **Undoing an accepted change set.**
 - **Playbooks** (`playbooks/`): evaluation practice, such as how to compare
   two prompts fairly, loaded only when relevant.
-- **More node types**: next, the Tabular Data Node and the LLM Scorer.
+- **More node types**: next, the LLM Scorer.

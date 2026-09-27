@@ -38,8 +38,9 @@ along too, so later nodes can still read them.
 
 Special forms:
 
-- `{#name}` reuses the value that filled `{name}` earlier in the chain. It
-  creates no input.
+- `{#name}` reuses the value that filled `{name}` earlier in the chain, or a
+  table column that travelled with the input. It creates no input. The name
+  must match exactly, case included, or the run stops.
 - `\{` and `\}` are literal braces, not a variable.
 - `{=name}` sets a model setting rather than filling text, and needs its own
   connection. Don't write one unless the user asks.
@@ -126,10 +127,11 @@ responses_per_prompt: 3
   every response becomes a value for the next Prompt Node, which sends each
   one to each of its own models. Keep flows small, and say how many calls a
   flow could make when it's more than a few dozen.
-- **Two variables fed by the same node form every pairing**, mismatched ones
-  included: questions and answers from two TextFields Nodes pair every
+- **Two variables fed by different nodes, or both by one TextFields Node,
+  form every pairing**, mismatched ones included: questions and answers from two TextFields Nodes pair every
   question with every answer. Values that belong together (an input and its
-  expected answer) must come from one row of a Tabular Data Node.
+  expected answer) must come from one Tabular Data Node, whose columns fill
+  variables row by row.
 - **Give every variable in a flow its own name**, ignoring case. `{text}`
   used on two branches that feed one prompt stops the run.
 - **Literal braces need escaping.** A prompt asking for JSON such as
