@@ -6,6 +6,7 @@ import { describe, expect, test } from "@jest/globals";
 import * as fs from "fs";
 import * as path from "path";
 import { Dict, LLMSpec } from "../../backend/typing";
+import { PLOTTABLE_STATS } from "../../backend/responseStats";
 import { inputsOf, kindOf, supportOf } from "../nodes";
 import { ModelResolver } from "../nodes/types";
 
@@ -195,6 +196,15 @@ describe("nodes that only show results", () => {
       metric: "latency",
       chart: "box",
     });
+  });
+
+  test("every measure ChainForge records gets its own name", () => {
+    // Names come from the measures' labels, so a new one needs no code; this
+    // catches a label that would name nothing, or clash with another.
+    const names = kindOf("vis")?.settings.metric.values?.() ?? [];
+    expect(names.length).toBe(PLOTTABLE_STATS.length + 1); // and "score"
+    expect(new Set(names).size).toBe(names.length);
+    expect(names.every((n) => /^[a-z][a-z0-9_]*$/.test(n))).toBe(true);
   });
 
   test("a Vis Node may also plot an evaluator's own key", () => {

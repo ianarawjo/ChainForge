@@ -4,7 +4,7 @@
  */
 
 import { AgentTool } from "../runtime/tools";
-import { editableTypes, NODE_KINDS } from "../nodes";
+import { editableTypes, kindOf, NODE_KINDS } from "../nodes";
 import { CanvasPort } from "./types";
 import { checkChanges } from "./validate";
 
@@ -53,7 +53,7 @@ export function createFlowTools({
       run: (args) => {
         const doc = nodeDocs[args.type as string];
         if (!doc) throw new Error(`There's no guide for "${args.type}".`);
-        return doc;
+        return doc + settingValues(args.type as string);
       },
     },
     {
@@ -183,4 +183,19 @@ export function createFlowTools({
       readThisTurn = false;
     },
   };
+}
+
+/**
+ * The values settings may take, from the node kind rather than its guide, so
+ * a list ChainForge grows (such as the measures a Vis Node can plot) reaches
+ * the model without anyone editing a guide.
+ */
+function settingValues(type: string): string {
+  const lines = Object.entries(kindOf(type)?.settings ?? {}).flatMap(
+    ([name, spec]) =>
+      spec.values ? [`- ${name}: ${spec.values().join(", ")}`] : [],
+  );
+  return lines.length
+    ? `\n\n## Values settings take\n\nFrom ChainForge itself, so always current:\n\n${lines.join("\n")}\n`
+    : "";
 }

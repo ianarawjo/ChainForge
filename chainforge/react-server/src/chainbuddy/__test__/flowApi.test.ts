@@ -435,6 +435,79 @@ test("list_models offers only models that are set up", () => {
   });
 });
 
+describe("nodes that only show results", () => {
+  const vis = (ref: string, metric: string) => ({
+    op: "add_node",
+    ref,
+    type: "vis",
+    settings: { metric },
+  });
+  const plot = (from: string, output: string, to: string) => ({
+    op: "connect",
+    from: { node: from, output },
+    to: { node: to, input: "responses" },
+  });
+
+  test("a run measure is plotted from a Prompt Node, not after an evaluator", () => {
+    const { tools } = createStubTools({ models: MODELS });
+    expect(
+      propose(tools, [
+        ...newFlow,
+        vis("speed", "latency"),
+        plot("ask", "responses", "speed"),
+      ]).status,
+    ).toBe("awaiting_approval");
+
+    const out = propose(tools, [
+      ...newFlow,
+      vis("speed", "latency"),
+      plot("check", "scored_responses", "speed"),
+    ]);
+    expect(out.problems).toEqual([
+      `check → speed: it plots latency, which only a Prompt Node's own responses carry, not an evaluator's. Connect it straight to the Prompt Node, or plot "score".`,
+    ]);
+  });
+
+  test("what it plots is judged as the change set leaves it", () => {
+    // Connected while plotting scores, then switched to a run measure.
+    const { tools } = createStubTools({ models: MODELS });
+    const out = propose(tools, [
+      ...newFlow,
+      vis("plot", "score"),
+      plot("check", "scored_responses", "plot"),
+      { op: "update_node", node: "plot", settings: { metric: "cost" } },
+    ]);
+    expect(out.problems).toHaveLength(1);
+    expect(out.problems[0]).toMatch(/^check → plot: it plots cost/);
+  });
+
+  test("a Vis Node takes one connection, since ChainForge plots only one", () => {
+    const { tools } = createStubTools({ models: MODELS });
+    const out = propose(tools, [
+      ...newFlow,
+      vis("plot", "score"),
+      plot("ask", "responses", "plot"),
+      plot("check", "scored_responses", "plot"),
+    ]);
+    expect(out.problems).toEqual([
+      `plot: its "responses" input takes one connection, and would have 2 (from ask, check). ChainForge would use only one. Use one vis node per source.`,
+    ]);
+  });
+
+  test("describe_node lists setting values from ChainForge, not the guide", () => {
+    const { tools } = createStubTools({ models: MODELS });
+    const guide = run(tools, "describe_node", {
+      type: "vis",
+    }) as unknown as string;
+    const listed = guide.split("## Values settings take")[1];
+    // Every measure ChainForge can plot, named from its label.
+    expect(listed).toMatch(
+      /- metric: score, latency, before_output, .*energy_estimated/,
+    );
+    expect(listed).toMatch(/- chart: bar, box/);
+  });
+});
+
 test("describe_node refuses types without a guide", () => {
   const { tools } = createStubTools({
     models: MODELS,

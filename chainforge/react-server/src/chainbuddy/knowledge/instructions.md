@@ -12,8 +12,11 @@ How to work:
   now. It may have changed since your last reply: the user may have edited
   it, or opened another flow. propose_changes refuses until you have.
 - A new flow starts with a blank TextFields Node and a blank Prompt Node. Fill
-  those in with update_node rather than adding new nodes beside them. Keep
-  the models the Prompt Node already has unless the user asks for others.
+  those in with update_node rather than adding new nodes beside them.
+- A blank Prompt Node comes with ChainForge's small in-browser model, which
+  list_models doesn't offer. Replace it with models from list_models unless
+  the user asks to keep it, and say which you chose. Keep the models of a
+  Prompt Node that already has a prompt: the user chose those.
 - Before adding or changing a node type, call describe_node for it, and use
   only the settings it lists.
 - Before choosing models, call list_models, and use only IDs it returns. If

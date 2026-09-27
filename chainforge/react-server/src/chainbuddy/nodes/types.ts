@@ -49,6 +49,12 @@ export interface SettingSpec {
   };
   /** Shown on the card as code, behind a toggle. */
   code?: boolean;
+  /**
+   * The values it may take, which describe_node lists after the guide. Read
+   * when asked, from ChainForge's own code where it has the list, so a guide
+   * never has to repeat a list ChainForge will grow.
+   */
+  values?(): string[];
 }
 
 export interface NodeKind {
@@ -63,6 +69,17 @@ export interface NodeKind {
   output?: DataType;
   /** What its inputs accept. */
   accepts: DataType[];
+  /**
+   * A problem with connecting something that gives `gives` to it, when that
+   * depends on its settings: a Vis Node plotting latency needs a Prompt
+   * Node's own responses, say. Checked on the flow as a change set leaves it.
+   */
+  checkSource?(
+    gives: DataType,
+    settings: Record<string, unknown>,
+  ): string | undefined;
+  /** Each input takes one connection; ChainForge would ignore the rest. */
+  oneSource?: boolean;
   /** The inputs a node with these settings has. */
   inputs(settings: Record<string, unknown>): string[];
   /** What a node with these settings lacks to be usable, e.g. "has no values yet". */

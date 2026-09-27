@@ -91,6 +91,16 @@ Nothing else changes, including the other node types: the checks, the
 proposal card, the canvas and the model's list of node types all read from
 `NODE_KINDS`, and what connects to what follows from the types below.
 
+A `NodeKind` can also say that each input takes one connection (`oneSource`,
+for a node that would ignore the rest), and refuse a source depending on its
+settings (`checkSource`: a Vis Node plotting a run measure needs a Prompt
+Node's own responses). Both are checked on the flow as a change set leaves
+it.
+
+The skill in `.claude/skills/chainbuddy-node/` walks through adding or
+updating a node type, and the `chainbuddy-guide-checker` agent checks a
+guide's claims against ChainForge's source.
+
 ### What travels along a connection
 
 Each node's one output gives one of these, and each node type's inputs accept
@@ -138,6 +148,35 @@ Evaluator's "Writing the code".
 
 A setting marked `required: true` must be given to a new node. One marked
 `read_only: true` is shown to ChainBuddy but cannot be changed by it.
+
+When a setting takes one of a list ChainForge will grow, such as the measures
+a Vis Node can plot, the guide describes the kind of value and the `NodeKind`
+supplies the list (`SettingSpec.values`), read from ChainForge's own code
+where it has one. `describe_node` appends it after the guide.
+
+### What goes in a guide
+
+A guide is for the decisions the model has to make that code can't make for
+it. Test each sentence two ways:
+
+1. **Would the model decide worse without it?** If not, cut it. A rule the
+   code enforces needs at most one brief mention.
+2. **Would a routine ChainForge change make it wrong?** A new model,
+   provider, measure or node, or a change to how a node lays things out. If
+   so, describe it more generally, or move it into code.
+
+Be exact about the contract the model writes against (variable syntax, the
+fields `evaluate` receives, what a node accepts and gives), since vagueness
+there breaks flows. Leave out:
+
+- whether ChainBuddy supports another node type (the model is told the
+  current list; a test enforces this);
+- lists ChainForge grows, such as models, providers or measures;
+- how a node lays things out on screen, beyond naming what the user can
+  change;
+- hardware, provider or version specifics the model can't act on;
+- advice the model can't follow, such as reading results it can't see.
+  Phrase it as something to tell the user.
 
 ## Keeping this folder accurate
 

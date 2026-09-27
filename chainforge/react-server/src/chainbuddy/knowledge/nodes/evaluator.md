@@ -11,8 +11,8 @@ Scores every response it receives by running a JavaScript function,
 `evaluate(response)`, once per response. The score is attached to the
 response, where plots and tables can use it.
 
-The same node type can hold Python code instead. ChainBuddy only supports
-JavaScript evaluators, and treats Python ones as not supported.
+The same node type can hold Python code instead. ChainBuddy only edits
+JavaScript evaluators.
 
 ## Use it when
 
@@ -23,12 +23,12 @@ JavaScript evaluators, and treats Python ones as not supported.
 ## Don't use it for
 
 - Judgments that need reading and interpretation, such as tone or
-  helpfulness. That's the LLM Scorer Node, which ChainBuddy doesn't support
-  yet. Say so, rather than writing brittle code to approximate it.
-- Changing the response text. That's the Code Processor Node, which
-  ChainBuddy doesn't support yet.
+  helpfulness. That's the LLM Scorer, which has a model judge. Say so, rather
+  than writing brittle code to approximate it.
+- Changing the response text. That's a JavaScript Processor.
 - Measuring speed, cost, tokens or energy. ChainForge records those while it
-  runs the prompts; plot them straight from a Vis Node, with no evaluator.
+  runs the prompts; plot them with a Vis Node connected straight to the
+  Prompt Node.
 
 ## Inputs
 
@@ -37,9 +37,8 @@ JavaScript evaluators, and treats Python ones as not supported.
 
 ## Outputs
 
-- `scored_responses`: the same responses, each with its score attached. People
-  usually connect this to a Vis Node or Inspect Node, which ChainBuddy
-  doesn't support yet; suggest the user add one.
+- `scored_responses`: the same responses, each with its score attached.
+  Connect a Vis Node to plot the scores, or an Inspect Node to read them.
 
 ## Settings
 
@@ -68,8 +67,12 @@ code:
 | `response.meta`   | Extra values carried along with the inputs, by name                                           |
 | `response.llm`    | The model's nickname, as shown in the Prompt Node                                             |
 
-Return a number, `true`/`false`, or a short string, and return the same kind
-for every response. The function may be `async`.
+Return a number, `true`/`false`, or a short string; or an object whose values
+are those, such as `{ length: 12, polite: true }`. Anything else, including
+returning nothing, fails the run. The function may be `async`.
+
+Return the same kind, and for an object the same keys, for every response.
+Nothing checks this: a Vis Node plots every score as the kind of the first.
 
 ## Example
 
@@ -95,13 +98,13 @@ code: |
   should only look at the response it's given.
 - **One thrown error fails the whole run.** Guard against missing values,
   such as a variable that isn't in `response.var`.
-- **Keep scores simple.** Prefer one number, boolean, or string per response.
-  An object such as `{ length: 12, polite: true }` also works, as long as
-  every response returns the same keys with the same kinds of values. Lists
-  don't work.
 - **Exact checks are brittle.** A check for `"Yes"` misses `"yes."`. Normalize
   case, whitespace, and punctuation where it doesn't change the meaning, and
-  check a few real responses before trusting the scores.
-- **Comparing against an expected answer per input** needs each input paired
-  with its answer, which TextFields can't do. That needs a Tabular Data Node,
-  which ChainBuddy doesn't support yet.
+  suggest the user compare a few scores with their responses.
+- **It runs only when the user runs it**, not when the prompts are run again.
+  Nodes after it show nothing, or old scores, until it has run.
+- **Never put the expected answer where the model will see it.** Values from
+  a TextFields Node go into the prompt, so an answer written next to its
+  question gives it away. Pairing each input with its answer is what a
+  Tabular Data Node is for; without one, keep the answers in the evaluator's
+  code, looked up by the question in `response.var`.
