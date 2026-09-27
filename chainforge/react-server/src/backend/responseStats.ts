@@ -34,6 +34,12 @@ import {
 export const LATENCY_KEY = "__cf_latency_ms";
 
 /**
+ * The key under which call functions put a request's measured energy on its
+ * raw reply (see localEnergy.ts), for `extract_stats` to read.
+ */
+export const ENERGY_KEY = "__cf_energy";
+
+/**
  * The metavars each response's stats are exposed under, e.g. to code evaluators
  * as `response.meta["stat_tokens_per_s"]`. The prefix keeps them from colliding
  * with metavars of the user's own, which stats would otherwise overwrite.
@@ -47,6 +53,10 @@ export const STATS_METAVARS = {
   decode_tokens_per_s: "stat_decode_tokens_per_s",
   averaged_over: "stat_averaged_over",
   cost_usd: "stat_cost_usd",
+  energy_wh: "stat_energy_wh",
+  load_energy_wh: "stat_load_energy_wh",
+  power_source: "stat_power_source",
+  power_mode: "stat_power_mode",
   est_energy_wh_min: "stat_est_energy_wh_min",
   est_energy_wh_max: "stat_est_energy_wh_max",
 } as const;
@@ -148,6 +158,36 @@ export function statsFromReply(reply: Dict): ResponseStats {
   );
   if (decodeSpeed !== undefined) stats.decode_tokens_per_s = decodeSpeed;
 
+  // Energy measured on this machine, for a local model (see localEnergy.ts)
+  const energy: Dict = r?.[ENERGY_KEY] ?? {};
+  if (num(energy.energy_wh) !== undefined) {
+    stats.energy_wh = energy.energy_wh;
+    if (num(energy.noise_wh) !== undefined)
+      stats.energy_noise_wh = energy.noise_wh;
+    if (energy.components_wh && typeof energy.components_wh === "object")
+      stats.energy_parts_wh = Object.fromEntries(
+        Object.entries(energy.components_wh as Dict).filter(
+          ([, v]) => num(v) !== undefined,
+        ),
+      );
+    if (num(energy.load_energy_wh) !== undefined)
+      stats.load_energy_wh = energy.load_energy_wh;
+    if (energy.shared === true) stats.energy_shared = true;
+    if (energy.conditions && typeof energy.conditions === "object") {
+      const conditions = Object.fromEntries(
+        Object.entries(energy.conditions as Dict).filter(
+          ([, v]) => typeof v === "string" && v.length > 0,
+        ),
+      );
+      if (Object.keys(conditions).length > 0)
+        stats.energy_conditions = conditions;
+    }
+    if (energy.conditions_changed === true)
+      stats.energy_conditions_changed = true;
+    if (energy.baseline_before_change === true)
+      stats.energy_baseline_before_change = true;
+  }
+
   return stats;
 }
 
@@ -178,6 +218,21 @@ function finish(stats: ResponseStats): ResponseStats | null {
       min: Number(stats.est_energy_wh.min.toPrecision(3)),
       max: Number(stats.est_energy_wh.max.toPrecision(3)),
     };
+  const sig = (x: number, digits: number) => Number(x.toPrecision(digits));
+  if (stats.energy_wh !== undefined) res.energy_wh = sig(stats.energy_wh, 3);
+  if (stats.energy_noise_wh !== undefined)
+    res.energy_noise_wh = sig(stats.energy_noise_wh, 2);
+  if (stats.energy_parts_wh !== undefined)
+    res.energy_parts_wh = Object.fromEntries(
+      Object.entries(stats.energy_parts_wh).map(([c, v]) => [c, sig(v, 3)]),
+    );
+  if (stats.load_energy_wh !== undefined)
+    res.load_energy_wh = sig(stats.load_energy_wh, 3);
+  if (stats.energy_shared) res.energy_shared = true;
+  if (stats.energy_conditions) res.energy_conditions = stats.energy_conditions;
+  if (stats.energy_conditions_changed) res.energy_conditions_changed = true;
+  if (stats.energy_baseline_before_change)
+    res.energy_baseline_before_change = true;
   if (Object.keys(res).length === 0) return null;
   if (stats.averaged_over !== undefined && stats.averaged_over > 1)
     res.averaged_over = stats.averaged_over;
@@ -273,6 +328,17 @@ export function extract_stats(
           // One request's cost, shared between the responses it returned
           cost_usd: s.cost_usd !== undefined ? s.cost_usd / k : undefined,
           est_energy_wh: energy && { min: energy.min / k, max: energy.max / k },
+          // Measured energy too (one reply per response for Ollama, so k is 1)
+          energy_wh: s.energy_wh !== undefined ? s.energy_wh / k : undefined,
+          energy_noise_wh:
+            s.energy_noise_wh !== undefined ? s.energy_noise_wh / k : undefined,
+          energy_parts_wh:
+            s.energy_parts_wh &&
+            Object.fromEntries(
+              Object.entries(s.energy_parts_wh).map(([c, v]) => [c, v / k]),
+            ),
+          load_energy_wh:
+            s.load_energy_wh !== undefined ? s.load_energy_wh / k : undefined,
           // A server-measured speed is per sequence already
           decode_tokens_per_s: k === 1 ? s.decode_tokens_per_s : undefined,
           averaged_over: Math.max(k, latencyAveraged ? replies.length : 1),
@@ -313,6 +379,14 @@ export function statsToMetavars(
     res[STATS_METAVARS.averaged_over] = stats.averaged_over;
   if (stats.cost_usd !== undefined)
     res[STATS_METAVARS.cost_usd] = stats.cost_usd;
+  if (stats.energy_wh !== undefined)
+    res[STATS_METAVARS.energy_wh] = stats.energy_wh;
+  if (stats.load_energy_wh !== undefined)
+    res[STATS_METAVARS.load_energy_wh] = stats.load_energy_wh;
+  if (stats.energy_conditions?.power_source)
+    res[STATS_METAVARS.power_source] = stats.energy_conditions.power_source;
+  if (stats.energy_conditions?.power_mode)
+    res[STATS_METAVARS.power_mode] = stats.energy_conditions.power_mode;
   if (stats.est_energy_wh !== undefined) {
     res[STATS_METAVARS.est_energy_wh_min] = stats.est_energy_wh.min;
     res[STATS_METAVARS.est_energy_wh_max] = stats.est_energy_wh.max;
@@ -340,8 +414,10 @@ export function formatStats(
     parts.push(`${stats.output_tokens} tok`);
   if (stats.tokens_per_s !== undefined)
     parts.push(`${Math.round(stats.tokens_per_s)} tok/s`);
-  // The middle of the estimate's range (as EcoLogits' own mean); the tooltip has the range
-  if (stats.est_energy_wh !== undefined)
+  // Measured energy as is; an estimate by the middle of its range (as
+  // EcoLogits' own mean), marked "~", with the range in the tooltip
+  if (stats.energy_wh !== undefined) parts.push(formatEnergy(stats.energy_wh));
+  else if (stats.est_energy_wh !== undefined)
     parts.push(
       `~${formatEnergy((stats.est_energy_wh.min + stats.est_energy_wh.max) / 2)}`,
     );
@@ -377,9 +453,80 @@ export function describeStats(stats: ResponseStats | undefined): string[] {
     lines.push(
       `Energy: ${formatEnergyRange(stats.est_energy_wh)} (estimated by EcoLogits)`,
     );
+  if (stats.energy_wh !== undefined)
+    lines.push(...describeMeasuredEnergy(stats));
   if (stats.averaged_over)
     lines.push(
       `≈ Averages: the provider reported one total for ${stats.averaged_over} responses`,
+    );
+  return lines;
+}
+
+// What the parts of the machine are called, from the energy counters' names
+const ENERGY_PARTS: Dict<string> = {
+  gpu: "GPU",
+  cpu: "CPU",
+  dram: "memory",
+  ane: "Neural Engine",
+};
+
+/**
+ * The power settings a measurement was taken under, in words, e.g. "on
+ * battery, in Low Power Mode", "on AC power, in Automatic power mode, while
+ * the Mac was hot (serious)". Undefined if unknown.
+ */
+export function describeConditions(
+  conditions: Dict<string> | undefined,
+): string | undefined {
+  if (!conditions) return undefined;
+  const parts: string[] = [];
+  const source = conditions.power_source;
+  if (source) parts.push(source === "battery" ? "on battery" : `on ${source}`);
+  const mode = conditions.power_mode;
+  if (mode)
+    parts.push(
+      mode === "Automatic" ? "in Automatic power mode" : `in ${mode} Mode`,
+    );
+  const thermal = conditions.thermal;
+  if (thermal && thermal !== "nominal" && thermal !== "unknown")
+    parts.push(`while the Mac was hot (${thermal})`);
+  return parts.length > 0 ? parts.join(", ") : undefined;
+}
+
+/** The tooltip lines for energy measured on this machine. */
+function describeMeasuredEnergy(stats: ResponseStats): string[] {
+  const wh = stats.energy_wh as number;
+  const noise =
+    stats.energy_noise_wh !== undefined && stats.energy_noise_wh > 0
+      ? `, ± ${formatEnergy(stats.energy_noise_wh)}`
+      : "";
+  const lines = [
+    `Energy: ${formatEnergy(wh)} (measured on this machine, above idle power${noise})`,
+  ];
+  // The parts, largest first, in the energy's unit; tiny ones left out
+  const parts = Object.entries(stats.energy_parts_wh ?? {})
+    .filter(([, v]) => v > 0 && v >= wh * 0.005)
+    .sort(([, a], [, b]) => b - a);
+  if (parts.length > 0) {
+    // In the same unit as the total above
+    const [unit, scale] = energyUnit(wh);
+    lines.push(
+      `  ${parts
+        .map(([c, v]) => `${ENERGY_PARTS[c] ?? c} ${twoDigits(v * scale)}`)
+        .join(" · ")} ${unit}`,
+    );
+  }
+  const conditions = describeConditions(stats.energy_conditions);
+  if (conditions) lines.push(`  Measured ${conditions}`);
+  if (stats.energy_conditions_changed)
+    lines.push("  The power settings changed during this request");
+  if (stats.energy_baseline_before_change)
+    lines.push("  Idle power is from before the power settings changed");
+  if (stats.energy_shared)
+    lines.push("  Shared with requests generating at the same time");
+  if (stats.load_energy_wh !== undefined)
+    lines.push(
+      `Loading the model: ${formatEnergy(stats.load_energy_wh)} (not included above)`,
     );
   return lines;
 }
@@ -534,6 +681,15 @@ export const PLOTTABLE_STATS: PlottableStat[] = [
   {
     ...plainStat("__stat_cost_usd", "Cost ($)", (s) => s.cost_usd),
     describe: (s) => `Cost: ${formatCost(s.cost_usd ?? 0)}`,
+  },
+  {
+    key: "__stat_energy_mwh",
+    label: "Energy, measured (mWh)",
+    value: (s) => (s.energy_wh === undefined ? undefined : s.energy_wh * 1000),
+    describe: (s) =>
+      s.energy_wh === undefined
+        ? ""
+        : `Energy: ${formatEnergy(s.energy_wh)} (measured, above idle)`,
   },
   {
     // One number per response: the middle of the estimate's range, as on the

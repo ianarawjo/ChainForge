@@ -126,13 +126,23 @@ mockNodes.push({
 
 const lastPlot = () => plots[plots.length - 1];
 
-const renderVis = async (resps: LLMResponse[] = responses) => {
+const renderVis = async (
+  resps: LLMResponse[] = responses,
+  headerSlot?: HTMLElement,
+  node?: { id: string; data: any },
+) => {
   const ref = React.createRef<any>();
   plots.length = 0;
   render(
     <ColorSchemeProvider colorScheme="dark" toggleColorScheme={() => undefined}>
       <MantineProvider>
-        <VisView ref={ref} responses={resps} />
+        <VisView
+          ref={ref}
+          responses={resps}
+          headerSlot={headerSlot}
+          id={node?.id}
+          data={node?.data}
+        />
       </MantineProvider>
     </ColorSchemeProvider>,
   );
@@ -180,6 +190,8 @@ describe("Vis Node plotting response stats", () => {
     expect(lastPlot().layout.xaxis.title.text).toBe(
       "Mean latency (s) per response",
     );
+    // The left margin grows to fit the y-axis labels as Plotly draws them
+    expect(lastPlot().layout.yaxis.automargin).toBe(true);
   });
 
   test("plots energy as each model's mean per response, leaving out responses without one", async () => {
@@ -333,5 +345,162 @@ describe("Vis Node plotting response stats", () => {
     expect(haiku.text[0]).toBe(
       "<b>Haiku · sky</b><br>median 25 · range 20–30 · n = 2",
     );
+  });
+
+  test("puts the chart type button in the node's header, when given one", async () => {
+    const header = document.createElement("span");
+    document.body.appendChild(header);
+    try {
+      await renderVis(responses, header);
+      fireEvent.change(xAxisSelect(), {
+        target: { value: "__stat_est_energy_mwh" },
+      });
+      // In the header, with its name, and not also in the toolbar
+      const button = header.querySelector("button") as HTMLButtonElement;
+      expect(button.textContent).toBe("Bar Chart");
+      expect(screen.getAllByText("Bar Chart")).toHaveLength(1);
+      fireEvent.click(button);
+      fireEvent.click(await screen.findByText("Box & Whiskers"));
+      await waitFor(() =>
+        expect(lastPlot()?.data.some((d) => d.type === "box")).toBe(true),
+      );
+      expect(button.textContent).toBe("Box & Whiskers");
+    } finally {
+      header.remove();
+    }
+  });
+
+  test("warns when measured energies were taken under different power settings", async () => {
+    const measured = (power_mode: string): ResponseStats => ({
+      latency_ms: 1000,
+      output_tokens: 100,
+      energy_wh: 0.05,
+      energy_conditions: { power_source: "battery", power_mode },
+    });
+    await renderVis([
+      respObj("Haiku", "ollama", [
+        measured("Automatic"),
+        measured("Automatic"),
+      ]),
+      respObj("Gemini", "ollama", [measured("Low Power")]),
+    ]);
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_energy_mwh" },
+    });
+    const note = await screen.findByText(
+      "Measured under different power settings.",
+    );
+    const trigger = note.closest("[aria-describedby]") as HTMLElement;
+    expect(
+      document.getElementById(trigger.getAttribute("aria-describedby")!)
+        ?.textContent,
+    ).toBe(
+      "These were measured under different power settings (2 on battery, in Automatic power mode; 1 on battery, in Low Power Mode), which change the energy the same work takes. Compare them with care.",
+    );
+  });
+
+  test("keeps its chart type and size in the node's data, for saved flows", async () => {
+    const store = require("../../store").default;
+    const setData = store.getState().setDataPropsForNode as jest.Mock;
+    setData.mockClear();
+    (HTMLElement.prototype as any).setPointerCapture = jest.fn();
+    // As loaded from a saved flow: a box plot, resized to 321 x 234
+    await renderVis(responses, undefined, {
+      id: "vis1",
+      data: {
+        graph_type: "box",
+        plot_size: { width: 321, height: 234 },
+        selected_eval_res_var: "__stat_est_energy_mwh",
+      },
+    });
+    const plotDiv = screen.getByTestId("plot").parentElement as HTMLElement;
+    expect(plotDiv.style.width).toBe("321px");
+    expect(plotDiv.style.height).toBe("234px");
+    await waitFor(() =>
+      expect(lastPlot()?.data.some((d) => d.type === "box")).toBe(true),
+    );
+
+    // Choosing a chart type, and resizing, save to the node's data
+    fireEvent.click(screen.getByText("Box & Whiskers"));
+    fireEvent.click(await screen.findByText("Bar Chart"));
+    expect(setData).toHaveBeenCalledWith("vis1", { graph_type: "bar" });
+    const handle = plotDiv.parentElement!.querySelector(
+      '[style*="nwse-resize"]',
+    ) as HTMLElement;
+    fireEvent.pointerDown(handle, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 40, clientY: 30, pointerId: 1 });
+    fireEvent.pointerUp(handle, { pointerId: 1 });
+    expect(setData).toHaveBeenCalledWith("vis1", {
+      plot_size: expect.objectContaining({
+        width: expect.any(Number),
+        height: expect.any(Number),
+      }),
+    });
+  });
+
+  test("follows its saved chart type and size when the node's data changes", async () => {
+    const view = (data: any) => (
+      <ColorSchemeProvider
+        colorScheme="dark"
+        toggleColorScheme={() => undefined}
+      >
+        <MantineProvider>
+          <VisView responses={responses} id="vis2" data={data} />
+        </MantineProvider>
+      </ColorSchemeProvider>
+    );
+    const base = { selected_eval_res_var: "__stat_est_energy_mwh" };
+    const { rerender } = render(
+      view({
+        ...base,
+        graph_type: "bar",
+        plot_size: { width: 300, height: 200 },
+      }),
+    );
+    const plotDiv = screen.getByTestId("plot").parentElement as HTMLElement;
+    expect(plotDiv.style.width).toBe("300px");
+    expect(screen.getByText("Bar Chart")).toBeTruthy();
+    // E.g. a saved flow loaded in its place, without remounting the node
+    rerender(
+      view({
+        ...base,
+        graph_type: "box",
+        plot_size: { width: 410, height: 260 },
+      }),
+    );
+    expect(await screen.findByText("Box & Whiskers")).toBeTruthy();
+    expect(plotDiv.style.width).toBe("410px");
+    expect(plotDiv.style.height).toBe("260px");
+    // An older flow, with neither saved: the defaults, not what was shown before
+    rerender(view(base));
+    expect(await screen.findByText("Bar Chart")).toBeTruthy();
+    expect(plotDiv.style.width).toBe("");
+    expect(plotDiv.style.height).toBe("");
+  });
+
+  test("counts measurements with unknown power settings as their own group", async () => {
+    const measured = (conditions?: any): ResponseStats => ({
+      latency_ms: 1000,
+      output_tokens: 100,
+      energy_wh: 0.05,
+      ...(conditions ? { energy_conditions: conditions } : {}),
+    });
+    await renderVis([
+      respObj("Haiku", "ollama", [
+        measured({ power_source: "AC power", power_mode: "Automatic" }),
+      ]),
+      respObj("Gemini", "ollama", [measured()]), // e.g. measured before they were recorded
+    ]);
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_energy_mwh" },
+    });
+    const note = await screen.findByText(
+      "Measured under different power settings.",
+    );
+    const trigger = note.closest("[aria-describedby]") as HTMLElement;
+    expect(
+      document.getElementById(trigger.getAttribute("aria-describedby")!)
+        ?.textContent,
+    ).toContain("1 under unknown power settings");
   });
 });

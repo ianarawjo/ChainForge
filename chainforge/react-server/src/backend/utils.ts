@@ -55,12 +55,14 @@ import {
 import { UserForcedPrematureExit } from "./errors";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import {
+  ENERGY_KEY,
   LATENCY_KEY,
   isStatsMetavar,
   statsAt,
   statsToMetavars,
 } from "./responseStats";
 import { Annotations } from "plotly.js";
+import { beginEnergy, endEnergy, isLoopbackUrl } from "./localEnergy";
 
 /**
  * ChainForge queries models straight from the browser, which the OpenAI SDK
@@ -2387,6 +2389,87 @@ export async function call_huggingface(
   return [query, responses];
 }
 
+// The request each Ollama server (or all servers on this machine) is working on
+const ollamaQueues = new Map<string, Promise<unknown>>();
+
+/**
+ * Runs Ollama requests one at a time: all those to servers on this machine
+ * in turn, and to any other server one at a time each.
+ *
+ * Sent together, requests to different models run at the same time, sharing
+ * the machine; and requests to one model wait in Ollama's queue. Either way a
+ * request's latency, and its measured energy (see localEnergy.ts), would
+ * include time spent on other requests. One at a time, each gets its own.
+ */
+async function oneOllamaRequestAtATime<T>(
+  url: string,
+  run: () => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  // By server (host and port), not endpoint: /api/chat and /api/generate on
+  // one server share it. All servers on this machine share its hardware.
+  const key = isLoopbackUrl(url) ? "this machine" : serverOrigin(url);
+  const before = (ollamaQueues.get(key) ?? Promise.resolve()).catch(
+    () => undefined,
+  );
+  let finished!: () => void;
+  const mine = new Promise<void>((resolve) => (finished = resolve));
+  // The next request waits for this one and every one before it, even if
+  // this one is cancelled while still waiting its turn
+  const tail = before.then(() => mine);
+  ollamaQueues.set(key, tail);
+  try {
+    // Cancelling leaves the queue at once, rather than when its turn comes
+    await new Promise<void>((resolve, reject) => {
+      const onAbort = () => reject(new UserForcedPrematureExit());
+      if (signal?.aborted) return onAbort();
+      signal?.addEventListener("abort", onAbort, { once: true });
+      before.then(() => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve();
+      });
+    });
+    return await run();
+  } finally {
+    finished();
+    // Forget the queue once it's empty: once everything in it has finished,
+    // not just this request (a cancelled one finishes while those before it
+    // may still be running, and a new request mustn't start alongside them)
+    tail.then(() => {
+      if (ollamaQueues.get(key) === tail) ollamaQueues.delete(key);
+    });
+  }
+}
+
+/** A URL's scheme, host and port, e.g. "http://gpu-box:11434". */
+function serverOrigin(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * An Ollama reply's timings, in seconds, for measuring its energy: loading the
+ * model, then reading the prompt and generating. Undefined if it has none
+ * (e.g. an error).
+ */
+function ollamaTimings(
+  reply: Dict,
+): { load_s: number; generation_s: number; total_s: number } | undefined {
+  const ns = (key: string) =>
+    typeof reply[key] === "number" ? reply[key] / 1e9 : undefined;
+  const total = ns("total_duration");
+  const evalS = ns("eval_duration");
+  if (total === undefined || evalS === undefined) return undefined;
+  return {
+    load_s: ns("load_duration") ?? 0,
+    generation_s: (ns("prompt_eval_duration") ?? 0) + evalS,
+    total_s: total,
+  };
+}
+
 export async function call_ollama_provider(
   prompt: string,
   model: LLM,
@@ -2516,31 +2599,52 @@ export async function call_ollama_provider(
       }, 250)
     : undefined;
 
-  let responses: Dict[];
+  const responses: Dict[] = [];
   try {
     // Call Ollama API
-    const resps: Response[] = [];
-    // How long each request took; Ollama replies once the whole response is ready
-    const latencies: number[] = [];
     for (let i = 0; i < n; i++) {
       // Abort if the user canceled
       if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
-      // Query Ollama and collect the response
-      const start = performance.now();
-      const response = await fetch(url, {
-        method: "POST",
-        body: JSON.stringify(query),
-        signal: controller.signal,
-      });
-      latencies.push(performance.now() - start);
-
-      resps.push(response);
+      // Query Ollama and collect the response, one request at a time (see
+      // oneOllamaRequestAtATime). Where this machine's energy can be measured
+      // (Ollama running here too), the request is marked as started and
+      // finished, and the reply carries its energy above idle.
+      const reply = await oneOllamaRequestAtATime(
+        url,
+        async () => {
+          if (should_cancel && should_cancel())
+            throw new UserForcedPrematureExit();
+          const energyId = await beginEnergy(url);
+          const start = performance.now();
+          let reply: Dict;
+          let repliedAt: number;
+          try {
+            const response = await fetch(url, {
+              method: "POST",
+              body: JSON.stringify(query),
+              signal: controller.signal,
+            });
+            const body = await response.text();
+            // How long the request took; Ollama replies once the whole response is ready
+            repliedAt = performance.now();
+            reply = parse_response(body, repliedAt - start);
+          } catch (err) {
+            endEnergy(energyId, performance.now()); // drops the request
+            throw err;
+          }
+          const energy = await endEnergy(
+            energyId,
+            repliedAt,
+            ollamaTimings(reply),
+          );
+          if (energy) reply[ENERGY_KEY] = energy;
+          return reply;
+        },
+        controller.signal,
+      );
+      responses.push(reply);
     }
-
-    responses = await Promise.all(resps.map((resp) => resp.text())).then(
-      (bodies) => bodies.map((body, i) => parse_response(body, latencies[i])),
-    );
   } catch (err) {
     if (controller.signal.aborted) throw new UserForcedPrematureExit();
     throw err;

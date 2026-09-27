@@ -10,6 +10,7 @@ import React, {
   useTransition,
 } from "react";
 import { Handle, Position } from "reactflow";
+import { createPortal } from "react-dom";
 import {
   Button,
   Menu,
@@ -55,6 +56,7 @@ import {
 } from "./VisNodeAIPlot";
 import { AIPlot } from "./backend/aiPlots";
 import {
+  describeConditions,
   ecologitsCovers,
   plottableStat,
   plottableStatsIn,
@@ -390,6 +392,10 @@ interface VisNodeData {
   title: string;
   // A plot the AI made, shown instead of the default plot until the user goes back
   aiPlot?: AIPlot | null;
+  // Bar chart or box plot, as last chosen (see GRAPH_OPTIONS)
+  graph_type?: string;
+  // The plot's size, as last resized, in pixels
+  plot_size?: { width: number; height: number };
 }
 
 /**
@@ -415,6 +421,8 @@ export interface VisViewProps {
   id?: string;
   data?: VisNodeData;
   whenReplotting?: (isReplotting: boolean) => void;
+  /** Where to put the chart type button, e.g. the node's header; else in the toolbar. */
+  headerSlot?: HTMLElement | null;
 }
 export interface VisViewRef {
   resetControls: (responses: LLMResponse[]) => void;
@@ -425,7 +433,14 @@ export interface VisViewRef {
  */
 export const VisView = forwardRef<VisViewRef, VisViewProps>(
   function VisViewComponent(
-    { responses: inputResponses, id, data, whenReplotting, wideFormat },
+    {
+      responses: inputResponses,
+      id,
+      data,
+      whenReplotting,
+      wideFormat,
+      headerSlot,
+    },
     ref,
   ) {
     // Color scheme
@@ -445,7 +460,18 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const [isPlotRerenderPending, startTransition] = useTransition();
 
     // For some data types, there are multiple graph options available...
-    const [graphType, setGraphType] = useState(GRAPH_OPTIONS[0]);
+    // Saved with the node, so it's kept when the flow is saved and loaded
+    const [graphType, setGraphType] = useState(
+      GRAPH_OPTIONS.find((o) => o.key === data?.graph_type) ?? GRAPH_OPTIONS[0],
+    );
+    // ...and followed if the node's data changes (e.g. a flow loaded in its place)
+    useEffect(() => {
+      // Without a saved one (e.g. an older flow), the default
+      const saved =
+        GRAPH_OPTIONS.find((o) => o.key === data?.graph_type) ??
+        GRAPH_OPTIONS[0];
+      setGraphType((prev) => (prev.key === saved.key ? prev : saved));
+    }, [data?.graph_type]);
     // Called while replotting, to force the graph type some data needs. The
     // replot runs again when the graph type changes, so this must leave state
     // alone when that type is already selected; otherwise the plot redraws in
@@ -503,7 +529,8 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const responses = statsView?.responses ?? inputResponses;
     const metricName = selectedStat?.label ?? selectedEvalResVar;
     const isEnergy = selectedStat?.key === "__stat_est_energy_mwh";
-    const omittedNoteId = useId();
+    const isMeasuredEnergy = selectedStat?.key === "__stat_energy_mwh";
+    const notesId = useId();
 
     // Why some responses aren't in a plot of a stat, for the note below it.
     // For energy, only the models EcoLogits doesn't cover are its doing;
@@ -533,10 +560,55 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         sentences.push(
           isEnergy
             ? `Some responses from ${names(others)} have no estimate (for instance, ones collected before ChainForge estimated energy, or without a token count), hence they are omitted here.`
-            : `Some responses from ${names(others)} have no ${metricName.toLowerCase()}, hence they are omitted here.`,
+            : isMeasuredEnergy
+              ? `Energy is measured only for local models (Ollama) on this machine, where ChainForge can read its energy counters (so far, Apple silicon Macs). Responses from ${names(others)} have no measurement, hence they are omitted here.`
+              : `Some responses from ${names(others)} have no ${metricName.toLowerCase()}, hence they are omitted here.`,
         );
       return sentences.join(" ");
-    }, [statsView, isEnergy, metricName]);
+    }, [statsView, isEnergy, isMeasuredEnergy, metricName]);
+
+    // Measured energy depends on the power settings it was measured under
+    // (Low Power Mode, for one, uses less per token), so say when the
+    // measurements plotted weren't all taken under the same ones
+    const conditionsNote = useMemo(() => {
+      if (!isMeasuredEnergy || !statsView) return undefined;
+      const counts = new Map<string, number>();
+      statsView.responses.forEach((r) =>
+        r.stats?.forEach((s) => {
+          const c = s?.energy_conditions;
+          // Unknown (e.g. measured before ChainForge recorded them) is its
+          // own group: not known to be comparable with the rest
+          const key =
+            describeConditions(
+              c
+                ? { power_source: c.power_source, power_mode: c.power_mode }
+                : undefined,
+            ) ?? "under unknown power settings";
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+        }),
+      );
+      if (counts.size < 2) return undefined;
+      const which = Array.from(counts.entries())
+        .map(([conditions, n]) => `${n} ${conditions}`)
+        .join("; ");
+      return `These were measured under different power settings (${which}), which change the energy the same work takes. Compare them with care.`;
+    }, [isMeasuredEnergy, statsView]);
+
+    const notes: { text: string; details: string }[] = [];
+    if (omittedNote)
+      notes.push({
+        text: isEnergy
+          ? "Some estimates could not be shown."
+          : isMeasuredEnergy
+            ? "Some measurements could not be shown."
+            : "Some values could not be shown.",
+        details: omittedNote,
+      });
+    if (conditionsNote)
+      notes.push({
+        text: "Measured under different power settings.",
+        details: conditionsNote,
+      });
 
     // Typically, a user will only need the default LLM 'group' --all LLMs in responses.
     // However, when prompts are chained together, the original LLM info is stored in metavars as a key.
@@ -755,6 +827,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           yaxis: {
             showgrid: true,
             color: colorScheme === "light" ? "#444" : "#ddd",
+            // Widen the left margin to fit the labels as drawn: the margin
+            // worked out below estimates their width from their length, which
+            // falls short for wide letters ("gemma4:e4b" lost "ge")
+            automargin: true,
           },
           // Make the plot background transparent
           paper_bgcolor: "rgba(0,0,0,0)",
@@ -1618,6 +1694,34 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       plotDivRef.current = elem;
       setPlotDiv(elem);
     }, []);
+    // The size it was last resized to, saved with the node: when it loads,
+    // and whenever the node's data changes (e.g. a flow loaded in its place)
+    const savedWidth = data?.plot_size?.width;
+    const savedHeight = data?.plot_size?.height;
+    useEffect(() => {
+      if (!plotDiv) return;
+      if (!savedWidth || !savedHeight) {
+        // None saved (e.g. an older flow): the default size, not one left
+        // over from data shown before
+        plotDiv.style.width = "";
+        plotDiv.style.height = "";
+        return;
+      }
+      if (
+        plotDiv.offsetWidth === savedWidth &&
+        plotDiv.offsetHeight === savedHeight
+      )
+        return;
+      plotDiv.style.width = `${savedWidth}px`;
+      plotDiv.style.height = `${savedHeight}px`;
+    }, [plotDiv, savedWidth, savedHeight]);
+    const savePlotSize = useCallback(() => {
+      const el = plotDivRef.current;
+      if (id && el)
+        setDataPropsForNode(id, {
+          plot_size: { width: el.offsetWidth, height: el.offsetHeight },
+        });
+    }, [id, setDataPropsForNode]);
     useEffect(() => {
       if (!plotDiv || !window.ResizeObserver) return;
       let lastSize = "";
@@ -1642,6 +1746,68 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       return () => cancelAnimationFrame(id);
     }, [plotlySpec, plotlyLayout, fitPlotToDiv]);
 
+    // Bar chart or box plot, for data that can be shown either way: a button
+    // with its name, in the toolbar or (compact) in the node's header
+    const graphTypeMenu = (
+      <Menu
+        shadow="md"
+        width={200}
+        withArrow
+        withinPortal
+        disabled={disableGraphTypeOption}
+      >
+        <Menu.Target>
+          {headerSlot ? (
+            <Button
+              className="nodrag"
+              variant="outline"
+              size="xs"
+              compact
+              color="gray"
+              leftIcon={graphType.icon}
+              disabled={disableGraphTypeOption}
+              // The same height and line as the header's other buttons
+              // (inline, since Mantine's compact size sets its own height)
+              style={{
+                height: 20,
+                marginTop: "-7px",
+                marginRight: "4px",
+                position: "relative",
+                top: 5,
+              }}
+            >
+              {graphType.label}
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="xs"
+              color="gray"
+              leftIcon={graphType.icon}
+              disabled={disableGraphTypeOption}
+            >
+              {graphType.label}
+            </Button>
+          )}
+        </Menu.Target>
+
+        <Menu.Dropdown>
+          {GRAPH_OPTIONS.map((option) => (
+            <Menu.Item
+              key={option.key}
+              icon={option.icon}
+              onClick={() => {
+                setGraphType(option);
+                if (id) setDataPropsForNode(id, { graph_type: option.key });
+              }}
+            >
+              {option.label}
+            </Menu.Item>
+          ))}
+        </Menu.Dropdown>
+      </Menu>
+    );
+
     return (
       <>
         <div
@@ -1649,6 +1815,12 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             display: "flex",
             justifyContent: "center",
             flexWrap: "wrap",
+            // As wide as the plot below makes the node, but no wider: without
+            // this, the controls in one row set the node's width, and the
+            // plot can't be resized narrower than them. This way they wrap.
+            width: 0,
+            minWidth: "100%",
+            rowGap: "4px",
             margin: wideFormat ? "6pt 0 6pt 0" : undefined,
           }}
         >
@@ -1709,45 +1881,22 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           ) : (
             <></>
           )}
-          <div
-            style={{
-              display: "inline-flex",
-              justifyContent: "end",
-              maxWidth: "30%",
-              marginLeft: "10pt",
-            }}
-          >
-            <Menu
-              shadow="md"
-              width={200}
-              withArrow
-              disabled={disableGraphTypeOption}
+          {headerSlot ? (
+            // In the node's header instead (see VisNode), to leave the
+            // toolbar narrow enough for the plot to be resized
+            createPortal(graphTypeMenu, headerSlot)
+          ) : (
+            <div
+              style={{
+                display: "inline-flex",
+                justifyContent: "end",
+                maxWidth: "30%",
+                marginLeft: "10pt",
+              }}
             >
-              <Menu.Target>
-                <Button
-                  variant="outline"
-                  size="xs"
-                  color="gray"
-                  leftIcon={graphType.icon}
-                  disabled={disableGraphTypeOption}
-                >
-                  {graphType.label}
-                </Button>
-              </Menu.Target>
-
-              <Menu.Dropdown>
-                {GRAPH_OPTIONS.map((option) => (
-                  <Menu.Item
-                    key={option.key}
-                    icon={option.icon}
-                    onClick={() => setGraphType(option)}
-                  >
-                    {option.label}
-                  </Menu.Item>
-                ))}
-              </Menu.Dropdown>
-            </Menu>
-          </div>
+              {graphTypeMenu}
+            </div>
+          )}
         </div>
         {!wideFormat && <hr />}
         <div
@@ -1776,50 +1925,54 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             }}
           />
           {plotLegend ?? <></>}
-          <ResizeHandle targetRef={plotDivRef} minWidth={150} minHeight={100} />
+          <ResizeHandle
+            targetRef={plotDivRef}
+            minWidth={150}
+            minHeight={100}
+            onResizeEnd={savePlotSize}
+          />
         </div>
         {/* Outside the plot's div: the plot resizes to fill that div, so
             anything else in it would make the plot grow without end. */}
-        {omittedNote ? (
-          <Tooltip
-            label={omittedNote}
-            multiline
-            width={260}
-            withArrow
-            withinPortal
-            position="bottom-start"
-            // Keyboard users reach the details by focusing the note
-            events={{ hover: true, focus: true, touch: true }}
-          >
-            <div
-              tabIndex={0}
-              aria-describedby={omittedNoteId}
-              style={{
-                ...smallTextStyle,
-                marginTop: "4px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-                cursor: "help",
-              }}
+        {notes.map((note, i) => (
+          <React.Fragment key={i}>
+            <Tooltip
+              label={note.details}
+              multiline
+              width={260}
+              withArrow
+              withinPortal
+              position="bottom-start"
+              // Keyboard users reach the details by focusing the note
+              events={{ hover: true, focus: true, touch: true }}
             >
-              <IconAlertTriangle
-                size={14}
-                color="#e8a33d"
-                style={{ flexShrink: 0 }}
-              />
-              {isEnergy
-                ? "Some estimates could not be shown."
-                : "Some values could not be shown."}
-            </div>
-          </Tooltip>
-        ) : null}
-        {/* The details for screen readers, whether or not the tooltip is open */}
-        {omittedNote ? (
-          <span id={omittedNoteId} style={visuallyHidden}>
-            {omittedNote}
-          </span>
-        ) : null}
+              <div
+                tabIndex={0}
+                aria-describedby={`${notesId}-${i}`}
+                style={{
+                  ...smallTextStyle,
+                  marginTop: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  cursor: "help",
+                  width: "fit-content",
+                }}
+              >
+                <IconAlertTriangle
+                  size={14}
+                  color="#e8a33d"
+                  style={{ flexShrink: 0 }}
+                />
+                {note.text}
+              </div>
+            </Tooltip>
+            {/* The details for screen readers, whether or not the tooltip is open */}
+            <span id={`${notesId}-${i}`} style={visuallyHidden}>
+              {note.details}
+            </span>
+          </React.Fragment>
+        ))}
       </>
     );
   },
@@ -1843,6 +1996,10 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
   const [status, setStatus] = useState<Status>(Status.NONE);
   const [pastInputs, setPastInputs] = useState<JSONCompatible>([]);
   const [responses, setResponses] = useState<LLMResponse[]>([]);
+  // Where VisView puts its chart type button, in this node's header
+  const [graphTypeSlot, setGraphTypeSlot] = useState<HTMLSpanElement | null>(
+    null,
+  );
 
   // On load of vis view
   // const setVisViewRef = useCallback((elem: VisViewRef) => {
@@ -1894,6 +2051,12 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         status={status}
         icon={"📊"}
         customButtons={[
+          // The chart type button (see VisView), hidden while an AI plot shows
+          <span
+            key="graph-type"
+            ref={setGraphTypeSlot}
+            style={{ display: data.aiPlot?.code ? "none" : "inline-block" }}
+          />,
           ...(data.aiPlot?.code
             ? [
                 <AIPlotHeaderButtons
@@ -1931,6 +2094,7 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
         <VisView
           ref={visViewRef}
           id={id}
+          headerSlot={graphTypeSlot}
           responses={responses}
           data={data}
           whenReplotting={(isReplotting) =>
