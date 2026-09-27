@@ -3,6 +3,7 @@
  * it, and says what's wrong in terms a model can act on.
  */
 
+import { listOf } from "../nodes/common";
 import { isPlainObject } from "../runtime/tools";
 import { editableTypes, inputsOf, kindOf, outputsOf } from "../nodes";
 import { NodeKind } from "../nodes/types";
@@ -187,6 +188,24 @@ export function checkChanges(
               `${at}: ${id}'s ${key} has ${length} items, more than you were shown, so replacing it would lose the rest. Ask the user to change it, or add a new node.`,
             );
         checkSettings(kind, settings, false);
+        // A blank Prompt Node starts with ChainForge's small in-browser model,
+        // which list_models doesn't offer. Filling it in means choosing its
+        // models, even if only to keep that one.
+        const current = listOf(node.settings.models).flatMap((m) =>
+          isPlainObject(m) && typeof m.model === "string"
+            ? [{ id: m.model, name: String(m.nickname ?? m.model) }]
+            : [],
+        );
+        if (
+          problems.length === before &&
+          kind.missing?.(node.settings) &&
+          settings.models === undefined &&
+          current.length > 0 &&
+          current.every((m) => !knownModels.has(m.id))
+        )
+          problems.push(
+            `${at}: ${id} still has ${current.map((m) => m.name).join(", ")}, the in-browser model a new Prompt Node starts with, which list_models doesn't offer. Give models: ones from list_models, or the same one to keep it if the user asked for it.`,
+          );
         if (problems.length === before) {
           const problem = kind.checkAll?.(
             { ...node.settings, ...settings },

@@ -12,7 +12,9 @@ How to work:
   now. It may have changed since your last reply: the user may have edited
   it, or opened another flow. propose_changes refuses until you have.
 - A new flow starts with a blank TextFields Node and a blank Prompt Node. Fill
-  those in with update_node rather than adding new nodes beside them.
+  those in with update_node rather than adding new nodes beside them, and
+  remove one the flow doesn't need (a table in place of the TextFields Node,
+  say).
 - A blank Prompt Node comes with ChainForge's small in-browser model, which
   list_models doesn't offer. Replace it with models from list_models unless
   the user asks to keep it, and say which you chose. Keep the models of a

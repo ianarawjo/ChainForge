@@ -356,7 +356,10 @@ describe("blank nodes, as New Flow makes", () => {
       {
         op: "update_node",
         node: "prompt-1",
-        settings: { prompts: [{ label: "Ask", text: "Answer: {q}" }] },
+        settings: {
+          prompts: [{ label: "Ask", text: "Answer: {q}" }],
+          models: [{ model: "openrouter/anthropic/claude-haiku-4.5" }],
+        },
       },
       {
         op: "connect",
@@ -367,6 +370,29 @@ describe("blank nodes, as New Flow makes", () => {
     expect(out.problems).toEqual([
       "textfields-1 has no values yet. Fill it in with update_node in this change set, or connect to a different node.",
     ]);
+  });
+
+  test("filling the blank Prompt Node means choosing its models", () => {
+    // It starts with ChainForge's in-browser model, which models reliably
+    // kept when only told to replace it.
+    const fill = {
+      op: "update_node",
+      node: "prompt-1",
+      settings: { prompts: [{ label: "Ask", text: "Say hello." }] },
+    };
+    const { tools } = createStubTools({ flow: BLANK_FLOW, models: MODELS });
+    expect(propose(tools, [fill]).problems).toEqual([
+      "changes[0] (update_node): prompt-1 still has Qwen2.5 0.5B, the in-browser model a new Prompt Node starts with, which list_models doesn't offer. Give models: ones from list_models, or the same one to keep it if the user asked for it.",
+    ]);
+    // Keeping it on purpose is fine.
+    const keep = {
+      ...fill,
+      settings: {
+        ...fill.settings,
+        models: [{ model: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC" }],
+      },
+    };
+    expect(propose(tools, [keep]).status).toBe("awaiting_approval");
   });
 });
 
