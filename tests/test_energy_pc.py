@@ -17,11 +17,11 @@ from chainforge.energy.meters.nvidia import NvidiaMeter, THROTTLE_THERMAL
 from chainforge.energy.meters.pc import PcMeter
 from chainforge.energy.meters.rapl import RaplMeter, try_rapl_meter
 from chainforge.energy.meters.system import (
-    LinuxPower, other_programs, parse_gpu_engines, windows_power_mode,
+    LinuxPower, other_programs, parse_gpu_engines, process_name, windows_power_mode,
 )
 from chainforge.energy.monitor import OTHER_USE_EVERY_S, EnergyMonitor
 
-from test_energy import FakeClock, FakeMeter, idle_then
+from test_energy import FakeClock, FakeMeter, idle_then, run_monitor_until
 
 
 # ---------------------------------------------------------------------------
@@ -31,7 +31,10 @@ from test_energy import FakeClock, FakeMeter, idle_then
 class FakeNvml:
     """GPUs whose energy counters (mJ) and power readings (mW) the test sets."""
 
-    def __init__(self, n=2, counters=True):
+    def __init__(self, n=2, counters=True, indices=None, total=None):
+        self.indices = indices if indices is not None else list(range(n))
+        self.n_total = total if total is not None else n
+        self.violation = [None] * n
         self.energy = [10_000_000] * n if counters else [None] * n
         self.power = [50_000] * n
         self.limit = [450_000] * n
@@ -42,6 +45,15 @@ class FakeNvml:
 
     def count(self):
         return len(self.power)
+
+    def total(self):
+        return self.n_total
+
+    def index(self, i):
+        return self.indices[i]
+
+    def thermal_violation_ns(self, i):
+        return self.violation[i]
 
     def name(self, i):
         return "NVIDIA GeForce RTX 4090"
@@ -98,6 +110,33 @@ class TestNvidiaMeter:
         assert meter.read()["gpu"] == pytest.approx(100.0)
         clock.now += 2.0
         assert meter.read()["gpu"] == pytest.approx(400.0)
+
+    def test_a_counter_that_restarts_loses_only_that_moment(self):
+        nvml = FakeNvml(n=1)
+        meter = NvidiaMeter(nvml)
+        nvml.energy[0] += 5000
+        assert meter.read()["gpu"] == pytest.approx(5.0)
+        nvml.energy[0] = 2000  # the driver reloaded: counting again from 0
+        assert meter.read()["gpu"] == pytest.approx(7.0)
+        nvml.energy[0] = 3000
+        assert meter.read()["gpu"] == pytest.approx(8.0)
+
+    def test_gpus_keep_the_drivers_numbers(self):
+        # GPU 0 couldn't be read: GPU 1 is still GPU 1
+        nvml = FakeNvml(n=1, indices=[1], total=2)
+        nvml.limit[0] = 300_000
+        meter = NvidiaMeter(nvml)
+        assert meter.components() == ["gpu1"]
+        assert meter.conditions()["gpu_power_limit"] == "GPU 1 limited to 300 W (default 450 W)"
+
+    def test_heat_since_the_last_check_counts_though_its_over(self):
+        nvml = FakeNvml(n=2)
+        nvml.violation = [0, 0]
+        meter = NvidiaMeter(nvml)
+        assert meter.conditions()["thermal"] == "nominal"
+        nvml.violation[1] = 250_000_000  # slowed for a quarter second, then cooled
+        assert meter.conditions()["thermal"] == "the GPU was slowed by heat"
+        assert meter.conditions()["thermal"] == "nominal"
 
     def test_a_counter_that_fails_falls_back_to_power(self):
         clock = FakeClock()
@@ -221,7 +260,16 @@ class TestOtherPrograms:
         assert other_programs(per_pid, names.get, own_pid=8) == ["ComfyUI", "python"]
 
     def test_light_use_isnt_counted(self):
-        assert other_programs({1: 4.9, 2: 5.0}, {1: "chrome", 2: "game"}.get, own_pid=0) == ["game"]
+        assert other_programs({1: 4.9, 2: 5.0}, {1: "Discord", 2: "game"}.get, own_pid=0) == ["game"]
+
+    def test_a_browser_drawing_chainforge_isnt_counted_but_heavy_use_is(self):
+        names = {1: "chrome", 2: "firefox"}
+        assert other_programs({1: 12.0, 2: 45.0}, names.get, own_pid=0) == ["firefox"]
+
+    def test_processes_without_a_readable_name_arent_counted(self):
+        # e.g. Ollama in another container, whose process ids aren't this one's
+        assert other_programs({1234: 95.0}, lambda pid: None, own_pid=0) == []
+        assert process_name(2**22 + 12345) is None  # no such process
 
 
 class FakeEngines:
@@ -233,14 +281,19 @@ class FakeEngines:
 
 
 class OtherUseMeter(FakeMeter):
-    """A fake meter that can also tell which programs use the GPU."""
+    """A fake meter that can also tell which programs use the GPU: those
+    using it now, and, like Windows' counters, those that used it since the
+    last check but have stopped."""
 
     def __init__(self, clock, power_at):
         super().__init__(clock, power_at)
         self.others = []
+        self.since_last_check = []
 
     def other_gpu_use(self):
-        return list(self.others)
+        used = sorted(set(self.others) | set(self.since_last_check))
+        self.since_last_check = []
+        return used
 
 
 def run_checking(monitor, clock, t, step=0.1):
@@ -285,6 +338,18 @@ class TestOtherUseInTheMonitor:
         req = monitor.begin()
         run_checking(monitor, clock, 1025.0)
         assert monitor.end(req, 0.0, 0.0, 5.0, 5.0)["other_gpu_use"] == []
+
+    def test_use_that_ended_since_the_last_check_isnt_the_requests(self):
+        # Dormant: the last check was long ago, and a program used the GPU
+        # since, but stopped before the request began
+        monitor, clock, meter = self.make([(20.0, 25.0)])
+        run_checking(monitor, clock, 1010.0)
+        run_monitor_until(monitor, clock, 1019.9)  # readings, no checks
+        meter.since_last_check = ["game"]
+        req = monitor.begin()
+        run_checking(monitor, clock, 1025.0)
+        # Generating from just after it began, before the first check during it
+        assert monitor.end(req, 0.0, 0.0, 5.05, 5.05)["other_gpu_use"] == []
 
     def test_unknown_where_the_meter_cant_tell(self):
         clock = FakeClock()
@@ -361,6 +426,42 @@ class TestLinuxPower:
     def test_a_ups_or_peripheral_battery_without_mains_isnt_battery_power(self, tmp_path):
         root = make_sys(tmp_path, [("hidpp_battery_0", "Battery", {"status": "Charging"})])
         assert LinuxPower(root).conditions()["power_source"] == "AC power"
+
+    def test_a_usb_c_charger_is_ac_power(self, tmp_path):
+        root = make_sys(tmp_path, [("ADP1", "Mains", {"online": "0"}),
+                                   ("ucsi-source-psy-USBC000:001", "USB", {"online": "1"}),
+                                   ("BAT0", "Battery", {"status": "Charging"})])
+        assert LinuxPower(root).conditions()["power_source"] == "AC power"
+
+    def test_a_mouses_battery_isnt_the_machines(self, tmp_path):
+        root = make_sys(tmp_path, [("AC", "Mains", {"online": "0"}),
+                                   ("hidpp_battery_0", "Battery", {"status": "Discharging", "scope": "Device"})])
+        assert LinuxPower(root).conditions()["power_source"] == "AC power"
+
+    def test_power_profiles_daemon_from_its_state_file(self, tmp_path):
+        state = tmp_path / "state.ini"
+        state.write_text("[State]\nDriver=intel_pstate\nProfile=power-saver\n", encoding="utf-8")
+        power = LinuxPower(make_sys(tmp_path / "sys"), daemon_state=str(state))
+        power.refresh()
+        assert power.conditions()["power_mode"] == "power-saver power profile"
+
+    def test_asks_powerprofilesctl_only_now_and_then(self, tmp_path, monkeypatch):
+        import subprocess
+        import chainforge.energy.meters.system as system
+        calls = []
+        monkeypatch.setattr(system.shutil, "which", lambda name: "/usr/bin/" + name)
+        monkeypatch.setattr(system.subprocess, "run", lambda *a, **k: calls.append(a) or
+                            subprocess.CompletedProcess(a, 0, stdout="balanced\n"))
+        clock = FakeClock()
+        power = LinuxPower(make_sys(tmp_path / "sys"), daemon_state=str(tmp_path / "none"), clock=clock)
+        power.refresh()
+        clock.now += 30
+        power.refresh()
+        assert len(calls) == 1
+        assert power.conditions()["power_mode"] == "balanced power profile"
+        clock.now += LinuxPower.DAEMON_ASK_EVERY_S
+        power.refresh()
+        assert len(calls) == 2
 
     def test_platform_profile(self, tmp_path):
         root = make_sys(tmp_path, profile="low-power")
@@ -515,3 +616,38 @@ def test_finding_a_meter_never_fails():
     from chainforge.energy.meters import find_meter
     meter, why = find_meter()
     assert meter is not None or why
+
+
+class TestHeatDuringARequest:
+    """A GPU heats up while it generates, not before: heat seen by any check
+    during a request is recorded with it."""
+
+    def test_heat_during_a_request_is_recorded_though_it_ended_cool(self):
+        clock = FakeClock()
+        meter = FakeMeter(clock, idle_then({"gpu": 300.0}, [(1020, 1045)], idle={"gpu": 30.0}),
+                          conditions={"power_source": "AC power", "thermal": "nominal"})
+        monitor = EnergyMonitor(meter, clock=clock)
+        monitor.sample()
+        run_monitor_until(monitor, clock, 1019.9)
+        req = monitor.begin()
+        other = monitor.begin()  # e.g. another request, queued behind it
+        run_monitor_until(monitor, clock, 1030.0)
+        meter.cond["thermal"] = "the GPU was slowed by heat"
+        run_monitor_until(monitor, clock, 1041.0)  # a check every 10 s sees it
+        meter.cond["thermal"] = "nominal"
+        run_monitor_until(monitor, clock, 1045.0)
+        result = monitor.end(req, 0.0, 0.0, 25.0, 25.0)
+        assert result["conditions"]["thermal"] == "the GPU was slowed by heat"
+        assert monitor.status()["conditions"]["thermal"] == "nominal"  # not the machine's now
+        monitor.cancel(other)
+
+    def test_a_cool_request_stays_cool(self):
+        clock = FakeClock()
+        meter = FakeMeter(clock, idle_then({"gpu": 300.0}, [(1020, 1025)], idle={"gpu": 30.0}),
+                          conditions={"thermal": "nominal"})
+        monitor = EnergyMonitor(meter, clock=clock)
+        monitor.sample()
+        run_monitor_until(monitor, clock, 1019.9)
+        req = monitor.begin()
+        run_monitor_until(monitor, clock, 1025.0)
+        assert monitor.end(req, 0.0, 0.0, 5.0, 5.0)["conditions"]["thermal"] == "nominal"

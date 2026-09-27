@@ -49,18 +49,22 @@ Linux 5.8 on.)
 ## What's recorded with each measurement
 
 - **Power settings**: the power source, the power plan (Windows) or power
-  profile (Linux), each GPU's power limit where it's been lowered, and
-  whether the GPU was being slowed by heat. These change how much energy the
-  same work takes, so idle power is measured afresh when they change, and
-  the Vis Node says when measurements it plots were taken under different
-  ones.
+  profile (Linux), and each GPU's power limit where it's been lowered. These
+  change how much energy the same work takes, so idle power is measured
+  afresh when they change, and the Vis Node says when measurements it plots
+  were taken under different ones.
 - **Other programs using the GPU**: another program using the GPU during a
   request (an image generation in ComfyUI, a game) adds its energy to the
   request's measurement. ChainForge checks about once a second which
   programs are using the GPU (on Windows, through the counters Task Manager
   shows; on Linux, through NVML), flags the requests they overlapped, and
   leaves those times out of idle power. The model server itself, ChainForge
-  and the desktop's compositor don't count, nor does light use (under 5%).
+  and the desktop's compositor don't count, nor does light use (under 5%),
+  nor a browser's use under 30% (it draws ChainForge's own page), nor
+  processes whose names can't be read (e.g. in another container, where
+  Ollama may be). Only programs' names are recorded, not their arguments.
+- **Heat**: whether the GPU was slowed down by heat at any point during the
+  request, not only at its start.
 
 ## Checking a machine: `energy_probe.py`
 

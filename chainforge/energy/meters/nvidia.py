@@ -22,6 +22,11 @@ NVML_ERROR_FUNCTION_NOT_FOUND = 13
 
 # nvmlClocksThrottleReasons: slowed down to keep the GPU from overheating
 THROTTLE_THERMAL = 0x20 | 0x40  # software / hardware thermal slowdown
+NVML_PERF_POLICY_THERMAL = 1
+
+
+class _ViolationTime(ctypes.Structure):  # nvmlViolationTime_t
+    _fields_ = [("referenceTime", c_ulonglong), ("violationTime", c_ulonglong)]
 
 
 class _ProcessUtilSample(ctypes.Structure):  # nvmlProcessUtilizationSample_t
@@ -42,11 +47,13 @@ class Nvml:
         count = c_uint()
         if self._call("nvmlDeviceGetCount_v2", byref(count)) != NVML_SUCCESS:
             raise RuntimeError("NVML couldn't count the GPUs")
-        self._handles = []
+        self._total = count.value
+        self._handles, self._indices = [], []
         for i in range(count.value):
             h = c_void_p()
             if self._call("nvmlDeviceGetHandleByIndex_v2", c_uint(i), byref(h)) == NVML_SUCCESS:
                 self._handles.append(h)
+                self._indices.append(i)
 
     @staticmethod
     def _load():
@@ -78,7 +85,16 @@ class Nvml:
         return v.value if self._call(name, self._handles[i], byref(v)) == NVML_SUCCESS else None
 
     def count(self) -> int:
+        """How many GPUs can be read (numbered 0 to count - 1 below)."""
         return len(self._handles)
+
+    def total(self) -> int:
+        """How many GPUs the driver has, readable or not."""
+        return self._total
+
+    def index(self, i: int) -> int:
+        """The driver's number for GPU i, as nvidia-smi shows it."""
+        return self._indices[i]
 
     def name(self, i: int) -> str:
         buf = ctypes.create_string_buffer(96)
@@ -101,6 +117,14 @@ class Nvml:
 
     def throttle_reasons(self, i: int) -> Optional[int]:
         return self._value("nvmlDeviceGetCurrentClocksThrottleReasons", i, c_ulonglong)
+
+    def thermal_violation_ns(self, i: int) -> Optional[int]:
+        """Nanoseconds the GPU has been slowed by heat, in all (only some GPUs
+        keep this count)."""
+        v = _ViolationTime()
+        code = self._call("nvmlDeviceGetViolationStatus", self._handles[i],
+                          ctypes.c_int(NVML_PERF_POLICY_THERMAL), byref(v))
+        return v.violationTime if code == NVML_SUCCESS else None
 
     def process_utilization(self, i: int, since_us: int) -> Optional[Dict[int, int]]:
         """{pid: highest % of the GPU's cores it used} in samples since
@@ -135,13 +159,19 @@ class NvidiaMeter(EnergyMeter):
         n = nvml.count()
         if n == 0:
             raise RuntimeError("no NVIDIA GPUs found")
-        self._parts = ["gpu"] if n == 1 else [f"gpu{i}" for i in range(n)]
-        # Each GPU's energy counter at the start, or None to use power readings
-        self._start: List[Optional[int]] = [nvml.energy_mj(i) for i in range(n)]
+        # Numbered as the driver (and nvidia-smi) numbers them, even if one
+        # couldn't be read
+        self._labels = [f"GPU {nvml.index(i)}" for i in range(n)]
+        self._parts = ["gpu"] if nvml.total() == 1 else [f"gpu{nvml.index(i)}" for i in range(n)]
+        # Each GPU's energy counter when last read, or None to use power
+        # readings; and the joules used since the meter began
+        self._last_mj: List[Optional[int]] = [nvml.energy_mj(i) for i in range(n)]
+        self._counted = [0.0] * n
         self._last_power: List[Optional[Tuple[float, float]]] = [None] * n  # (time, watts)
         self._integrated = [0.0] * n
+        self._last_violation: List[Optional[int]] = [nvml.thermal_violation_ns(i) for i in range(n)]
         names = [nvml.name(i) for i in range(n)]
-        counted = "" if all(s is not None for s in self._start) else ", from power readings"
+        counted = "" if all(s is not None for s in self._last_mj) else ", from power readings"
         self.name = f"NVIDIA GPU{'s' if n > 1 else ''} ({', '.join(names)}; NVML{counted})"
 
     def components(self) -> List[str]:
@@ -150,10 +180,16 @@ class NvidiaMeter(EnergyMeter):
     def read(self) -> Dict[str, float]:
         out: Dict[str, float] = {}
         for i, part in enumerate(self._parts):
-            if self._start[i] is not None:
+            if self._last_mj[i] is not None:
                 mj = self._nvml.energy_mj(i)
                 if mj is not None:
-                    out[part] = max(mj - self._start[i], 0) / 1000
+                    # Added up reading by reading, so a counter that restarts
+                    # (the driver reloading, the GPU being reset) loses only
+                    # the moment it restarted in
+                    delta = mj - self._last_mj[i]
+                    self._counted[i] += (delta if delta >= 0 else mj) / 1000
+                    self._last_mj[i] = mj
+                    out[part] = self._counted[i]
                     continue
             out[part] = self._from_power(i)
         return out
@@ -172,14 +208,20 @@ class NvidiaMeter(EnergyMeter):
 
     def conditions(self) -> Dict[str, str]:
         """The GPUs' power limits (lowered, they use less energy per token, but
-        take longer), and whether they're being slowed down by heat."""
+        take longer), and whether they've been slowed down by heat since the
+        last call: the monitor calls this during requests too, so heat during
+        one is caught, not only at its start, when the GPU is cool."""
         limits, hot = [], False
         for i in range(len(self._parts)):
             limit, default = self._nvml.power_limit_mw(i), self._nvml.default_power_limit_mw(i)
             if limit is not None and default is not None and abs(limit - default) >= 1000:
-                label = "the GPU" if len(self._parts) == 1 else f"GPU {i}"
+                label = "the GPU" if self._parts == ["gpu"] else self._labels[i]
                 limits.append(f"{label} limited to {limit / 1000:.0f} W (default {default / 1000:.0f} W)")
-            reasons = self._nvml.throttle_reasons(i)
+            violation = self._nvml.thermal_violation_ns(i)
+            last, self._last_violation[i] = self._last_violation[i], violation
+            if violation is not None and last is not None and violation > last:
+                hot = True
+            reasons = self._nvml.throttle_reasons(i)  # right now
             hot = hot or bool(reasons is not None and reasons & THROTTLE_THERMAL)
         return {
             "gpu_power_limit": "; ".join(limits) or "default",

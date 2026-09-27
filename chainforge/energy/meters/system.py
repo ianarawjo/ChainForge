@@ -10,14 +10,20 @@ monitor flags those requests, and leaves those times out of idle power.
 
 import ctypes
 import os
+import shutil
 import subprocess
 import sys
+import time
 from ctypes import byref
 from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 # A program using at least this much of a GPU (its busiest engine, on
 # average between checks) counts as using it
 OTHER_USE_MIN_PERCENT = 5.0
+# Web browsers, though, draw ChainForge's own page (its progress animations
+# run on the GPU), so count only heavy use, e.g. WebGPU or a game
+BROWSER_MIN_PERCENT = 30.0
+_BROWSERS = ("chrome", "msedge", "firefox", "brave", "opera", "vivaldi", "arc", "safari", "chromium")
 # Not "other programs": the model server itself (Ollama's runners, whatever
 # they're called in each version; Linux cuts names to 15 characters), and
 # the Windows desktop's own compositor, which draws the screen
@@ -25,32 +31,42 @@ _OWN = ("ollama", "llama-server", "llama_server")
 _SYSTEM = {"dwm", "csrss", "system", "idle"}
 
 
-def process_name(pid: int) -> str:
-    """A program's name from its process id, e.g. "ComfyUI.exe" -> "ComfyUI"."""
+def process_name(pid: int) -> Optional[str]:
+    """A program's name from its process id, e.g. "ComfyUI.exe" -> "ComfyUI";
+    None if it can't be read (e.g. a process in another container, whose ids
+    NVML reports from the host's point of view). Only the program's name, not
+    its arguments: the names are saved with measurements, in flows people share.
+    """
     try:
         if sys.platform == "win32":
-            return _windows_process_name(pid) or f"process {pid}"
+            return _windows_process_name(pid)
         with open(f"/proc/{pid}/comm", encoding="utf-8") as f:
-            name = f.read().strip()
-        if name.startswith("python"):  # say which script, e.g. ComfyUI's main.py
-            with open(f"/proc/{pid}/cmdline", "rb") as f:
-                args = f.read().decode(errors="replace").split("\0")
-            script = next((a for a in args[1:] if a.endswith(".py")), None)
-            if script:
-                return f"{name} ({os.path.basename(script)})"
-        return name
+            return f.read().strip() or None
     except Exception:
-        return f"process {pid}"
+        return None
+
+
+_kernel32 = None
+
+
+def _k32():
+    """kernel32, with the signatures of the calls used here (set up once)."""
+    global _kernel32
+    if _kernel32 is None:
+        from ctypes import wintypes
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        k32.OpenProcess.restype = wintypes.HANDLE
+        k32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+        k32.QueryFullProcessImageNameW.argtypes = [
+            wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)]
+        k32.CloseHandle.argtypes = [wintypes.HANDLE]
+        _kernel32 = k32
+    return _kernel32
 
 
 def _windows_process_name(pid: int) -> Optional[str]:
     from ctypes import wintypes
-    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
-    k32.OpenProcess.restype = wintypes.HANDLE
-    k32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
-    k32.QueryFullProcessImageNameW.argtypes = [
-        wintypes.HANDLE, wintypes.DWORD, wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD)]
-    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+    k32 = _k32()
     h = k32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
     if not h:
         return None
@@ -66,20 +82,28 @@ def _windows_process_name(pid: int) -> Optional[str]:
 
 def other_programs(
     per_pid: Dict[int, float],
-    name_of: Callable[[int], str] = process_name,
+    name_of: Callable[[int], Optional[str]] = process_name,
     own_pid: Optional[int] = None,
     min_percent: float = OTHER_USE_MIN_PERCENT,
 ) -> List[str]:
     """The names of programs, besides the model server, ChainForge and the
-    desktop, that used the GPU at least `min_percent`."""
+    desktop, that used the GPU at least `min_percent` (more, for browsers).
+
+    A process whose name can't be read is left out: it can't be told apart
+    from the model server (e.g. Ollama in another container).
+    """
     own_pid = os.getpid() if own_pid is None else own_pid
     names = set()
     for pid, pct in per_pid.items():
         if pct < min_percent or pid in (0, 4, own_pid):
             continue
         name = name_of(pid)
+        if not name:
+            continue
         low = name.lower()
         if low.startswith(_OWN) or low in _SYSTEM:
+            continue
+        if low.startswith(_BROWSERS) and pct < BROWSER_MIN_PERCENT:
             continue
         names.add(name)
     return sorted(names)
@@ -257,9 +281,19 @@ class LinuxPower:
     """Power source, from /sys/class/power_supply, and power profile, from
     the firmware's platform profile or power-profiles-daemon."""
 
-    def __init__(self, sys_root: str = "/sys"):
+    # Where power-profiles-daemon keeps the profile it's set to
+    DAEMON_STATE = "/var/lib/power-profiles-daemon/state.ini"
+    # Asking the daemon instead (powerprofilesctl, a Python script) costs a
+    # tenth of a second of CPU, which shows up in idle power: rarely, then
+    DAEMON_ASK_EVERY_S = 300.0
+
+    def __init__(self, sys_root: str = "/sys", daemon_state: str = DAEMON_STATE, clock=time.monotonic):
         self._root = sys_root
+        self._daemon_state = daemon_state
+        self._clock = clock
         self._daemon_profile: Optional[str] = None
+        self._asked_at = -float("inf")
+        self._has_ctl: Optional[bool] = None
 
     def _read(self, *path: str) -> Optional[str]:
         try:
@@ -274,11 +308,16 @@ class LinuxPower:
             supplies = os.listdir(base)
         except OSError:
             supplies = []
-        mains = [s for s in supplies if self._read("class", "power_supply", s, "type") == "Mains"]
-        batteries = [s for s in supplies if self._read("class", "power_supply", s, "type") == "Battery"]
-        if any(self._read("class", "power_supply", s, "online") == "1" for s in mains):
+        kind = {s: self._read("class", "power_supply", s, "type") for s in supplies}
+        # Chargers: mains adapters, and USB-C chargers (which many laptops
+        # list as their own supply, with the mains adapter offline)
+        chargers = [s for s in supplies if kind[s] in ("Mains", "USB")]
+        # The machine's own batteries, not a mouse's or keyboard's
+        batteries = [s for s in supplies if kind[s] == "Battery"
+                     and self._read("class", "power_supply", s, "scope") != "Device"]
+        if any(self._read("class", "power_supply", s, "online") == "1" for s in chargers):
             return "AC power"
-        if batteries and mains:
+        if batteries and chargers:
             return "battery"
         if batteries:  # no charger listed: go by whether the battery's discharging
             statuses = {self._read("class", "power_supply", b, "status") for b in batteries}
@@ -292,11 +331,32 @@ class LinuxPower:
             out["power_mode"] = f"{profile} power profile"
         return out
 
+    def _daemon_state_profile(self) -> Optional[str]:
+        try:
+            with open(self._daemon_state, encoding="utf-8") as f:
+                for line in f:
+                    key, _, value = line.partition("=")
+                    if key.strip().lower() == "profile" and value.strip():
+                        return value.strip()
+        except OSError:
+            pass
+        return None
+
     def refresh(self) -> None:
-        """power-profiles-daemon's profile, where the firmware has none (slow:
-        runs a command)."""
+        """power-profiles-daemon's profile, where the firmware has none: from
+        its state file, or failing that, now and then, from powerprofilesctl."""
         if self._read("firmware", "acpi", "platform_profile"):
             return
+        profile = self._daemon_state_profile()
+        if profile:
+            self._daemon_profile = profile
+            return
+        if self._has_ctl is None:
+            self._has_ctl = shutil.which("powerprofilesctl") is not None
+        now = self._clock()
+        if not self._has_ctl or now - self._asked_at < self.DAEMON_ASK_EVERY_S:
+            return
+        self._asked_at = now
         try:
             out = subprocess.run(["powerprofilesctl", "get"], capture_output=True, text=True, timeout=5)
             if out.returncode == 0 and out.stdout.strip():

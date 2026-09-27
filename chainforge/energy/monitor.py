@@ -52,6 +52,8 @@ REFRESH_AT_REQUEST_AFTER_S = 2.0
 # Idle power is measured afresh when these change (heat is only recorded:
 # a long run warming the chip would otherwise keep discarding it)
 BASELINE_CONDITIONS = ("power_source", "power_mode", "gpu_power_limit")
+# Thermal states that aren't hot
+COOL = ("nominal", "unknown")
 # How often to check for other programs using the GPU, where the meter can
 # (see EnergyMeter.other_gpu_use): their energy would be counted as the
 # request's, or as idle power
@@ -107,6 +109,13 @@ class EnergyMonitor:
         if key(conditions) != key(self._conditions) and self._conditions:
             self._conditions_since = now  # a change, not the first check
         self._conditions = conditions
+        # Heat that builds up during a request is recorded with it, not only
+        # heat at its start (when a GPU has only just started working)
+        thermal = conditions.get("thermal")
+        if thermal and thermal not in COOL:
+            for recorded in self._request_conditions.values():
+                if recorded.get("thermal") in (None,) + COOL:
+                    recorded["thermal"] = thermal
         return conditions
 
     def _refresh_conditions(self, if_older_than: float) -> None:
@@ -204,11 +213,14 @@ class EnergyMonitor:
         """Marks a request as started. Returns its id, for `end()`."""
         # So a power mode just switched to is what it's recorded under
         self._refresh_conditions(REFRESH_AT_REQUEST_AFTER_S)
+        # So other programs' use of the GPU up to now isn't counted as during it
+        self._check_other_use(0)
         with self._lock:
             self._sample_locked()
             request = str(next(self._ids))
             self._in_flight[request] = self._last_used = self._clock()
-            self._request_conditions[request] = self._check_conditions_locked(self._clock())
+            # A copy: heat during the request is added to it
+            self._request_conditions[request] = dict(self._check_conditions_locked(self._clock()))
         self._wake.set()
         return request
 
@@ -249,8 +261,8 @@ class EnergyMonitor:
             began = self._in_flight.pop(request, None)
             if began is None:
                 return None
+            conditions_now = self._check_conditions_locked(now)  # adds heat up to now
             conditions = self._request_conditions.pop(request, {})
-            conditions_now = self._check_conditions_locked(now)
             replied = now - since_reply_s
             self._busy.append((began, replied + WIND_DOWN_S))
             timings = (since_reply_s, load_s, generation_s, total_s)
