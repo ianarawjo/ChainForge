@@ -25,3 +25,12 @@ class EnergyMeter(ABC):
 
         Only ever increases. Called from one thread at a time.
         """
+
+    def conditions(self) -> Dict[str, str]:
+        """What the machine is running under that changes how much energy the
+        same work takes, e.g. {"power_source": "battery", "power_mode": "Low
+        Power", "thermal": "nominal"}: a lower power mode runs the chip at
+        lower clock speeds and voltages, using less energy per token but
+        taking longer. Empty if the meter can't tell. Must be cheap: it's
+        checked every few seconds."""
+        return {}

@@ -55,6 +55,8 @@ export const STATS_METAVARS = {
   cost_usd: "stat_cost_usd",
   energy_wh: "stat_energy_wh",
   load_energy_wh: "stat_load_energy_wh",
+  power_source: "stat_power_source",
+  power_mode: "stat_power_mode",
   est_energy_wh_min: "stat_est_energy_wh_min",
   est_energy_wh_max: "stat_est_energy_wh_max",
 } as const;
@@ -171,6 +173,19 @@ export function statsFromReply(reply: Dict): ResponseStats {
     if (num(energy.load_energy_wh) !== undefined)
       stats.load_energy_wh = energy.load_energy_wh;
     if (energy.shared === true) stats.energy_shared = true;
+    if (energy.conditions && typeof energy.conditions === "object") {
+      const conditions = Object.fromEntries(
+        Object.entries(energy.conditions as Dict).filter(
+          ([, v]) => typeof v === "string" && v.length > 0,
+        ),
+      );
+      if (Object.keys(conditions).length > 0)
+        stats.energy_conditions = conditions;
+    }
+    if (energy.conditions_changed === true)
+      stats.energy_conditions_changed = true;
+    if (energy.baseline_before_change === true)
+      stats.energy_baseline_before_change = true;
   }
 
   return stats;
@@ -214,6 +229,10 @@ function finish(stats: ResponseStats): ResponseStats | null {
   if (stats.load_energy_wh !== undefined)
     res.load_energy_wh = sig(stats.load_energy_wh, 3);
   if (stats.energy_shared) res.energy_shared = true;
+  if (stats.energy_conditions) res.energy_conditions = stats.energy_conditions;
+  if (stats.energy_conditions_changed) res.energy_conditions_changed = true;
+  if (stats.energy_baseline_before_change)
+    res.energy_baseline_before_change = true;
   if (Object.keys(res).length === 0) return null;
   if (stats.averaged_over !== undefined && stats.averaged_over > 1)
     res.averaged_over = stats.averaged_over;
@@ -364,6 +383,10 @@ export function statsToMetavars(
     res[STATS_METAVARS.energy_wh] = stats.energy_wh;
   if (stats.load_energy_wh !== undefined)
     res[STATS_METAVARS.load_energy_wh] = stats.load_energy_wh;
+  if (stats.energy_conditions?.power_source)
+    res[STATS_METAVARS.power_source] = stats.energy_conditions.power_source;
+  if (stats.energy_conditions?.power_mode)
+    res[STATS_METAVARS.power_mode] = stats.energy_conditions.power_mode;
   if (stats.est_energy_wh !== undefined) {
     res[STATS_METAVARS.est_energy_wh_min] = stats.est_energy_wh.min;
     res[STATS_METAVARS.est_energy_wh_max] = stats.est_energy_wh.max;
@@ -447,6 +470,29 @@ const ENERGY_PARTS: Dict<string> = {
   ane: "Neural Engine",
 };
 
+/**
+ * The power settings a measurement was taken under, in words, e.g. "on
+ * battery, in Low Power Mode", "on AC power, in Automatic power mode, while
+ * the Mac was hot (serious)". Undefined if unknown.
+ */
+export function describeConditions(
+  conditions: Dict<string> | undefined,
+): string | undefined {
+  if (!conditions) return undefined;
+  const parts: string[] = [];
+  const source = conditions.power_source;
+  if (source) parts.push(source === "battery" ? "on battery" : `on ${source}`);
+  const mode = conditions.power_mode;
+  if (mode)
+    parts.push(
+      mode === "Automatic" ? "in Automatic power mode" : `in ${mode} Mode`,
+    );
+  const thermal = conditions.thermal;
+  if (thermal && thermal !== "nominal" && thermal !== "unknown")
+    parts.push(`while the Mac was hot (${thermal})`);
+  return parts.length > 0 ? parts.join(", ") : undefined;
+}
+
 /** The tooltip lines for energy measured on this machine. */
 function describeMeasuredEnergy(stats: ResponseStats): string[] {
   const wh = stats.energy_wh as number;
@@ -470,6 +516,12 @@ function describeMeasuredEnergy(stats: ResponseStats): string[] {
         .join(" · ")} ${unit}`,
     );
   }
+  const conditions = describeConditions(stats.energy_conditions);
+  if (conditions) lines.push(`  Measured ${conditions}`);
+  if (stats.energy_conditions_changed)
+    lines.push("  The power settings changed during this request");
+  if (stats.energy_baseline_before_change)
+    lines.push("  Idle power is from before the power settings changed");
   if (stats.energy_shared)
     lines.push("  Shared with requests generating at the same time");
   if (stats.load_energy_wh !== undefined)

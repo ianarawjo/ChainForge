@@ -294,6 +294,17 @@ export interface ResponseStats {
   /** Set when this request's generation overlapped another's, which shared its energy. */
   energy_shared?: boolean;
   /**
+   * What the machine ran the request under, which changes the energy the same
+   * work takes: e.g. { power_source: "battery", power_mode: "Low Power",
+   * thermal: "nominal" }. Low Power Mode, for one, runs the chip slower but
+   * at a lower voltage, and so uses less energy per token.
+   */
+  energy_conditions?: Dict<string>;
+  /** Set when the power source or mode changed during the request. */
+  energy_conditions_changed?: boolean;
+  /** Set when idle power was measured before the power settings last changed (no idle time since). */
+  energy_baseline_before_change?: boolean;
+  /**
    * Set when the provider reported one total for several responses, e.g. one
    * request that returned n of them: how many responses the total was shared
    * between. The stats it covers (output tokens and speed, or latency) are

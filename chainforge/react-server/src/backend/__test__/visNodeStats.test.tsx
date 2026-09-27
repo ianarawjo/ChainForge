@@ -362,4 +362,33 @@ describe("Vis Node plotting response stats", () => {
       header.remove();
     }
   });
+
+  test("warns when measured energies were taken under different power settings", async () => {
+    const measured = (power_mode: string): ResponseStats => ({
+      latency_ms: 1000,
+      output_tokens: 100,
+      energy_wh: 0.05,
+      energy_conditions: { power_source: "battery", power_mode },
+    });
+    await renderVis([
+      respObj("Haiku", "ollama", [
+        measured("Automatic"),
+        measured("Automatic"),
+      ]),
+      respObj("Gemini", "ollama", [measured("Low Power")]),
+    ]);
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_energy_mwh" },
+    });
+    const note = await screen.findByText(
+      "Measured under different power settings.",
+    );
+    const trigger = note.closest("[aria-describedby]") as HTMLElement;
+    expect(
+      document.getElementById(trigger.getAttribute("aria-describedby")!)
+        ?.textContent,
+    ).toBe(
+      "These were measured under different power settings (2 on battery, in Automatic power mode; 1 on battery, in Low Power Mode), which change the energy the same work takes. Compare them with care.",
+    );
+  });
 });

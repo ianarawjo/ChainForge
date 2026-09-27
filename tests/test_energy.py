@@ -144,9 +144,13 @@ class TestAttribute:
 class FakeMeter(EnergyMeter):
     name = "Fake meter"
 
-    def __init__(self, clock, power_at):
+    def __init__(self, clock, power_at, conditions=None):
         self._clock, self._power_at = clock, power_at
         self._t, self._totals = clock.now, {"cpu": 0.0, "gpu": 0.0}
+        self.cond = conditions if conditions is not None else {}
+
+    def conditions(self):
+        return dict(self.cond)
 
     def components(self):
         return ["cpu", "gpu"]
@@ -285,6 +289,83 @@ class TestMonitor:
         # The first request's end didn't make its busy time idle for the second
         result = monitor.end(second, 0.0, 0.0, 5.0, 10.0)
         assert result["idle_w"] == pytest.approx(1.0)
+
+
+class TestPowerConditions:
+    """The power source and mode change idle power and the energy a request
+    takes, so each measurement records them, and idle power is measured
+    afresh when they change."""
+
+    def make(self):
+        clock = FakeClock()
+        state = {"idle": 1.0, "busy": None}
+        meter = FakeMeter(
+            clock,
+            lambda t: {"gpu": state["busy"] if state["busy"] is not None else state["idle"]},
+            conditions={"power_source": "AC power", "power_mode": "Automatic", "thermal": "nominal"},
+        )
+        monitor = EnergyMonitor(meter, clock=clock)
+        monitor.sample()
+        return monitor, clock, meter, state
+
+    def run_request(self, monitor, clock, state, watts=11.0, seconds=2.0):
+        req = monitor.begin()
+        state["busy"] = watts
+        run_monitor_until(monitor, clock, clock.now + seconds)
+        state["busy"] = None
+        return req, monitor.end(req, 0.0, 0.0, seconds, seconds)
+
+    def test_each_measurement_records_them(self):
+        monitor, clock, meter, state = self.make()
+        run_monitor_until(monitor, clock, 1010.0)
+        _, result = self.run_request(monitor, clock, state)
+        assert result["conditions"] == {
+            "power_source": "AC power", "power_mode": "Automatic", "thermal": "nominal"}
+        assert result["conditions_changed"] is False
+        assert result["baseline_before_change"] is False
+
+    def test_idle_power_is_measured_afresh_after_a_change(self):
+        monitor, clock, meter, state = self.make()
+        run_monitor_until(monitor, clock, 1030.0)
+        # Unplugged, into Low Power Mode: idle power drops
+        meter.cond.update(power_source="battery", power_mode="Low Power")
+        state["idle"] = 0.5
+        run_monitor_until(monitor, clock, 1060.0)
+        _, result = self.run_request(monitor, clock, state, watts=5.5)
+        assert result["idle_w"] == pytest.approx(0.5)
+        assert result["energy_wh"] * 3600 == pytest.approx(10.0, rel=0.05)  # (5.5 - 0.5) W x 2 s
+        assert result["conditions"]["power_mode"] == "Low Power"
+        assert result["baseline_before_change"] is False
+
+    def test_just_after_a_change_the_old_idle_power_is_used_and_flagged(self):
+        monitor, clock, meter, state = self.make()
+        run_monitor_until(monitor, clock, 1030.0)
+        _, first = self.run_request(monitor, clock, state)
+        run_monitor_until(monitor, clock, clock.now + 5.0)
+        meter.cond.update(power_mode="Low Power")
+        _, result = self.run_request(monitor, clock, state)  # no idle time since
+        assert result is not None
+        assert result["baseline_before_change"] is True
+        assert result["idle_w"] == pytest.approx(1.0)
+
+    def test_a_change_during_a_request_is_flagged(self):
+        monitor, clock, meter, state = self.make()
+        run_monitor_until(monitor, clock, 1010.0)
+        req = monitor.begin()
+        run_monitor_until(monitor, clock, 1011.0)
+        meter.cond.update(power_source="battery")
+        run_monitor_until(monitor, clock, 1012.0)
+        result = monitor.end(req, 0.0, 0.0, 2.0, 2.0)
+        assert result["conditions"]["power_source"] == "AC power"  # as it began
+        assert result["conditions_changed"] is True
+
+    def test_heat_is_recorded_but_keeps_idle_power(self):
+        monitor, clock, meter, state = self.make()
+        run_monitor_until(monitor, clock, 1010.0)
+        meter.cond.update(thermal="serious")
+        _, result = self.run_request(monitor, clock, state)
+        assert result["conditions"]["thermal"] == "serious"
+        assert result["baseline_before_change"] is False
 
 
 class TestRoutes:

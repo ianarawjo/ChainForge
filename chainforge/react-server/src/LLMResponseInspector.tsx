@@ -297,6 +297,12 @@ export const responsesToTable = async (
           row["Energy, measured (Wh)"] = stats.energy_wh;
         if (stats?.load_energy_wh !== undefined)
           row["Model load energy, measured (Wh)"] = stats.load_energy_wh;
+        if (stats?.energy_conditions?.power_source)
+          row["Power source"] = stats.energy_conditions.power_source;
+        if (stats?.energy_conditions?.power_mode)
+          row["Power mode"] = stats.energy_conditions.power_mode;
+        if (stats?.energy_conditions?.thermal)
+          row["Thermal state"] = stats.energy_conditions.thermal;
         if (stats?.averaged_over !== undefined)
           row["Stats averaged over"] = stats.averaged_over;
 

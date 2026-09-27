@@ -56,6 +56,7 @@ import {
 } from "./VisNodeAIPlot";
 import { AIPlot } from "./backend/aiPlots";
 import {
+  describeConditions,
   ecologitsCovers,
   plottableStat,
   plottableStatsIn,
@@ -514,7 +515,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const metricName = selectedStat?.label ?? selectedEvalResVar;
     const isEnergy = selectedStat?.key === "__stat_est_energy_mwh";
     const isMeasuredEnergy = selectedStat?.key === "__stat_energy_mwh";
-    const omittedNoteId = useId();
+    const notesId = useId();
 
     // Why some responses aren't in a plot of a stat, for the note below it.
     // For energy, only the models EcoLogits doesn't cover are its doing;
@@ -550,6 +551,44 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         );
       return sentences.join(" ");
     }, [statsView, isEnergy, isMeasuredEnergy, metricName]);
+
+    // Measured energy depends on the power settings it was measured under
+    // (Low Power Mode, for one, uses less per token), so say when the
+    // measurements plotted weren't all taken under the same ones
+    const conditionsNote = useMemo(() => {
+      if (!isMeasuredEnergy || !statsView) return undefined;
+      const counts = new Map<string, number>();
+      statsView.responses.forEach((r) =>
+        r.stats?.forEach((s) => {
+          const c = s?.energy_conditions;
+          const key = describeConditions(
+            c ? { power_source: c.power_source, power_mode: c.power_mode } : {},
+          );
+          if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+        }),
+      );
+      if (counts.size < 2) return undefined;
+      const which = Array.from(counts.entries())
+        .map(([conditions, n]) => `${n} ${conditions}`)
+        .join("; ");
+      return `These were measured under different power settings (${which}), which change the energy the same work takes. Compare them with care.`;
+    }, [isMeasuredEnergy, statsView]);
+
+    const notes: { text: string; details: string }[] = [];
+    if (omittedNote)
+      notes.push({
+        text: isEnergy
+          ? "Some estimates could not be shown."
+          : isMeasuredEnergy
+            ? "Some measurements could not be shown."
+            : "Some values could not be shown.",
+        details: omittedNote,
+      });
+    if (conditionsNote)
+      notes.push({
+        text: "Measured under different power settings.",
+        details: conditionsNote,
+      });
 
     // Typically, a user will only need the default LLM 'group' --all LLMs in responses.
     // However, when prompts are chained together, the original LLM info is stored in metavars as a key.
@@ -1839,48 +1878,45 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         </div>
         {/* Outside the plot's div: the plot resizes to fill that div, so
             anything else in it would make the plot grow without end. */}
-        {omittedNote ? (
-          <Tooltip
-            label={omittedNote}
-            multiline
-            width={260}
-            withArrow
-            withinPortal
-            position="bottom-start"
-            // Keyboard users reach the details by focusing the note
-            events={{ hover: true, focus: true, touch: true }}
-          >
-            <div
-              tabIndex={0}
-              aria-describedby={omittedNoteId}
-              style={{
-                ...smallTextStyle,
-                marginTop: "4px",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-                cursor: "help",
-              }}
+        {notes.map((note, i) => (
+          <React.Fragment key={i}>
+            <Tooltip
+              label={note.details}
+              multiline
+              width={260}
+              withArrow
+              withinPortal
+              position="bottom-start"
+              // Keyboard users reach the details by focusing the note
+              events={{ hover: true, focus: true, touch: true }}
             >
-              <IconAlertTriangle
-                size={14}
-                color="#e8a33d"
-                style={{ flexShrink: 0 }}
-              />
-              {isEnergy
-                ? "Some estimates could not be shown."
-                : isMeasuredEnergy
-                  ? "Some measurements could not be shown."
-                  : "Some values could not be shown."}
-            </div>
-          </Tooltip>
-        ) : null}
-        {/* The details for screen readers, whether or not the tooltip is open */}
-        {omittedNote ? (
-          <span id={omittedNoteId} style={visuallyHidden}>
-            {omittedNote}
-          </span>
-        ) : null}
+              <div
+                tabIndex={0}
+                aria-describedby={`${notesId}-${i}`}
+                style={{
+                  ...smallTextStyle,
+                  marginTop: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  cursor: "help",
+                  width: "fit-content",
+                }}
+              >
+                <IconAlertTriangle
+                  size={14}
+                  color="#e8a33d"
+                  style={{ flexShrink: 0 }}
+                />
+                {note.text}
+              </div>
+            </Tooltip>
+            {/* The details for screen readers, whether or not the tooltip is open */}
+            <span id={`${notesId}-${i}`} style={visuallyHidden}>
+              {note.details}
+            </span>
+          </React.Fragment>
+        ))}
       </>
     );
   },

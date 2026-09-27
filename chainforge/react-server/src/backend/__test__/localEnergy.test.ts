@@ -167,15 +167,50 @@ describe("showing measured energy", () => {
         energy_parts_wh: { gpu: 1000, cpu: 500 },
       }),
     ).toContain("  GPU 1 · CPU 0.5 kWh");
+    // What it was measured under, which changes the energy the same work takes
+    const onBattery = describeStats({
+      ...stats,
+      energy_conditions: {
+        power_source: "battery",
+        power_mode: "Low Power",
+        thermal: "nominal",
+      },
+    });
+    expect(onBattery).toContain("  Measured on battery, in Low Power Mode");
+    expect(
+      describeStats({
+        ...stats,
+        energy_conditions: {
+          power_source: "AC power",
+          power_mode: "Automatic",
+          thermal: "serious",
+        },
+        energy_conditions_changed: true,
+        energy_baseline_before_change: true,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        "  Measured on AC power, in Automatic power mode, while the Mac was hot (serious)",
+        "  The power settings changed during this request",
+        "  Idle power is from before the power settings changed",
+      ]),
+    );
     expect(describeStats({ ...stats, energy_shared: true })).toContain(
       "  Shared with requests generating at the same time",
     );
   });
 
   test("as metavars and a Vis Node value, in mWh", () => {
-    expect(statsToMetavars(stats)).toMatchObject({
+    expect(
+      statsToMetavars({
+        ...stats,
+        energy_conditions: { power_source: "battery", power_mode: "Low Power" },
+      }),
+    ).toMatchObject({
       stat_energy_wh: 0.0853,
       stat_load_energy_wh: 0.00303,
+      stat_power_source: "battery",
+      stat_power_mode: "Low Power",
     });
     const stat = plottableStat("__stat_energy_mwh")!;
     expect(stat.value(stats)).toBeCloseTo(85.3, 6);

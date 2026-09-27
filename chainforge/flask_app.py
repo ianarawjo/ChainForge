@@ -285,6 +285,11 @@ def with_stats_metavars(metavars: dict, stats: list, index: int) -> dict:
                 'energy_wh', 'load_energy_wh'):
         if isinstance(s.get(key), (int, float)):
             res['stat_' + key] = s[key]
+    conditions = s.get('energy_conditions')
+    if isinstance(conditions, dict):
+        for key in ('power_source', 'power_mode'):
+            if isinstance(conditions.get(key), str):
+                res['stat_' + key] = conditions[key]
     est = s.get('est_energy_wh')
     if isinstance(est, dict) and all(isinstance(est.get(k), (int, float)) for k in ('min', 'max')):
         res['stat_est_energy_wh_min'] = est['min']

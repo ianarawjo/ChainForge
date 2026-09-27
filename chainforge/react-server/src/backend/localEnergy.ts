@@ -21,6 +21,12 @@ export interface MeasuredEnergy {
   load_energy_wh: number | null;
   /** Whether its generation overlapped another request's, and so was shared. */
   shared: boolean;
+  /** Power source, power mode and heat as it began, e.g. { power_source: "battery", power_mode: "Low Power", thermal: "nominal" }. */
+  conditions?: Record<string, string>;
+  /** Whether the power source or mode changed during it. */
+  conditions_changed?: boolean;
+  /** Whether idle power is from before the power settings last changed. */
+  baseline_before_change?: boolean;
 }
 
 let available: Promise<boolean> | undefined;

@@ -38,6 +38,12 @@ WIND_DOWN_S = 1.0
 MIN_LOAD_S = 0.05
 # Timings further off than this from the request's own span are rejected
 TIMING_SLACK_S = 2.0
+# How often to check the power source and mode, which change idle power and
+# the energy a request takes (see EnergyMeter.conditions)
+CONDITIONS_EVERY_S = 10.0
+# Idle power is measured afresh when these change (heat is only recorded:
+# a long run warming the chip would otherwise keep discarding it)
+BASELINE_CONDITIONS = ("power_source", "power_mode")
 
 
 class EnergyMonitor:
@@ -53,6 +59,11 @@ class EnergyMonitor:
         self._last_used = clock()
         self._wake = threading.Event()
         self._last_baseline: Optional[Baseline] = None
+        self._last_baseline_since = -math.inf  # the power settings it was measured under began
+        self._conditions: Dict[str, str] = {}
+        self._conditions_checked = -math.inf
+        self._conditions_since = -math.inf  # when the current power settings began
+        self._request_conditions: Dict[str, Dict[str, str]] = {}
         self._thread: Optional[threading.Thread] = None
 
     # --- Readings ---------------------------------------------------------
@@ -62,8 +73,27 @@ class EnergyMonitor:
         with self._lock:
             self._sample_locked()
 
+    def _check_conditions_locked(self, now: float) -> Dict[str, str]:
+        """The power settings now. When they've changed since the last check,
+        idle power is measured afresh from here on."""
+        self._conditions_checked = now
+        try:
+            conditions = self.meter.conditions()
+        except Exception:
+            conditions = {}
+        key = lambda c: tuple(c.get(k) for k in BASELINE_CONDITIONS)  # noqa: E731
+        if key(conditions) != key(self._conditions):
+            if self._conditions:  # a change, not the first check
+                self._conditions_since = now
+            self._conditions = conditions
+        else:
+            self._conditions = conditions  # heat may have changed
+        return conditions
+
     def _sample_locked(self) -> None:
         now = self._clock()
+        if now - self._conditions_checked >= CONDITIONS_EVERY_S:
+            self._check_conditions_locked(now)
         totals = self.meter.read()
         self._readings.append(now, tuple(totals.get(c, 0.0) for c in self._readings.components))
         cutoff = now - HISTORY_S
@@ -113,6 +143,7 @@ class EnergyMonitor:
             self._sample_locked()
             request = str(next(self._ids))
             self._in_flight[request] = self._last_used = self._clock()
+            self._request_conditions[request] = self._check_conditions_locked(self._clock())
         self._wake.set()
         return request
 
@@ -120,6 +151,7 @@ class EnergyMonitor:
         """A request that failed or was cancelled: counts as busy time, gets no energy."""
         with self._lock:
             began = self._in_flight.pop(request, None)
+            self._request_conditions.pop(request, None)
             if began is not None:
                 self._busy.append((began, self._clock() + WIND_DOWN_S))
 
@@ -148,6 +180,8 @@ class EnergyMonitor:
             began = self._in_flight.pop(request, None)
             if began is None:
                 return None
+            conditions = self._request_conditions.pop(request, {})
+            conditions_now = self._check_conditions_locked(now)
             replied = now - since_reply_s
             self._busy.append((began, replied + WIND_DOWN_S))
             timings = (since_reply_s, load_s, generation_s, total_s)
@@ -164,7 +198,7 @@ class EnergyMonitor:
                 windows.append(Window(request, LOAD, load_start, load_start + load_s))
             self._windows.extend(windows)
 
-            baseline = self._baseline(now)
+            baseline, baseline_current = self._baseline(now)
             if baseline is None:
                 return None
             result = attribute(request, self._windows, self._readings, baseline)
@@ -182,28 +216,48 @@ class EnergyMonitor:
             "shared": result.shared,
             "idle_w": baseline.total_watts,
             "meter": self.meter.name,
+            # What it ran under (at the start), for telling comparable
+            # measurements apart; and whether that changed during it, or idle
+            # power is from before a change (no idle time under it yet)
+            "conditions": conditions,
+            "conditions_changed": any(
+                conditions.get(k) != conditions_now.get(k) for k in BASELINE_CONDITIONS),
+            "baseline_before_change": not baseline_current,
         }
 
-    def _baseline(self, now: float) -> Optional[Baseline]:
+    def _baseline(self, now: float) -> Tuple[Optional[Baseline], bool]:
+        """Idle power, and whether it's from under the current power settings."""
         busy = list(self._busy)
         busy.extend((began, math.inf) for began in self._in_flight.values())
         # The last few minutes' idle time, or, during a long run with none,
-        # whatever idle time is still in the history, or, for a run longer
-        # than the history, the idle power measured last
-        baseline = (idle_baseline(self._readings, busy, now - BASELINE_WINDOW_S)
-                    or idle_baseline(self._readings, busy, now - HISTORY_S))
+        # whatever idle time is still in the history; only since the power
+        # settings last changed, since they change idle power too
+        since = self._conditions_since
+        baseline = (idle_baseline(self._readings, busy, max(now - BASELINE_WINDOW_S, since))
+                    or idle_baseline(self._readings, busy, max(now - HISTORY_S, since)))
         if baseline is not None:
-            self._last_baseline = baseline
-        return baseline or self._last_baseline
+            self._last_baseline, self._last_baseline_since = baseline, since
+            return baseline, True
+        # Just after a change, with no idle time since: idle power from
+        # before it, flagged. For a run longer than the history: the idle
+        # power measured last (flagged too, if from before a change).
+        if since > -math.inf:
+            before = (idle_baseline(self._readings, busy, now - BASELINE_WINDOW_S)
+                      or idle_baseline(self._readings, busy, now - HISTORY_S))
+            if before is not None:
+                return before, False
+        return self._last_baseline, self._last_baseline_since == since
 
     def status(self) -> dict:
         with self._lock:
             self._last_used = self._clock()
-            baseline = self._baseline(self._clock())
+            baseline, _ = self._baseline(self._clock())
+            conditions = self._check_conditions_locked(self._clock())
         self._wake.set()  # back from dormant: read at the idle rate
         return {
             "available": True,
             "meter": self.meter.name,
             "components": self.meter.components(),
             "idle_w": baseline.total_watts if baseline else None,
+            "conditions": conditions,
         }
