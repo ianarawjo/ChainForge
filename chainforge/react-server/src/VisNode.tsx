@@ -734,10 +734,11 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             : texts;
         };
 
-        // In a bar chart, stats like tokens or energy add up; times and speeds are averaged
-        const barTotals = !selectedStat || selectedStat.total;
+        // A bar chart of a stat shows its mean per response, so models are
+        // compared fairly however many responses each has (scores are summed)
+        const barTotals = !selectedStat;
         const barTitle = selectedStat
-          ? `${barTotals ? "Total" : "Mean"} ${metricName.charAt(0).toLowerCase()}${metricName.slice(1)}`
+          ? `Mean ${metricName.charAt(0).toLowerCase()}${metricName.slice(1)} per response`
           : undefined;
 
         const get_items = (eval_res_obj?: EvaluationResults) => {

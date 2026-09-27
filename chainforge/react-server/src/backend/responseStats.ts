@@ -499,8 +499,6 @@ export interface PlottableStat {
   key: string;
   /** What the axis and menu call it. */
   label: string;
-  /** Whether a bar chart should total it (tokens, cost, energy) or average it (times, speeds). */
-  total: boolean;
   value: (s: ResponseStats) => number | undefined;
   /** The response's value, for when hovering over its point. */
   describe: (s: ResponseStats) => string;
@@ -509,12 +507,10 @@ export interface PlottableStat {
 const plainStat = (
   key: string,
   label: string,
-  total: boolean,
   value: (s: ResponseStats) => number | undefined,
 ): PlottableStat => ({
   key,
   label,
-  total,
   value,
   describe: (s) => `${label}: ${value(s)}`,
 });
@@ -523,33 +519,18 @@ const msToS = (ms: number | undefined) =>
   ms === undefined ? undefined : ms / 1000;
 
 export const PLOTTABLE_STATS: PlottableStat[] = [
-  plainStat("__stat_latency_s", "Latency (s)", false, (s) =>
-    msToS(s.latency_ms),
-  ),
-  plainStat("__stat_ttft_s", "Before output (s)", false, (s) =>
-    msToS(s.ttft_ms),
-  ),
-  plainStat("__stat_input_tokens", "Input tokens", true, (s) => s.input_tokens),
-  plainStat(
-    "__stat_output_tokens",
-    "Output tokens",
-    true,
-    (s) => s.output_tokens,
-  ),
-  plainStat(
-    "__stat_tokens_per_s",
-    "Speed (tokens/s)",
-    false,
-    (s) => s.tokens_per_s,
-  ),
+  plainStat("__stat_latency_s", "Latency (s)", (s) => msToS(s.latency_ms)),
+  plainStat("__stat_ttft_s", "Before output (s)", (s) => msToS(s.ttft_ms)),
+  plainStat("__stat_input_tokens", "Input tokens", (s) => s.input_tokens),
+  plainStat("__stat_output_tokens", "Output tokens", (s) => s.output_tokens),
+  plainStat("__stat_tokens_per_s", "Speed (tokens/s)", (s) => s.tokens_per_s),
   plainStat(
     "__stat_decode_tokens_per_s",
     "Decoding speed (tokens/s)",
-    false,
     (s) => s.decode_tokens_per_s,
   ),
   {
-    ...plainStat("__stat_cost_usd", "Cost ($)", true, (s) => s.cost_usd),
+    ...plainStat("__stat_cost_usd", "Cost ($)", (s) => s.cost_usd),
     describe: (s) => `Cost: ${formatCost(s.cost_usd ?? 0)}`,
   },
   {
@@ -557,7 +538,6 @@ export const PLOTTABLE_STATS: PlottableStat[] = [
     // response's stats label. Hovering shows the range.
     key: "__stat_est_energy_mwh",
     label: "Energy, estimated (mWh)",
-    total: true,
     value: (s) =>
       s.est_energy_wh === undefined
         ? undefined
