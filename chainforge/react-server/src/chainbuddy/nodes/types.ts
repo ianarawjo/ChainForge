@@ -59,8 +59,8 @@ export interface NodeKind {
   /** The node's guide (knowledge/nodes/<type>.md), as describe_node returns it. */
   doc: string;
   settings: Record<string, SettingSpec>;
-  /** The node's one output, named after what it carries. */
-  output: DataType;
+  /** The node's one output, named after what it carries; sinks have none. */
+  output?: DataType;
   /** What its inputs accept. */
   accepts: DataType[];
   /** The inputs a node with these settings has. */
@@ -75,7 +75,8 @@ export interface NodeKind {
   /** Whether ChainBuddy supports this particular node, e.g. only JavaScript evaluators. */
   supports?(data: Dict): boolean;
   handles: {
-    output: string;
+    /** Left out by a node with no output. */
+    output?: string;
     /** Inputs whose handle id differs from their name. */
     inputs?: Record<string, string>;
   };

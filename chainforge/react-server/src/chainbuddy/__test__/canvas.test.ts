@@ -15,6 +15,22 @@ jest.mock("../../store", () => {
           n.id === id ? { ...n, data: { ...n.data, ...props } } : n,
         ),
       }),
+    // As ChainForge's own onConnect does (store.tsx): nodes that read one
+    // input are told which, results are marked out of date, and the edge is
+    // added with the styling edges drawn by hand get.
+    onConnect: (c: any) => {
+      const target = get().nodes.find((n: any) => n.id === c.target);
+      if (!target) return;
+      if (["vis", "inspect", "simpleval"].includes(target.type))
+        get().setDataPropsForNode(target.id, { input: c.source });
+      get().setDataPropsForNode(target.id, { refresh: true });
+      set({
+        edges: [
+          ...get().edges,
+          { ...c, id: `edge-${get().edges.length}`, animated: true },
+        ],
+      });
+    },
   }));
   return {
     __esModule: true,
@@ -109,6 +125,9 @@ function setUp() {
   return { canvas, statuses };
 }
 
+const nodeData = (id: string) =>
+  (useStore.getState() as any).nodes.find((n: any) => n.id === id).data;
+
 const edgesInto = (id: string) =>
   (useStore.getState() as any).edges.filter((e: any) => e.target === id);
 
@@ -137,6 +156,28 @@ test("proposals from different canvases have different ids", () => {
   const first = setUp().canvas.propose(addCity);
   const second = setUp().canvas.propose(addCity);
   expect(first.id).not.toBe(second.id);
+});
+
+test("connections are made the way the canvas makes them", async () => {
+  // Not built by hand: the store marks results out of date, and tells nodes
+  // that read one input (a Vis Node, say) which node that is.
+  const { canvas } = setUp();
+  // Swapped in through the store: setState copies the state object, so a
+  // spy put on the object itself would outlive the test.
+  const real = (useStore.getState() as any).onConnect;
+  const onConnect = jest.fn(real);
+  useStore.setState({ onConnect } as any);
+  const { id } = canvas.propose(addCity);
+  await canvas.accept(id);
+  useStore.setState({ onConnect: real } as any);
+
+  expect(onConnect).toHaveBeenCalledWith({
+    source: "tf",
+    sourceHandle: "output",
+    target: "p",
+    targetHandle: "city",
+  });
+  expect(nodeData("p").refresh).toBe(true);
 });
 
 test("rejecting while a proposal applies does nothing", async () => {

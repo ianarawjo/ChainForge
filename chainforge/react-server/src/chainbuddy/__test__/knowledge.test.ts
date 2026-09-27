@@ -79,7 +79,10 @@ function section(type: string, heading: string) {
 test.each(kinds)(
   "%s: the guide's Inputs and Outputs say what the kind accepts and gives",
   (type, kind) => {
-    expect(section(type, "Outputs")).toContain(`\`${kind.output}\``);
+    // A node that only receives, such as a Vis Node, says so instead.
+    if (kind.output)
+      expect(section(type, "Outputs")).toContain(`\`${kind.output}\``);
+    else expect(section(type, "Outputs")).toMatch(/none/i);
     for (const accepted of kind.accepts)
       expect(section(type, "Inputs")).toContain(`\`${accepted}\``);
   },
