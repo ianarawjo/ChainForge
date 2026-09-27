@@ -301,6 +301,10 @@ test("formats stats for display", () => {
   // Averages are marked
   const averaged = { ...stats, averaged_over: 4 };
   expect(formatStats(averaged, true)).toBe("≈ 2.4 s · 130 tok/s");
+  // Time to first token is labelled as what servers measure: loading plus the prompt
+  expect(describeStats({ ttft_ms: 4729 })).toEqual([
+    "Before output: 4.73 s (loading the model and reading the prompt)",
+  ]);
   expect(describeStats(averaged).at(-1)).toBe(
     "≈ Averages: the provider reported one total for 4 responses",
   );
