@@ -234,11 +234,14 @@ const shade = (color: string, amount: number): string => {
  * The density of values at each point, by a Gaussian kernel density estimate
  * with Silverman's rule for the bandwidth. `fallbackBandwidth` is for values
  * with no spread (e.g. all the same), where the rule gives zero.
+ * `minBandwidth` should be the spacing of the points: a narrower kernel can
+ * fall between them, leaving the density 0 (or nearly) at every one.
  */
 const kernelDensity = (
   values: number[],
   points: number[],
   fallbackBandwidth: number,
+  minBandwidth: number,
 ): number[] => {
   const n = values.length;
   let bw = 0;
@@ -249,6 +252,7 @@ const kernelDensity = (
     bw = 0.9 * spread * Math.pow(n, -1 / 5);
   }
   if (!(bw > 0)) bw = fallbackBandwidth;
+  bw = Math.max(bw, minBandwidth);
   return points.map(
     (p) =>
       values.reduce((acc, v) => acc + Math.exp(-0.5 * ((p - v) / bw) ** 2), 0) /
@@ -296,20 +300,24 @@ const densityStripTraces = (bands: DensityBand[], darkMode: boolean) => {
 
   const traces: Dict[] = [];
   nonEmpty.forEach((b) => {
-    const density = kernelDensity(b.values, centers, fallbackBandwidth);
+    const density = kernelDensity(b.values, centers, fallbackBandwidth, step);
     const peak = max(density);
-    const densityAtValues = kernelDensity(
-      b.values,
-      b.values,
-      fallbackBandwidth,
-    ).map((d) => (peak > 0 ? d / peak : 1));
+    const shading = density.map((d) => (peak > 0 ? d / peak : 0));
+    // The shading under each value, read off the grid (between its two
+    // nearest cells) rather than worked out again for every value
+    const shadingAt = (v: number) => {
+      const pos = Math.min(cells - 1, Math.max(0, (v - lo) / step - 0.5));
+      const i = Math.floor(pos);
+      const j = Math.min(cells - 1, i + 1);
+      return shading[i] + (shading[j] - shading[i]) * (pos - i);
+    };
     const [r, g, bl] = hexToRgb(b.color);
     traces.push({
       type: "heatmap",
       // One row of cells, given by its edges
       x: edges,
       y: [b.y - b.halfHeight, b.y + b.halfHeight],
-      z: [density.map((d) => (peak > 0 ? d / peak : 0))],
+      z: [shading],
       zmin: 0,
       zmax: 1,
       colorscale: [
@@ -330,7 +338,7 @@ const densityStripTraces = (bands: DensityBand[], darkMode: boolean) => {
       marker: {
         // An open symbol's stroke takes the marker's colour, not the line's
         symbol: "line-ns-open",
-        color: densityAtValues.map((d) => tickColor(b.color, d)),
+        color: b.values.map((v) => tickColor(b.color, shadingAt(v))),
         size: Math.max(6, 36 * b.halfHeight),
         opacity: 0.8,
         line: { width: 1 },
