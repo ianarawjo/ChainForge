@@ -4,9 +4,16 @@
  */
 
 import { isPlainObject } from "../runtime/tools";
-import { editableTypes, inputsOf, kindOf } from "../nodes";
+import { editableTypes, inputsOf, kindOf, outputsOf } from "../nodes";
 import { NodeKind } from "../nodes/types";
 import { Change, ConnectionView, FlowView, ModelInfo, Support } from "./types";
+
+/**
+ * The most items of a list setting get_flow shows. A longer list, such as a
+ * table imported from a file, can't be changed: ChainBuddy hasn't seen all of
+ * it, so replacing it would drop what it didn't see.
+ */
+export const LIST_LIMIT = 50;
 
 interface WorkingNode {
   type: string;
@@ -43,6 +50,17 @@ export function checkChanges(
     ]),
   );
   let connections: ConnectionView[] = [...flow.connections];
+  // Settings of nodes on the canvas too long to have been shown in full.
+  const tooLong = new Map(
+    flow.nodes.map((n) => [
+      n.id,
+      Object.entries(n.settings ?? {}).flatMap(([key, value]) =>
+        Array.isArray(value) && value.length > LIST_LIMIT
+          ? [[key, value.length] as const]
+          : [],
+      ),
+    ]),
+  );
   // Nodes this change set connects to or from, and the connections it makes.
   const connected = new Set<string>();
   const added = new Set<ConnectionView>();
@@ -129,6 +147,10 @@ export function checkChanges(
         // Known even if its settings have problems, so later changes that
         // refer to it aren't reported as problems too.
         nodes.set(ref, { type, support: "editable", settings, touched: true });
+        if (problems.length === before) {
+          const problem = kind.checkAll?.(settings, settings);
+          if (problem) problems.push(`${at}: ${problem}`);
+        }
         if (problems.length === before)
           changes.push({ op: "add_node", ref, type, settings });
         return;
@@ -159,7 +181,19 @@ export function checkChanges(
           change.settings,
           node.settings,
         );
+        for (const [key, length] of tooLong.get(id) ?? [])
+          if (key in settings)
+            problems.push(
+              `${at}: ${id}'s ${key} has ${length} items, more than you were shown, so replacing it would lose the rest. Ask the user to change it, or add a new node.`,
+            );
         checkSettings(kind, settings, false);
+        if (problems.length === before) {
+          const problem = kind.checkAll?.(
+            { ...node.settings, ...settings },
+            settings,
+          );
+          if (problem) problems.push(`${at}: ${problem}`);
+        }
         if (problems.length === before) {
           Object.assign(node.settings, settings);
           node.touched = true;
@@ -211,13 +245,16 @@ export function checkChanges(
 
         const spec = kindOf(source.type) as NodeKind;
         const accepts = (kindOf(target.type) as NodeKind).accepts;
+        const outputs = outputsOf(source.type, source.settings);
         if (!spec.output)
           problems.push(
             `${at}: ${fromId} has no output; a ${source.type} node only receives.`,
           );
-        else if (from.output !== spec.output)
+        else if (!outputs.includes(String(from.output)))
           problems.push(
-            `${at}: ${fromId} has no output "${String(from.output)}"; its output is "${spec.output}".`,
+            outputs.length === 1
+              ? `${at}: ${fromId} has no output "${String(from.output)}"; its output is "${outputs[0]}".`
+              : `${at}: ${fromId} has no output "${String(from.output)}"; its outputs are: ${outputs.join(", ") || "(none)"}.`,
           );
         else if (!accepts.includes(spec.output))
           problems.push(
@@ -240,6 +277,7 @@ export function checkChanges(
           connections.some(
             (c) =>
               c.from.node === fromId &&
+              c.from.output === connection.from.output &&
               c.to.node === toId &&
               c.to.input === connection.to.input,
           )
@@ -312,6 +350,31 @@ export function checkChanges(
       }
     }
   }
+
+  // An edit can remove an output something is connected from, such as a
+  // table column that is renamed. ChainForge would keep the connection, and
+  // silently send nothing, so it must be reconnected in the same change set.
+  if (problems.length === 0)
+    for (const c of connections) {
+      const source = nodes.get(c.from.node);
+      if (!source?.touched) continue;
+      if (outputsOf(source.type, source.settings).includes(c.from.output))
+        continue;
+      const reconnected = connections.some(
+        (o) =>
+          o !== c &&
+          o.to.node === c.to.node &&
+          o.to.input === c.to.input &&
+          outputsOf(
+            nodes.get(o.from.node)?.type,
+            nodes.get(o.from.node)?.settings,
+          ).includes(o.from.output),
+      );
+      if (!reconnected)
+        problems.push(
+          `${c.to.node}'s "${c.to.input}" input is connected from ${c.from.node}'s "${c.from.output}", which this change removes. Connect it to another output in this change set.`,
+        );
+    }
 
   // Nor should it connect to a node that stays blank, such as the empty
   // Prompt Node a new flow starts with: the flow couldn't run.

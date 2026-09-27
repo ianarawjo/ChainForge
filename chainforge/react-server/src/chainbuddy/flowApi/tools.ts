@@ -5,8 +5,8 @@
 
 import { AgentTool } from "../runtime/tools";
 import { editableTypes, kindOf, NODE_KINDS } from "../nodes";
-import { CanvasPort } from "./types";
-import { checkChanges } from "./validate";
+import { CanvasPort, FlowView } from "./types";
+import { checkChanges, LIST_LIMIT } from "./validate";
 
 export interface FlowToolsOptions {
   canvas: CanvasPort;
@@ -38,7 +38,7 @@ export function createFlowTools({
       parameters: { type: "object", properties: {} },
       run: () => {
         readThisTurn = true;
-        return canvas.readFlow();
+        return shortened(canvas.readFlow());
       },
     },
     {
@@ -198,4 +198,39 @@ function settingValues(type: string): string {
   return lines.length
     ? `\n\n## Values settings take\n\nFrom ChainForge itself, so always current:\n\n${lines.join("\n")}\n`
     : "";
+}
+
+/**
+ * The flow with long lists cut to their first LIST_LIMIT items, saying how
+ * many there are, so a table imported from a file doesn't fill the model's
+ * context. Such lists can't be changed (see LIST_LIMIT).
+ */
+function shortened(flow: FlowView) {
+  return {
+    ...flow,
+    nodes: flow.nodes.map((node) => {
+      const long = Object.entries(node.settings ?? {}).filter(
+        ([, value]) => Array.isArray(value) && value.length > LIST_LIMIT,
+      );
+      if (long.length === 0) return node;
+      return {
+        ...node,
+        settings: {
+          ...node.settings,
+          ...Object.fromEntries(
+            long.map(([key, value]) => [
+              key,
+              (value as unknown[]).slice(0, LIST_LIMIT),
+            ]),
+          ),
+        },
+        note: long
+          .map(
+            ([key, value]) =>
+              `${key}: showing the first ${LIST_LIMIT} of ${(value as unknown[]).length}; too long to change.`,
+          )
+          .join(" "),
+      };
+    }),
+  };
 }

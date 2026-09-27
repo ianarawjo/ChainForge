@@ -79,7 +79,7 @@ export function stubNode(
     support: "editable",
     settings,
     inputs: inputsOf(type, settings),
-    outputs: outputsOf(type),
+    outputs: outputsOf(type, settings),
   };
 }
 

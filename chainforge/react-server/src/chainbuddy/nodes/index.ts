@@ -8,6 +8,7 @@ import { Dict } from "../../backend/typing";
 import { evaluatorKind } from "./evaluator";
 import { inspectKind } from "./inspect";
 import { promptKind } from "./prompt";
+import { tableKind } from "./table";
 import { textfieldsKind } from "./textfields";
 import { visKind } from "./vis";
 import { NodeKind } from "./types";
@@ -15,6 +16,7 @@ import { NodeKind } from "./types";
 export const NODE_KINDS: NodeKind[] = [
   promptKind,
   textfieldsKind,
+  tableKind,
   evaluatorKind,
   visKind,
   inspectKind,
@@ -36,10 +38,17 @@ export function supportOf(type: string | undefined, data: Dict): Support {
     : "not-supported";
 }
 
-/** What a node of this type gives, or nothing at all (a Vis Node, say). */
-export function outputsOf(type: string | undefined): string[] {
-  const output = kindOf(type)?.output;
-  return output ? [output] : [];
+/**
+ * The names of a node's outputs: one named after what it gives, one per
+ * column of a table, or none at all (a Vis Node, say).
+ */
+export function outputsOf(
+  type: string | undefined,
+  settings: Record<string, unknown> = {},
+): string[] {
+  const kind = kindOf(type);
+  if (!kind?.output) return [];
+  return kind.outputNames ? kind.outputNames(settings) : [kind.output];
 }
 
 /** The inputs a node of this type has with these settings. */
@@ -63,7 +72,11 @@ export function systemPrompt(instructions: string): string {
   const lines = NODE_KINDS.map(
     (k) =>
       `- ${k.name} (\`${k.type}\`): ` +
-      (k.output ? `gives ${k.output}; ` : "gives nothing; ") +
+      (!k.output
+        ? "gives nothing; "
+        : k.outputNames
+          ? `gives ${k.output}, from outputs named in its settings; `
+          : `gives ${k.output}; `) +
       (k.accepts.length
         ? `its inputs take ${k.accepts.join(" or ")}.`
         : "no inputs."),

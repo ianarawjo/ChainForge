@@ -155,7 +155,7 @@ export class StoreCanvas implements CanvasPort {
         support,
         settings,
         inputs: inputsOf(n.type, settings),
-        outputs: outputsOf(n.type),
+        outputs: outputsOf(n.type, settings),
       };
     });
 
@@ -286,6 +286,7 @@ export class StoreCanvas implements CanvasPort {
           target,
           typeOf(source),
           typeOf(target),
+          change.from.output,
           change.to.input,
         );
         edge.className = PENDING_CLASS.add;
@@ -393,7 +394,12 @@ export class StoreCanvas implements CanvasPort {
         connections.push({
           source,
           target,
-          ...handlesFor(typeOf(source), typeOf(target), c.to.input),
+          ...handlesFor(
+            typeOf(source),
+            typeOf(target),
+            c.from.output,
+            c.to.input,
+          ),
         });
       }
       // Let rebuilt nodes draw their new inputs before connecting to them.
@@ -620,14 +626,19 @@ export class StoreCanvas implements CanvasPort {
     const itsEdges = edges.filter(
       (e) => e.source === nodeId || e.target === nodeId,
     );
-    const inputs = inputsOf(node.type, settingsOf(node.type, data));
+    const settings = settingsOf(node.type, data);
+    const inputs = inputsOf(node.type, settings);
+    const outputs = outputsOf(node.type, settings);
     const redrawn = { ...node, data: { ...data, refresh: true } };
-    // Connections to inputs the new data removed go with them.
+    // Connections to inputs or from outputs the new data removed, such as a
+    // renamed table column, go with them.
     const keptEdges = itsEdges.filter(
       (e) =>
         !dropEdges.has(e.id) &&
         (e.target !== nodeId ||
-          inputs.includes(inputName(node.type, e.targetHandle))),
+          inputs.includes(inputName(node.type, e.targetHandle))) &&
+        (e.source !== nodeId ||
+          outputs.includes(outputName(node.type, e.sourceHandle))),
     );
 
     useStore.setState((s) => ({
@@ -677,7 +688,10 @@ function outputName(
   type: string | undefined,
   handle: string | null | undefined,
 ) {
-  return kindOf(type)?.output ?? handle ?? "";
+  const kind = kindOf(type);
+  // Named outputs' handles are their names.
+  if (kind?.outputNames) return handle ?? "";
+  return kind?.output ?? handle ?? "";
 }
 
 /** ChainBuddy's name for the end of an edge. */
@@ -692,15 +706,21 @@ function inputName(
 }
 
 /** The handle ids for a ChainBuddy connection. */
-function handlesFor(sourceType: string, targetType: string, input: string) {
+function handlesFor(
+  sourceType: string,
+  targetType: string,
+  output: string,
+  input: string,
+) {
   const source = kindOf(sourceType);
   const target = kindOf(targetType);
   if (!source || !target)
     throw new Error(`ChainBuddy can't connect ${sourceType} to ${targetType}.`);
-  if (!source.handles.output)
+  const sourceHandle = source.outputNames ? output : source.handles.output;
+  if (!sourceHandle)
     throw new Error(`A ${sourceType} node has no output to connect from.`);
   return {
-    sourceHandle: source.handles.output,
+    sourceHandle,
     targetHandle: target.handles.inputs?.[input] ?? input,
   };
 }
@@ -710,11 +730,13 @@ function makeEdge(
   target: string,
   sourceType: string,
   targetType: string,
+  output: string,
   input: string,
 ): Edge {
   const { sourceHandle, targetHandle } = handlesFor(
     sourceType,
     targetType,
+    output,
     input,
   );
   // Styled as the store's onConnect styles edges people draw.

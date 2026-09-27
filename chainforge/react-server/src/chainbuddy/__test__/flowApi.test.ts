@@ -508,6 +508,151 @@ describe("nodes that only show results", () => {
   });
 });
 
+test("long lists are shortened, and can't be replaced unseen", () => {
+  // A table imported from a file shouldn't fill the model's context, and
+  // copying back the part it saw would drop the rest.
+  const values = Array.from({ length: 60 }, (_, i) => `value ${i}`);
+  const flow = {
+    nodes: [
+      stubNode("tf", "textfields", "Many", { values, disabled_values: [] }),
+    ],
+    connections: [],
+  };
+  const { tools } = createStubTools({ flow, models: MODELS });
+  const seen = run(tools, "get_flow");
+  expect(seen.nodes[0].settings.values).toHaveLength(50);
+  expect(seen.nodes[0].note).toBe(
+    "values: showing the first 50 of 60; too long to change.",
+  );
+
+  const out = run(tools, "propose_changes", {
+    summary: "Trim",
+    changes: [
+      {
+        op: "update_node",
+        node: "tf",
+        settings: { values: values.slice(0, 50) },
+      },
+    ],
+  });
+  expect(out.problems).toEqual([
+    "changes[0] (update_node): tf's values has 60 items, more than you were shown, so replacing it would lose the rest. Ask the user to change it, or add a new node.",
+  ]);
+  expect(
+    propose(tools, [
+      { op: "update_node", node: "tf", settings: { title: "Lots" } },
+    ]).status,
+  ).toBe("awaiting_approval");
+});
+
+describe("tables", () => {
+  const qa = {
+    op: "add_node",
+    ref: "qa",
+    type: "table",
+    settings: {
+      columns: ["question", "answer"],
+      rows: [{ question: "What is 2+2?", answer: "4" }],
+    },
+  };
+  const ask = {
+    op: "add_node",
+    ref: "ask",
+    type: "prompt",
+    settings: {
+      prompts: [{ label: "A", text: "{question}" }],
+      models: [{ model: "openrouter/anthropic/claude-haiku-4.5" }],
+    },
+  };
+  const fromColumn = (output: string) => ({
+    op: "connect",
+    from: { node: "qa", output },
+    to: { node: "ask", input: "question" },
+  });
+
+  test("each column is an output, named after it", () => {
+    const { tools } = createStubTools({ models: MODELS });
+    expect(propose(tools, [qa, ask, fromColumn("question")]).status).toBe(
+      "awaiting_approval",
+    );
+    expect(propose(tools, [qa, ask, fromColumn("values")]).problems).toEqual([
+      'changes[2] (connect): qa has no output "values"; its outputs are: question, answer.',
+    ]);
+  });
+
+  test("rows may only use the table's columns", () => {
+    const { tools } = createStubTools({ models: MODELS });
+    const out = propose(tools, [
+      {
+        ...qa,
+        settings: { ...qa.settings, rows: [{ question: "Q", expected: "A" }] },
+      },
+    ]);
+    expect(out.problems).toEqual([
+      'changes[0] (add_node): rows use "expected", which isn\'t a column. The columns are: question, answer.',
+    ]);
+  });
+
+  test("renaming a column that feeds something needs it reconnected", () => {
+    const flow = {
+      nodes: [
+        stubNode("qa", "table", "QA", qa.settings),
+        stubNode("ask", "prompt", "Ask", ask.settings),
+      ],
+      connections: [
+        {
+          from: { node: "qa", output: "question" },
+          to: { node: "ask", input: "question" },
+        },
+      ],
+    };
+    const { tools } = createStubTools({ flow, models: MODELS });
+    // Changing the columns alone would lose the renamed column's values.
+    expect(
+      propose(tools, [
+        {
+          op: "update_node",
+          node: "qa",
+          settings: { columns: ["prompt", "answer"] },
+        },
+      ]).problems,
+    ).toEqual([
+      'changes[0] (update_node): columns leaves out "question", which holds values. To rename a column, give rows too, with its values under the new name; to remove it, give rows without it.',
+    ]);
+
+    const rename = {
+      op: "update_node",
+      node: "qa",
+      settings: {
+        columns: ["prompt", "answer"],
+        rows: [{ prompt: "What is 2+2?", answer: "4" }],
+      },
+    };
+    expect(propose(tools, [rename]).problems).toEqual([
+      'ask\'s "question" input is connected from qa\'s "question", which this change removes. Connect it to another output in this change set.',
+    ]);
+    expect(propose(tools, [rename, fromColumn("prompt")]).status).toBe(
+      "awaiting_approval",
+    );
+  });
+
+  test("a table can't feed a node that shows responses", () => {
+    const { tools } = createStubTools({ models: MODELS });
+    const out = propose(tools, [
+      qa,
+      { op: "add_node", ref: "look", type: "inspect", settings: {} },
+      {
+        op: "connect",
+        from: { node: "qa", output: "question" },
+        to: { node: "look", input: "responses" },
+      },
+    ]);
+    expect(out.problems).toEqual([
+      "changes[2] (connect): look takes responses or scored_responses, and qa gives values.",
+    ]);
+  });
+});
+
 test("describe_node refuses types without a guide", () => {
   const { tools } = createStubTools({
     models: MODELS,

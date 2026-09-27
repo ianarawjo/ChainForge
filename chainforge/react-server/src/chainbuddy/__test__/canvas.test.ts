@@ -180,6 +180,61 @@ test("connections are made the way the canvas makes them", async () => {
   expect(nodeData("p").refresh).toBe(true);
 });
 
+test("a table's column connects by its name, and a renamed one reconnects", async () => {
+  const { canvas } = setUp();
+  const { id } = canvas.propose({
+    summary: "Ask from a table",
+    changes: [
+      {
+        op: "add_node",
+        ref: "qa",
+        type: "table",
+        settings: { columns: ["city"], rows: [{ city: "Oslo" }] },
+      },
+      {
+        op: "update_node",
+        node: "p",
+        settings: { prompts: [{ label: "A", text: "Say hi to {city}" }] },
+      },
+      {
+        op: "connect",
+        from: { node: "qa", output: "city" },
+        to: { node: "p", input: "city" },
+      },
+    ],
+  });
+  await canvas.accept(id);
+  const table = (useStore.getState() as any).nodes.find(
+    (n: any) => n.type === "table",
+  );
+  expect(edgesInto("p")).toEqual([
+    expect.objectContaining({
+      source: table.id,
+      sourceHandle: "city",
+      targetHandle: "city",
+    }),
+  ]);
+
+  // Renamed and reconnected: the connection from the old name goes.
+  const renamed = canvas.propose({
+    summary: "Rename",
+    changes: [
+      {
+        op: "update_node",
+        node: table.id,
+        settings: { columns: ["town"], rows: [{ town: "Oslo" }] },
+      },
+      {
+        op: "connect",
+        from: { node: table.id, output: "town" },
+        to: { node: "p", input: "city" },
+      },
+    ],
+  });
+  await canvas.accept(renamed.id);
+  expect(edgesInto("p").map((e: any) => e.sourceHandle)).toEqual(["town"]);
+});
+
 test("rejecting while a proposal applies does nothing", async () => {
   const { canvas, statuses } = setUp();
   const { id } = canvas.propose({
