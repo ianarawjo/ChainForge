@@ -1,15 +1,18 @@
 import { createHash } from "crypto";
 import { readFileSync } from "fs";
 import path from "path";
+import * as ecologits from "../ecologits/ecologits";
 import { estimateEnergyWh } from "../ecologits/ecologits";
 import upstream from "../ecologits/upstream.json";
 import { LLMProvider } from "../models";
 import {
   describeStats,
   ecologitsModel,
+  energyEstimator,
+  extract_stats,
   formatEnergyRange,
+  LATENCY_KEY,
   statsToMetavars,
-  withEnergyEstimates,
 } from "../responseStats";
 
 describe("EcoLogits port", () => {
@@ -149,28 +152,81 @@ describe("ecologitsModel", () => {
   });
 });
 
-describe("withEnergyEstimates", () => {
+describe("energy estimates in extract_stats", () => {
+  const gpt4oMini = energyEstimator("gpt-4o-mini", LLMProvider.OpenAI);
+
   it("adds each response's estimate, and it shows in metavars and the tooltip", () => {
-    const [stats] = withEnergyEstimates(
-      [{ latency_ms: 4200, output_tokens: 300 }],
-      "gpt-4o-mini",
-      LLMProvider.OpenAI,
+    const [stats] = extract_stats(
+      { choices: [{}], usage: { completion_tokens: 300 }, [LATENCY_KEY]: 4200 },
+      4200,
+      1,
+      gpt4oMini,
     )!;
     expect(stats?.est_energy_wh).toEqual({ min: 0.0195, max: 0.0236 });
     expect(statsToMetavars(stats!)).toMatchObject({
       stat_est_energy_wh_min: 0.0195,
       stat_est_energy_wh_max: 0.0236,
     });
-    expect(describeStats(stats!).join("\n")).toMatch(
-      /Energy: 0\.019–0\.024 Wh \(estimated with EcoLogits .+, not measured\)/,
+    expect(describeStats(stats!)).toContain(
+      "Energy: 0.019–0.024 Wh (estimated by EcoLogits, not measured)",
+    );
+  });
+
+  it("estimates a request once, and shares it between the responses it returned", () => {
+    const whole = estimateEnergyWh("openai", "gpt-5", 1500, 30)!;
+    const stats = extract_stats(
+      {
+        choices: [{}, {}, {}, {}, {}],
+        usage: { completion_tokens: 1500 },
+        [LATENCY_KEY]: 30000,
+      },
+      30000,
+      5,
+      energyEstimator("gpt-5", LLMProvider.OpenAI),
+    )!;
+    expect(stats).toHaveLength(5);
+    const sum = stats.reduce((a, s) => a + s!.est_energy_wh!.max, 0);
+    expect(sum).toBeCloseTo(whole.max, 2);
+    // Not the same as estimating each response's 300 tokens on its own
+    expect(stats[0]!.est_energy_wh!.max).not.toBeCloseTo(
+      estimateEnergyWh("openai", "gpt-5", 300, 30)!.max,
+      3,
     );
   });
 
   it("needs output tokens and latency", () => {
-    const stats = [{ latency_ms: 4200 }, null];
-    expect(
-      withEnergyEstimates(stats, "gpt-4o-mini", LLMProvider.OpenAI),
-    ).toEqual(stats);
+    const stats = extract_stats({ choices: [{}] }, 4200, 1, gpt4oMini)!;
+    expect(stats[0]).toEqual({ latency_ms: 4200 });
+  });
+
+  it("keeps the response's other stats if the estimate fails", () => {
+    const spy = jest
+      .spyOn(ecologits, "estimateEnergyWh")
+      .mockImplementation(() => {
+        throw new Error("unexpected data");
+      });
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const [stats] = extract_stats(
+        {
+          choices: [{}],
+          usage: { completion_tokens: 300 },
+          [LATENCY_KEY]: 4200,
+        },
+        4200,
+        1,
+        energyEstimator("gpt-4o-mini", LLMProvider.OpenAI),
+      )!;
+      expect(stats).toMatchObject({ latency_ms: 4200, output_tokens: 300 });
+      expect(stats?.est_energy_wh).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+      warn.mockRestore();
+    }
+  });
+
+  it("has no estimator for models EcoLogits doesn't cover", () => {
+    expect(energyEstimator("llama3.2", LLMProvider.Ollama)).toBeUndefined();
   });
 
   it("formats ranges and single values", () => {

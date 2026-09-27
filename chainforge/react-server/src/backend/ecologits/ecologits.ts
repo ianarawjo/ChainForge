@@ -10,7 +10,6 @@
  */
 import modelsData from "./models.json";
 import method from "./method.json";
-import upstream from "./upstream.json";
 
 /** An EcoLogits estimate: a range, as the inputs it's built from often are. */
 export type EnergyRange = { min: number; max: number };
@@ -27,9 +26,6 @@ type Model = {
   architecture: Architecture;
   deployment?: { tps?: number | null; ttft?: number | null } | null;
 };
-
-/** Which EcoLogits release the estimates come from, e.g. "0.11.1". */
-export const ECOLOGITS_VERSION: string = upstream.ref;
 
 const C = method.constants;
 const PROVIDERS = method.providers as Record<

@@ -131,12 +131,12 @@ def main() -> None:
         sys.exit("Not updated. Pick another release, or report it upstream.")
 
     method = {
-        "constants": constants(files["llm.py"].decode()),
-        "providers": providers(files["utils.py"].decode()),
+        "constants": constants(files["llm.py"].decode("utf-8")),
+        "providers": providers(files["utils.py"].decode("utf-8")),
     }
 
     old = HERE / "upstream.json"
-    previous = json.loads(old.read_text()) if old.exists() else {}
+    previous = json.loads(old.read_text(encoding="utf-8")) if old.exists() else {}
     upstream = {
         "repo": f"https://github.com/{REPO}",
         "ref": ref,
@@ -148,8 +148,8 @@ def main() -> None:
 
     (HERE / "models.json").write_bytes(files["models.json"])
     (HERE / "LICENSE").write_bytes(files["LICENSE"])
-    (HERE / "method.json").write_text(json.dumps(method, indent=2) + "\n")
-    old.write_text(json.dumps(upstream, indent=2) + "\n")
+    (HERE / "method.json").write_text(json.dumps(method, indent=2) + "\n", encoding="utf-8", newline="\n")
+    old.write_text(json.dumps(upstream, indent=2) + "\n", encoding="utf-8", newline="\n")
 
     if previous.get("sha256", {}).get("llm.py") not in (None, upstream["sha256"]["llm.py"]):
         print(
@@ -158,8 +158,8 @@ def main() -> None:
         )
     readme = HERE / "README.md"
     if readme.exists():
-        text = re.sub(r"EcoLogits \*\*[^*]+\*\*", f"EcoLogits **{ref}**", readme.read_text(), count=1)
-        readme.write_text(text)
+        text = re.sub(r"EcoLogits \*\*[^*]+\*\*", f"EcoLogits **{ref}**", readme.read_text(encoding="utf-8"), count=1)
+        readme.write_text(text, encoding="utf-8", newline="\n")
     print(f"Updated to {ref}: {len(models['models'])} models.")
 
 

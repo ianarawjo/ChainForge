@@ -26,7 +26,7 @@ import {
   imageMimeFromBase64,
 } from "./utils";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
-import { extract_stats, withEnergyEstimates } from "./responseStats";
+import { energyEstimator, extract_stats } from "./responseStats";
 import { UserForcedPrematureExit } from "./errors";
 import { typecastSettingsDict } from "../ModelSettingSchemas";
 
@@ -115,10 +115,11 @@ export class PromptPipeline {
     const extracted_resps = extract_responses(response, llm, provider);
     const reasoning = extract_reasoning(response, llm, provider);
     const reasoning_state = extract_reasoning_state(response, llm, provider);
-    const stats = withEnergyEstimates(
-      extract_stats(response, elapsed_ms, extracted_resps.length),
-      llm.toString(),
-      provider,
+    const stats = extract_stats(
+      response,
+      elapsed_ms,
+      extracted_resps.length,
+      energyEstimator(llm.toString(), provider),
     );
 
     // Detect any images and intern them to the MediaLookup table.

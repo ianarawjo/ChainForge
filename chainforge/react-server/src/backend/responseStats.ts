@@ -15,7 +15,7 @@ import {
   stripOpenRouterPrefix,
 } from "./models";
 import {
-  ECOLOGITS_VERSION,
+  EnergyRange,
   estimateEnergyWh,
   findModel,
 } from "./ecologits/ecologits";
@@ -166,11 +166,22 @@ function finish(stats: ResponseStats): ResponseStats | null {
   // Requests can cost fractions of a cent, so keep 9 significant digits
   if (stats.cost_usd !== undefined)
     res.cost_usd = Number(stats.cost_usd.toPrecision(9));
+  if (stats.est_energy_wh !== undefined)
+    res.est_energy_wh = {
+      min: Number(stats.est_energy_wh.min.toPrecision(3)),
+      max: Number(stats.est_energy_wh.max.toPrecision(3)),
+    };
   if (Object.keys(res).length === 0) return null;
   if (stats.averaged_over !== undefined && stats.averaged_over > 1)
     res.averaged_over = stats.averaged_over;
   return res;
 }
+
+/** Estimates one request's energy in Wh from its output tokens and latency. */
+export type EnergyEstimator = (
+  outputTokens: number,
+  latencyMs: number,
+) => EnergyRange | undefined;
 
 /**
  * Each response's stats, in the same order as `extract_responses`.
@@ -178,17 +189,21 @@ function finish(stats: ResponseStats): ResponseStats | null {
  * @param response The raw reply from `call_llm`: one reply, or one per request.
  * @param elapsed_ms How long the call to `call_llm` took, in total.
  * @param count How many responses were extracted from the reply.
+ * @param estimateEnergy Estimates a request's energy from its output tokens
+ * and latency, where the model has an estimate (see `energyEstimator`).
  *
  * A reply with several choices (one request asked for n responses) gives each
  * the request's latency, the average of its output tokens, and the speed that
  * average makes. Several replies (a request per response) each count on their
  * own; without a per-request time, each gets the average. Averaged stats are
- * marked with `averaged_over`.
+ * marked with `averaged_over`. A request's energy is estimated once, for the
+ * whole request, and shared between its responses like its cost.
  */
 export function extract_stats(
   response: unknown,
   elapsed_ms: number | undefined,
   count: number,
+  estimateEnergy?: EnergyEstimator,
 ): (ResponseStats | null)[] | undefined {
   if (count <= 0) return undefined;
 
@@ -236,6 +251,12 @@ export function extract_stats(
     if (s.latency_ms === undefined && elapsed_ms !== undefined)
       s.latency_ms = elapsed_ms / replies.length;
     const k = sizes[i];
+    const energy =
+      estimateEnergy &&
+      s.output_tokens !== undefined &&
+      s.latency_ms !== undefined
+        ? estimateEnergy(s.output_tokens, s.latency_ms)
+        : undefined;
     for (let j = 0; j < k; j++)
       stats.push(
         finish({
@@ -244,6 +265,7 @@ export function extract_stats(
             s.output_tokens !== undefined ? s.output_tokens / k : undefined,
           // One request's cost, shared between the responses it returned
           cost_usd: s.cost_usd !== undefined ? s.cost_usd / k : undefined,
+          est_energy_wh: energy && { min: energy.min / k, max: energy.max / k },
           // A server-measured speed is per sequence already
           decode_tokens_per_s: k === 1 ? s.decode_tokens_per_s : undefined,
           averaged_over: Math.max(k, latencyAveraged ? replies.length : 1),
@@ -341,7 +363,7 @@ export function describeStats(stats: ResponseStats | undefined): string[] {
     lines.push(`Cost: ${formatCost(stats.cost_usd)}`);
   if (stats.est_energy_wh !== undefined)
     lines.push(
-      `Energy: ${formatEnergyRange(stats.est_energy_wh)} (estimated with EcoLogits ${ECOLOGITS_VERSION}, not measured)`,
+      `Energy: ${formatEnergyRange(stats.est_energy_wh)} (estimated by EcoLogits, not measured)`,
     );
   if (stats.averaged_over)
     lines.push(
@@ -419,27 +441,28 @@ export function ecologitsModel(
 }
 
 /**
- * Adds EcoLogits' estimate of each response's energy to its stats, from its
- * output tokens and latency, where EcoLogits covers the model.
+ * EcoLogits' energy estimate for a model's requests, or undefined where
+ * EcoLogits doesn't cover the model. The estimate is a nicety: if it fails,
+ * the response keeps its other stats rather than being lost.
  */
-export function withEnergyEstimates(
-  stats: (ResponseStats | null)[] | undefined,
+export function energyEstimator(
   llm: string,
   provider: LLMProvider | undefined,
-): (ResponseStats | null)[] | undefined {
-  const model = stats && ecologitsModel(llm, provider);
-  if (!stats || !model) return stats;
-  const sig3 = (x: number) => Number(x.toPrecision(3));
-  return stats.map((s) => {
-    if (s?.output_tokens === undefined || s.latency_ms === undefined) return s;
-    const wh = estimateEnergyWh(
-      model[0],
-      model[1],
-      s.output_tokens,
-      s.latency_ms / 1000,
-    );
-    return wh
-      ? { ...s, est_energy_wh: { min: sig3(wh.min), max: sig3(wh.max) } }
-      : s;
-  });
+): EnergyEstimator | undefined {
+  const model = ecologitsModel(llm, provider);
+  if (!model) return undefined;
+  const [ecoProvider, name] = model;
+  return (outputTokens, latencyMs) => {
+    try {
+      return estimateEnergyWh(
+        ecoProvider,
+        name,
+        outputTokens,
+        latencyMs / 1000,
+      );
+    } catch (err) {
+      console.warn(`Could not estimate the energy of ${llm}:`, err);
+      return undefined;
+    }
+  };
 }
