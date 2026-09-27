@@ -40,6 +40,8 @@ const MANAGED: Record<string, string[]> = {
   prompt: ["prompt", "promptVariantLabel", "llms", "n", "title"],
   textfields: ["fields", "fields_visibility", "title"],
   evaluator: ["code", "language", "title"],
+  vis: ["selected_eval_res_var", "graph_type", "title"],
+  inspect: ["viewFormat", "title"],
 };
 
 const settingsOf = (type: string, data: Dict, models: ModelResolver) =>
@@ -60,8 +62,10 @@ test("the examples include every supported node type", () => {
   const types = new Set(exampleNodes.map(([, type]) => type));
   expect(Array.from(types).sort()).toEqual([
     "evaluator",
+    "inspect",
     "prompt",
     "textfields",
+    "vis",
   ]);
 });
 
@@ -173,10 +177,49 @@ describe("dataWithSettings", () => {
   });
 });
 
+describe("nodes that only show results", () => {
+  test("a Vis Node's measure is named, not one of the node's own keys", () => {
+    const data = dataWithSettings(
+      "vis",
+      { title: "Speed", metric: "latency", chart: "box" },
+      undefined,
+      resolver,
+    );
+    expect(data).toEqual({
+      title: "Speed",
+      selected_eval_res_var: "__stat_latency_s",
+      graph_type: "box",
+    });
+    expect(settingsOf("vis", data, resolver)).toEqual({
+      title: "Speed",
+      metric: "latency",
+      chart: "box",
+    });
+  });
+
+  test("a Vis Node may also plot an evaluator's own key", () => {
+    const data = dataWithSettings("vis", { metric: "length" }, {}, resolver);
+    expect(data.selected_eval_res_var).toBe("length");
+    expect(settingsOf("vis", data, resolver)).toMatchObject({
+      metric: "length",
+      chart: "bar",
+    });
+  });
+
+  test("an Inspect Node's view is named as the tabs read", () => {
+    const data = dataWithSettings("inspect", { view: "grouped" }, {}, resolver);
+    expect(data).toEqual({ viewFormat: "hierarchy" });
+    expect(settingsOf("inspect", data, resolver)).toEqual({
+      title: "Inspect Node",
+      view: "grouped",
+    });
+  });
+});
+
 test("Python evaluators aren't supported", () => {
   expect(supportOf("evaluator", { language: "python" })).toBe("not-supported");
   expect(supportOf("evaluator", { language: "javascript" })).toBe("editable");
-  expect(supportOf("vis", {})).toBe("not-supported");
+  expect(supportOf("table", {})).toBe("not-supported");
 });
 
 test("inputs follow ChainForge's template rules", () => {

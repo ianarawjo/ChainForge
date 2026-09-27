@@ -27,6 +27,8 @@ JavaScript evaluators, and treats Python ones as not supported.
   yet. Say so, rather than writing brittle code to approximate it.
 - Changing the response text. That's the Code Processor Node, which
   ChainBuddy doesn't support yet.
+- Measuring speed, cost, tokens or energy. ChainForge records those while it
+  runs the prompts; plot them straight from a Vis Node, with no evaluator.
 
 ## Inputs
 

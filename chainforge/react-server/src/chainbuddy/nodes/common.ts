@@ -20,6 +20,14 @@ export function doubleBraces(setting: string, texts: string[]) {
     : undefined;
 }
 
+/** Checks a setting that may only be one of a few words. */
+export function oneOf(setting: string, allowed: string[]) {
+  return (value: unknown) =>
+    typeof value === "string" && allowed.includes(value)
+      ? undefined
+      : `${setting} should be one of: ${allowed.join(", ")}.`;
+}
+
 /** Whether any item in a list has text that isn't blank. */
 export function hasText(list: unknown, text: (item: unknown) => unknown) {
   return (

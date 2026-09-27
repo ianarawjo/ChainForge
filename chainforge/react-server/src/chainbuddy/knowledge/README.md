@@ -18,6 +18,8 @@ It can't run nodes or read their results yet (see [Planned](#planned)).
 | `nodes/prompt.md`     | Prompt Node                                                 |
 | `nodes/textfields.md` | TextFields Node                                             |
 | `nodes/evaluator.md`  | JavaScript Evaluator                                        |
+| `nodes/vis.md`        | Vis Node                                                    |
+| `nodes/inspect.md`    | Inspect Node                                                |
 
 The model is told the list of node types, with what each gives and accepts,
 at the start of every conversation. It reads a node's file with
@@ -35,6 +37,8 @@ connected to, and can't change, connect or remove it.
 | Prompt Node            | `prompt`     | Editable      |
 | TextFields Node        | `textfields` | Editable      |
 | JavaScript Evaluator   | `evaluator`  | Editable      |
+| Vis Node               | `vis`        | Editable      |
+| Inspect Node           | `inspect`    | Editable      |
 | Evaluator Node, Python | `evaluator`  | Not supported |
 | Every other node type  |              | Not supported |
 
@@ -167,5 +171,4 @@ Not built yet, and not available to the model:
 - **Undoing an accepted change set.**
 - **Playbooks** (`playbooks/`): evaluation practice, such as how to compare
   two prompts fairly, loaded only when relevant.
-- **More node types**: next, the Vis and Inspect Nodes, the Tabular Data Node,
-  and the LLM Scorer.
+- **More node types**: next, the Tabular Data Node and the LLM Scorer.

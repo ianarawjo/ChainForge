@@ -6,14 +6,18 @@
 import type { Support } from "../flowApi/types";
 import { Dict } from "../../backend/typing";
 import { evaluatorKind } from "./evaluator";
+import { inspectKind } from "./inspect";
 import { promptKind } from "./prompt";
 import { textfieldsKind } from "./textfields";
+import { visKind } from "./vis";
 import { NodeKind } from "./types";
 
 export const NODE_KINDS: NodeKind[] = [
   promptKind,
   textfieldsKind,
   evaluatorKind,
+  visKind,
+  inspectKind,
 ];
 
 // Read when used, not captured at load, so a kind added to NODE_KINDS (as the
