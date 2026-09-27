@@ -295,4 +295,66 @@ describe("Ollama requests", () => {
     await third;
     expect(most).toBe(1); // the third still waited for the first
   });
+
+  test("one server's endpoints share its queue", async () => {
+    let running = 0;
+    let most = 0;
+    globalThis.fetch = jest.fn(async () => {
+      running++;
+      most = Math.max(most, running);
+      await new Promise((r) => setTimeout(r, 20));
+      running--;
+      return {
+        text: async () =>
+          JSON.stringify({ response: "ok", message: { content: "ok" } }),
+      };
+    }) as any;
+    const remote = (model_type: string) =>
+      call_ollama_provider(
+        "Q",
+        "ollama",
+        1,
+        1.0,
+        { ...params(), ollama_url: "http://gpu-box.lab:11434/api", model_type },
+        () => false,
+      );
+    // /api/chat and /api/generate on the same remote server
+    await Promise.all([remote("chat"), remote("text"), remote("chat")]);
+    expect(most).toBe(1);
+  });
+
+  test("a request after a cancelled one still waits for those before it", async () => {
+    let finishFirst!: () => void;
+    const firstDone = new Promise<void>((r) => (finishFirst = r));
+    let running = 0;
+    let most = 0;
+    globalThis.fetch = jest.fn(async (_url: any, init: any) => {
+      running++;
+      most = Math.max(most, running);
+      if (JSON.parse(init.body).model === "slow") await firstDone;
+      running--;
+      return { text: async () => JSON.stringify({ response: "ok" }) };
+    }) as any;
+    const call = (model: string, cancel: () => boolean) =>
+      call_ollama_provider(
+        "Q",
+        "ollama",
+        1,
+        1.0,
+        { ...params(), ollamaModel: model, model_type: "text" },
+        cancel,
+      );
+    const first = call("slow", () => false);
+    let cancelSecond = false;
+    const second = call("b", () => cancelSecond);
+    await new Promise((r) => setTimeout(r, 10)); // it's waiting its turn now
+    cancelSecond = true;
+    await expect(second).rejects.toBeInstanceOf(UserForcedPrematureExit);
+    // Arrives after the cancelled one has left: must still wait for the first
+    const third = call("c", () => false);
+    await new Promise((r) => setTimeout(r, 50));
+    finishFirst();
+    await Promise.all([first, third]);
+    expect(most).toBe(1);
+  });
 });

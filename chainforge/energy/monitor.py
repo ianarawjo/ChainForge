@@ -125,6 +125,7 @@ class EnergyMonitor:
         for request, began in list(self._in_flight.items()):
             if began < cutoff:
                 del self._in_flight[request]
+                self._request_conditions.pop(request, None)
                 self._busy.append((began, now))
         if self._busy and self._busy[0][1] < cutoff:
             self._busy = [s for s in self._busy if s[1] >= cutoff]

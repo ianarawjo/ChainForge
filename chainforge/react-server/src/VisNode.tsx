@@ -466,9 +466,11 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     );
     // ...and followed if the node's data changes (e.g. a flow loaded in its place)
     useEffect(() => {
-      const saved = GRAPH_OPTIONS.find((o) => o.key === data?.graph_type);
-      if (saved)
-        setGraphType((prev) => (prev.key === saved.key ? prev : saved));
+      // Without a saved one (e.g. an older flow), the default
+      const saved =
+        GRAPH_OPTIONS.find((o) => o.key === data?.graph_type) ??
+        GRAPH_OPTIONS[0];
+      setGraphType((prev) => (prev.key === saved.key ? prev : saved));
     }, [data?.graph_type]);
     // Called while replotting, to force the graph type some data needs. The
     // replot runs again when the graph type changes, so this must leave state
@@ -574,10 +576,15 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       statsView.responses.forEach((r) =>
         r.stats?.forEach((s) => {
           const c = s?.energy_conditions;
-          const key = describeConditions(
-            c ? { power_source: c.power_source, power_mode: c.power_mode } : {},
-          );
-          if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+          // Unknown (e.g. measured before ChainForge recorded them) is its
+          // own group: not known to be comparable with the rest
+          const key =
+            describeConditions(
+              c
+                ? { power_source: c.power_source, power_mode: c.power_mode }
+                : undefined,
+            ) ?? "under unknown power settings";
+          counts.set(key, (counts.get(key) ?? 0) + 1);
         }),
       );
       if (counts.size < 2) return undefined;
@@ -1692,7 +1699,14 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const savedWidth = data?.plot_size?.width;
     const savedHeight = data?.plot_size?.height;
     useEffect(() => {
-      if (!plotDiv || !savedWidth || !savedHeight) return;
+      if (!plotDiv) return;
+      if (!savedWidth || !savedHeight) {
+        // None saved (e.g. an older flow): the default size, not one left
+        // over from data shown before
+        plotDiv.style.width = "";
+        plotDiv.style.height = "";
+        return;
+      }
       if (
         plotDiv.offsetWidth === savedWidth &&
         plotDiv.offsetHeight === savedHeight

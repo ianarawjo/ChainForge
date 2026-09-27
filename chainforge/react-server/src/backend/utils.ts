@@ -2406,7 +2406,9 @@ async function oneOllamaRequestAtATime<T>(
   run: () => Promise<T>,
   signal?: AbortSignal,
 ): Promise<T> {
-  const key = isLoopbackUrl(url) ? "this machine" : url;
+  // By server (host and port), not endpoint: /api/chat and /api/generate on
+  // one server share it. All servers on this machine share its hardware.
+  const key = isLoopbackUrl(url) ? "this machine" : serverOrigin(url);
   const before = (ollamaQueues.get(key) ?? Promise.resolve()).catch(
     () => undefined,
   );
@@ -2430,8 +2432,21 @@ async function oneOllamaRequestAtATime<T>(
     return await run();
   } finally {
     finished();
-    // Forget the queue once it's empty
-    if (ollamaQueues.get(key) === tail) ollamaQueues.delete(key);
+    // Forget the queue once it's empty: once everything in it has finished,
+    // not just this request (a cancelled one finishes while those before it
+    // may still be running, and a new request mustn't start alongside them)
+    tail.then(() => {
+      if (ollamaQueues.get(key) === tail) ollamaQueues.delete(key);
+    });
+  }
+}
+
+/** A URL's scheme, host and port, e.g. "http://gpu-box:11434". */
+function serverOrigin(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return url;
   }
 }
 

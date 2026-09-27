@@ -30,6 +30,29 @@ export interface MeasuredEnergy {
 }
 
 let available: Promise<boolean> | undefined;
+// How long to wait for the ChainForge server's answer before going without:
+// measuring is never worth holding up a request
+const TIMEOUT_MS = 5_000;
+
+/** `promise`, or a rejection after `ms`. */
+function withTimeout<T>(promise: Promise<T>, ms = TIMEOUT_MS): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error("The ChainForge server didn't answer in time.")),
+      ms,
+    );
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
 // After the server couldn't be asked (e.g. it was restarting), wait this long before asking again
 const RETRY_AFTER_MS = 60_000;
 let unreachableAt: number | undefined;
@@ -58,7 +81,7 @@ function energyMeasurable(): Promise<boolean> {
     Date.now() - unreachableAt < RETRY_AFTER_MS
   )
     return Promise.resolve(false);
-  const asking = call_flask_backend("energyStatus", {}).then(
+  const asking = withTimeout(call_flask_backend("energyStatus", {})).then(
     (status) => status?.available === true,
     () => {
       unreachableAt = Date.now();
@@ -85,7 +108,7 @@ export async function beginEnergy(
 ): Promise<string | undefined> {
   try {
     if (!(await canMeasureEnergy(serverUrl))) return undefined;
-    const res = await call_flask_backend("energyBegin", {});
+    const res = await withTimeout(call_flask_backend("energyBegin", {}));
     return typeof res?.id === "string" ? res.id : undefined;
   } catch {
     return undefined;
@@ -109,17 +132,19 @@ export async function endEnergy(
     timings !== undefined &&
     Object.values(timings).every((v) => Number.isFinite(v) && v >= 0);
   try {
-    const res = await call_flask_backend(
-      "energyEnd",
-      valid
-        ? {
-            id,
-            // When the reply arrived, by this machine's clock, so that any
-            // delay in this call reaching the server doesn't shift the windows
-            reply_epoch_ms: Date.now() - (performance.now() - repliedAt),
-            ...timings,
-          }
-        : { id, cancelled: true },
+    const res = await withTimeout(
+      call_flask_backend(
+        "energyEnd",
+        valid
+          ? {
+              id,
+              // When the reply arrived, by this machine's clock, so that any
+              // delay in this call reaching the server doesn't shift the windows
+              reply_epoch_ms: Date.now() - (performance.now() - repliedAt),
+              ...timings,
+            }
+          : { id, cancelled: true },
+      ),
     );
     const energy = res?.energy;
     return energy && typeof energy.energy_wh === "number"

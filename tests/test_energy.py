@@ -218,6 +218,7 @@ class TestMonitor:
         forgotten = monitor.begin()
         run_monitor_until(monitor, clock, 1005.0 + 16 * 60, step=5.0)
         assert monitor.end(forgotten, 0.0, 0.0, 1.0, 1.0) is None
+        assert forgotten not in monitor._request_conditions  # nothing left behind
         # ...and idle power can be measured again
         assert monitor.status()["idle_w"] == pytest.approx(1.0)
 

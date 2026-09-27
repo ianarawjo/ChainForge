@@ -160,6 +160,27 @@ describe("measuring local models' energy", () => {
     expect(mockBackend).toHaveBeenCalledTimes(1);
   });
 
+  test("gives up on a server that doesn't answer", async () => {
+    jest.useFakeTimers();
+    try {
+      mockBackend.mockImplementation((route: string) =>
+        route === "energyEnd"
+          ? new Promise(() => undefined) // never answers
+          : Promise.resolve({ available: true, id: "7" }),
+      );
+      const { endEnergy } = load();
+      const ended = endEnergy("7", 0, {
+        load_s: 0,
+        generation_s: 1,
+        total_s: 1,
+      });
+      jest.advanceTimersByTime(5_001);
+      await expect(ended).resolves.toBe(undefined);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   test("never fails a request", async () => {
     mockBackend.mockImplementation(async () => {
       throw new TypeError("Failed to fetch");

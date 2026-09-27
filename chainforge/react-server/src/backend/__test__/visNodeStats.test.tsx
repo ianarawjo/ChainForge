@@ -471,5 +471,36 @@ describe("Vis Node plotting response stats", () => {
     expect(await screen.findByText("Box & Whiskers")).toBeTruthy();
     expect(plotDiv.style.width).toBe("410px");
     expect(plotDiv.style.height).toBe("260px");
+    // An older flow, with neither saved: the defaults, not what was shown before
+    rerender(view(base));
+    expect(await screen.findByText("Bar Chart")).toBeTruthy();
+    expect(plotDiv.style.width).toBe("");
+    expect(plotDiv.style.height).toBe("");
+  });
+
+  test("counts measurements with unknown power settings as their own group", async () => {
+    const measured = (conditions?: any): ResponseStats => ({
+      latency_ms: 1000,
+      output_tokens: 100,
+      energy_wh: 0.05,
+      ...(conditions ? { energy_conditions: conditions } : {}),
+    });
+    await renderVis([
+      respObj("Haiku", "ollama", [
+        measured({ power_source: "AC power", power_mode: "Automatic" }),
+      ]),
+      respObj("Gemini", "ollama", [measured()]), // e.g. measured before they were recorded
+    ]);
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_energy_mwh" },
+    });
+    const note = await screen.findByText(
+      "Measured under different power settings.",
+    );
+    const trigger = note.closest("[aria-describedby]") as HTMLElement;
+    expect(
+      document.getElementById(trigger.getAttribute("aria-describedby")!)
+        ?.textContent,
+    ).toContain("1 under unknown power settings");
   });
 });
