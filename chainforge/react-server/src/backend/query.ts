@@ -24,6 +24,7 @@ import {
   repairCachedResponses,
   extractMediaVars,
   imageMimeFromBase64,
+  usesCustomOpenAIEndpoint,
 } from "./utils";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import { energyEstimator, extract_stats } from "./responseStats";
@@ -119,7 +120,10 @@ export class PromptPipeline {
       response,
       elapsed_ms,
       extracted_resps.length,
-      energyEstimator(llm.toString(), provider),
+      // EcoLogits' estimates are for OpenAI's own data centres, not another server's
+      provider === LLMProvider.OpenAI && usesCustomOpenAIEndpoint()
+        ? undefined
+        : energyEstimator(llm.toString(), provider),
     );
 
     // Detect any images and intern them to the MediaLookup table.

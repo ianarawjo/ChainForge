@@ -30,6 +30,7 @@ import {
   describeStats,
   extract_stats,
   formatStats,
+  ecologitsCovers,
   isStatsMetavar,
   plottableStat,
   plottableStatsIn,
@@ -318,6 +319,7 @@ describe("plotting stats in place of scores", () => {
     {
       llm: "A",
       responses: ["one", "two"],
+      reasoning: ["thought one", "thought two"],
       stats: [
         { latency_ms: 1200, est_energy_wh: { min: 0.01, max: 0.03 } },
         { latency_ms: 800 },
@@ -353,13 +355,13 @@ describe("plotting stats in place of scores", () => {
     const energy = statsAsScores(
       resps,
       plottableStat("__stat_est_energy_mwh")!,
-      (r) => r.llm,
     );
     // A, which has one response without an estimate, and B and C, which have none
-    expect(energy.missing).toEqual(["A", "B", "C"]);
+    expect(energy.missing.map((r) => r.llm)).toEqual(["A", "B", "C"]);
     const [obj] = energy.responses;
-    // Only the response with an estimate, and its text alongside it
+    // Only the response with an estimate, and its text and reasoning alongside it
     expect(obj.responses).toEqual(["one"]);
+    expect(obj.reasoning).toEqual(["thought one"]);
     expect(obj.eval_res.items).toEqual([20]);
     expect(energy.hover.get(obj)).toEqual([
       "Energy: 10–30 mWh (estimated by EcoLogits)",
@@ -369,5 +371,18 @@ describe("plotting stats in place of scores", () => {
 
   test("is not an evaluator's score name", () => {
     expect(plottableStat("score")).toBeUndefined();
+  });
+
+  test("tells models EcoLogits covers from ones it doesn't", () => {
+    const spec = (model: string) => ({ name: model, model });
+    expect(ecologitsCovers(spec("gpt-4o-mini"))).toBe(true);
+    expect(ecologitsCovers(spec("openrouter/anthropic/claude-haiku-4.5"))).toBe(
+      true,
+    );
+    expect(ecologitsCovers(spec("openrouter/deepseek/deepseek-v4-flash"))).toBe(
+      false,
+    );
+    // Only a name: can't tell
+    expect(ecologitsCovers("GPT-4o Mini")).toBeUndefined();
   });
 });

@@ -14,7 +14,9 @@ import {
   ResponseStats,
 } from "./typing";
 import {
+  getProvider,
   isOpenRouterImageModel,
+  LLM,
   LLMProvider,
   stripHuggingFacePrefix,
   stripOpenRouterPrefix,
@@ -557,6 +559,8 @@ export function plottableStat(key: string): PlottableStat | undefined {
 type WithStats = {
   responses: LLMResponseData[];
   stats?: (ResponseStats | null)[];
+  reasoning?: unknown[];
+  reasoning_state?: unknown[];
 };
 
 /** The stats that at least one of these responses has, in PLOTTABLE_STATS's order. */
@@ -570,24 +574,24 @@ export function plottableStatsIn(resps: WithStats[]): PlottableStat[] {
 
 /**
  * Response objects with one stat in place of evaluation scores, so anything
- * that plots scores can plot it. Responses without the stat are left out, and
- * `hover` gives each kept response's value, described, in the same order.
- * `missing` names (by `nameOf`, e.g. their model) the left-out responses.
+ * that plots scores can plot it. Responses without the stat are left out
+ * (along with their reasoning, so what's kept stays in step), and `hover`
+ * gives each kept response's value, described, in the same order. `missing`
+ * lists the response objects that had responses left out.
  */
 export function statsAsScores<T extends WithStats>(
   resps: T[],
   stat: PlottableStat,
-  nameOf?: (r: T) => string,
 ): {
   responses: (T & { eval_res: EvaluationResults })[];
   hover: Map<T, string[]>;
   kept: number;
   total: number;
-  missing: string[];
+  missing: T[];
 } {
   const hover = new Map<T, string[]>();
   const kept: (T & { eval_res: EvaluationResults })[] = [];
-  const missing = new Set<string>();
+  const missing: T[] = [];
   let total = 0;
   resps.forEach((r) => {
     total += r.responses.length;
@@ -597,18 +601,23 @@ export function statsAsScores<T extends WithStats>(
         const s = r.stats?.[i];
         return s != null && stat.value(s) !== undefined;
       });
-    if (idxs.length < r.responses.length && nameOf) missing.add(nameOf(r));
+    if (idxs.length < r.responses.length) missing.push(r);
     if (idxs.length === 0) return;
-    const stats = idxs.map((i) => r.stats?.[i] as ResponseStats);
+    const pick = <V>(arr: V[]) => idxs.map((i) => arr[i]);
+    const stats = pick(r.stats ?? []) as ResponseStats[];
     const obj: T & { eval_res: EvaluationResults } = {
       ...r,
-      responses: idxs.map((i) => r.responses[i]),
+      responses: pick(r.responses),
       stats,
       eval_res: {
         dtype: "Numeric",
         items: stats.map((s) => stat.value(s) as number),
       },
     };
+    // Every other per-response list, e.g. each response's reasoning
+    if (Array.isArray(r.reasoning)) obj.reasoning = pick(r.reasoning);
+    if (Array.isArray(r.reasoning_state))
+      obj.reasoning_state = pick(r.reasoning_state);
     kept.push(obj);
     hover.set(obj, stats.map(stat.describe));
   });
@@ -617,6 +626,18 @@ export function statsAsScores<T extends WithStats>(
     hover,
     kept: kept.reduce((n, r) => n + r.responses.length, 0),
     total,
-    missing: Array.from(missing),
+    missing,
   };
+}
+
+/**
+ * Whether EcoLogits covers the model that gave a response, i.e. whether
+ * responses from it get energy estimates. Undefined when the response doesn't
+ * say which model it was (only a name).
+ */
+export function ecologitsCovers(llm: unknown): boolean | undefined {
+  const model =
+    llm !== null && typeof llm === "object" ? (llm as Dict).model : undefined;
+  if (typeof model !== "string") return undefined;
+  return ecologitsModel(model, getProvider(model as LLM)) !== undefined;
 }

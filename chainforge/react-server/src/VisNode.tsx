@@ -37,6 +37,7 @@ import {
   JSONCompatible,
   LLMResponse,
   LLMResponseData,
+  LLMSpec,
 } from "./backend/typing";
 import { Status } from "./StatusIndicatorComponent";
 import { grabResponses } from "./backend/backend";
@@ -53,6 +54,7 @@ import {
 } from "./VisNodeAIPlot";
 import { AIPlot } from "./backend/aiPlots";
 import {
+  ecologitsCovers,
   plottableStat,
   plottableStatsIn,
   statsAsScores,
@@ -150,25 +152,66 @@ const castEvalScoreToNum = (score: EvaluationScore): number => {
  * this gives the summary instead.
  */
 const boxSummaryTrace = (
-  values: number[],
-  name: string,
+  boxes: { y: string; title: string; values: number[] }[],
   color: string,
+  // For grouped boxes: the boxes' offsetgroup, so the points sit on them
+  // (with the layout's scattermode "group")
+  offsetgroup?: string,
 ): Dict | undefined => {
-  if (values.length === 0) return undefined;
+  const nonEmpty = boxes.filter((b) => b.values.length > 0);
+  if (nonEmpty.length === 0) return undefined;
   const fmt = (v: number) => String(Number(v.toPrecision(3)));
-  const range =
-    values.length > 1 ? ` · range ${fmt(min(values))}–${fmt(max(values))}` : "";
+  const summary = ({ title, values }: { title: string; values: number[] }) => {
+    const range =
+      values.length > 1
+        ? ` · range ${fmt(min(values))}–${fmt(max(values))}`
+        : "";
+    return `<b>${title}</b><br>median ${fmt(median(values))}${range} · n = ${values.length}`;
+  };
   return {
     type: "scatter",
     mode: "markers",
-    x: [median(values)],
-    y: [name],
+    x: nonEmpty.map((b) => median(b.values)),
+    y: nonEmpty.map((b) => b.y),
+    text: nonEmpty.map(summary),
     orientation: "h",
     marker: { color, size: 16, opacity: 0 },
     hoverlabel: { bgcolor: color, align: "left" },
-    hovertemplate: `<b>${name}</b><br>median ${fmt(median(values))}${range} · n = ${values.length}<extra></extra>`,
+    hovertemplate: "%{text}<extra></extra>",
     showlegend: false,
+    ...(offsetgroup !== undefined ? { offsetgroup } : {}),
   };
+};
+
+/**
+ * The model specs the flow's nodes choose (e.g. a Prompt Node's), by their
+ * nicknames, which is how responses name the model that gave them. A
+ * nickname given to two different models maps to undefined.
+ */
+const modelSpecsByNickname = (): Map<string, LLMSpec | undefined> => {
+  const specs = new Map<string, LLMSpec | undefined>();
+  (useStore.getState().nodes ?? []).forEach((node) =>
+    Object.values(node.data ?? {}).forEach((value) => {
+      if (!Array.isArray(value)) return;
+      value.forEach((item) => {
+        if (
+          item &&
+          typeof item === "object" &&
+          typeof item.name === "string" &&
+          typeof item.model === "string"
+        ) {
+          const prev = specs.get(item.name);
+          specs.set(
+            item.name,
+            specs.has(item.name) && prev?.model !== item.model
+              ? undefined
+              : (item as LLMSpec),
+          );
+        }
+      });
+    }),
+  );
+  return specs;
 };
 
 /** The name of the model that gave a response. */
@@ -441,13 +484,45 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const selectedStat = plottableStat(selectedEvalResVar);
     const statsView = useMemo(
       () =>
-        selectedStat
-          ? statsAsScores(inputResponses, selectedStat, llmNameOf)
-          : undefined,
+        selectedStat ? statsAsScores(inputResponses, selectedStat) : undefined,
       [inputResponses, selectedStat],
     );
     const responses = statsView?.responses ?? inputResponses;
     const metricName = selectedStat?.label ?? selectedEvalResVar;
+    const isEnergy = selectedStat?.key === "__stat_est_energy_mwh";
+
+    // Why some responses aren't in a plot of a stat, for the note below it.
+    // For energy, only the models EcoLogits doesn't cover are its doing;
+    // other responses may just predate estimates, or lack a token count.
+    const omittedNote = useMemo(() => {
+      if (!statsView || statsView.kept === 0 || statsView.missing.length === 0)
+        return undefined;
+      const names = (rs: LLMResponse[]) =>
+        Array.from(new Set(rs.map(llmNameOf))).join(", ");
+      // Responses name their model by nickname: find what it is from the flow
+      const specs = isEnergy ? modelSpecsByNickname() : undefined;
+      const uncovered = specs
+        ? statsView.missing.filter(
+            (r) =>
+              ecologitsCovers(
+                typeof r.llm === "object" ? r.llm : specs.get(llmNameOf(r)),
+              ) === false,
+          )
+        : [];
+      const others = statsView.missing.filter((r) => !uncovered.includes(r));
+      const sentences: string[] = [];
+      if (uncovered.length > 0)
+        sentences.push(
+          `EcoLogits has no estimates for models ${names(uncovered)}, hence they are omitted here.`,
+        );
+      if (others.length > 0)
+        sentences.push(
+          isEnergy
+            ? `Some responses from ${names(others)} have no estimate (for instance, ones collected before ChainForge estimated energy, or without a token count), hence they are omitted here.`
+            : `Some responses from ${names(others)} have no ${metricName.toLowerCase()}, hence they are omitted here.`,
+        );
+      return sentences.join(" ");
+    }, [statsView, isEnergy, metricName]);
 
     // Typically, a user will only need the default LLM 'group' --all LLMs in responses.
     // However, when prompts are chained together, the original LLM info is stored in metavars as a key.
@@ -538,27 +613,30 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         available_llm_groups[0] = { value: "LLM", label: "LLMs (last)" };
       setAvailableLLMGroups(available_llm_groups);
 
-      // Check for a change in available parameters
+      // Check for a change in available parameters. The y-axis choice is reset
+      // only when the y-axis options change: new x-axis options (e.g. a stat a
+      // newly added model reports) leave it alone.
       if (
         !multiSelectVars ||
         !multiSelectValue ||
-        !evalResVars ||
         !areSetsEqual(
           new Set(msvars.map((o) => o.value)),
           new Set(multiSelectVars.map((o) => o.value)),
-        ) ||
-        !areSetsEqual(new Set(evalResVars), eval_res_keys)
+        )
       ) {
         setMultiSelectValue("LLM (default)");
         setMultiSelectVars(msvars);
-        setEvalResVars(Array.from(eval_res_keys));
         if (id)
           setDataPropsForNode(id, {
             vars: msvars,
             selected_vars: [],
             llm_groups: available_llm_groups,
-            eval_res_vars: Array.from(eval_res_keys),
           });
+      }
+      if (!evalResVars || !areSetsEqual(new Set(evalResVars), eval_res_keys)) {
+        setEvalResVars(Array.from(eval_res_keys));
+        if (id)
+          setDataPropsForNode(id, { eval_res_vars: Array.from(eval_res_keys) });
       }
     };
 
@@ -767,13 +845,16 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           else return v;
         };
 
-        // Hover text for each response: its text, after the stat's value when plotting a stat
+        // Hover text for each response: its text, after the stat's value when
+        // plotting a stat. Per response, since one response can give several texts.
         const hoverTexts = (r: LLMResponse) => {
-          const texts = createHoverTexts(r.responses.map(castData));
           const values = statsView?.hover.get(r);
-          return values
-            ? texts.map((t, i) => `<b>${values[i]}</b><br>${t}`)
-            : texts;
+          return r.responses.flatMap((resp, i) => {
+            const texts = createHoverTexts([castData(resp)]);
+            return values
+              ? texts.map((t) => `<b>${values[i]}</b><br>${t}`)
+              : texts;
+          });
         };
 
         // A bar chart of a stat shows its mean per response, so models are
@@ -1054,8 +1135,13 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               spec.push(d);
               if (d.type === "box") {
                 const summary = boxSummaryTrace(
-                  x_items.map(castEvalScoreToNum),
-                  shortnames[name],
+                  [
+                    {
+                      y: shortnames[name],
+                      title: shortnames[name],
+                      values: x_items.map(castEvalScoreToNum),
+                    },
+                  ],
                   color,
                 );
                 if (summary) spec.push(summary);
@@ -1189,9 +1275,27 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 // each of its stats separately (see boxSummaryTrace)
                 d.type = "box";
                 d.hoveron = "points";
+                d.offsetgroup = llm;
               }
 
               spec.push(d);
+              if (d.type === "box") {
+                const summary = boxSummaryTrace(
+                  Object.values(shortnames).map((y) => ({
+                    y,
+                    title: `${llm} · ${y}`,
+                    values: x_items
+                      .filter((_, idx) => y_items[idx] === y)
+                      .map(castEvalScoreToNum),
+                  })),
+                  getColorForLLMAndSetIfNotFound(llm),
+                  llm,
+                );
+                if (summary) {
+                  spec.push(summary);
+                  layout.scattermode = "group";
+                }
+              }
               layout.xaxis = {
                 title: { font: { size: 12 }, text: xaxis_title },
                 ...layout.xaxis,
@@ -1662,13 +1766,9 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
         </div>
         {/* Outside the plot's div: the plot resizes to fill that div, so
             anything else in it would make the plot grow without end. */}
-        {statsView && statsView.kept > 0 && statsView.missing.length > 0 ? (
+        {omittedNote ? (
           <Tooltip
-            label={
-              selectedStat?.key === "__stat_est_energy_mwh"
-                ? `EcoLogits has no estimates for models ${statsView.missing.join(", ")}, hence they are omitted here.`
-                : `${statsView.missing.join(", ")} didn't report ${metricName.toLowerCase()}, hence they are omitted here.`
-            }
+            label={omittedNote}
             multiline
             width={260}
             withArrow
@@ -1690,7 +1790,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 color="#e8a33d"
                 style={{ flexShrink: 0 }}
               />
-              {selectedStat?.key === "__stat_est_energy_mwh"
+              {isEnergy
                 ? "Some estimates could not be shown."
                 : "Some values could not be shown."}
             </div>

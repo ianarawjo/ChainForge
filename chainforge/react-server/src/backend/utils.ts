@@ -228,6 +228,20 @@ let GOOGLE_PALM_API_KEY = get_environ("PALM_API_KEY");
 let AZURE_OPENAI_KEY = get_environ("AZURE_OPENAI_KEY");
 let AZURE_OPENAI_ENDPOINT = get_environ("AZURE_OPENAI_ENDPOINT");
 let HUGGINGFACE_API_KEY = get_environ("HUGGINGFACE_API_KEY");
+
+/**
+ * Whether OpenAI models are called at a base URL other than OpenAI's own
+ * (the OpenAI_BaseURL setting), e.g. a proxy or a self-hosted server, whose
+ * hardware and data centre aren't OpenAI's.
+ */
+export function usesCustomOpenAIEndpoint(): boolean {
+  if (!OPENAI_BASE_URL) return false;
+  try {
+    return new URL(OPENAI_BASE_URL).hostname !== "api.openai.com";
+  } catch {
+    return true;
+  }
+}
 let AWS_ACCESS_KEY_ID = get_environ("AWS_ACCESS_KEY_ID");
 let AWS_SECRET_ACCESS_KEY = get_environ("AWS_SECRET_ACCESS_KEY");
 let AWS_SESSION_TOKEN = get_environ("AWS_SESSION_TOKEN");

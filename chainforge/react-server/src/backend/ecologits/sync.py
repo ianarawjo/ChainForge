@@ -17,6 +17,7 @@ Standard library only.
 import ast
 import hashlib
 import json
+import os
 import re
 import sys
 import urllib.request
@@ -53,7 +54,13 @@ MAX_PLAUSIBLE_TTFT_S = 120
 
 
 def get(url: str) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "chainforge-ecologits-sync"})
+    headers = {"User-Agent": "chainforge-ecologits-sync"}
+    # Anonymous calls to GitHub's API share a small hourly limit per IP address,
+    # which a CI runner's may have used up: send a token when there is one
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token and url.startswith("https://api.github.com/"):
+        headers["Authorization"] = f"Bearer {token}"
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=30) as resp:
         return resp.read()
 
@@ -99,16 +106,62 @@ def providers(utils_py: str) -> dict:
     sys.exit("utils.py no longer defines PROVIDER_CONFIG_MAP: update sync.py and ecologits.ts.")
 
 
+def is_number(v) -> bool:
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def is_value_or_range(v) -> bool:
+    """A positive number, or {"min", "max"} with 0 < min <= max: what ecologits.ts reads."""
+    if is_number(v):
+        return v > 0
+    return (
+        isinstance(v, dict)
+        and is_number(v.get("min"))
+        and is_number(v.get("max"))
+        and 0 < v["min"] <= v["max"]
+    )
+
+
 def check_models(models: dict) -> list[str]:
     """Anything in models.json that ecologits.ts would misread."""
     problems = []
     for m in models["models"]:
-        ttft = (m.get("deployment") or {}).get("ttft")
-        if ttft is not None and ttft > MAX_PLAUSIBLE_TTFT_S:
-            problems.append(f"{m['provider']}/{m['name']}: ttft {ttft} (seconds?)")
-        arch = m["architecture"]
-        if arch["type"] not in ("dense", "moe"):
-            problems.append(f"{m['provider']}/{m['name']}: architecture {arch['type']}")
+        name = f"{m.get('provider')}/{m.get('name')}"
+        deployment = m.get("deployment") or {}
+        ttft, tps = deployment.get("ttft"), deployment.get("tps")
+        if ttft is not None and (not is_number(ttft) or not 0 <= ttft <= MAX_PLAUSIBLE_TTFT_S):
+            problems.append(f"{name}: ttft {ttft} (seconds?)")
+        if tps is not None and (not is_number(tps) or tps <= 0):
+            problems.append(f"{name}: tps {tps}")
+        # As EcoLogits reads them: by the parameters' shape (one count, a range,
+        # or total and active counts), whatever the architecture's type says
+        arch = m.get("architecture") or {}
+        params = arch.get("parameters")
+        ok = arch.get("type") in ("dense", "moe") and (
+            is_value_or_range(params)
+            or (
+                isinstance(params, dict)
+                and is_value_or_range(params.get("total"))
+                and is_value_or_range(params.get("active"))
+            )
+        )
+        if not ok:
+            problems.append(f"{name}: architecture {arch}")
+    names = {(m.get("provider"), m.get("name")) for m in models["models"]}
+    for a in models.get("aliases") or []:
+        if (a.get("provider"), a.get("alias")) not in names:
+            problems.append(f"alias {a.get('name')}: no model {a.get('alias')}")
+    return problems
+
+
+def check_method(method: dict) -> list[str]:
+    """Anything in method.json that ecologits.ts would misread."""
+    problems = [
+        f"constant {k}: {v}" for k, v in method["constants"].items() if not is_number(v)
+    ]
+    for provider, config in method["providers"].items():
+        if not is_value_or_range(config.get("datacenter_pue")):
+            problems.append(f"provider {provider}: datacenter_pue {config.get('datacenter_pue')}")
     return problems
 
 
@@ -134,6 +187,12 @@ def main() -> None:
         "constants": constants(files["llm.py"].decode("utf-8")),
         "providers": providers(files["utils.py"].decode("utf-8")),
     }
+    problems = check_method(method)
+    if problems:
+        print("The method's constants or data centres read wrongly:")
+        for p in problems:
+            print("  " + p)
+        sys.exit("Not updated. Check how llm.py and utils.py define them, and update sync.py.")
 
     old = HERE / "upstream.json"
     previous = json.loads(old.read_text(encoding="utf-8")) if old.exists() else {}

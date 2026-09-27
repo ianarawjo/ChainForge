@@ -16,9 +16,10 @@ export type EnergyRange = { min: number; max: number };
 
 type ValueOrRange = number | EnergyRange;
 
-type Architecture =
-  | { type: "dense"; parameters: ValueOrRange }
-  | { type: "moe"; parameters: { total: ValueOrRange; active: ValueOrRange } };
+type Architecture = {
+  type: "dense" | "moe";
+  parameters: ValueOrRange | { total: ValueOrRange; active: ValueOrRange };
+};
 
 type Model = {
   provider: string;
@@ -143,8 +144,12 @@ export function estimateEnergyWh(
   if (!model || !config) return undefined;
 
   const arch = model.architecture;
-  const active = arch.type === "moe" ? arch.parameters.active : arch.parameters;
-  const total = arch.type === "moe" ? arch.parameters.total : arch.parameters;
+  // As llm_impacts, by the parameters' shape rather than the architecture's
+  // type: a "moe" model given one parameter count counts as dense
+  const params = arch.parameters;
+  const isMoE = typeof params === "object" && "total" in params;
+  const active = isMoE ? params.active : (params as ValueOrRange);
+  const total = isMoE ? params.total : (params as ValueOrRange);
 
   // As compute_llm_impacts: once with the smallest sizes, once with the largest
   const pue = config.datacenter_pue;

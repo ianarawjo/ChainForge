@@ -36,6 +36,8 @@ jobs:
       - name: Sync
         env:
           REF: ${{ inputs.ref }}
+          # So sync.py's GitHub API calls don't share the anonymous rate limit
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -o pipefail
           python sync.py ${REF:+"$REF"} | tee sync.log

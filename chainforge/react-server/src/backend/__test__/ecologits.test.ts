@@ -5,6 +5,7 @@ import * as ecologits from "../ecologits/ecologits";
 import { estimateEnergyWh } from "../ecologits/ecologits";
 import upstream from "../ecologits/upstream.json";
 import { LLMProvider } from "../models";
+import { set_api_keys, usesCustomOpenAIEndpoint } from "../utils";
 import {
   describeStats,
   ecologitsModel,
@@ -86,6 +87,15 @@ describe("EcoLogits port", () => {
       2.0,
       0.23181768932615884,
       0.23181768932615884,
+    ],
+    // Typed "moe" but given one parameter count, which EcoLogits reads as dense
+    [
+      "cohere",
+      "command-a-plus-05-2026",
+      500,
+      2.0,
+      0.729278345249806,
+      0.729278345249806,
     ],
   ];
   it.each(reference)(
@@ -243,5 +253,15 @@ describe("energy estimates in extract_stats", () => {
     expect(formatEnergyRange({ min: 0.4, max: 1.2 })).toBe("0.4–1.2 Wh");
     expect(formatEnergyRange({ min: 0.232, max: 0.232 })).toBe("230 mWh");
     expect(formatEnergyRange({ min: 12.4, max: 18.9 })).toBe("12–19 Wh");
+  });
+});
+
+describe("custom OpenAI endpoints", () => {
+  it("counts only a base URL other than OpenAI's as custom", () => {
+    expect(usesCustomOpenAIEndpoint()).toBe(false);
+    set_api_keys({ OpenAI_BaseURL: "http://localhost:1234/v1" });
+    expect(usesCustomOpenAIEndpoint()).toBe(true);
+    set_api_keys({ OpenAI_BaseURL: "https://api.openai.com/v1" });
+    expect(usesCustomOpenAIEndpoint()).toBe(false);
   });
 });
