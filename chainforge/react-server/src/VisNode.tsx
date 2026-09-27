@@ -392,6 +392,10 @@ interface VisNodeData {
   title: string;
   // A plot the AI made, shown instead of the default plot until the user goes back
   aiPlot?: AIPlot | null;
+  // Bar chart or box plot, as last chosen (see GRAPH_OPTIONS)
+  graph_type?: string;
+  // The plot's size, as last resized, in pixels
+  plot_size?: { width: number; height: number };
 }
 
 /**
@@ -456,7 +460,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const [isPlotRerenderPending, startTransition] = useTransition();
 
     // For some data types, there are multiple graph options available...
-    const [graphType, setGraphType] = useState(GRAPH_OPTIONS[0]);
+    // Saved with the node, so it's kept when the flow is saved and loaded
+    const [graphType, setGraphType] = useState(
+      GRAPH_OPTIONS.find((o) => o.key === data?.graph_type) ?? GRAPH_OPTIONS[0],
+    );
     // Called while replotting, to force the graph type some data needs. The
     // replot runs again when the graph type changes, so this must leave state
     // alone when that type is already selected; otherwise the plot redraws in
@@ -1673,7 +1680,20 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
     const setPlotDivRef = useCallback((elem: HTMLDivElement | null) => {
       plotDivRef.current = elem;
       setPlotDiv(elem);
+      // The size it was last resized to, saved with the node
+      const size = data?.plot_size;
+      if (elem && size && size.width > 0 && size.height > 0) {
+        elem.style.width = `${size.width}px`;
+        elem.style.height = `${size.height}px`;
+      }
     }, []);
+    const savePlotSize = useCallback(() => {
+      const el = plotDivRef.current;
+      if (id && el)
+        setDataPropsForNode(id, {
+          plot_size: { width: el.offsetWidth, height: el.offsetHeight },
+        });
+    }, [id, setDataPropsForNode]);
     useEffect(() => {
       if (!plotDiv || !window.ResizeObserver) return;
       let lastSize = "";
@@ -1748,7 +1768,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             <Menu.Item
               key={option.key}
               icon={option.icon}
-              onClick={() => setGraphType(option)}
+              onClick={() => {
+                setGraphType(option);
+                if (id) setDataPropsForNode(id, { graph_type: option.key });
+              }}
             >
               {option.label}
             </Menu.Item>
@@ -1874,7 +1897,12 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             }}
           />
           {plotLegend ?? <></>}
-          <ResizeHandle targetRef={plotDivRef} minWidth={150} minHeight={100} />
+          <ResizeHandle
+            targetRef={plotDivRef}
+            minWidth={150}
+            minHeight={100}
+            onResizeEnd={savePlotSize}
+          />
         </div>
         {/* Outside the plot's div: the plot resizes to fill that div, so
             anything else in it would make the plot grow without end. */}

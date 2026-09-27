@@ -129,13 +129,20 @@ const lastPlot = () => plots[plots.length - 1];
 const renderVis = async (
   resps: LLMResponse[] = responses,
   headerSlot?: HTMLElement,
+  node?: { id: string; data: any },
 ) => {
   const ref = React.createRef<any>();
   plots.length = 0;
   render(
     <ColorSchemeProvider colorScheme="dark" toggleColorScheme={() => undefined}>
       <MantineProvider>
-        <VisView ref={ref} responses={resps} headerSlot={headerSlot} />
+        <VisView
+          ref={ref}
+          responses={resps}
+          headerSlot={headerSlot}
+          id={node?.id}
+          data={node?.data}
+        />
       </MantineProvider>
     </ColorSchemeProvider>,
   );
@@ -390,5 +397,44 @@ describe("Vis Node plotting response stats", () => {
     ).toBe(
       "These were measured under different power settings (2 on battery, in Automatic power mode; 1 on battery, in Low Power Mode), which change the energy the same work takes. Compare them with care.",
     );
+  });
+
+  test("keeps its chart type and size in the node's data, for saved flows", async () => {
+    const store = require("../../store").default;
+    const setData = store.getState().setDataPropsForNode as jest.Mock;
+    setData.mockClear();
+    (HTMLElement.prototype as any).setPointerCapture = jest.fn();
+    // As loaded from a saved flow: a box plot, resized to 321 x 234
+    await renderVis(responses, undefined, {
+      id: "vis1",
+      data: {
+        graph_type: "box",
+        plot_size: { width: 321, height: 234 },
+        selected_eval_res_var: "__stat_est_energy_mwh",
+      },
+    });
+    const plotDiv = screen.getByTestId("plot").parentElement as HTMLElement;
+    expect(plotDiv.style.width).toBe("321px");
+    expect(plotDiv.style.height).toBe("234px");
+    await waitFor(() =>
+      expect(lastPlot()?.data.some((d) => d.type === "box")).toBe(true),
+    );
+
+    // Choosing a chart type, and resizing, save to the node's data
+    fireEvent.click(screen.getByText("Box & Whiskers"));
+    fireEvent.click(await screen.findByText("Bar Chart"));
+    expect(setData).toHaveBeenCalledWith("vis1", { graph_type: "bar" });
+    const handle = plotDiv.parentElement!.querySelector(
+      '[style*="nwse-resize"]',
+    ) as HTMLElement;
+    fireEvent.pointerDown(handle, { clientX: 0, clientY: 0, pointerId: 1 });
+    fireEvent.pointerMove(handle, { clientX: 40, clientY: 30, pointerId: 1 });
+    fireEvent.pointerUp(handle, { pointerId: 1 });
+    expect(setData).toHaveBeenCalledWith("vis1", {
+      plot_size: expect.objectContaining({
+        width: expect.any(Number),
+        height: expect.any(Number),
+      }),
+    });
   });
 });
