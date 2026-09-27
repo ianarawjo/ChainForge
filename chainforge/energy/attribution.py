@@ -169,6 +169,7 @@ class Attribution:
     load: Optional[Dict[str, float]]  # per component; None if it had no load window
     noise: float  # how far idle power's usual swings could move `generation`
     load_noise: float  # ...and `load`
+    load_seconds: float  # its share of the time in load windows
     shared: bool  # whether its generation overlapped another request's
 
     @property
@@ -241,5 +242,6 @@ def attribute(
         load=clamp(load) if had_load else None,
         noise=baseline.spread_watts * noise_seconds,
         load_noise=baseline.spread_watts * load_noise_seconds,
+        load_seconds=load_noise_seconds,
         shared=shared,
     )

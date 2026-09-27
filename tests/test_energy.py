@@ -291,6 +291,119 @@ class TestMonitor:
         assert result["idle_w"] == pytest.approx(1.0)
 
 
+class TestMonitorTimingAndLoads:
+    def test_waiting_for_the_lock_doesnt_shift_the_windows(self):
+        import threading
+        clock = FakeClock()
+        power = idle_then({"gpu": 11.0}, [(1010.0, 1012.0)], idle={"gpu": 1.0})
+        monitor = EnergyMonitor(FakeMeter(clock, power), clock=clock)
+        monitor.sample()
+        run_monitor_until(monitor, clock, 1010.0)
+        req = monitor.begin()
+        run_monitor_until(monitor, clock, 1012.0)
+        results = []
+        with monitor._lock:  # e.g. another request being settled
+            t = threading.Thread(target=lambda: results.append(
+                monitor.end(req, 0.0, 0.0, 2.0, 2.0)))
+            t.start()
+            import time
+            time.sleep(0.05)  # end() has read the clock, and waits for the lock
+            clock.now = 1015.0  # meanwhile, 3 s pass (idle)
+        t.join()
+        # The reply was at 1012, not 1015: 2 s at 10 W above idle
+        assert results[0]["energy_wh"] * 3600 == pytest.approx(20.0, rel=0.05)
+
+    def _load_result(self, load_watts):
+        """A request that 'loaded' for 1 s at `load_watts` above a perfectly
+        steady idle, then generated for 1 s at 10 W above it."""
+        clock = FakeClock()
+        def power(t):
+            if 1010.0 <= t < 1011.0:
+                return {"gpu": 1.0 + load_watts}
+            return {"gpu": 11.0 if 1011.0 <= t < 1012.0 else 1.0}
+        monitor = EnergyMonitor(FakeMeter(clock, power), clock=clock)
+        monitor.sample()
+        run_monitor_until(monitor, clock, 1010.0)
+        req = monitor.begin()
+        run_monitor_until(monitor, clock, 1012.0)
+        return monitor.end(req, 0.0, load_s=1.0, generation_s=1.0, total_s=2.0)
+
+    def test_a_real_load_is_shown(self):
+        result = self._load_result(load_watts=8.0)
+        assert result["load_energy_wh"] * 3600 == pytest.approx(8.0, rel=0.05)
+
+    def test_a_trickle_isnt_counted_as_a_load(self):
+        # Idle power doesn't swing at all here, so only the floor tells them apart
+        assert self._load_result(load_watts=0.2)["load_energy_wh"] is None
+
+
+class TestSamplerThread:
+    """The background readings, with a real clock and short intervals."""
+
+    class CountingMeter(EnergyMeter):
+        name = "Counting meter"
+
+        def __init__(self, fail_on=()):
+            self.reads, self.fail_on = 0, set(fail_on)
+
+        def components(self):
+            return ["gpu"]
+
+        def read(self):
+            self.reads += 1
+            if self.reads in self.fail_on:
+                raise OSError("a reading failed")
+            return {"gpu": float(self.reads)}
+
+    @pytest.fixture
+    def fast(self, monkeypatch):
+        from chainforge.energy import monitor as mod
+        monkeypatch.setattr(mod, "BUSY_INTERVAL_S", 0.01)
+        monkeypatch.setattr(mod, "IDLE_INTERVAL_S", 0.2)
+        monkeypatch.setattr(mod, "DORMANT_INTERVAL_S", 0.5)
+
+    def test_reads_often_once_a_request_begins(self, fast):
+        import time
+        meter = self.CountingMeter()
+        monitor = EnergyMonitor(meter)
+        monitor.start()
+        try:
+            time.sleep(0.1)
+            idle_reads = meter.reads
+            assert idle_reads <= 3  # every 0.2 s
+            monitor.begin()  # wakes the thread at once
+            time.sleep(0.15)
+            assert meter.reads - idle_reads >= 5  # every 0.01 s
+        finally:
+            monitor.stop()
+
+    def test_keeps_going_after_a_failed_reading(self, fast):
+        import time
+        meter = self.CountingMeter(fail_on={3})
+        monitor = EnergyMonitor(meter)
+        monitor.start()
+        try:
+            monitor.begin()
+            time.sleep(0.15)
+            assert meter.reads > 5
+            assert monitor._thread.is_alive()
+        finally:
+            monitor.stop()
+
+    def test_stops(self, fast):
+        import time
+        meter = self.CountingMeter()
+        monitor = EnergyMonitor(meter)
+        monitor.start()
+        monitor.begin()
+        monitor.stop()
+        monitor._thread.join(timeout=1.0)
+        assert not monitor._thread.is_alive()
+        reads = meter.reads
+        time.sleep(0.05)
+        assert meter.reads == reads
+
+
 class TestPowerConditions:
     """The power source and mode change idle power and the energy a request
     takes, so each measurement records them, and idle power is measured

@@ -36,6 +36,10 @@ BASELINE_WINDOW_S = 5 * 60
 WIND_DOWN_S = 1.0
 # Shorter than this, a model "load" is just the server finding it already loaded
 MIN_LOAD_S = 0.05
+# A model load averages at least this much above idle (loading from RAM, the
+# M4 Max drew ~9 W); less, it was waiting for a busy model, which Ollama
+# counts as loading, plus measurement jitter
+MIN_LOAD_WATTS = 1.0
 # Timings further off than this from the request's own span are rejected
 TIMING_SLACK_S = 2.0
 # How often to check the power source and mode, which change idle power and
@@ -65,6 +69,7 @@ class EnergyMonitor:
         self._conditions_since = -math.inf  # when the current power settings began
         self._request_conditions: Dict[str, Dict[str, str]] = {}
         self._thread: Optional[threading.Thread] = None
+        self._stopped = False
 
     # --- Readings ---------------------------------------------------------
 
@@ -125,11 +130,18 @@ class EnergyMonitor:
             self._thread = threading.Thread(target=self._run, name="energy-monitor", daemon=True)
             self._thread.start()
 
+    def stop(self) -> None:
+        """Stops the background readings (e.g. in tests); they don't restart."""
+        self._stopped = True
+        self._wake.set()
+
     def _run(self) -> None:
-        while True:
+        while not self._stopped:
             # A request starting wakes this early, to read often from then on
             self._wake.wait(self._interval())
             self._wake.clear()
+            if self._stopped:
+                break
             try:
                 self.sample()
             except Exception:  # a failed reading shouldn't stop the monitor
@@ -174,9 +186,12 @@ class EnergyMonitor:
         None if the request isn't known, its timings don't fit its span, or
         there's no idle time yet to measure idle power from.
         """
+        # The time `since_reply_s` counts back from: now, not after waiting
+        # for the lock (e.g. while another request is being settled)
+        now = self._clock()
         with self._lock:
             self._sample_locked()
-            now = self._last_used = self._clock()
+            self._last_used = now
             began = self._in_flight.pop(request, None)
             if began is None:
                 return None
@@ -205,8 +220,11 @@ class EnergyMonitor:
 
         # Ollama counts waiting for a busy model as loading it: where the
         # "load" came to no more than idle power's swings, nothing was loaded
+        # Also no more than a trickle of power: on a steady machine, idle
+        # power barely swings, and jitter alone would pass for a load
         load_wh = None
-        if result.load is not None and result.load_total > max(result.load_noise, 0.0) + 1e-9:
+        if result.load is not None and result.load_total > max(
+                result.load_noise, MIN_LOAD_WATTS * result.load_seconds):
             load_wh = result.load_total / 3600
         return {
             "energy_wh": result.generation_total / 3600,

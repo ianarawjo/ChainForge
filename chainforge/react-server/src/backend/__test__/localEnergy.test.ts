@@ -126,6 +126,40 @@ describe("measuring local models' energy", () => {
     });
   });
 
+  test("asks again a minute after the server couldn't be reached", async () => {
+    let now = 1_000_000;
+    const clock = jest.spyOn(Date, "now").mockImplementation(() => now);
+    try {
+      mockBackend.mockImplementationOnce(async () => {
+        throw new TypeError("Failed to fetch"); // e.g. the server restarting
+      });
+      const { beginEnergy } = load();
+      const url = "http://localhost:11434/api/chat";
+      expect(await beginEnergy(url)).toBe(undefined);
+      // Not asked again straight away...
+      now += 30_000;
+      expect(await beginEnergy(url)).toBe(undefined);
+      const asked = () =>
+        mockBackend.mock.calls.filter(([r]) => r === "energyStatus").length;
+      expect(asked()).toBe(1);
+      // ...but a minute on, it is, and the answer is kept
+      now += 31_000;
+      expect(await beginEnergy(url)).toBe("7");
+      expect(await beginEnergy(url)).toBe("7");
+      expect(asked()).toBe(2);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  test('keeps the server\'s own "not available"', async () => {
+    mockBackend.mockImplementation(async () => ({ available: false }));
+    const { beginEnergy } = load();
+    await beginEnergy("http://localhost:11434/api");
+    await beginEnergy("http://localhost:11434/api");
+    expect(mockBackend).toHaveBeenCalledTimes(1);
+  });
+
   test("never fails a request", async () => {
     mockBackend.mockImplementation(async () => {
       throw new TypeError("Failed to fetch");

@@ -30,6 +30,9 @@ export interface MeasuredEnergy {
 }
 
 let available: Promise<boolean> | undefined;
+// After the server couldn't be asked (e.g. it was restarting), wait this long before asking again
+const RETRY_AFTER_MS = 60_000;
+let unreachableAt: number | undefined;
 
 /** Whether a URL is on this machine. */
 export function isLoopbackUrl(url: string): boolean {
@@ -47,11 +50,24 @@ export function isLoopbackUrl(url: string): boolean {
  */
 function energyMeasurable(): Promise<boolean> {
   if (!APP_IS_RUNNING_LOCALLY()) return Promise.resolve(false);
-  if (available === undefined)
-    available = call_flask_backend("energyStatus", {})
-      .then((status) => status?.available === true)
-      .catch(() => false);
-  return available;
+  if (available !== undefined) return available;
+  // The server's answer is kept; failing to reach it isn't, so a server that
+  // was briefly down (e.g. restarting) is asked again a minute later
+  if (
+    unreachableAt !== undefined &&
+    Date.now() - unreachableAt < RETRY_AFTER_MS
+  )
+    return Promise.resolve(false);
+  const asking = call_flask_backend("energyStatus", {}).then(
+    (status) => status?.available === true,
+    () => {
+      unreachableAt = Date.now();
+      if (available === asking) available = undefined;
+      return false;
+    },
+  );
+  available = asking;
+  return asking;
 }
 
 /** Whether energy can be measured for a model server at `serverUrl`. */
