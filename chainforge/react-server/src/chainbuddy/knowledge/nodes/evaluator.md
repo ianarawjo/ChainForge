@@ -38,7 +38,8 @@ JavaScript evaluators.
 ## Outputs
 
 - `scored_responses`: the same responses, each with its score attached.
-  Connect a Vis Node to plot the scores, or an Inspect Node to read them.
+  Connect a Vis Node to plot the scores, which is what they're usually for,
+  and an Inspect Node as well to read the responses beside them.
 
 ## Settings
 
@@ -101,6 +102,9 @@ code: |
 - **Exact checks are brittle.** A check for `"Yes"` misses `"yes."`. Normalize
   case, whitespace, and punctuation where it doesn't change the meaning, and
   suggest the user compare a few scores with their responses.
+- **Match whole words when counting or finding words.** `text.includes("he")`
+  is also true of "the" and "when"; use a word-boundary pattern such as
+  `/\bhe\b/`.
 - **It runs only when the user runs it**, not when the prompts are run again.
   Nodes after it show nothing, or old scores, until it has run.
 - **Never put the expected answer where the model will see it.** Values from
