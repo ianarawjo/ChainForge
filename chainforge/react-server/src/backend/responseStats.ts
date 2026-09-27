@@ -336,7 +336,7 @@ export function formatStats(
   // The middle of the estimate's range (as EcoLogits' own mean); the tooltip has the range
   if (stats.est_energy_wh !== undefined)
     parts.push(
-      `⚡ ~${formatEnergy((stats.est_energy_wh.min + stats.est_energy_wh.max) / 2)}`,
+      `~${formatEnergy((stats.est_energy_wh.min + stats.est_energy_wh.max) / 2)}`,
     );
   const summary = parts.join(" · ");
   return stats.averaged_over && summary ? `≈ ${summary}` : summary;

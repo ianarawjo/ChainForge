@@ -172,7 +172,7 @@ describe("energy estimates in extract_stats", () => {
     expect(describeStats(stats!)).toContain(
       "Energy: 20–24 mWh (estimated by EcoLogits)",
     );
-    expect(formatStats(stats!, true)).toBe("4.2 s · 71 tok/s · ⚡ ~22 mWh");
+    expect(formatStats(stats!, true)).toBe("4.2 s · 71 tok/s · ~22 mWh");
   });
 
   it("estimates a request once, and shares it between the responses it returned", () => {
