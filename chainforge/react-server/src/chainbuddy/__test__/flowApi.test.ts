@@ -459,7 +459,7 @@ test("list_models offers only models that are set up", () => {
       },
     ],
     not_set_up: ["Ollama"],
-    note: "Use these. If the user asks for a provider in not_set_up, say it needs its API key added in Settings, rather than substituting another.",
+    note: "Use these. in_browser lists small models that run in the browser: use one only if the user asks for it. If the user asks for a provider in not_set_up, say it needs its API key added in Settings, rather than substituting another.",
   });
 });
 
@@ -472,9 +472,12 @@ test("list_models offers in-browser models only when nothing else is set up", ()
     fallback: true,
   };
   const withKey = createStubTools({ models: [...MODELS, inBrowser] });
-  expect(
-    run(withKey.tools, "list_models").models.map((m: any) => m.id),
-  ).not.toContain(inBrowser.id);
+  const listed = run(withKey.tools, "list_models");
+  expect(listed.models.map((m: any) => m.id)).not.toContain(inBrowser.id);
+  // Named apart, so it can be used when asked for.
+  expect(listed.in_browser).toEqual([
+    { id: inBrowser.id, name: inBrowser.name },
+  ]);
 
   const noKeys = createStubTools({
     models: [...MODELS.map((m) => ({ ...m, ready: false })), inBrowser],

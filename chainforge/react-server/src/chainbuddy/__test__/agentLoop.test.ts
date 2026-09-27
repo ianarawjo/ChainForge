@@ -357,3 +357,37 @@ describe("schemaProblems", () => {
     ]);
   });
 });
+
+test("a tool that ends the turn stops the run, to wait for the user", async () => {
+  let asked = 0;
+  const client: ModelClient = {
+    respond: async () => {
+      asked++;
+      return {
+        message: {
+          role: "assistant",
+          content: "Which way?",
+          toolCalls: [{ id: "q", name: "ask", arguments: "{}" }],
+        },
+        finishReason: "tool_calls",
+      };
+    },
+  };
+  const result = await runAgent({
+    client,
+    system: "",
+    messages: [{ role: "user", content: "Build something." }],
+    tools: [
+      {
+        name: "ask",
+        description: "Asks the user.",
+        parameters: { type: "object", properties: {} },
+        endsTurn: true,
+        run: () => "Shown.",
+      },
+    ],
+  });
+  expect(result.stopReason).toBe("done");
+  expect(asked).toBe(1);
+  expect(result.messages.map((m) => m.role)).toEqual(["assistant", "tool"]);
+});

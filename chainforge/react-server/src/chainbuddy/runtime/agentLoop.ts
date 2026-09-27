@@ -121,10 +121,13 @@ export async function runAgent(
       return result(turn.finishReason === "length" ? "length" : "done");
 
     // One at a time, in order: a later call may depend on an earlier one.
+    let waiting = false;
     for (const call of calls) {
       if (signal?.aborted) return result("cancelled");
       onEvent?.({ type: "tool_call", call });
       const { ok, content } = await runToolCall(call, tools, signal);
+      if (ok && tools.find((t) => t.name === call.name)?.endsTurn)
+        waiting = true;
       added.push({ role: "tool", toolCallId: call.id, content });
       onEvent?.({
         type: "tool_result",
@@ -134,6 +137,8 @@ export async function runAgent(
         content,
       });
     }
+    // Asked the user something; their answer comes as their next message.
+    if (waiting) return result("done");
   }
 
   return result("max_steps");

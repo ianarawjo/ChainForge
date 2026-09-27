@@ -64,6 +64,7 @@ fixed first, once; any it still sees are shown on the proposal card.
 | `describe_node`   | Reads one node type's file from this folder                                                                                               | No                           |
 | `list_models`     | Lists the models you can use: those from the providers you've set up, as ChainForge's model menu lists them                               | No                           |
 | `propose_changes` | Proposes adding, editing, connecting, or removing nodes, as one change set. Refused unless `get_flow` was called since your last message. | Yes, before anything changes |
+| `ask_user`        | Asks you to choose how to go on, offering a few options to click; you can answer in your own words instead                                | You answer                   |
 
 ## Rules
 
@@ -216,7 +217,6 @@ Not built yet, and not available to the model:
   won't be changed while it is running.
 - **Reading results** (`get_results`): a node's latest results, summarized,
   with a sample of rows.
-- **Asking you questions** (`ask_user`), as a short form in the chat panel.
 - **Undoing an accepted change set.**
 - **Playbooks** (`playbooks/`): evaluation practice, such as how to compare
   two prompts fairly, loaded only when relevant.
