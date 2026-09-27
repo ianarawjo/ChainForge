@@ -7,7 +7,12 @@
  * always knows is how long its own request took; the rest is read from the
  * provider's reply where it has it.
  */
-import { Dict, LLMResponseData, ResponseStats } from "./typing";
+import {
+  Dict,
+  EvaluationResults,
+  LLMResponseData,
+  ResponseStats,
+} from "./typing";
 import {
   isOpenRouterImageModel,
   LLMProvider,
@@ -485,5 +490,147 @@ export function energyEstimator(
       console.warn(`Could not estimate the energy of ${llm}:`, err);
       return undefined;
     }
+  };
+}
+
+/** A response stat the Vis Node can plot in place of an evaluator's score. */
+export interface PlottableStat {
+  /** The Vis Node's name for it, unlike any evaluator's score name. */
+  key: string;
+  /** What the axis and menu call it. */
+  label: string;
+  /** Whether a bar chart should total it (tokens, cost, energy) or average it (times, speeds). */
+  total: boolean;
+  value: (s: ResponseStats) => number | undefined;
+  /** The response's value, for when hovering over its point. */
+  describe: (s: ResponseStats) => string;
+}
+
+const plainStat = (
+  key: string,
+  label: string,
+  total: boolean,
+  value: (s: ResponseStats) => number | undefined,
+): PlottableStat => ({
+  key,
+  label,
+  total,
+  value,
+  describe: (s) => `${label}: ${value(s)}`,
+});
+
+const msToS = (ms: number | undefined) =>
+  ms === undefined ? undefined : ms / 1000;
+
+export const PLOTTABLE_STATS: PlottableStat[] = [
+  plainStat("__stat_latency_s", "Latency (s)", false, (s) =>
+    msToS(s.latency_ms),
+  ),
+  plainStat("__stat_ttft_s", "Before output (s)", false, (s) =>
+    msToS(s.ttft_ms),
+  ),
+  plainStat("__stat_input_tokens", "Input tokens", true, (s) => s.input_tokens),
+  plainStat(
+    "__stat_output_tokens",
+    "Output tokens",
+    true,
+    (s) => s.output_tokens,
+  ),
+  plainStat(
+    "__stat_tokens_per_s",
+    "Speed (tokens/s)",
+    false,
+    (s) => s.tokens_per_s,
+  ),
+  plainStat(
+    "__stat_decode_tokens_per_s",
+    "Decoding speed (tokens/s)",
+    false,
+    (s) => s.decode_tokens_per_s,
+  ),
+  {
+    ...plainStat("__stat_cost_usd", "Cost ($)", true, (s) => s.cost_usd),
+    describe: (s) => `Cost: ${formatCost(s.cost_usd ?? 0)}`,
+  },
+  {
+    // One number per response: the middle of the estimate's range, as on the
+    // response's stats label. Hovering shows the range.
+    key: "__stat_est_energy_mwh",
+    label: "Energy, estimated (mWh)",
+    total: true,
+    value: (s) =>
+      s.est_energy_wh === undefined
+        ? undefined
+        : ((s.est_energy_wh.min + s.est_energy_wh.max) / 2) * 1000,
+    describe: (s) =>
+      s.est_energy_wh === undefined
+        ? ""
+        : `Energy: ${formatEnergyRange(s.est_energy_wh)} (estimated by EcoLogits)`,
+  },
+];
+
+/** The plottable stat with this key, if it is one. */
+export function plottableStat(key: string): PlottableStat | undefined {
+  return PLOTTABLE_STATS.find((s) => s.key === key);
+}
+
+type WithStats = {
+  responses: LLMResponseData[];
+  stats?: (ResponseStats | null)[];
+};
+
+/** The stats that at least one of these responses has, in PLOTTABLE_STATS's order. */
+export function plottableStatsIn(resps: WithStats[]): PlottableStat[] {
+  return PLOTTABLE_STATS.filter((stat) =>
+    resps.some((r) =>
+      r.stats?.some((s) => s !== null && stat.value(s) !== undefined),
+    ),
+  );
+}
+
+/**
+ * Response objects with one stat in place of evaluation scores, so anything
+ * that plots scores can plot it. Responses without the stat are left out, and
+ * `hover` gives each kept response's value, described, in the same order.
+ */
+export function statsAsScores<T extends WithStats>(
+  resps: T[],
+  stat: PlottableStat,
+): {
+  responses: (T & { eval_res: EvaluationResults })[];
+  hover: Map<T, string[]>;
+  kept: number;
+  total: number;
+} {
+  const hover = new Map<T, string[]>();
+  const kept: (T & { eval_res: EvaluationResults })[] = [];
+  let total = 0;
+  resps.forEach((r) => {
+    total += r.responses.length;
+    const idxs = r.responses
+      .map((_, i) => i)
+      .filter((i) => {
+        const s = r.stats?.[i];
+        return s != null && stat.value(s) !== undefined;
+      });
+    if (idxs.length === 0) return;
+    const stats = idxs.map((i) => r.stats?.[i] as ResponseStats);
+    const obj: T & { eval_res: EvaluationResults } = {
+      ...r,
+      responses: idxs.map((i) => r.responses[i]),
+      stats,
+      eval_res: {
+        dtype: "Numeric",
+        items: stats.map((s) => stat.value(s) as number),
+      },
+    };
+    kept.push(obj);
+    hover.set(obj, stats.map(stat.describe));
+  });
+  return {
+    responses: kept,
+    hover,
+    kept: kept.reduce((n, r) => n + r.responses.length, 0),
+    total,
   };
 }

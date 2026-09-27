@@ -1,4 +1,5 @@
 import React, {
+  useMemo,
   useState,
   useEffect,
   useCallback,
@@ -46,11 +47,16 @@ import {
   AIPlotView,
 } from "./VisNodeAIPlot";
 import { AIPlot } from "./backend/aiPlots";
+import {
+  plottableStat,
+  plottableStatsIn,
+  statsAsScores,
+} from "./backend/responseStats";
 
 /**
  * STATS
  */
-import { sum } from "simple-statistics";
+import { mean, sum } from "simple-statistics";
 // import * as jStat from "jstat"; // jStat is a pure JS library without types
 
 // FUTURE: Including in-progress error bar computation for future use.
@@ -323,7 +329,7 @@ export interface VisViewRef {
  */
 export const VisView = forwardRef<VisViewRef, VisViewProps>(
   function VisViewComponent(
-    { responses, id, data, whenReplotting, wideFormat },
+    { responses: inputResponses, id, data, whenReplotting, wideFormat },
     ref,
   ) {
     // Color scheme
@@ -389,6 +395,18 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       [id, setDataPropsForNode],
     );
 
+    // The x-axis can also be a response stat (e.g. latency, or estimated
+    // energy), so responses can be plotted without an evaluator. The stat
+    // takes the place of the scores; responses without it are left out.
+    const selectedStat = plottableStat(selectedEvalResVar);
+    const statsView = useMemo(
+      () =>
+        selectedStat ? statsAsScores(inputResponses, selectedStat) : undefined,
+      [inputResponses, selectedStat],
+    );
+    const responses = statsView?.responses ?? inputResponses;
+    const metricName = selectedStat?.label ?? selectedEvalResVar;
+
     // Typically, a user will only need the default LLM 'group' --all LLMs in responses.
     // However, when prompts are chained together, the original LLM info is stored in metavars as a key.
     // LLM groups allow you to plot against the original LLMs, even though a 'scorer' LLM might come after.
@@ -441,13 +459,15 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       varnames = Array.from(varnames);
       metavars = Array.from(metavars);
 
-      // Find all keys in eval results
+      // Find all keys in eval results, then any response stats to plot instead
       const eval_res_keys = findEvalResKeys(resps);
-      if (eval_res_keys.size === 0) {
-        eval_res_keys.add("score"); // default to 'score' if no keys found
-      } else if (selectedEvalResVar === "score") {
-        // We need to set the default eval res var to the first one in the list
-        setSelectedEvalResVar(eval_res_keys.values().next().value as string);
+      plottableStatsIn(resps).forEach((stat) => eval_res_keys.add(stat.key));
+      if (eval_res_keys.size === 0) eval_res_keys.add("score"); // default to 'score' if no keys found
+      if (!eval_res_keys.has(selectedEvalResVar)) {
+        // Default to the first in the list: a score if there are any, else a stat
+        const first = eval_res_keys.values().next().value as string;
+        setSelectedEvalResVar(first);
+        if (id) setDataPropsForNode(id, { selected_eval_res_var: first });
       }
 
       // Get all vars for the y-axis dropdown, merging metavars and vars into one list,
@@ -502,7 +522,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
     // On init, run resetControls
     useEffect(() => {
-      resetControls(responses);
+      resetControls(inputResponses);
     }, []);
 
     const castData = (v: LLMResponseData) =>
@@ -523,7 +543,17 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
     // Re-plot responses when any responses or settings change
     useEffect(() => {
-      if (!responses || responses.length === 0 || !multiSelectValue) return;
+      if (!multiSelectValue) return;
+      if (selectedStat && inputResponses.length > 0 && responses.length === 0) {
+        setPlotlySpec([]);
+        setPlaceholderText(
+          <p style={{ maxWidth: "220px", fontSize: "13px" }}>
+            None of these responses have {metricName.toLowerCase()}.
+          </p>,
+        );
+        return;
+      }
+      if (!responses || responses.length === 0) return;
 
       // Check if there are evaluation results
       if (responses.every((r) => r?.eval_res === undefined)) {
@@ -665,7 +695,8 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
         const plot_legend: React.ReactNode | null = null;
         let metric_axes_labels: string[] = [];
-        if (
+        if (selectedStat) metric_axes_labels = [metricName];
+        else if (
           typeof_eval_res.includes("KeyValue") &&
           responses.some((r) => r.eval_res !== undefined)
         ) {
@@ -693,6 +724,21 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           if (v !== undefined) return v.trim();
           else return v;
         };
+
+        // Hover text for each response: its text, after the stat's value when plotting a stat
+        const hoverTexts = (r: LLMResponse) => {
+          const texts = createHoverTexts(r.responses.map(castData));
+          const values = statsView?.hover.get(r);
+          return values
+            ? texts.map((t, i) => `<b>${values[i]}</b><br>${t}`)
+            : texts;
+        };
+
+        // In a bar chart, stats like tokens or energy add up; times and speeds are averaged
+        const barTotals = !selectedStat || selectedStat.total;
+        const barTitle = selectedStat
+          ? `${barTotals ? "Total" : "Mean"} ${metricName.charAt(0).toLowerCase()}${metricName.slice(1)}`
+          : undefined;
 
         const get_items = (eval_res_obj?: EvaluationResults) => {
           if (eval_res_obj === undefined) return [];
@@ -787,7 +833,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
           if (metric_axes_labels.length > 0)
             layout.xaxis = {
-              title: { font: { size: 12 }, text: selectedEvalResVar },
+              title: { font: { size: 12 }, text: metricName },
               ...layout.xaxis,
             };
           else
@@ -853,9 +899,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
               responses.forEach((r) => {
                 if (resp_to_x(r) !== name) return;
                 x_items = x_items.concat(get_items(r.eval_res));
-                text_items = text_items.concat(
-                  createHoverTexts(r.responses.map(castData)),
-                );
+                text_items = text_items.concat(hoverTexts(r));
               });
             }
 
@@ -903,7 +947,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   font: { size: 12 },
                   text:
                     metric_axes_labels.length > 0
-                      ? `Number of scores (${selectedEvalResVar})`
+                      ? `Number of scores (${metricName})`
                       : "Number of scores",
                 },
                 ...layout.xaxis,
@@ -931,13 +975,14 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 // let user decide:
                 if (graphType.key === "bar") {
                   d.type = "histogram";
-                  d.histfunc = "sum";
+                  d.histfunc = barTotals ? "sum" : "avg";
                   d.y = new Array(x_items.length).fill(shortnames[name]);
                   d.textposition = "none"; // hide the text which appears within each bar
                   const xaxis_title =
-                    metric_axes_labels.length > 0
-                      ? "Sum of '" + selectedEvalResVar + "'"
-                      : "Sum of scores";
+                    barTitle ??
+                    (metric_axes_labels.length > 0
+                      ? "Sum of '" + metricName + "'"
+                      : "Sum of scores");
                   layout.xaxis = {
                     title: { font: { size: 12 }, text: xaxis_title },
                     ...layout.xaxis,
@@ -981,7 +1026,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
           if (metric_axes_labels.length > 0)
             layout.xaxis = {
-              title: { font: { size: 12 }, text: selectedEvalResVar },
+              title: { font: { size: 12 }, text: metricName },
               ...layout.xaxis,
             };
         };
@@ -1006,9 +1051,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 if (resp_to_x(r) !== name) return;
                 const items = get_items(r.eval_res);
                 x_items = x_items.concat(items).flat();
-                text_items = text_items
-                  .concat(createHoverTexts(r.responses.map(castData)))
-                  .flat();
+                text_items = text_items.concat(hoverTexts(r)).flat();
                 y_items = y_items
                   .concat(Array(items.length).fill(shortnames[name]))
                   .flat();
@@ -1052,9 +1095,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                 d.type = "bar";
                 d.textposition = "none"; // hide the text which appears within each bar
                 xaxis_title =
-                  metric_axes_labels.length > 0
-                    ? "Sum of '" + selectedEvalResVar + "'"
-                    : "Sum of scores";
+                  barTitle ??
+                  (metric_axes_labels.length > 0
+                    ? "Sum of '" + metricName + "'"
+                    : "Sum of scores");
 
                 if (sel_typeof_eval_res === "Numeric") {
                   // To make error bars work, we need to sum the numbers, instead of relying
@@ -1067,7 +1111,9 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                     const xs_for_y = x_items
                       .filter((_, idx) => y_items[idx] === name)
                       .map(castEvalScoreToNum);
-                    sum_x_items = sum_x_items.concat(sum(xs_for_y));
+                    sum_x_items = sum_x_items.concat(
+                      barTotals ? sum(xs_for_y) : mean(xs_for_y),
+                    );
                     // error_bars = error_bars.concat([
                     //   computeErrorBar(xs_for_y, 1.0, sum),
                     // ]);
@@ -1108,7 +1154,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
 
           if (metric_axes_labels.length > 0)
             layout.xaxis = {
-              title: { font: { size: 12 }, text: selectedEvalResVar },
+              title: { font: { size: 12 }, text: metricName },
               ...layout.xaxis,
             };
         };
@@ -1341,6 +1387,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       selectedEvalResVar,
       selectedLLMGroup,
       responses,
+      statsView,
       selectedLegendItems,
       plotDivRef,
       // By key, so only a real change of graph type replots.
@@ -1457,7 +1504,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
             <span style={smallTextStyle}>x-axis:</span>
             <NativeSelect
               className="nodrag nowheel"
-              data={evalResVars}
+              data={evalResVars.map((v) => ({
+                value: v,
+                label: plottableStat(v)?.label ?? v,
+              }))}
               size="xs"
               value={selectedEvalResVar}
               onChange={handleChangeSelectedEvalResVar}
@@ -1556,6 +1606,17 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           {plotLegend ?? <></>}
           <ResizeHandle targetRef={plotDivRef} minWidth={150} minHeight={100} />
         </div>
+        {/* Outside the plot's div: the plot resizes to fill that div, so
+            anything else in it would make the plot grow without end. */}
+        {statsView && statsView.kept > 0 && statsView.kept < statsView.total ? (
+          <div style={{ ...smallTextStyle, marginTop: "4px" }}>
+            Showing the {statsView.kept} of {statsView.total} responses with{" "}
+            {selectedStat?.key === "__stat_est_energy_mwh"
+              ? "an energy estimate (EcoLogits doesn't cover the others' models)"
+              : `a value for ${metricName.toLowerCase()}`}
+            .
+          </div>
+        ) : null}
       </>
     );
   },

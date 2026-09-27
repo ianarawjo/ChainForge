@@ -31,6 +31,9 @@ import {
   extract_stats,
   formatStats,
   isStatsMetavar,
+  plottableStat,
+  plottableStatsIn,
+  statsAsScores,
   statsToMetavars,
 } from "../responseStats";
 // eslint-disable-next-line import/first
@@ -308,4 +311,60 @@ test("formats stats for display", () => {
   expect(describeStats(averaged).at(-1)).toBe(
     "≈ Averages: the provider reported one total for 4 responses",
   );
+});
+
+describe("plotting stats in place of scores", () => {
+  const resps = [
+    {
+      llm: "A",
+      responses: ["one", "two"],
+      stats: [
+        { latency_ms: 1200, est_energy_wh: { min: 0.01, max: 0.03 } },
+        { latency_ms: 800 },
+      ],
+    },
+    { llm: "B", responses: ["three"], stats: [null] },
+    { llm: "C", responses: ["four"] },
+  ];
+
+  test("lists the stats that some response has", () => {
+    expect(plottableStatsIn(resps).map((s) => s.key)).toEqual([
+      "__stat_latency_s",
+      "__stat_est_energy_mwh",
+    ]);
+    expect(plottableStatsIn([{ responses: ["x"] }])).toEqual([]);
+  });
+
+  test("turns a stat into numeric scores, leaving out responses without it", () => {
+    const latency = statsAsScores(resps, plottableStat("__stat_latency_s")!);
+    expect(latency.responses).toHaveLength(1);
+    expect(latency.responses[0].eval_res).toEqual({
+      dtype: "Numeric",
+      items: [1.2, 0.8],
+    });
+    expect([latency.kept, latency.total]).toEqual([2, 4]);
+    expect(latency.hover.get(latency.responses[0])).toEqual([
+      "Latency (s): 1.2",
+      "Latency (s): 0.8",
+    ]);
+  });
+
+  test("plots energy as the middle of its range, in mWh, with the range on hover", () => {
+    const energy = statsAsScores(
+      resps,
+      plottableStat("__stat_est_energy_mwh")!,
+    );
+    const [obj] = energy.responses;
+    // Only the response with an estimate, and its text alongside it
+    expect(obj.responses).toEqual(["one"]);
+    expect(obj.eval_res.items).toEqual([20]);
+    expect(energy.hover.get(obj)).toEqual([
+      "Energy: 10–30 mWh (estimated by EcoLogits)",
+    ]);
+    expect([energy.kept, energy.total]).toEqual([1, 4]);
+  });
+
+  test("is not an evaluator's score name", () => {
+    expect(plottableStat("score")).toBeUndefined();
+  });
 });
