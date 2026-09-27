@@ -56,7 +56,7 @@ import {
 /**
  * STATS
  */
-import { mean, sum } from "simple-statistics";
+import { max, mean, median, min, sum } from "simple-statistics";
 // import * as jStat from "jstat"; // jStat is a pure JS library without types
 
 // FUTURE: Including in-progress error bar computation for future use.
@@ -135,6 +135,35 @@ const castEvalScoreToNum = (score: EvaluationScore): number => {
   if (typeof score === "number") return score;
   else if (typeof score === "boolean") return score === true ? 1 : 0;
   else return 0; // unknown, soft fail
+};
+
+/**
+ * An invisible point on a box's median that shows one summary of the box on
+ * hover. Plotly's own hover over a box labels each of its stats separately
+ * (min, fences, quartiles, median, max), piled on top of each other, and
+ * can't be templated, so boxes hover only on their points (`hoveron`) and
+ * this gives the summary instead.
+ */
+const boxSummaryTrace = (
+  values: number[],
+  name: string,
+  color: string,
+): Dict | undefined => {
+  if (values.length === 0) return undefined;
+  const fmt = (v: number) => String(Number(v.toPrecision(3)));
+  const range =
+    values.length > 1 ? ` · range ${fmt(min(values))}–${fmt(max(values))}` : "";
+  return {
+    type: "scatter",
+    mode: "markers",
+    x: [median(values)],
+    y: [name],
+    orientation: "h",
+    marker: { color, size: 16, opacity: 0 },
+    hoverlabel: { bgcolor: color, align: "left" },
+    hovertemplate: `<b>${name}</b><br>median ${fmt(median(values))}${range} · n = ${values.length}<extra></extra>`,
+    showlegend: false,
+  };
 };
 
 const findEvalResKeys = (resps: LLMResponse[]): Set<string> => {
@@ -1005,10 +1034,19 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   // Box-and-whiskers plot
                   d.type = "box";
                   d.boxpoints = "all";
+                  d.hoveron = "points";
                 }
               }
 
               spec.push(d);
+              if (d.type === "box") {
+                const summary = boxSummaryTrace(
+                  x_items.map(castEvalScoreToNum),
+                  shortnames[name],
+                  color,
+                );
+                if (summary) spec.push(summary);
+              }
             }
           }
           layout.hovermode = "closest";
@@ -1134,8 +1172,10 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
                   // };
                 }
               } else {
-                // Box-and-whiskers plot
+                // Box-and-whiskers plot. Hovering the box itself would label
+                // each of its stats separately (see boxSummaryTrace)
                 d.type = "box";
+                d.hoveron = "points";
               }
 
               spec.push(d);
