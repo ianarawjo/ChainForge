@@ -54,6 +54,8 @@ ChainForge finds model servers running on your machine -- Ollama, and servers wi
 
 On a Mac with Apple silicon, [MLX](https://github.com/ml-explore/mlx-lm) is usually the fastest way to run models. Start its server with `pip install mlx-lm` and `mlx_lm.server --model mlx-community/Qwen3-8B-4bit`, or use LM Studio, which runs MLX models too; ChainForge finds either.
 
+**Offline mode** (Settings > Advanced) keeps prompts, responses and documents on your machine or local network: only local models and local RAG methods can be used, and requests anywhere else are blocked. To turn it on for everyone using a server, and keep it on, start ChainForge with `chainforge serve --offline`.
+
 ## Retrieval-augmented generation (RAG)
 
 ChainForge's RAG nodes -- Upload, Chunk, Retrieval and Rerank -- work in the

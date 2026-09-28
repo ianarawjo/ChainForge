@@ -8,10 +8,13 @@ import { ContextMenuProvider } from "mantine-contextmenu";
 import { AlertModalProvider } from "./AlertModal";
 import ColorThemeProvider from "./ColorThemeProvider";
 import { installBackendAuth } from "./backend/sessionToken";
+import { installOfflineGuard } from "./backend/offlineMode";
 
 // Before anything talks to the server: requests to it must carry the session
 // token, or it refuses them. See backend/sessionToken.ts.
 installBackendAuth();
+// And in offline mode, requests off the local network are refused. See backend/offlineMode.ts.
+installOfflineGuard(window);
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
