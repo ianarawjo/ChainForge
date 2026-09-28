@@ -45,13 +45,10 @@ import {
 } from "../utils";
 // eslint-disable-next-line import/first
 import {
-  DEFAULT_LOCAL_PARALLEL_REQUESTS,
   LLMProvider,
   OPENAI_COMPATIBLE_PREFIX,
   RateLimiter,
   getProvider,
-  localServerAddress,
-  parallelRequestsSetting,
 } from "../models";
 // eslint-disable-next-line import/first
 import {
@@ -137,7 +134,6 @@ describe("OpenAI-compatible servers", () => {
       {
         base_url: "http://localhost:1234/v1/",
         system_msg: "",
-        parallel_requests: 2,
         max_tokens: "",
         stop: [],
         response_format: "",
@@ -271,11 +267,10 @@ describe("Ollama", () => {
         ollamaModel: "qwen3:4b",
         ollama_url: "http://localhost:11434/api",
         model_type: "chat",
-        parallel_requests: 3,
       },
     );
     expect(calls[0].url).toBe("http://localhost:11434/api/chat");
-    expect(query.options).not.toHaveProperty("parallel_requests");
+    expect(query.options).not.toHaveProperty("ollama_url");
     expect(extract_responses(responses, "ollama", LLMProvider.Ollama)).toEqual([
       "Paris",
       "Paris",
@@ -318,38 +313,45 @@ test("split_think_tags", () => {
   expect(split_think_tags("plain")).toEqual({ content: "plain" });
 });
 
-describe("local servers' request limits", () => {
-  test("are per server, however its URL is written", () => {
-    // Ollama's own API and its /v1 API, at localhost or 127.0.0.1, are one server
-    const addresses = [
-      localServerAddress(LLMProvider.Ollama, {
-        ollama_url: "http://LocalHost:11434/api/",
-      }),
-      localServerAddress(LLMProvider.OpenAICompatible, {
-        base_url: "http://127.0.0.1:11434/v1",
-      }),
-    ];
-    expect(addresses).toEqual(["localhost:11434", "localhost:11434"]);
-    expect(
-      localServerAddress(LLMProvider.OpenAICompatible, {
-        base_url: "https://gpu-box.lab/v1",
-      }),
-    ).toBe("gpu-box.lab:443");
-    expect(
-      localServerAddress(LLMProvider.OpenAI, { base_url: "x" }),
-    ).toBeUndefined();
+describe("local servers' requests", () => {
+  test("run one at a time on this machine, across servers and models", async () => {
+    // Whichever server they go to: the energy measured is the whole machine's
+    let running = 0;
+    let peak = 0;
+    (globalThis as any).fetch = jest.fn(async (url: string | URL) => {
+      running++;
+      peak = Math.max(peak, running);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      running--;
+      const body = url.toString().includes("/v1/")
+        ? completion("Hi")
+        : { message: { content: "Hi" }, done: true };
+      return {
+        ok: true,
+        status: 200,
+        statusText: "",
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => body,
+        text: async () => JSON.stringify(body),
+      };
+    });
+    const ollama = (m: string) =>
+      call_ollama_provider("Q", "ollama", 2, 1.0, {
+        ollamaModel: m,
+        ollama_url: "http://localhost:11434/api",
+        model_type: "chat",
+      });
+    const lmStudio = (m: string) =>
+      call_openai_compatible("Q", OPENAI_COMPATIBLE_PREFIX + m, 2, 1.0, {
+        base_url: "http://127.0.0.1:1234/v1",
+      });
+    await Promise.all([ollama("a"), ollama("b"), lmStudio("c"), lmStudio("d")]);
+    expect((globalThis as any).fetch).toHaveBeenCalledTimes(8);
+    expect(peak).toBe(1);
   });
 
-  test("follow the parallel requests setting, within bounds", () => {
-    expect(parallelRequestsSetting({})).toBe(DEFAULT_LOCAL_PARALLEL_REQUESTS);
-    expect(parallelRequestsSetting({ parallel_requests: "2" })).toBe(2);
-    expect(parallelRequestsSetting({ parallel_requests: 0 })).toBe(
-      DEFAULT_LOCAL_PARALLEL_REQUESTS,
-    );
-    expect(parallelRequestsSetting({ parallel_requests: 1000 })).toBe(64);
-  });
-
-  test("run at most that many requests to a server at once, across its models", async () => {
+  test("aren't held to a per-minute rate limit", async () => {
+    // They're queued where they're sent instead, so the limiter lets them through
     let running = 0;
     let peak = 0;
     const task = async () => {
@@ -358,22 +360,16 @@ describe("local servers' request limits", () => {
       await new Promise((resolve) => setTimeout(resolve, 5));
       running--;
     };
-    const params = {
-      base_url: "http://localhost:9999/v1",
-      parallel_requests: 2,
-    };
     await Promise.all(
-      Array.from({ length: 8 }, (_, i) =>
+      Array.from({ length: 150 }, () =>
         RateLimiter.throttle(
-          OPENAI_COMPATIBLE_PREFIX + (i % 2 === 0 ? "model-a" : "model-b"),
+          OPENAI_COMPATIBLE_PREFIX + "model-a",
           LLMProvider.OpenAICompatible,
           task,
-          undefined,
-          params,
         ),
       ),
     );
-    expect(peak).toBe(2);
+    expect(peak).toBe(150);
   });
 });
 

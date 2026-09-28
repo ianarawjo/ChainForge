@@ -2396,19 +2396,21 @@ export async function call_huggingface(
   return [query, responses];
 }
 
-// The request each Ollama server (or all servers on this machine) is working on
-const ollamaQueues = new Map<string, Promise<unknown>>();
+// The request each local model server (or all servers on this machine) is working on
+const localQueues = new Map<string, Promise<unknown>>();
 
 /**
- * Runs Ollama requests one at a time: all those to servers on this machine
- * in turn, and to any other server one at a time each.
+ * Runs requests to local model servers (Ollama, and OpenAI-compatible servers
+ * like LM Studio or llama.cpp) one at a time: all those to servers on this
+ * machine in turn, whichever server, and to any other server one at a time each.
  *
  * Sent together, requests to different models run at the same time, sharing
- * the machine; and requests to one model wait in Ollama's queue. Either way a
- * request's latency, and its measured energy (see localEnergy.ts), would
- * include time spent on other requests. One at a time, each gets its own.
+ * the machine; and requests to one model wait in the server's queue. Either
+ * way a request's latency, and its measured energy (see localEnergy.ts, which
+ * reads the whole machine's energy), would include time spent on other
+ * requests. One at a time, each gets its own.
  */
-async function oneOllamaRequestAtATime<T>(
+async function oneLocalRequestAtATime<T>(
   url: string,
   run: () => Promise<T>,
   signal?: AbortSignal,
@@ -2416,7 +2418,7 @@ async function oneOllamaRequestAtATime<T>(
   // By server (host and port), not endpoint: /api/chat and /api/generate on
   // one server share it. All servers on this machine share its hardware.
   const key = isLoopbackUrl(url) ? "this machine" : serverOrigin(url);
-  const before = (ollamaQueues.get(key) ?? Promise.resolve()).catch(
+  const before = (localQueues.get(key) ?? Promise.resolve()).catch(
     () => undefined,
   );
   let finished!: () => void;
@@ -2424,7 +2426,7 @@ async function oneOllamaRequestAtATime<T>(
   // The next request waits for this one and every one before it, even if
   // this one is cancelled while still waiting its turn
   const tail = before.then(() => mine);
-  ollamaQueues.set(key, tail);
+  localQueues.set(key, tail);
   try {
     // Cancelling leaves the queue at once, rather than when its turn comes
     await new Promise<void>((resolve, reject) => {
@@ -2443,7 +2445,7 @@ async function oneOllamaRequestAtATime<T>(
     // not just this request (a cancelled one finishes while those before it
     // may still be running, and a new request mustn't start alongside them)
     tail.then(() => {
-      if (ollamaQueues.get(key) === tail) ollamaQueues.delete(key);
+      if (localQueues.get(key) === tail) localQueues.delete(key);
     });
   }
 }
@@ -2507,7 +2509,6 @@ export async function call_ollama_provider(
     "system_msg",
     "chat_history",
     "format",
-    "parallel_requests",
   ])
     if (params && name in params) delete params[name];
 
@@ -2635,10 +2636,10 @@ export async function call_ollama_provider(
       if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
       // Query Ollama and collect the response, one request at a time (see
-      // oneOllamaRequestAtATime). Where this machine's energy can be measured
+      // oneLocalRequestAtATime). Where this machine's energy can be measured
       // (Ollama running here too), the request is marked as started and
       // finished, and the reply carries its energy above idle.
-      const reply = await oneOllamaRequestAtATime(
+      const reply = await oneLocalRequestAtATime(
         url,
         async () => {
           if (should_cancel && should_cancel())
@@ -2738,52 +2739,74 @@ export async function call_openai_compatible(
   const api_key =
     (typeof settings.api_key === "string" && settings.api_key.trim()) ||
     "not-needed";
-  for (const name of ["base_url", "api_key", "parallel_requests"])
-    delete settings[name];
+  for (const name of ["base_url", "api_key"]) delete settings[name];
   for (const [key, value] of Object.entries(settings))
     if (value === "" || value === null || value === undefined)
       delete settings[key];
 
-  // Many of these servers ignore `n`, so a request is sent per response.
+  // Many of these servers ignore `n`, so a request is sent per response, one
+  // at a time with any other local model requests (see oneLocalRequestAtATime)
+  const controller = new AbortController();
+  const watcher = should_cancel
+    ? setInterval(() => {
+        if (should_cancel()) controller.abort();
+      }, 250)
+    : undefined;
   let query: Dict = {};
   const responses: Dict[] = [];
-  while (responses.length < n) {
-    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
-    const start = performance.now();
-    let reply: Dict;
-    try {
-      [query, reply] = await call_chatgpt(
-        prompt,
-        model_name,
-        1,
-        temperature,
-        deepcopy(settings),
-        should_cancel,
-        images,
-        base_url,
-        api_key,
-      );
-    } catch (err) {
-      const message = (err as Error).message;
-      throw new Error(
-        /connection error|failed to fetch/i.test(message)
-          ? `Could not reach ${base_url}. Check that the server is running and accepts requests from web pages (CORS); in LM Studio, turn on "Enable CORS". (${message})`
-          : message,
-      );
+  try {
+    while (responses.length < n) {
+      if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+      let reply: Dict;
+      let latency_ms = 0;
+      try {
+        [query, reply] = await oneLocalRequestAtATime(
+          base_url,
+          async () => {
+            if (should_cancel && should_cancel())
+              throw new UserForcedPrematureExit();
+            const start = performance.now();
+            const result = await call_chatgpt(
+              prompt,
+              model_name,
+              1,
+              temperature,
+              deepcopy(settings),
+              should_cancel,
+              images,
+              base_url,
+              api_key,
+            );
+            latency_ms = performance.now() - start;
+            return result;
+          },
+          controller.signal,
+        );
+      } catch (err) {
+        if (err instanceof UserForcedPrematureExit) throw err;
+        const message = (err as Error).message;
+        throw new Error(
+          /connection error|failed to fetch/i.test(message)
+            ? `Could not reach ${base_url}. Check that the server is running and accepts requests from web pages (CORS); in LM Studio, turn on "Enable CORS". (${message})`
+            : message,
+        );
+      }
+      // Servers put reasoning in reasoning_content, reasoning, or <think> tags in the reply.
+      reply.choices = (reply.choices ?? []).map((choice: Dict) => {
+        const split = split_webllm_thinking(choice);
+        const reasoning = split.message?.reasoning;
+        return reasoning && !split.message.reasoning_content
+          ? {
+              ...split,
+              message: { ...split.message, reasoning_content: reasoning },
+            }
+          : split;
+      });
+      reply[LATENCY_KEY] = latency_ms;
+      responses.push(reply);
     }
-    // Servers put reasoning in reasoning_content, reasoning, or <think> tags in the reply.
-    reply.choices = (reply.choices ?? []).map((choice: Dict) => {
-      const split = split_webllm_thinking(choice);
-      const reasoning = split.message?.reasoning;
-      return reasoning && !split.message.reasoning_content
-        ? {
-            ...split,
-            message: { ...split.message, reasoning_content: reasoning },
-          }
-        : split;
-    });
-    reply[LATENCY_KEY] = performance.now() - start;
-    responses.push(reply);
+  } finally {
+    if (watcher !== undefined) clearInterval(watcher);
   }
 
   return [query, responses];

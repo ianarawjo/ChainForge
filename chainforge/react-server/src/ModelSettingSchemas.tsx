@@ -11,7 +11,6 @@
  */
 
 import {
-  DEFAULT_LOCAL_PARALLEL_REQUESTS,
   LLMProvider,
   MAX_CONCURRENT,
   NativeLLM,
@@ -39,17 +38,6 @@ const UI_SUBMIT_BUTTON_SPEC = {
   norender: false,
   submitText: "Submit",
 } satisfies Dict;
-
-/** How many requests go to a local model server at once; see RateLimiter. */
-const PARALLEL_REQUESTS_SETTING = {
-  type: "integer",
-  title: "Parallel requests",
-  description:
-    "How many requests ChainForge sends this server at once, across all its models. Match it to how many the server runs in parallel (e.g. OLLAMA_NUM_PARALLEL, or llama-server's --parallel). More than that just waits in the server's queue, and the wait counts toward each response's measured latency.",
-  default: DEFAULT_LOCAL_PARALLEL_REQUESTS,
-  minimum: 1,
-  maximum: 64,
-};
 
 const ChatGPTSettings: ModelSettingsDict = {
   fullName: "GPT-3.5+ (OpenAI)",
@@ -1954,7 +1942,6 @@ const OllamaSettings: ModelSettingsDict = {
           'Sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
         default: "",
       },
-      parallel_requests: PARALLEL_REQUESTS_SETTING,
     },
   },
   uiSchema: {
@@ -2310,7 +2297,6 @@ export const OpenAICompatibleSettings: ModelSettingsDict = {
           "The most tokens to generate, reasoning included. Leave blank for the server's default.",
         allow_empty_str: true,
       },
-      parallel_requests: PARALLEL_REQUESTS_SETTING,
     },
   },
   uiSchema: {

@@ -4,9 +4,6 @@
 import Bottleneck from "bottleneck";
 import { UserForcedPrematureExit } from "./errors";
 
-/** A model's settings, as passed to its call function. */
-type SettingsDict = Record<string, any>;
-
 export enum NativeLLM {
   // WebLLM (fully in-browser, no API key). Model IDs come from web-llm's own
   // prebuilt list; these are the ones small enough to load on a normal laptop,
@@ -543,54 +540,14 @@ const DEFAULT_RATE_LIMIT = 100; // RPM for any models not listed above
 
 /**
  * Providers that run models on a server the user runs, whether on this machine
- * or their network. They have no rate limits to respect; what limits them is how
- * many requests the server can run at once, so requests are limited per server
- * rather than per model, however many models the server has.
+ * or their network. They have no rate limits to respect: their requests are
+ * sent one at a time per server instead (see oneLocalRequestAtATime in
+ * utils.ts), so the rate limiter lets them straight through.
  */
 export const LOCAL_SERVER_PROVIDERS = new Set<LLMProvider>([
   LLMProvider.Ollama,
   LLMProvider.OpenAICompatible,
 ]);
-
-/** How many requests go to a local server at once, unless its model settings say otherwise. */
-export const DEFAULT_LOCAL_PARALLEL_REQUESTS = 4;
-
-/**
- * The host and port a local model's server is at, e.g. "localhost:11434", from
- * its settings. Requests are limited by this rather than by URL, since one
- * server can be reached by several (Ollama's own API and its /v1 API, or
- * localhost and 127.0.0.1).
- */
-export function localServerAddress(
-  provider: LLMProvider,
-  params?: SettingsDict,
-): string | undefined {
-  const url =
-    provider === LLMProvider.Ollama
-      ? params?.ollama_url
-      : provider === LLMProvider.OpenAICompatible
-        ? params?.base_url
-        : undefined;
-  if (typeof url !== "string" || url.trim().length === 0) return undefined;
-  try {
-    const parsed = new URL(url.trim());
-    const loopback = ["127.0.0.1", "[::1]", "0.0.0.0"];
-    const host = loopback.includes(parsed.hostname)
-      ? "localhost"
-      : parsed.hostname;
-    const port = parsed.port || (parsed.protocol === "https:" ? "443" : "80");
-    return `${host}:${port}`;
-  } catch {
-    return url.trim().toLowerCase();
-  }
-}
-
-/** The number of parallel requests a local model's settings ask for, within sensible bounds. */
-export function parallelRequestsSetting(params?: SettingsDict): number {
-  const n = parseInt(params?.parallel_requests, 10);
-  if (!Number.isFinite(n) || n < 1) return DEFAULT_LOCAL_PARALLEL_REQUESTS;
-  return Math.min(n, 64);
-}
 
 /**
  * Singleton which all LLM API calls should go through to perform rate limiting via Botteneck.
@@ -599,12 +556,10 @@ export class RateLimiter {
   // eslint-disable-next-line no-use-before-define
   private static instance: RateLimiter;
   private limiters: Record<LLM, Bottleneck>;
-  private localConcurrency: Record<string, number>;
 
   private constructor() {
     // Initialize the singleton instance
     this.limiters = {};
-    this.localConcurrency = {};
   }
 
   /** Gets the global RateLimiter instance. Initializes it if the singleton instance does not yet exist. */
@@ -615,40 +570,8 @@ export class RateLimiter {
     return RateLimiter.instance;
   }
 
-  /**
-   * The limiter for a local server, shared by every model on it. Its
-   * concurrency follows the latest settings, so changing a model's parallel
-   * requests takes effect on the next run.
-   */
-  private getLocalServerLimiter(
-    provider: LLMProvider,
-    params?: SettingsDict,
-  ): Bottleneck {
-    // A server without a URL in its settings is at its provider's default address
-    const key = `local@${localServerAddress(provider, params) ?? provider}`;
-    const maxConcurrent = parallelRequestsSetting(params);
-    const existing = this.limiters[key];
-    if (existing) {
-      if (this.localConcurrency[key] !== maxConcurrent) {
-        existing.updateSettings({ maxConcurrent });
-        this.localConcurrency[key] = maxConcurrent;
-      }
-      return existing;
-    }
-    this.limiters[key] = new Bottleneck({ maxConcurrent });
-    this.localConcurrency[key] = maxConcurrent;
-    return this.limiters[key];
-  }
-
   /** Get the Bottleneck limiter for the given model. If it doesn't already exist, instantiates it dynamically. */
-  private getLimiter(
-    model: LLM,
-    provider: LLMProvider,
-    params?: SettingsDict,
-  ): Bottleneck {
-    if (LOCAL_SERVER_PROVIDERS.has(provider))
-      return this.getLocalServerLimiter(provider, params);
-
+  private getLimiter(model: LLM, provider: LLMProvider): Bottleneck {
     // Find if there's an existing limiter for this model
     if (!(model in this.limiters)) {
       // If there isn't, make one:
@@ -672,7 +595,6 @@ export class RateLimiter {
    * @param model The model name, as NativeLLM
    * @param func The (async) function to call when ready
    * @param should_cancel Optional. An abort function, that if true, will abort before calling func(), throwing `UserForcedPrematureExit`
-   * @param params Optional. The model's settings, which say where a local model's server is and how many requests it takes at once.
    * @returns A Promise that returns with the return value of func.
    */
   public static throttle<T>(
@@ -680,11 +602,17 @@ export class RateLimiter {
     provider: LLMProvider,
     func: () => PromiseLike<T>,
     should_cancel?: () => boolean,
-    params?: SettingsDict,
   ): Promise<T> {
+    // Local servers' requests are queued where they're sent (see LOCAL_SERVER_PROVIDERS)
+    if (LOCAL_SERVER_PROVIDERS.has(provider))
+      return (async () => {
+        if (should_cancel && should_cancel())
+          throw new UserForcedPrematureExit();
+        return await func();
+      })();
     // Rate limit per model, and abort if the API request takes 3 minutes or more.
     return this.getInstance()
-      .getLimiter(model, provider, params)
+      .getLimiter(model, provider)
       .schedule({}, () => {
         if (should_cancel && should_cancel())
           throw new UserForcedPrematureExit();
