@@ -39,7 +39,13 @@ import {
   LOCAL_MODELS_GROUP,
   discoverLocalModels,
   localModelsMenuGroup,
+  syncOfflineModeToServer,
 } from "./backend/localModels";
+import {
+  isOfflineMode,
+  isOfflineModeLocked,
+  setOfflineMode,
+} from "./backend/offlineMode";
 import {
   forgetStoredAPIKeys,
   loadStoredAPIKeys,
@@ -68,6 +74,8 @@ interface GlobalSettingsType {
   // The provider for AI support features; blank to pick one from the API keys
   aiProvider: string;
   aiModels: AIModelOverrides;
+  /** Only local models and services (see backend/offlineMode.ts) */
+  offlineMode: boolean;
 }
 
 // The JSON filename in the backend for the global settings
@@ -289,6 +297,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       aiSupport: true,
       aiProvider: "",
       aiModels: {},
+      offlineMode: isOfflineMode(),
     });
 
     /**
@@ -318,6 +327,14 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       state.setOllamaModels(
         servers.find((server) => server.kind === "ollama")?.models ?? [],
       );
+    }, []);
+
+    /** Puts offline mode into effect, here and on ChainForge's server. */
+    const applyOfflineMode = useCallback((on: boolean) => {
+      const effective = on || isOfflineModeLocked();
+      setOfflineMode(effective);
+      syncOfflineModeToServer(effective);
+      return effective;
     }, []);
 
     // Fetch the global settings from the backend
@@ -355,6 +372,11 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
           return backendSettings;
         })
         .then((backendSettings) => {
+          const offline = applyOfflineMode(
+            backendSettings.offlineMode === true,
+          );
+          setSettings((prev) => ({ ...prev, offlineMode: offline }));
+          useStore.getState().setGlobalSetting("offlineMode", offline);
           // List the models on servers running on this machine
           const ollama_url = backendSettings.Ollama_BaseURL;
           refreshLocalModels(
@@ -535,6 +557,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         (Object.keys(prev) as (keyof GlobalSettingsType)[]).forEach((key) => {
           if (key in saved) (restored as Dict)[key] = saved[key];
         });
+        restored.offlineMode = applyOfflineMode(restored.offlineMode);
         // Nodes read these from the store.
         setGlobalSettingsInZustandStore(restored);
         return restored;
@@ -913,6 +936,27 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
 
             <Tabs.Panel value="advanced" pt="xs">
               <Box p="md">
+                <Checkbox
+                  label="Offline mode"
+                  description={
+                    "Keep prompts, responses and documents on this machine or your local network: only local models " +
+                    "(Ollama, OpenAI-compatible servers on your network, in-browser models, custom providers) and local " +
+                    "RAG methods can be used, and requests to anywhere else are blocked. Model files can still be " +
+                    "downloaded, and code you write yourself (custom providers, Python evaluators) runs as written." +
+                    (isOfflineModeLocked()
+                      ? " ChainForge was started with --offline, so it stays on."
+                      : "")
+                  }
+                  checked={settings.offlineMode}
+                  disabled={isOfflineModeLocked()}
+                  onChange={(e) =>
+                    handleChangeSetting(
+                      "offlineMode",
+                      applyOfflineMode(e.currentTarget.checked),
+                    )
+                  }
+                />
+
                 <Divider my="xl" label="Resources" labelPosition="center" />
 
                 <Group position="center">

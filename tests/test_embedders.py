@@ -14,6 +14,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
+from chainforge import offline_mode
 from chainforge.rag import devices, embeddings, rerankers
 from chainforge.rag.embeddings import instruction_prefix
 
@@ -306,3 +307,9 @@ class TestOllamaEmbedder:
         with patch("requests.post", return_value=resp):
             with pytest.raises(ValueError, match="try pulling it first"):
                 embeddings.ollama_embedder(["t"], "x")
+
+    def test_respects_offline_mode(self, post, monkeypatch):
+        monkeypatch.setattr(offline_mode, "_enabled", True)
+        with pytest.raises(ValueError, match="Offline mode"):
+            embeddings.ollama_embedder(["t"], "x", api_keys={"Ollama_BaseURL": "http://8.8.8.8:11434"})
+        assert embeddings.ollama_embedder(["t"], "x") == [[0.5] * 3]

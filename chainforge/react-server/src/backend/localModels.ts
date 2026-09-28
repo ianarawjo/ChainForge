@@ -144,3 +144,13 @@ export function localModelsMenuGroup(servers: LocalServer[]): LLMGroup {
   items.push(OPENAI_COMPATIBLE_ITEM);
   return { group: LOCAL_MODELS_GROUP, emoji: "🖥️", items };
 }
+
+/** Tells ChainForge's server whether offline mode is on, so it enforces it too. */
+export async function syncOfflineModeToServer(on: boolean): Promise<void> {
+  if (!APP_IS_RUNNING_LOCALLY()) return;
+  try {
+    await call_flask_backend("offlineMode", { on });
+  } catch (err) {
+    console.warn("Could not tell ChainForge's server about offline mode:", err);
+  }
+}
