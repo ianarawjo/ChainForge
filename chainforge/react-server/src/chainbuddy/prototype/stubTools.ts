@@ -116,10 +116,12 @@ export function createStubTools(options: {
   review?: Reviewer;
 }) {
   const { canvas, proposals, reviews } = createStubCanvas(options);
+  const approaches: string[] = [];
   const { tools, startTurn } = createFlowTools({
     canvas,
     nodeDocs: options.nodeDocs,
     review: options.review,
+    showApproach: (text) => approaches.push(text),
   });
-  return { tools, startTurn, proposals, reviews };
+  return { tools, startTurn, proposals, reviews, approaches };
 }

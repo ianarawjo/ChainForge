@@ -37,9 +37,13 @@ function run(tools: AgentTool[], name: string, args: object = {}) {
   return tool.run(args as Record<string, unknown>, {}) as Record<string, any>;
 }
 
-/** Reads the canvas, as ChainBuddy must, then proposes. */
+const APPROACH =
+  "Ask a model about each fact, and score its answers with code.";
+
+/** Reads the canvas and shares an approach, as ChainBuddy must, then proposes. */
 const propose = (tools: AgentTool[], changes: unknown[]) => {
   run(tools, "get_flow");
+  run(tools, "share_approach", { approach: APPROACH });
   return run(tools, "propose_changes", { summary: "test", changes });
 };
 
@@ -300,6 +304,53 @@ describe("reading the canvas first", () => {
       changes: newFlow,
     });
     expect(out.status).toBe("invalid");
+  });
+});
+
+describe("sharing the approach first", () => {
+  const proposeOnly = (tools: AgentTool[], changes: unknown[]) => {
+    run(tools, "get_flow");
+    return run(tools, "propose_changes", { summary: "test", changes });
+  };
+
+  test("a change to three or more nodes waits until the approach is shared", () => {
+    const { tools, proposals, approaches } = createStubTools({
+      models: MODELS,
+    });
+    const out = proposeOnly(tools, newFlow);
+    expect(out.status).toBe("invalid");
+    expect(out.problems).toEqual([
+      "These changes touch 3 nodes, so first call share_approach to tell the user, in a sentence or two, the approach you'll take.",
+    ]);
+    expect(proposals).toHaveLength(0);
+
+    run(tools, "share_approach", { approach: `  ${APPROACH} ` });
+    expect(approaches).toEqual([APPROACH]);
+    expect(proposeOnly(tools, newFlow).status).toBe("awaiting_approval");
+  });
+
+  test("a smaller change needs none", () => {
+    const { tools } = createStubTools({ models: MODELS });
+    const twoNodes = [newFlow[0], newFlow[1], newFlow[3]];
+    expect(proposeOnly(tools, twoNodes).status).toBe("awaiting_approval");
+  });
+
+  test("each new message needs its own", () => {
+    const { tools, startTurn } = createStubTools({ models: MODELS });
+    expect(propose(tools, newFlow).status).toBe("awaiting_approval");
+    startTurn();
+    expect(proposeOnly(tools, newFlow).status).toBe("invalid");
+  });
+
+  test("an approach is a sentence or two, not the details", () => {
+    const { tools, approaches } = createStubTools({ models: MODELS });
+    expect(() =>
+      run(tools, "share_approach", { approach: "word ".repeat(100) }),
+    ).toThrow(/at most 400 characters/);
+    expect(() => run(tools, "share_approach", { approach: " " })).toThrow(
+      "The approach is empty.",
+    );
+    expect(approaches).toHaveLength(0);
   });
 });
 
@@ -721,6 +772,7 @@ describe("a second look before the user sees a proposal", () => {
   }
   const proposeNow = async (tools: AgentTool[]) => {
     run(tools, "get_flow");
+    run(tools, "share_approach", { approach: APPROACH });
     return (await run(tools, "propose_changes", {
       summary: "test",
       changes: newFlow,
@@ -752,6 +804,7 @@ describe("a second look before the user sees a proposal", () => {
     });
     // It was given the request, and the guides of the types involved only.
     expect(seen[0].request).toBe("Check some facts.");
+    expect(seen[0].approach).toBe(APPROACH);
     expect(Object.keys(seen[0].guides).sort()).toEqual([
       "evaluator",
       "prompt",

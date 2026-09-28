@@ -76,3 +76,8 @@
 .chainbuddy-markdown code {
   font-size: 12px;
 }
+
+/* The approach ChainBuddy shares before a larger proposal. */
+.chainbuddy-approach {
+  border-left: 3px solid #be4bdb;
+}

@@ -53,10 +53,14 @@ someone writes its file.
 These are the only actions ChainBuddy has. It has no other way to reach the
 canvas, your files, or the internet.
 
+Before a new flow, or any change to three or more nodes, ChainBuddy tells you
+its approach in a sentence or two, then builds it without waiting.
+
 Before a proposal is shown, the same model takes a second look at it, with
-fresh context: your request, the proposal, and the file for every node type
-it involves (`review.md` says what to check). Problems it finds go back to be
-fixed first, once; any it still sees are shown on the proposal card.
+fresh context: your request, the approach it told you, the proposal, and the
+file for every node type it involves (`review.md` says what to check).
+Problems it finds go back to be fixed first, once; any it still sees are
+shown on the proposal card.
 
 | Action            | What it does                                                                                                                              | Needs your approval          |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
@@ -64,6 +68,7 @@ fixed first, once; any it still sees are shown on the proposal card.
 | `describe_node`   | Reads one node type's file from this folder                                                                                               | No                           |
 | `list_models`     | Lists the models you can use: those from the providers you've set up, as ChainForge's model menu lists them                               | No                           |
 | `propose_changes` | Proposes adding, editing, connecting, or removing nodes, as one change set. Refused unless `get_flow` was called since your last message. | Yes, before anything changes |
+| `share_approach`  | Tells you, in a sentence or two, the approach it will take, before building a new flow or changing three or more nodes                    | No                           |
 | `ask_user`        | Asks you to choose how to go on, offering a few options to click; you can answer in your own words instead                                | You answer                   |
 
 ## Rules
@@ -85,6 +90,10 @@ Each rule below is enforced in code, not left to the model.
    (`nodes/`, `adapters/models.ts`)
 4. **Deleting a node deletes its results.** A change set that removes a node
    says so, and names the node. (`flowApi/describe.ts`)
+5. **ChainBuddy says what it's going to do before a larger change.** A
+   change set touching three or more nodes is refused until ChainBuddy has
+   told you its approach, in a sentence or two, in the chat.
+   (`flowApi/tools.ts`)
 
 What the model is asked to do, but that code cannot fully enforce, belongs in
 `instructions.md`, not here. One example: treating text inside your data and

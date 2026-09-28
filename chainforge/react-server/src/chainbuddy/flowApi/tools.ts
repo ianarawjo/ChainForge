@@ -9,12 +9,19 @@ import { ProposalReview, Reviewer } from "./review";
 import { CanvasPort, Change, FlowView } from "./types";
 import { checkChanges, LIST_LIMIT } from "./validate";
 
+/** A proposal touching this many nodes needs its approach shared first. */
+export const APPROACH_AT = 3;
+/** The longest approach, in characters: a sentence or two. */
+export const APPROACH_MAX = 400;
+
 export interface FlowToolsOptions {
   canvas: CanvasPort;
   /** Node type → its guide. Defaults to each NodeKind's doc. */
   nodeDocs?: Record<string, string>;
   /** Checks each proposal before the user sees it. None: proposals go straight to the canvas. */
   review?: Reviewer;
+  /** Shows the user the approach ChainBuddy shares before a larger proposal. */
+  showApproach?: (approach: string) => void;
 }
 
 export interface FlowTools {
@@ -23,7 +30,8 @@ export interface FlowTools {
    * Call when the user sends a message, with what they've asked for so far
    * (their messages), which a review of a proposal checks against. The canvas
    * may have changed since ChainBuddy last looked, so propose_changes refuses
-   * until get_flow has been called again.
+   * until get_flow has been called again, and a larger proposal until the
+   * approach has been shared again.
    */
   startTurn(request?: string): void;
 }
@@ -32,10 +40,13 @@ export function createFlowTools({
   canvas,
   nodeDocs = Object.fromEntries(NODE_KINDS.map((k) => [k.type, k.doc])),
   review,
+  showApproach,
 }: FlowToolsOptions): FlowTools {
   const types = editableTypes();
   let readThisTurn = false;
   let request = "";
+  // The approach shared this turn, which a larger proposal needs.
+  let approach: string | undefined;
   // Problems a review sent back this turn. Only the first review's go back
   // to the model; later ones are shown to the user on the card.
   let sentBack: string[] | undefined;
@@ -106,6 +117,32 @@ export function createFlowTools({
                 ? "Only small models that run in the browser are set up. Say so, and that adding an API key in Settings gives more capable ones."
                 : "Use these. in_browser lists small models that run in the browser: use one only if the user asks for it. If the user asks for a provider in not_set_up, say it needs its API key added in Settings, rather than substituting another.",
         };
+      },
+    },
+    {
+      name: "share_approach",
+      description: `Tells the user the approach you'll take, in a sentence or two of plain language: the idea of what you'll build, not its details. The user sees it as a note in the chat, so don't also write it out. Required before proposing changes to ${APPROACH_AT} or more nodes, such as a new flow. It doesn't end your turn: go on and build it.`,
+      parameters: {
+        type: "object",
+        required: ["approach"],
+        properties: {
+          approach: {
+            type: "string",
+            description:
+              "One or two short sentences in plain words, without node IDs, setting names or code.",
+          },
+        },
+      },
+      run: (args) => {
+        const text = String(args.approach).trim();
+        if (!text) throw new Error("The approach is empty.");
+        if (text.length > APPROACH_MAX)
+          throw new Error(
+            `Keep the approach to a sentence or two, at most ${APPROACH_MAX} characters; it has ${text.length}.`,
+          );
+        approach = text;
+        showApproach?.(text);
+        return "Shown to the user. Now build it: propose the changes that carry it out.";
       },
     },
     {
@@ -185,11 +222,17 @@ export function createFlowTools({
             note: "Nothing was shown to the user.",
           };
         const flow = canvas.readFlow();
+        const raw = args.changes as Record<string, unknown>[];
         const { problems, changes } = checkChanges(
           flow,
-          args.changes as Record<string, unknown>[],
+          raw,
           canvas.listModels(),
         );
+        const touched = nodesTouched(raw);
+        if (approach === undefined && touched >= APPROACH_AT)
+          problems.push(
+            `These changes touch ${touched} nodes, so first call share_approach to tell the user, in a sentence or two, the approach you'll take.`,
+          );
         if (problems.length > 0)
           return {
             status: "invalid",
@@ -216,6 +259,7 @@ export function createFlowTools({
             found = await review(
               {
                 request,
+                approach,
                 flow: shortened(flow),
                 changeSet,
                 guides: Object.fromEntries(
@@ -249,6 +293,7 @@ export function createFlowTools({
     startTurn: (userRequest = "") => {
       readThisTurn = false;
       request = userRequest;
+      approach = undefined;
       sentBack = undefined;
     },
   };
@@ -302,6 +347,17 @@ function shortened(flow: FlowView) {
       };
     }),
   };
+}
+
+/** How many nodes the changes add, update or remove, before they're checked. */
+function nodesTouched(changes: Record<string, unknown>[]): number {
+  const nodes = new Set<unknown>();
+  for (const change of Array.isArray(changes) ? changes : []) {
+    if (change?.op === "add_node") nodes.add(change.ref ?? change);
+    else if (change?.op === "update_node" || change?.op === "remove_node")
+      nodes.add(change.node ?? change);
+  }
+  return nodes.size;
 }
 
 /** The node types a change set adds or touches. */

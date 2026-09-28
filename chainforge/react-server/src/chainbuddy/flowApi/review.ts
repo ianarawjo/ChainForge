@@ -10,6 +10,8 @@ import { ChangeSet, FlowView } from "./types";
 export interface ReviewInput {
   /** What the user asked for, in their messages so far. */
   request: string;
+  /** The approach ChainBuddy told the user it would take, if it shared one. */
+  approach?: string;
   /** The flow as it is now. */
   flow: FlowView;
   /** The proposal, already checked by code. */

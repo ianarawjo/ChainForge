@@ -36,6 +36,9 @@ export function reviewRequest(input: ReviewInput): string {
     .join("\n\n");
   return [
     `## What the user asked\n\n${input.request.trim() || "(not given)"}`,
+    ...(input.approach
+      ? [`## The approach it told the user it would take\n\n${input.approach}`]
+      : []),
     `## The flow now\n\n${JSON.stringify(input.flow, null, 1)}`,
     `## The proposed changes\n\n${JSON.stringify(input.changeSet, null, 1)}`,
     `## Guides for the node types involved\n\n${guides}`,
