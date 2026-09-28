@@ -62,7 +62,6 @@ import {
   statsAt,
   statsToMetavars,
 } from "./responseStats";
-import { assertProviderAllowedOffline } from "./offlineMode";
 import { Annotations } from "plotly.js";
 import { beginEnergy, endEnergy, isLoopbackUrl } from "./localEnergy";
 
@@ -3270,7 +3269,6 @@ export async function call_llm(
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
     );
-  assertProviderAllowedOffline(llm_provider, params);
   // Past turns' reasoning state is only for the provider that made it, which handles it itself
   if (params?.chat_history && !PROVIDERS_REPLAYING_REASONING.has(llm_provider))
     params.chat_history = strip_reasoning_state(params.chat_history);

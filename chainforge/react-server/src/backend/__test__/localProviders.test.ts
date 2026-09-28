@@ -62,8 +62,6 @@ import { LATENCY_KEY, extract_stats } from "../responseStats";
 // eslint-disable-next-line import/first
 import { discoverLocalModels, localModelsMenuGroup } from "../localModels";
 // eslint-disable-next-line import/first
-import { setOfflineMode } from "../offlineMode";
-// eslint-disable-next-line import/first
 import { Dict, LLMGroup, LLMSpec } from "../typing";
 
 type Call = { url: string; init: RequestInit; body: Dict };
@@ -96,8 +94,6 @@ const mockFetch = (...responses: { status?: number; body: unknown }[]) => {
     },
   );
 };
-
-afterEach(() => setOfflineMode(false));
 
 const completion = (content: string, message: Dict = {}) => ({
   choices: [
@@ -205,20 +201,6 @@ describe("OpenAI-compatible servers", () => {
       /no server URL/,
     );
   }, 20000);
-
-  test("are refused in offline mode when the server isn't local", async () => {
-    setOfflineMode(true);
-    mockFetch({ body: completion("x") });
-    await expect(
-      call_llm(model, LLMProvider.OpenAICompatible, "Q", 1, 1, {
-        base_url: "https://api.example.com/v1",
-      }),
-    ).rejects.toThrow(/Offline mode/);
-    await expect(
-      call_llm("gpt-4o", LLMProvider.OpenAI, "Q", 1, 1, {}),
-    ).rejects.toThrow(/OpenAI models can't be used/);
-    expect(calls).toHaveLength(0);
-  });
 
   test("take OpenAI's chat settings, less OpenAI-only ones", () => {
     const fields = Object.keys(

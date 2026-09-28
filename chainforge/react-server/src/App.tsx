@@ -16,7 +16,6 @@ import ReactFlow, {
 } from "reactflow";
 import {
   Alert,
-  Badge,
   Button,
   LoadingOverlay,
   Menu,
@@ -86,7 +85,6 @@ import {
   postProcessFormData,
 } from "./ModelSettingSchemas";
 import { NativeLLM, OPENROUTER_PREFIX } from "./backend/models";
-import { isOfflineMode, isOfflineModeLocked } from "./backend/offlineMode";
 import { v4 as uuid } from "uuid";
 import axios from "axios";
 import LZString from "lz-string";
@@ -408,12 +406,6 @@ const App = () => {
 
   // For modal popup to set global settings like API keys
   const settingsModal = useRef<GlobalSettingsModalRef>(null);
-
-  // Offline mode, shown in the top bar while it's on
-  const offlineMode =
-    (useStore((state) => state.globalSettings.offlineMode) as
-      | boolean
-      | undefined) ?? isOfflineMode();
 
   // For modal popup of example flows
   const examplesModal = useRef<ExampleFlowsModalRef>(null);
@@ -2188,25 +2180,6 @@ const App = () => {
               {" "}
               Example Flows{" "}
             </Button>
-            {(offlineMode || isOfflineModeLocked()) && (
-              <Tooltip
-                label="Offline mode is on: only models and services on this machine or your local network are used. Change it in Settings > Advanced."
-                withArrow
-                multiline
-                width={260}
-              >
-                <Badge
-                  color="teal"
-                  variant="light"
-                  mr="xs"
-                  mt={4}
-                  style={{ float: "left", cursor: "pointer" }}
-                  onClick={onClickSettings}
-                >
-                  Offline
-                </Badge>
-              </Tooltip>
-            )}
             <Button
               onClick={onClickSettings}
               size="sm"

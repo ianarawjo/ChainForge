@@ -1,7 +1,6 @@
 import os
 from functools import lru_cache
 
-from chainforge import offline_mode
 from chainforge.rag.devices import torch_device, warn_falling_back_to_cpu
 
 """
@@ -356,9 +355,6 @@ def ollama_embedder(texts, model_name="nomic-embed-text", path=None, api_keys=No
     import requests
 
     base_url = _ollama_base_url(api_keys)
-    blocked = offline_mode.block_reason_for_url(base_url)
-    if blocked:
-        raise ValueError(blocked)
     texts = _with_prefix(texts, model_name, input_type)
     print(f"Using Ollama model: {model_name} at {base_url} for {len(texts)} texts")
 
@@ -367,8 +363,7 @@ def ollama_embedder(texts, model_name="nomic-embed-text", path=None, api_keys=No
     for i in range(0, len(texts), batch_size):
         try:
             resp = requests.post(f"{base_url}/api/embed",
-                                 json={"model": model_name, "input": texts[i:i + batch_size]},
-                                 allow_redirects=not offline_mode.is_offline())
+                                 json={"model": model_name, "input": texts[i:i + batch_size]})
         except requests.RequestException as e:
             raise ValueError(f"Could not reach Ollama at {base_url}. Is it running? ({e})")
         try:
