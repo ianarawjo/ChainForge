@@ -253,6 +253,15 @@ function ItemView({
         dangerouslySetInnerHTML={{ __html: markdown.render(item.text) }}
       />
     );
+  if (item.kind === "approach")
+    return (
+      <Paper withBorder p="xs" radius="md" className="chainbuddy-approach">
+        <Text size="xs" weight={600} color="grape">
+          Approach
+        </Text>
+        <Text size="sm">{item.text}</Text>
+      </Paper>
+    );
   if (item.kind === "activity")
     return (
       <Tooltip

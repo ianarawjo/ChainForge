@@ -187,6 +187,7 @@ test("a kind with no output receives, and nothing can be chained after it", () =
   );
 
   run("get_flow", {});
+  run("share_approach", { approach: "Show the responses, then ask more." });
   const out = run("propose_changes", {
     summary: "Chain after it",
     changes: [

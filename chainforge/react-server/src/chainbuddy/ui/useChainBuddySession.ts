@@ -21,6 +21,8 @@ import { focusNodes } from "./focusNodes";
 export type Item =
   | { kind: "user"; text: string }
   | { kind: "assistant"; text: string }
+  /** The approach ChainBuddy says it will take, before a larger proposal. */
+  | { kind: "approach"; text: string }
   | { kind: "activity"; text: string; failed?: boolean; detail?: string }
   | { kind: "proposal"; id: string }
   /** A question with options to pick; `chosen` once answered (-1: in their own words). */
@@ -44,7 +46,7 @@ function activityText(
       return "Read a node guide";
     }
   }
-  if (name === "ask_user") return ""; // shown as the question itself
+  if (name === "ask_user" || name === "share_approach") return ""; // shown as themselves
   if (name === "propose_changes") {
     if (content.includes('"needs_changes"'))
       return "A second look found problems with its proposal; fixing them";
@@ -123,6 +125,7 @@ export function useChainBuddySession(model: ChainBuddyModel) {
     () =>
       createFlowTools({
         canvas,
+        showApproach: (text) => add({ kind: "approach", text }),
         review: (input, signal) =>
           reviewer.current
             ? reviewer.current(input, signal)
