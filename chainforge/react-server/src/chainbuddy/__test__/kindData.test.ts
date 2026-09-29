@@ -41,6 +41,15 @@ const MANAGED: Record<string, string[]> = {
   prompt: ["prompt", "promptVariantLabel", "llms", "n", "title"],
   textfields: ["fields", "fields_visibility", "title"],
   evaluator: ["code", "language", "title"],
+  llmeval: [
+    "prompt",
+    "format",
+    "categories",
+    "scale",
+    "grader",
+    "graders",
+    "title",
+  ],
   vis: ["selected_eval_res_var", "graph_type", "title"],
   inspect: ["viewFormat", "title"],
   table: ["columns", "rows", "sample", "sampleNum", "title"],
@@ -65,6 +74,7 @@ test("the examples include every supported node type", () => {
   expect(Array.from(types).sort()).toEqual([
     "evaluator",
     "inspect",
+    "llmeval",
     "prompt",
     "table",
     "textfields",
@@ -314,4 +324,64 @@ test("inputs follow ChainForge's template rules", () => {
     }),
   ).toEqual(["a", "=system_msg"]);
   expect(inputsOf("evaluator", {})).toEqual(["responses"]);
+});
+
+describe("LLM Scorer data", () => {
+  test("a new scorer's judges score at temperature 0", () => {
+    const withSettings: ModelResolver = {
+      ...resolver,
+      toSpec: (id, taken) => ({
+        ...(resolver.toSpec(id, taken) as any),
+        settings: { temperature: 1 },
+        formData: { shortname: id, temperature: 1 },
+      }),
+    };
+    const data = dataWithSettings(
+      "llmeval",
+      {
+        rubric: "Is it polite?",
+        judges: [{ model: "a" }, { model: "b" }],
+      },
+      undefined,
+      withSettings,
+    );
+    expect(data.prompt).toBe("Is it polite?");
+    expect(data.format).toBe("bin");
+    expect(data.graders.map((g: any) => g.name)).toEqual(["a", "b"]);
+    expect(data.grader).toBe(data.graders[0]);
+    expect(data.graders[0].settings.temperature).toBe(0);
+    expect(data.graders[0].formData.temperature).toBe(0);
+  });
+
+  test("categories and scales are written as the node lists them", () => {
+    const data = dataWithSettings(
+      "llmeval",
+      {
+        rubric: "Which?",
+        format: "categorical",
+        categories: [
+          { label: "billing", description: "charges" },
+          { label: "other" },
+        ],
+      },
+      undefined,
+      resolver,
+    );
+    expect(data.format).toBe("cat");
+    expect(data.categories).toBe("billing: charges\nother");
+    expect(settingsOf("llmeval", data, resolver).categories).toEqual([
+      { label: "billing", description: "charges" },
+      { label: "other" },
+    ]);
+    // Text that already says the same is kept as the user typed it.
+    const typed = { ...data, categories: "billing:charges\n\nother" };
+    expect(
+      dataWithSettings(
+        "llmeval",
+        settingsOf("llmeval", typed, resolver),
+        typed,
+        resolver,
+      ).categories,
+    ).toBe("billing:charges\n\nother");
+  });
 });

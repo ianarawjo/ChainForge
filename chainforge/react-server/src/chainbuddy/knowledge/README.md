@@ -20,6 +20,7 @@ It can't run nodes or read their results yet (see [Planned](#planned)).
 | `nodes/textfields.md` | TextFields Node                                             |
 | `nodes/table.md`      | Tabular Data Node                                           |
 | `nodes/evaluator.md`  | JavaScript Evaluator                                        |
+| `nodes/llmeval.md`    | LLM Scorer                                                  |
 | `nodes/vis.md`        | Vis Node                                                    |
 | `nodes/inspect.md`    | Inspect Node                                                |
 
@@ -40,6 +41,7 @@ connected to, and can't change, connect or remove it.
 | TextFields Node        | `textfields` | Editable      |
 | Tabular Data Node      | `table`      | Editable      |
 | JavaScript Evaluator   | `evaluator`  | Editable      |
+| LLM Scorer             | `llmeval`    | Editable      |
 | Vis Node               | `vis`        | Editable      |
 | Inspect Node           | `inspect`    | Editable      |
 | Evaluator Node, Python | `evaluator`  | Not supported |

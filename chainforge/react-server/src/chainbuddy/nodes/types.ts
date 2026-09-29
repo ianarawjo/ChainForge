@@ -55,6 +55,11 @@ export interface SettingSpec {
    * never has to repeat a list ChainForge will grow.
    */
   values?(): string[];
+  /**
+   * For a list of { model } by list_models ID: whether the models respond to
+   * prompts, or judge responses. A judge-only model can only be a judge.
+   */
+  models?: "respond" | "judge";
 }
 
 export interface NodeKind {

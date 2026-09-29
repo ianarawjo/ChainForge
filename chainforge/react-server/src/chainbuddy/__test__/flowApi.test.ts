@@ -976,3 +976,113 @@ test("describeChanges shows list edits as items added and removed", () => {
     { kind: "connect", text: 'Connect "Summaries" → "Is short"\'s responses' },
   ]);
 });
+
+describe("LLM Scorers and their judges", () => {
+  const JEV: ModelInfo = {
+    id: "openrouter/~typesafe/jev-latest",
+    name: "Jev",
+    provider: "OpenRouter",
+    ready: true,
+    judgeOnly: true,
+    defaultJudge: true,
+  };
+  const withJev = [...MODELS, JEV];
+  // A Prompt Node's responses, scored and plotted.
+  const scored = (scorer: Record<string, unknown>) => [
+    newFlow[0],
+    newFlow[1],
+    newFlow[3],
+    { op: "add_node", ref: "judge", type: "llmeval", settings: scorer },
+    {
+      op: "connect",
+      from: { node: "ask", output: "responses" },
+      to: { node: "judge", input: "responses" },
+    },
+  ];
+
+  test("list_models lists judge-only models apart, with the default judge", () => {
+    const { tools } = createStubTools({ models: withJev });
+    const out = run(tools, "list_models");
+    expect(out.models.map((m: any) => m.id)).not.toContain(JEV.id);
+    expect(out.judges_only).toEqual([{ id: JEV.id, name: "Jev" }]);
+    expect(out.default_judge).toBe(JEV.id);
+  });
+
+  test("a Prompt Node can't use a judge-only model", () => {
+    const { tools } = createStubTools({ models: withJev });
+    const changes = [
+      newFlow[0],
+      {
+        ...newFlow[1],
+        settings: { ...newFlow[1].settings, models: [{ model: JEV.id }] },
+      },
+      newFlow[3],
+    ];
+    expect(propose(tools, changes).problems).toEqual([
+      "changes[1] (add_node): Jev only judges responses, in an LLM Scorer; it can't write them. Pick a model from list_models' models.",
+    ]);
+  });
+
+  test("a new scorer given no judges gets the default judge", () => {
+    const { tools, proposals } = createStubTools({ models: withJev });
+    const out = propose(tools, scored({ rubric: "Is the response polite?" }));
+    expect(out.status).toBe("awaiting_approval");
+    const add = proposals[0].changes[3] as any;
+    // Named, so the proposal card shows "Jev" rather than its ID.
+    expect(add.settings.judges).toEqual([{ model: JEV.id, nickname: "Jev" }]);
+  });
+
+  test("with no default judge set up, it must be given judges", () => {
+    const { tools } = createStubTools({
+      models: [...MODELS, { ...JEV, ready: false }],
+    });
+    expect(
+      propose(tools, scored({ rubric: "Is the response polite?" })).problems,
+    ).toEqual([
+      "changes[3] (add_node): a new llmeval node needs judges. There's no default judge set up, so pick them from list_models.",
+    ]);
+  });
+
+  test("values from the flow need {#name}, and a text judge to see them", () => {
+    const { tools } = createStubTools({ models: withJev });
+    const rubric = "Does the response give the same answer as {#answer}?";
+    expect(propose(tools, scored({ rubric })).problems).toEqual([
+      "changes[3] (add_node): openrouter/~typesafe/jev-latest sees each response and the rubric as written, so it can't use {#answer}. Give the scorer judges from list_models' models instead.",
+    ]);
+    const judges = [{ model: "openrouter/openai/gpt-5.4-mini" }];
+    expect(propose(tools, scored({ rubric, judges })).status).toBe(
+      "awaiting_approval",
+    );
+    expect(
+      propose(tools, scored({ rubric: "Same as {answer}?", judges })).problems,
+    ).toEqual([
+      "changes[3] (add_node): rubric uses {answer}. To use a value from the flow, write {#answer}; for literal braces, write \\{ and \\}.",
+    ]);
+  });
+
+  test("categorical and numeric scores need their categories and scale", () => {
+    const { tools } = createStubTools({ models: withJev });
+    const rubric = "How polite is the response?";
+    expect(
+      propose(tools, scored({ rubric, format: "categorical" })).problems,
+    ).toEqual([
+      "changes[3] (add_node): a categorical scorer needs categories: at least two.",
+    ]);
+    expect(
+      propose(tools, scored({ rubric, format: "numeric", scale: ["Rude"] }))
+        .problems,
+    ).toEqual([
+      "changes[3] (add_node): a numeric scorer needs a scale of 2 to 10 levels, lowest first.",
+    ]);
+    expect(
+      propose(
+        tools,
+        scored({
+          rubric,
+          format: "numeric",
+          scale: ["Rude", "Neutral", "Warm"],
+        }),
+      ).status,
+    ).toBe("awaiting_approval");
+  });
+});

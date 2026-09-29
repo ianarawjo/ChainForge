@@ -8,14 +8,22 @@
 import {
   getProvider,
   hasAPIKeysFor,
+  isDecisionModel,
   LLM,
   LLMProvider,
+  OPENROUTER_PREFIX,
 } from "../../backend/models";
 import { LLMGroup, LLMSpec } from "../../backend/typing";
 import { newModelSpec } from "../../modelSpec";
 import useStore, { initLLMProviderMenu } from "../../store";
 import { ModelInfo } from "../flowApi/types";
 import { ModelResolver } from "../nodes/types";
+
+/**
+ * The judge a new LLM Scorer gets when ChainBuddy doesn't choose one: TypeSafe's
+ * Jev, a model made for judging, when the user has an OpenRouter key.
+ */
+export const DEFAULT_JUDGE = `${OPENROUTER_PREFIX}~typesafe/jev-latest`;
 
 /** A model's ID: "ollama/<name>" for Ollama models, else its model string. */
 export function modelIdOf(llm: LLMSpec): string {
@@ -47,7 +55,7 @@ function menuGroups(): Map<string, string> {
  * Ollama's. A model is ready when its provider's API keys are set, in
  * Settings or as environment variables; ChainBuddy is told only which, never
  * the keys. Small in-browser models are marked as a fallback, for when
- * nothing else is set up.
+ * nothing else is set up, and models that only judge (such as Jev) as such.
  */
 export function listModels(): ModelInfo[] {
   const { apiKeys, ollamaModels, AvailableLLMs } = useStore.getState();
@@ -72,12 +80,14 @@ export function listModels(): ModelInfo[] {
       provider: groups.get(item.model) ?? provider ?? "Custom",
       ready: provider !== undefined && hasAPIKeysFor(provider, apiKeys),
       ...(provider === LLMProvider.WebLLM ? { fallback: true } : {}),
+      ...(isDecisionModel(item.model) ? { judgeOnly: true } : {}),
+      ...(item.model === DEFAULT_JUDGE ? { defaultJudge: true } : {}),
     });
   }
   return models;
 }
 
-/** What the Prompt Node's kind uses to read and write its models. */
+/** What node kinds use to read and write their models. */
 export const modelResolver: ModelResolver = {
   idOf: modelIdOf,
 

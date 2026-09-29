@@ -32,7 +32,7 @@ export interface FlowView {
 }
 
 export interface ModelInfo {
-  /** What a Prompt Node's `models[].model` setting holds. */
+  /** What a model setting holds, such as a Prompt Node's `models[].model`. */
   id: string;
   name: string;
   provider: string;
@@ -40,6 +40,10 @@ export interface ModelInfo {
   ready: boolean;
   /** Offered only when nothing else is set up, such as a small in-browser model. */
   fallback?: boolean;
+  /** Only scores responses, as an LLM Scorer's judge; it can't write them. */
+  judgeOnly?: boolean;
+  /** The judge a new LLM Scorer gets when it's given none. */
+  defaultJudge?: boolean;
 }
 
 /** A change, after checking. Node references are ids or refs. */

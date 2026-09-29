@@ -23,8 +23,8 @@ JavaScript evaluators.
 ## Don't use it for
 
 - Judgments that need reading and interpretation, such as tone or
-  helpfulness. That's the LLM Scorer, which has a model judge. Say so, rather
-  than writing brittle code to approximate it.
+  helpfulness. That's the LLM Scorer, which has models judge. Use it rather
+  than writing brittle code to approximate one.
 - Changing the response text. That's a JavaScript Processor.
 - Measuring speed, cost, tokens or energy. ChainForge records those while it
   runs the prompts; plot them with a Vis Node connected straight to the

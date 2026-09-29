@@ -7,6 +7,7 @@ import type { Support } from "../flowApi/types";
 import { Dict } from "../../backend/typing";
 import { evaluatorKind } from "./evaluator";
 import { inspectKind } from "./inspect";
+import { llmevalKind } from "./llmeval";
 import { promptKind } from "./prompt";
 import { tableKind } from "./table";
 import { textfieldsKind } from "./textfields";
@@ -18,6 +19,7 @@ export const NODE_KINDS: NodeKind[] = [
   textfieldsKind,
   tableKind,
   evaluatorKind,
+  llmevalKind,
   visKind,
   inspectKind,
 ];
