@@ -4,7 +4,7 @@ from collections import defaultdict
 import copy
 from functools import lru_cache
 
-from chainforge.rag.devices import torch_device, warn_falling_back_to_cpu
+from chainforge.rag.devices import fall_back_to_cpu, torch_device
 
 
 @lru_cache(maxsize=2)
@@ -87,13 +87,13 @@ def cross_encoder_rerank(documents: List[str], query: str = "", **kwargs: Any) -
         pairs = [(query, doc) for doc in documents]
 
         # Get relevance scores
-        device = torch_device()
+        device = torch_device(model_name)
         try:
             scores = _load_cross_encoder(model_name, device).predict(pairs, batch_size=batch_size)
         except (RuntimeError, NotImplementedError) as e:
             if device == "cpu":
                 raise
-            warn_falling_back_to_cpu("Cross-encoder reranking", device, e)
+            fall_back_to_cpu("Cross-encoder reranking", model_name, device, e)
             scores = _load_cross_encoder(model_name, "cpu").predict(pairs, batch_size=batch_size)
         
         # Create results with scores and original indices

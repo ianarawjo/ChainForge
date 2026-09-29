@@ -2274,14 +2274,6 @@ export const OpenAICompatibleSettings: ModelSettingsDict = {
           'Where the server\'s OpenAI-compatible API is, up to and including /v1. The server must accept requests from web pages (CORS); in LM Studio, turn on "Enable CORS". Common defaults: LM Studio http://localhost:1234/v1, llama-server and mlx_lm.server http://localhost:8080/v1, Ollama http://localhost:11434/v1, vLLM http://localhost:8000/v1 (ChainForge also uses port 8000 by default, so run one of them on another port).',
         default: "http://localhost:1234/v1",
       },
-      api_key: {
-        type: "string",
-        title: "API key",
-        description:
-          "Only if the server asks for one. Unlike keys in Settings, it is saved with this model's settings, including in exported flows.",
-        default: "",
-        allow_empty_str: true,
-      },
       system_msg: {
         ...ChatGPTSettings.schema.properties.system_msg,
         default: "",
@@ -2302,7 +2294,6 @@ export const OpenAICompatibleSettings: ModelSettingsDict = {
   uiSchema: {
     ...ChatGPTSettings.uiSchema,
     model: { "ui:widget": "datalist" },
-    api_key: { "ui:widget": "password" },
   },
   postprocessors: {
     ...ChatGPTSettings.postprocessors,

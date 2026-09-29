@@ -32,15 +32,18 @@ jest.mock("../localEnergy", () => ({
 }));
 
 // eslint-disable-next-line import/first
-import { afterEach, describe, expect, test } from "@jest/globals";
+import { describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
 import {
   call_llm,
   call_ollama_provider,
   call_openai_compatible,
+  clear_api_keys,
   extract_reasoning,
   extract_responses,
   set_api_keys,
+  onThisMachine,
+  ragMethodRunsLocalModel,
   split_think_tags,
 } from "../utils";
 // eslint-disable-next-line import/first
@@ -63,6 +66,10 @@ import { LATENCY_KEY, extract_stats } from "../responseStats";
 import { discoverLocalModels, localModelsMenuGroup } from "../localModels";
 // eslint-disable-next-line import/first
 import { Dict, LLMGroup, LLMSpec } from "../typing";
+// eslint-disable-next-line import/first
+import { beginEnergy, endEnergy } from "../localEnergy";
+// eslint-disable-next-line import/first
+import { UserForcedPrematureExit } from "../errors";
 
 type Call = { url: string; init: RequestInit; body: Dict };
 let calls: Call[] = [];
@@ -161,15 +168,74 @@ describe("OpenAI-compatible servers", () => {
     });
   });
 
-  test("send the server's own API key when it has one", async () => {
+  test("send the key from Settings when the server needs one, never a model setting's", async () => {
+    set_api_keys({ OpenAICompatible: "vllm-key" });
+    try {
+      mockFetch({ body: completion("ok") });
+      await call_openai_compatible("Q", model, 1, 1, {
+        base_url: "http://gpu-box:8000/v1",
+        api_key: "saved-in-an-old-flow", // keys were once a model setting
+      });
+      expect(new Headers(calls[0].init.headers).get("authorization")).toBe(
+        "Bearer vllm-key",
+      );
+      expect(calls[0].body).not.toHaveProperty("api_key");
+    } finally {
+      clear_api_keys();
+    }
+  });
+
+  test("keep the responses already generated when a later request fails", async () => {
+    mockFetch(
+      { body: completion("First") },
+      { status: 500, body: { error: { message: "model crashed" } } },
+    );
+    const [, responses] = await call_openai_compatible("Q", model, 3, 1, {
+      base_url: "http://localhost:1234/v1",
+    });
+    expect(
+      extract_responses(responses, model, LLMProvider.OpenAICompatible),
+    ).toEqual(["First"]);
+    // Not asked again: a local server's failure isn't fixed by retrying
+    expect(calls).toHaveLength(2);
+  });
+
+  test("stop the request in flight when cancelled", async () => {
+    let aborted = false;
+    (globalThis as any).fetch = jest.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => {
+            aborted = true;
+            reject(
+              new DOMException("The operation was aborted.", "AbortError"),
+            );
+          });
+        }),
+    );
+    let cancelled = false;
+    setTimeout(() => (cancelled = true), 50);
+    await expect(
+      call_openai_compatible(
+        "Q",
+        model,
+        1,
+        1,
+        { base_url: "http://localhost:1234/v1" },
+        () => cancelled,
+      ),
+    ).rejects.toBeInstanceOf(UserForcedPrematureExit);
+    expect(aborted).toBe(true);
+  });
+
+  test("on this machine, mark their time as busy for energy measurement", async () => {
+    (beginEnergy as jest.Mock).mockResolvedValueOnce("e1" as never);
     mockFetch({ body: completion("ok") });
     await call_openai_compatible("Q", model, 1, 1, {
-      base_url: "http://gpu-box:8000/v1",
-      api_key: "vllm-key",
+      base_url: "http://localhost:1234/v1",
     });
-    expect(new Headers(calls[0].init.headers).get("authorization")).toBe(
-      "Bearer vllm-key",
-    );
+    // Ended without timings: the request is dropped, not measured
+    expect(endEnergy).toHaveBeenLastCalledWith("e1", expect.any(Number));
   });
 
   test("separate reasoning the server put in <think> tags or beside the answer", async () => {
@@ -269,6 +335,21 @@ describe("Ollama", () => {
     });
   });
 
+  test("keeps the responses already generated when a later request fails", async () => {
+    mockFetch(
+      { body: ollamaReply("Paris", {}) },
+      { status: 500, body: { error: "out of memory" } },
+    );
+    const [, responses] = await call_ollama_provider("Q", "ollama", 3, 1, {
+      ollamaModel: "qwen3:4b",
+      ollama_url: "http://localhost:11434/api",
+      model_type: "chat",
+    });
+    expect(extract_responses(responses, "ollama", LLMProvider.Ollama)).toEqual([
+      "Paris",
+    ]);
+  });
+
   test("reports Ollama's errors instead of an empty response", async () => {
     mockFetch({
       status: 404,
@@ -296,6 +377,59 @@ test("split_think_tags", () => {
 });
 
 describe("local servers' requests", () => {
+  test("RAG methods that run a model on this machine are recognized", () => {
+    expect(ragMethodRunsLocalModel({ baseMethod: "cross_encoder" })).toBe(true);
+    expect(ragMethodRunsLocalModel({ embeddingProvider: "ollama" })).toBe(true);
+    // The server reads the provider from the method's settings first
+    expect(
+      ragMethodRunsLocalModel({
+        embeddingProvider: "openai",
+        settings: { embeddingProvider: "sentence-transformers" },
+      }),
+    ).toBe(true);
+    expect(ragMethodRunsLocalModel({ embeddingProvider: "openai" })).toBe(
+      false,
+    );
+    expect(ragMethodRunsLocalModel({ baseMethod: "bm25" })).toBe(false);
+    expect(ragMethodRunsLocalModel({ baseMethod: "cohere_rerank" })).toBe(
+      false,
+    );
+  });
+
+  test("other work on this machine takes its turn, marked as busy", async () => {
+    (beginEnergy as jest.Mock).mockResolvedValueOnce("e2" as never);
+    let running = 0;
+    let peak = 0;
+    const busy = async () => {
+      running++;
+      peak = Math.max(peak, running);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      running--;
+    };
+    (globalThis as any).fetch = jest.fn(async () => {
+      await busy();
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ message: { content: "Hi" } }),
+      };
+    });
+    const [, embedded] = await Promise.all([
+      call_ollama_provider("Q", "ollama", 2, 1, {
+        ollamaModel: "a",
+        ollama_url: "http://localhost:11434/api",
+        model_type: "chat",
+      }),
+      onThisMachine(async () => {
+        await busy();
+        return 42;
+      }),
+    ]);
+    expect(embedded).toBe(42);
+    expect(peak).toBe(1);
+    expect(endEnergy).toHaveBeenCalledWith("e2", expect.any(Number));
+  });
+
   test("run one at a time on this machine, across servers and models", async () => {
     // Whichever server they go to: the energy measured is the whole machine's
     let running = 0;

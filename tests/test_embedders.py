@@ -248,6 +248,7 @@ class TestDevice:
 
     def test_falls_back_to_the_cpu_when_the_gpu_fails(self, monkeypatch, fake_sentence_transformers):
         monkeypatch.setenv(devices.DEVICE_ENV_VAR, "mps")
+        monkeypatch.setattr(devices, "_failed_on_gpu", set())
 
         def model_for(name, device):
             model = MagicMock()
@@ -261,6 +262,13 @@ class TestDevice:
         assert embeddings.sentence_transformers_embedder(["a"], "m") == [[1.0, 1.0]]
         devices_used = [c.kwargs["device"] for c in fake_sentence_transformers.SentenceTransformer.call_args_list]
         assert devices_used == ["mps", "cpu"]
+
+        # From then on, that model goes straight to the CPU; others still try the GPU
+        assert embeddings.sentence_transformers_embedder(["b"], "m") == [[1.0, 1.0]]
+        assert devices.torch_device("m") == "cpu"
+        assert devices.torch_device("other-model") == "mps"
+        devices_used = [c.kwargs["device"] for c in fake_sentence_transformers.SentenceTransformer.call_args_list]
+        assert devices_used == ["mps", "cpu"]  # the CPU copy, cached
 
 
 class TestOllamaEmbedder:

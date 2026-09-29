@@ -1,7 +1,7 @@
 import os
 from functools import lru_cache
 
-from chainforge.rag.devices import torch_device, warn_falling_back_to_cpu
+from chainforge.rag.devices import fall_back_to_cpu, torch_device
 
 """
 NOTE: The following API key names are passed in from the ChainForge settings:
@@ -137,14 +137,14 @@ def huggingface_embedder(texts, model_name="sentence-transformers/all-mpnet-base
                 embeddings.extend(pooled.cpu().tolist())
             return embeddings
 
-        device = torch_device()
+        device = torch_device(path or model_name)
         try:
             return embed(device)
         except (RuntimeError, NotImplementedError) as e:
             # Some models use operations a GPU backend (MPS especially) lacks.
             if device == "cpu":
                 raise
-            warn_falling_back_to_cpu("HuggingFace embedding", device, e)
+            fall_back_to_cpu("HuggingFace embedding", path or model_name, device, e)
             return embed("cpu")
     except Exception as e:
         print(f"HuggingFace embedder failed: {str(e)}")
@@ -267,14 +267,14 @@ def sentence_transformers_embedder(texts, model_name="all-MiniLM-L6-v2", path=No
     """
     try:
         texts = _with_prefix(texts, model_name, input_type)
-        device = torch_device()
+        device = torch_device(path or model_name)
         print(f"Using SentenceTransformer model: {model_name} for {len(texts)} texts on {device}")
         try:
             return _load_sentence_transformer(path or model_name, device).encode(texts, batch_size=32).tolist()
         except (RuntimeError, NotImplementedError) as e:
             if device == "cpu":
                 raise
-            warn_falling_back_to_cpu("SentenceTransformer embedding", device, e)
+            fall_back_to_cpu("SentenceTransformer embedding", path or model_name, device, e)
             return _load_sentence_transformer(path or model_name, "cpu").encode(texts, batch_size=32).tolist()
     except Exception as e:
         print(f"SentenceTransformer embedder failed: {str(e)}")

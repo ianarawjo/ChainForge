@@ -10,7 +10,14 @@ import sys
 DEVICE_ENV_VAR = "CHAINFORGE_TORCH_DEVICE"
 
 
-def torch_device() -> str:
+# Models that failed on the GPU, which run on the CPU from then on
+_failed_on_gpu = set()
+
+
+def torch_device(model: str = "") -> str:
+    """The device to run `model` on: the CPU if it failed on the GPU before."""
+    if model and model in _failed_on_gpu:
+        return "cpu"
     override = os.environ.get(DEVICE_ENV_VAR, "").strip()
     if override:
         return override
@@ -26,6 +33,9 @@ def torch_device() -> str:
     return "cpu"
 
 
-def warn_falling_back_to_cpu(what: str, device: str, error: Exception) -> None:
-    print(f"{what} failed on {device} ({type(error).__name__}: {error}); retrying on the CPU. "
-          f"Set {DEVICE_ENV_VAR}=cpu to always use the CPU.", file=sys.stderr)
+def fall_back_to_cpu(what: str, model: str, device: str, error: Exception) -> None:
+    """Notes that `model` failed on `device`, so it runs on the CPU from now on
+    rather than failing on the GPU first every time."""
+    _failed_on_gpu.add(model)
+    print(f"{what} with {model} failed on {device} ({type(error).__name__}: {error}); using the CPU "
+          f"for it from now on. Set {DEVICE_ENV_VAR}=cpu to always use the CPU.", file=sys.stderr)

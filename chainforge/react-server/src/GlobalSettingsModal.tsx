@@ -274,6 +274,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         DeepSeek: "",
         MiniMax: "",
         OpenRouter: "",
+        OpenAICompatible: "",
         Cohere: "",
       },
 
@@ -714,7 +715,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   <>
                     <Divider
                       my="xs"
-                      label="Ollama Settings"
+                      label="Local Model Servers"
                       labelPosition="center"
                     />
                     <TextInput
@@ -722,6 +723,13 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                       description="ChainForge will attempt to contact the Ollama API at this URL. The default is http://localhost:11434"
                       placeholder="Paste your Ollama Server Base URL here."
                       {...form.getInputProps("Ollama_BaseURL")}
+                    />
+                    <br />
+                    <TextInput
+                      label="OpenAI-compatible Server API Key"
+                      description="Only if your server asks for one (e.g. vLLM started with --api-key). Sent to OpenAI-compatible servers only, never your OpenAI key."
+                      placeholder="Leave blank if your server needs no key"
+                      {...form.getInputProps("OpenAICompatible")}
                     />
                     <br />
                   </>
