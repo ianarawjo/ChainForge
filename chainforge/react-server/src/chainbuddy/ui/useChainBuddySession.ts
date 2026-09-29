@@ -214,6 +214,14 @@ export function useChainBuddySession(model: ChainBuddyModel) {
           streaming = true;
         } else if (e.type === "reasoning") setStatus("Thinking…");
         else if (e.type === "tool_call_start") {
+          // Text before a tool call narrates the step ("Now I'll…"), which
+          // the activity lines already show; only the final reply stays.
+          if (streaming)
+            setItems((its) =>
+              its[its.length - 1]?.kind === "assistant"
+                ? its.slice(0, -1)
+                : its,
+            );
           streaming = false;
           setStatus(
             e.name === "propose_changes"
