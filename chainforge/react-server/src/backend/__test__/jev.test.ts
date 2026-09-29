@@ -18,7 +18,12 @@ import { beforeAll, beforeEach, describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
 import { call_llm, extract_responses, set_api_keys } from "../utils";
 // eslint-disable-next-line import/first
-import { LLMProvider, isDecisionModel, openRouterEmoji } from "../models";
+import {
+  LLMProvider,
+  isDecisionModel,
+  openRouterEmoji,
+  withoutDecisionModels,
+} from "../models";
 // eslint-disable-next-line import/first
 import { evalWithLLM } from "../backend";
 // eslint-disable-next-line import/first
@@ -92,6 +97,39 @@ describe("recognizing Jev", () => {
     expect(isDecisionModel("openrouter/anthropic/claude-sonnet-5")).toBe(false);
     expect(isDecisionModel("typesafe/jev-1.13")).toBe(false); // not through OpenRouter
     expect(openRouterEmoji(JEV)).toBe("⚖️");
+  });
+});
+
+describe("keeping Jev out of text models' menus", () => {
+  const sonnet = judge("Sonnet", "openrouter/anthropic/claude-sonnet-5");
+  const jev = judge("Jev", JEV);
+
+  test("drops decision models, and groups they leave empty", () => {
+    const menu = [
+      { group: "Favorites", emoji: "♥️", items: [jev] },
+      { group: "OpenRouter", emoji: "🔀", items: [sonnet, jev] },
+      jev,
+    ];
+    expect(withoutDecisionModels(menu)).toEqual([
+      { group: "OpenRouter", emoji: "🔀", items: [sonnet] },
+    ]);
+    // The menu itself is left as it was, for LLM Scorers' judges
+    expect(menu[1]).toEqual({
+      group: "OpenRouter",
+      emoji: "🔀",
+      items: [sonnet, jev],
+    });
+  });
+
+  test("the app's menu offers Jev only to judges", () => {
+    const { initLLMProviderMenu } =
+      jest.requireActual<typeof import("../../store")>("../../store");
+    const models = (m: any[]): string[] =>
+      m.flatMap((i) => ("group" in i ? models(i.items) : [i.model]));
+    expect(models(initLLMProviderMenu)).toContain(JEV);
+    expect(models(withoutDecisionModels(initLLMProviderMenu))).not.toContain(
+      JEV,
+    );
   });
 });
 

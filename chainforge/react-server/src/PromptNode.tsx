@@ -88,6 +88,7 @@ import {
   queryLLM,
 } from "./backend/backend";
 import { MediaLookup, StringLookup } from "./backend/cache";
+import { isDecisionModel } from "./backend/models";
 import { union } from "./backend/setUtils";
 import AreYouSureModal, { AreYouSureModalRef } from "./AreYouSureModal";
 import TemplateHighlightTextarea, {
@@ -1024,6 +1025,24 @@ Soft failing by replacing undefined with empty strings.`,
     // Check that there is at least one LLM selected:
     if (_llmItemsCurrState.length === 0) {
       triggerAlert("Please select at least one LLM to prompt.");
+      return;
+    }
+
+    // Decision models (e.g. Jev) answer typed questions rather than writing
+    // text, so they can't answer prompts. A flow may still hold one from before
+    // the menu left them out, or from a model changed in its settings.
+    const decisionModels = _llmItemsCurrState.filter((llm) =>
+      isDecisionModel(llm.model),
+    );
+    if (decisionModels.length > 0) {
+      const names = decisionModels.map((llm) => llm.name).join(", ");
+      const [makes, it, them] =
+        decisionModels.length > 1
+          ? ["make", "they", "them"]
+          : ["makes", "it", "it"];
+      triggerAlert(
+        `${names} ${makes} decisions rather than writing text, so ${it} can't answer prompts. Remove ${them} here, and use ${them} as a judge in an LLM Scorer instead.`,
+      );
       return;
     }
 

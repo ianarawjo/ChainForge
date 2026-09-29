@@ -3,6 +3,7 @@
  */
 import Bottleneck from "bottleneck";
 import { UserForcedPrematureExit } from "./errors";
+import type { LLMGroup, LLMSpec } from "./typing";
 
 export enum NativeLLM {
   // WebLLM (fully in-browser, no API key). Model IDs come from web-llm's own
@@ -353,6 +354,22 @@ export function isDecisionModel(llm: LLM | string): boolean {
     name.startsWith(OPENROUTER_PREFIX) &&
     /^~?typesafe\//i.test(name.substring(OPENROUTER_PREFIX.length))
   );
+}
+
+/**
+ * A model menu without decision models, for nodes that generate text (e.g. a
+ * Prompt Node). Groups left empty (e.g. Favorites holding only Jev) are dropped.
+ */
+export function withoutDecisionModels(
+  menu: (LLMSpec | LLMGroup)[],
+): (LLMSpec | LLMGroup)[] {
+  return menu.flatMap((item): (LLMSpec | LLMGroup)[] => {
+    if (!("group" in item)) return isDecisionModel(item.model) ? [] : [item];
+    const items = withoutDecisionModels(item.items);
+    return items.length > 0
+      ? [{ ...item, items: items as LLMSpec[] | LLMGroup[] }]
+      : [];
+  });
 }
 
 /**

@@ -554,6 +554,7 @@ export const LLMEvaluatorComponent = forwardRef<
         onItemsChange={handleLLMListItemsChange}
         hideTrashIcon={!allowMultipleJudges || llmScorers.length <= 1}
         bgColor={modelContainerBgColor}
+        offerDecisionModels
       />
     </>
   );

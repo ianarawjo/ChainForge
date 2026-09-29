@@ -32,6 +32,7 @@ import {
   OPENROUTER_IMAGE_PREFIX,
   OPENROUTER_PREFIX,
   openRouterEmoji,
+  withoutDecisionModels,
 } from "./backend/models";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
 import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
@@ -298,6 +299,11 @@ export interface LLMListContainerProps {
   hideTrashIcon?: boolean;
   bgColor?: string;
   selectModelAction?: "add" | "replace";
+  /**
+   * Whether the menu offers decision models (e.g. Jev), which answer typed
+   * questions rather than writing text. Only an LLM Scorer's judges can use them.
+   */
+  offerDecisionModels?: boolean;
 }
 
 export const LLMListContainer = forwardRef<
@@ -313,6 +319,7 @@ export const LLMListContainer = forwardRef<
     onItemsChange,
     hideTrashIcon,
     bgColor,
+    offerDecisionModels,
   },
   ref,
 ) {
@@ -505,7 +512,11 @@ export const LLMListContainer = forwardRef<
         };
       }
     };
-    const res = initLLMProviderMenu.map((i) => convert(i));
+    // Decision models (e.g. Jev) can't write text, so only judges are offered them
+    const menu = offerDecisionModels
+      ? initLLMProviderMenu
+      : withoutDecisionModels(initLLMProviderMenu);
+    const res = menu.map((i) => convert(i));
 
     for (const item of AvailableLLMs) {
       if (initModels.has(item.base_model)) {
@@ -523,6 +534,7 @@ export const LLMListContainer = forwardRef<
     handleSelectModel,
     refreshLLMProviderList,
     removeFavorite,
+    offerDecisionModels,
   ]);
 
   return (
