@@ -802,8 +802,9 @@ def makeFetchCall():
         return jsonify({'error': blocked})
 
     # A redirect could send the request somewhere offline mode doesn't allow
-    response = py_requests.post(url, headers=headers, json=body,
-                                allow_redirects=not offline_mode.is_offline())
+    with offline_mode.local_connections_only():
+        response = py_requests.post(url, headers=headers, json=body,
+                                    allow_redirects=not offline_mode.is_offline())
 
     if response.status_code == 200:
         ret = jsonify({'response': response.json()})
@@ -1012,6 +1013,13 @@ def offline_mode_setting():
                             'offline': True, 'locked': True}), 403
         offline_mode.set_enabled(on)
     return jsonify({'offline': offline_mode.is_offline(), 'locked': offline_mode.is_locked()})
+
+@app.route('/app/isLocalHost', methods=['POST'])
+def is_local_host():
+    """Whether a name resolves only to addresses on this machine or the local network,
+    for the page's offline mode, which can't look names up itself."""
+    host = (request.get_json(silent=True) or {}).get('host')
+    return jsonify({'local': isinstance(host, str) and offline_mode.is_local_hostname(host)})
 
 @app.route('/app/discoverLocalModels', methods=['POST'])
 def discover_local_models():
@@ -2309,7 +2317,8 @@ def proxy_image():
     
     try:
         # Use Python requests to fetch the image
-        response = py_requests.get(url, stream=True, allow_redirects=not offline_mode.is_offline())
+        with offline_mode.local_connections_only():
+            response = py_requests.get(url, stream=True, allow_redirects=not offline_mode.is_offline())
 
         if not response.ok:
             return jsonify({"error": f"Failed to fetch image: {response.status_code} {response.reason}"}), response.status_code

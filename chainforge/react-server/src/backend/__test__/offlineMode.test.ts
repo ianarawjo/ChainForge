@@ -10,6 +10,8 @@ import {
   isLocalURL,
   isOfflineMode,
   offlineBlockReason,
+  resolvesLocally,
+  setHostChecker,
   setOfflineMode,
   withOfflineGuard,
 } from "../offlineMode";
@@ -25,7 +27,6 @@ describe("isLocalHostname", () => {
     "localhost",
     "LOCALHOST",
     "app.localhost",
-    "labmac.local",
     "127.0.0.1",
     "10.0.0.5",
     "172.16.4.1",
@@ -36,7 +37,6 @@ describe("isLocalHostname", () => {
     "[::1]",
     "fd12:3456::1",
     "fe80::1",
-    "labserver", // single-label names only resolve locally
     "0.0.0.0",
   ])("%s is local", (host) => expect(isLocalHostname(host)).toBe(true));
 
@@ -48,7 +48,34 @@ describe("isLocalHostname", () => {
     "100.128.0.1",
     "2001:4860:4860::8888",
     "",
+    // Names aren't, until ChainForge's server has looked them up
+    "labserver",
+    "labmac.local",
   ])("%s is not local", (host) => expect(isLocalHostname(host)).toBe(false));
+
+  test("names are local once ChainForge's server resolves them to local addresses", async () => {
+    // On some networks a name without dots resolves to a public server
+    const check = jest.fn(async (host: string) => host === "labserver");
+    setHostChecker(check);
+    try {
+      expect(await resolvesLocally("labserver")).toBe(true);
+      expect(isLocalHostname("LabServer")).toBe(true); // remembered
+      expect(await resolvesLocally("proxy")).toBe(false);
+      expect(isLocalHostname("proxy")).toBe(false);
+      await resolvesLocally("labserver");
+      expect(check).toHaveBeenCalledTimes(2); // not asked again
+      // IP addresses are judged as they are
+      expect(await resolvesLocally("8.8.8.8")).toBe(false);
+      expect(check).toHaveBeenCalledTimes(2);
+    } finally {
+      setHostChecker(undefined);
+    }
+  });
+
+  test("without a server to ask, names aren't local", async () => {
+    setHostChecker(undefined);
+    expect(await resolvesLocally("labserver")).toBe(false);
+  });
 });
 
 test("isLocalURL counts the page's own site only when it's a ChainForge server", () => {
@@ -145,7 +172,7 @@ describe("offline mode", () => {
     }
   });
 
-  test("only allows local providers, on local servers", () => {
+  test("only allows local providers, on local servers", async () => {
     setOfflineMode(true);
     for (const provider of [
       LLMProvider.OpenAI,
@@ -153,30 +180,39 @@ describe("offline mode", () => {
       LLMProvider.OpenRouter,
       LLMProvider.HuggingFace,
     ])
-      expect(() => assertProviderAllowedOffline(provider)).toThrow(
+      await expect(assertProviderAllowedOffline(provider)).rejects.toThrow(
         OfflineModeError,
       );
-    expect(() =>
-      assertProviderAllowedOffline(LLMProvider.WebLLM),
-    ).not.toThrow();
-    expect(() =>
-      assertProviderAllowedOffline(LLMProvider.Custom),
-    ).not.toThrow();
-    expect(() =>
-      assertProviderAllowedOffline(LLMProvider.Ollama, {
-        ollama_url: "http://localhost:11434/api",
-      }),
-    ).not.toThrow();
-    expect(() =>
-      assertProviderAllowedOffline(LLMProvider.OpenAICompatible, {
-        base_url: "http://10.1.2.3:8000/v1",
-      }),
-    ).not.toThrow();
-    expect(() =>
+    await assertProviderAllowedOffline(LLMProvider.WebLLM);
+    await assertProviderAllowedOffline(LLMProvider.Custom);
+    await assertProviderAllowedOffline(LLMProvider.Ollama, {
+      ollama_url: "http://localhost:11434/api",
+    });
+    await assertProviderAllowedOffline(LLMProvider.OpenAICompatible, {
+      base_url: "http://10.1.2.3:8000/v1",
+    });
+    await expect(
       assertProviderAllowedOffline(LLMProvider.OpenAICompatible, {
         base_url: "https://api.together.xyz/v1",
       }),
-    ).toThrow(/not on this machine or your local network/);
+    ).rejects.toThrow(/not on this machine or your local network/);
+  });
+
+  test("a model's server named rather than numbered is looked up first", async () => {
+    setOfflineMode(true);
+    setHostChecker(async (host) => host === "gpu-box");
+    try {
+      await assertProviderAllowedOffline(LLMProvider.Ollama, {
+        ollama_url: "http://gpu-box:11434/api",
+      });
+      await expect(
+        assertProviderAllowedOffline(LLMProvider.OpenAICompatible, {
+          base_url: "http://proxy:8080/v1", // resolves to a public address
+        }),
+      ).rejects.toThrow(OfflineModeError);
+    } finally {
+      setHostChecker(undefined);
+    }
   });
 
   test("the fetch guard refuses blocked requests before they're sent", async () => {
@@ -192,6 +228,45 @@ describe("offline mode", () => {
     ).rejects.toThrow(OfflineModeError);
     await guarded("http://localhost:11434/api/tags");
     expect(inner).toHaveBeenCalledTimes(2);
+  });
+
+  test("WebSockets, event streams and beacons are guarded too", () => {
+    const opened: string[] = [];
+    class FakeSocket {
+      static OPEN = 1;
+      constructor(url: string) {
+        opened.push(url);
+      }
+    }
+    const beacons: string[] = [];
+    const win = {
+      WebSocket: FakeSocket,
+      EventSource: FakeSocket,
+      navigator: {
+        sendBeacon: (url: string) => {
+          beacons.push(url);
+          return true;
+        },
+      },
+    } as any;
+    installOfflineGuard(win);
+
+    setOfflineMode(true);
+    expect(() => new win.WebSocket("wss://relay.example.com/")).toThrow(
+      OfflineModeError,
+    );
+    expect(() => new win.EventSource("https://stream.example.com/")).toThrow(
+      OfflineModeError,
+    );
+    expect(win.navigator.sendBeacon("https://track.example.com/", "x")).toBe(
+      false,
+    );
+    const socket = new win.WebSocket("ws://localhost:1234/");
+    expect(socket).toBeInstanceOf(FakeSocket);
+    expect(win.WebSocket.OPEN).toBe(1);
+    expect(win.navigator.sendBeacon("http://localhost:8000/x", "x")).toBe(true);
+    expect(opened).toEqual(["ws://localhost:1234/"]);
+    expect(beacons).toEqual(["http://localhost:8000/x"]);
   });
 
   test("the XMLHttpRequest guard refuses blocked requests (e.g. from axios)", () => {

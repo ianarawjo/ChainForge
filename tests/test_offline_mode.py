@@ -169,3 +169,58 @@ def test_serve_offline_flag(monkeypatch):
     with patch("chainforge.app.run_server") as run_server:
         app.main()
     assert run_server.call_args.kwargs["offline"] is True
+
+
+class TestConnectingOnlyToWhatWasChecked:
+    """A name that passes the check could resolve elsewhere by the time the
+    request connects (DNS rebinding), so the address is checked as it connects."""
+
+    def resolve(self, address):
+        return lambda host, port, *a, **k: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, port))]
+
+    def test_a_name_now_resolving_to_a_public_address_is_refused(self, monkeypatch):
+        offline_mode.set_enabled(True)
+        monkeypatch.setattr(socket, "getaddrinfo", self.resolve("93.184.216.34"))
+        connect = MagicMock()
+        monkeypatch.setattr(offline_mode, "_create_connection", connect)
+        with offline_mode.local_connections_only():
+            with pytest.raises(ConnectionRefusedError, match="Offline mode"):
+                offline_mode._local_only_create_connection(("rebinding.example", 80), 5)
+        connect.assert_not_called()
+
+    def test_connects_to_the_address_it_checked(self, monkeypatch):
+        offline_mode.set_enabled(True)
+        monkeypatch.setattr(socket, "getaddrinfo", self.resolve("192.168.1.50"))
+        connect = MagicMock()
+        monkeypatch.setattr(offline_mode, "_create_connection", connect)
+        with offline_mode.local_connections_only():
+            offline_mode._local_only_create_connection(("labserver", 11434), 5)
+        assert connect.call_args.args[0] == ("192.168.1.50", 11434)
+
+    def test_only_inside_the_block_and_only_while_offline(self, monkeypatch):
+        monkeypatch.setattr(socket, "getaddrinfo", self.resolve("93.184.216.34"))
+        connect = MagicMock()
+        monkeypatch.setattr(offline_mode, "_create_connection", connect)
+        offline_mode._local_only_create_connection(("huggingface.co", 443), 5)  # e.g. a model download
+        with offline_mode.local_connections_only():  # offline mode is off
+            offline_mode._local_only_create_connection(("api.openai.com", 443), 5)
+        assert [c.args[0] for c in connect.call_args_list] == [("huggingface.co", 443), ("api.openai.com", 443)]
+
+    def test_requests_go_through_it(self, monkeypatch):
+        offline_mode.set_enabled(True)
+        monkeypatch.setattr(socket, "getaddrinfo", self.resolve("93.184.216.34"))
+        import requests
+        with offline_mode.local_connections_only():
+            with pytest.raises(requests.ConnectionError, match="Offline mode"):
+                requests.get("http://rebinding.example/", timeout=2)
+
+
+def test_the_page_can_ask_whether_a_name_is_local(client):
+    def resolve(addresses):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (a, 0)) for a in addresses]
+
+    with patch("socket.getaddrinfo", return_value=resolve(["192.168.1.50"])):
+        assert client.post("/app/isLocalHost", json={"host": "labserver"}).get_json() == {"local": True}
+    with patch("socket.getaddrinfo", return_value=resolve(["93.184.216.34"])):
+        assert client.post("/app/isLocalHost", json={"host": "proxy"}).get_json() == {"local": False}
+    assert client.post("/app/isLocalHost", json={}).get_json() == {"local": False}
