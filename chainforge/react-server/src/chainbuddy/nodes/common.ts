@@ -1,8 +1,9 @@
 /** Pieces several node kinds share. */
 
 import { extractTemplateVars } from "../../backend/template";
+import { LLMSpec } from "../../backend/typing";
 import { isPlainObject } from "../runtime/tools";
-import { SettingSpec } from "./types";
+import { ModelResolver, SettingSpec } from "./types";
 
 export const titleSetting: SettingSpec = {
   label: "Title",
@@ -55,4 +56,62 @@ export function templateVars(texts: string[]): string[] {
   for (const text of texts)
     for (const v of extractTemplateVars(text)) if (v[0] !== "#") vars.add(v);
   return Array.from(vars);
+}
+
+/** A setting listing models as { model } by list_models ID (see SettingSpec.models). */
+export function modelsSetting(
+  label: string,
+  use: "respond" | "judge",
+  setting: string,
+): SettingSpec {
+  return {
+    label,
+    models: use,
+    // Compared by ID, since only models already in a node have nicknames.
+    items: {
+      key: (m) => String(field(m, "model")),
+      label: (m) => String(field(m, "nickname") ?? field(m, "model")),
+    },
+    check: (value) => {
+      if (!Array.isArray(value) || value.length === 0)
+        return `${setting} should be a list of at least one { model }.`;
+      if (!value.every((m) => isPlainObject(m) && typeof m.model === "string"))
+        return `each of ${setting} should be { model }, with a model ID from list_models.`;
+      return undefined;
+    },
+  };
+}
+
+/** A node's models as ChainBuddy lists them, from its LLMSpecs. */
+export function modelsOf(llms: LLMSpec[], models: ModelResolver) {
+  return llms.map((llm) => ({ model: models.idOf(llm), nickname: llm.name }));
+}
+
+/**
+ * LLMSpecs for a list of { model }. A model already in the node is kept as it
+ * is, settings and all; a new one is set up as the model menu would.
+ */
+export function modelSpecs(
+  wanted: unknown[],
+  existing: LLMSpec[],
+  models: ModelResolver,
+  setUp?: (spec: LLMSpec) => LLMSpec,
+): LLMSpec[] {
+  const kept = new Set<LLMSpec>();
+  const llms: LLMSpec[] = [];
+  for (const model of wanted.map((m) => String(field(m, "model")))) {
+    const same = existing.find((l) => !kept.has(l) && models.idOf(l) === model);
+    if (same) {
+      kept.add(same);
+      llms.push(same);
+      continue;
+    }
+    const spec = models.toSpec(
+      model,
+      llms.map((l) => l.name),
+    );
+    if (!spec) throw new Error(`No model "${model}".`);
+    llms.push(setUp ? setUp(spec) : spec);
+  }
+  return llms;
 }

@@ -6,6 +6,9 @@ import {
   field,
   hasText,
   listOf,
+  modelsOf,
+  modelsSetting,
+  modelSpecs,
   templateVars,
   titleSetting,
 } from "./common";
@@ -51,24 +54,7 @@ export const promptKind: NodeKind = {
         );
       },
     },
-    models: {
-      label: "Models",
-      required: true,
-      // Compared by ID, since only models already in a node have nicknames.
-      items: {
-        key: (m) => String(field(m, "model")),
-        label: (m) => String(field(m, "nickname") ?? field(m, "model")),
-      },
-      check: (value) => {
-        if (!Array.isArray(value) || value.length === 0)
-          return "models should be a list of at least one { model }.";
-        if (
-          !value.every((m) => isPlainObject(m) && typeof m.model === "string")
-        )
-          return "each model should be { model }, with a model ID from list_models.";
-        return undefined;
-      },
-    },
+    models: { ...modelsSetting("Models", "respond", "models"), required: true },
     responses_per_prompt: {
       label: "Responses per prompt",
       check: (value) =>
@@ -103,10 +89,7 @@ export const promptKind: NodeKind = {
         label: labels[i] ?? `Variant ${i + 1}`,
         text,
       })),
-      models: ((data.llms ?? []) as LLMSpec[]).map((llm) => ({
-        model: models.idOf(llm),
-        nickname: llm.name,
-      })),
+      models: modelsOf((data.llms ?? []) as LLMSpec[], models),
       responses_per_prompt: data.n ?? 1,
     };
   },
@@ -126,26 +109,7 @@ export const promptKind: NodeKind = {
       out.vars = templateVars(texts);
     }
     if (Array.isArray(settings.models)) {
-      const existing: LLMSpec[] = base?.llms ?? [];
-      const kept = new Set<LLMSpec>();
-      const llms: LLMSpec[] = [];
-      for (const { model } of settings.models as { model: string }[]) {
-        // Keep a model already in the node as it is, settings and all.
-        const same = existing.find(
-          (l) => !kept.has(l) && models.idOf(l) === model,
-        );
-        if (same) {
-          kept.add(same);
-          llms.push(same);
-          continue;
-        }
-        const spec = models.toSpec(
-          model,
-          llms.map((l) => l.name),
-        );
-        if (!spec) throw new Error(`No model "${model}".`);
-        llms.push(spec);
-      }
+      const llms = modelSpecs(settings.models, base?.llms ?? [], models);
       out.llms = llms;
     }
     if (typeof settings.responses_per_prompt === "number")

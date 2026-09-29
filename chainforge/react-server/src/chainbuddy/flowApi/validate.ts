@@ -75,13 +75,16 @@ export function checkChanges(
   // Models already in the flow may stay, even if list_models doesn't offer them.
   const knownModels = new Map(models.map((m) => [m.id, m]));
   const modelsInFlow = new Set(
-    flow.nodes.flatMap((n) => {
-      const models = n.settings?.models;
-      return Array.isArray(models)
-        ? models.map((m) => (isPlainObject(m) ? m.model : undefined))
-        : [];
-    }),
+    flow.nodes.flatMap((n) =>
+      modelSettings(kindOf(n.type)).flatMap(([key]) =>
+        listOf(n.settings?.[key]).map((m) =>
+          isPlainObject(m) ? m.model : undefined,
+        ),
+      ),
+    ),
   );
+  // What a new LLM Scorer is given when it's given no judges.
+  const defaultJudge = models.find((m) => m.defaultJudge && m.ready);
 
   raw.forEach((change, i) => {
     const at = `changes[${i}] (${String(change.op)})`;
@@ -112,8 +115,8 @@ export function checkChanges(
         for (const [key, spec] of Object.entries(kind.settings))
           if (spec.required && settings[key] === undefined)
             problems.push(`${at}: a new ${kind.type} node needs ${key}.`);
-      if (Array.isArray(settings.models))
-        for (const m of settings.models) {
+      for (const [key, spec] of modelSettings(kind))
+        for (const m of listOf(settings[key])) {
           if (!isPlainObject(m) || typeof m.model !== "string") continue;
           const info = knownModels.get(m.model);
           if (!info && !modelsInFlow.has(m.model))
@@ -123,6 +126,10 @@ export function checkChanges(
           else if (info && !info.ready && !modelsInFlow.has(m.model))
             problems.push(
               `${at}: "${m.model}" isn't set up yet (${info.provider} needs an API key or isn't running). Pick a model list_models marks as ready.`,
+            );
+          else if (info?.judgeOnly && spec.models === "respond")
+            problems.push(
+              `${at}: ${info.name} only judges responses, in an LLM Scorer; it can't write them. Pick a model from list_models' models.`,
             );
         }
     };
@@ -148,6 +155,16 @@ export function checkChanges(
         const given = isPlainObject(change.settings)
           ? withoutUnchangedReadOnly(kind, change.settings, {})
           : change.settings ?? {};
+        // Judges left out are the default judge, where there is one.
+        if (isPlainObject(given))
+          for (const [key, spec] of modelSettings(kind))
+            if (spec.models === "judge" && given[key] === undefined) {
+              if (defaultJudge) given[key] = [{ model: defaultJudge.id }];
+              else
+                problems.push(
+                  `${at}: a new ${type} node needs ${key}. There's no default judge set up, so pick them from list_models.`,
+                );
+            }
         checkSettings(kind, given, true);
         if (refProblem || typeof ref !== "string") return;
         const settings = isPlainObject(given) ? { ...given } : {};
@@ -159,7 +176,12 @@ export function checkChanges(
           if (problem) problems.push(`${at}: ${problem}`);
         }
         if (problems.length === before)
-          changes.push({ op: "add_node", ref, type, settings });
+          changes.push({
+            op: "add_node",
+            ref,
+            type,
+            settings: withModelNames(kind, settings, knownModels),
+          });
         return;
       }
       case "update_node": {
@@ -225,7 +247,11 @@ export function checkChanges(
         if (problems.length === before) {
           Object.assign(node.settings, settings);
           node.touched = true;
-          changes.push({ op: "update_node", node: id, settings });
+          changes.push({
+            op: "update_node",
+            node: id,
+            settings: withModelNames(kind, settings, knownModels),
+          });
         }
         return;
       }
@@ -452,6 +478,34 @@ function withoutUnchangedReadOnly(
     )
       delete out[key];
   return out;
+}
+
+/**
+ * Settings with each model's name added as its nickname, where it has none,
+ * so the proposal card shows "Jev" rather than a model ID.
+ */
+function withModelNames(
+  kind: NodeKind,
+  settings: Record<string, unknown>,
+  known: Map<string, ModelInfo>,
+): Record<string, unknown> {
+  const out = { ...settings };
+  for (const [key] of modelSettings(kind))
+    if (Array.isArray(out[key]))
+      out[key] = (out[key] as unknown[]).map((m) =>
+        isPlainObject(m) &&
+        m.nickname === undefined &&
+        typeof m.model === "string" &&
+        known.has(m.model)
+          ? { ...m, nickname: known.get(m.model)?.name }
+          : m,
+      );
+  return out;
+}
+
+/** A kind's settings that hold models, as [key, spec]. */
+function modelSettings(kind: NodeKind | undefined) {
+  return Object.entries(kind?.settings ?? {}).filter(([, spec]) => spec.models);
 }
 
 function editableSettings(kind: NodeKind): string[] {

@@ -80,10 +80,14 @@ export function createFlowTools({
     {
       name: "list_models",
       description:
-        "Lists the models a Prompt Node can use right now, from the providers the user has set up, with the IDs to put in its models setting. Also names the providers that aren't set up.",
+        "Lists the models a Prompt Node or an LLM Scorer can use right now, from the providers the user has set up, with the IDs to put in their settings. Also names the providers that aren't set up.",
       parameters: { type: "object", properties: {} },
       run: () => {
-        const models = canvas.listModels();
+        const all = canvas.listModels();
+        // Judge-only models are listed apart, for LLM Scorers.
+        const judgesOnly = all.filter((m) => m.judgeOnly && m.ready);
+        const defaultJudge = judgesOnly.find((m) => m.defaultJudge);
+        const models = all.filter((m) => !m.judgeOnly);
         const ready = models.filter((m) => m.ready);
         // Small in-browser models only when there's nothing else.
         const preferred = ready.filter((m) => !m.fallback);
@@ -109,13 +113,19 @@ export function createFlowTools({
                 in_browser: inBrowser.map(({ id, name }) => ({ id, name })),
               }
             : {}),
+          ...(judgesOnly.length > 0
+            ? {
+                judges_only: judgesOnly.map(({ id, name }) => ({ id, name })),
+              }
+            : {}),
+          ...(defaultJudge ? { default_judge: defaultJudge.id } : {}),
           not_set_up: notSetUp,
           note:
             offered.length === 0
               ? "No models are set up. Ask the user to add an API key in Settings, or to start Ollama."
               : preferred.length === 0
                 ? "Only small models that run in the browser are set up. Say so, and that adding an API key in Settings gives more capable ones."
-                : "Use these. in_browser lists small models that run in the browser: use one only if the user asks for it. If the user asks for a provider in not_set_up, say it needs its API key added in Settings, rather than substituting another.",
+                : `Use these. in_browser lists small models that run in the browser: use one only if the user asks for it.${judgesOnly.length > 0 ? ` judges_only lists models that only judge responses, as an LLM Scorer's judges${defaultJudge ? "; a new LLM Scorer given no judges gets default_judge" : ""}.` : ""} If the user asks for a provider in not_set_up, say it needs its API key added in Settings, rather than substituting another.`,
         };
       },
     },

@@ -58,6 +58,14 @@ const MODELS: ModelInfo[] = [
     ready: true,
     fallback: true,
   },
+  {
+    id: "openrouter/~typesafe/jev-latest",
+    name: "Jev",
+    provider: "OpenRouter",
+    ready: true,
+    judgeOnly: true,
+    defaultJudge: true,
+  },
 ];
 const OLLAMA_MODELS: ModelInfo[] = ["qwen3.5:4b", "gemma4:e4b"].map((name) => ({
   id: `ollama/${name}`,
@@ -91,8 +99,16 @@ const SCENARIOS: {
     request:
       "I want to audit a small Qwen model for gender biases in its short " +
       "responses. Can you make a flow that helps me do that",
-    answer: "Score each response automatically with an evaluator.",
-    adds: ["vis"],
+    answer: "Have a model judge each response for gender stereotypes.",
+    adds: ["llmeval", "vis"],
+  },
+  {
+    name: "a judgment needs an LLM Scorer",
+    flow: EXAMPLE_FLOW,
+    request:
+      "Are these summaries friendly and easy to read? Score them and show me " +
+      "the results.",
+    adds: ["llmeval", "vis"],
   },
   {
     name: "check answers against expected answers",
