@@ -366,9 +366,10 @@ def ollama_embedder(texts, model_name="nomic-embed-text", path=None, api_keys=No
     batch_size = 64
     for i in range(0, len(texts), batch_size):
         try:
-            resp = requests.post(f"{base_url}/api/embed",
-                                 json={"model": model_name, "input": texts[i:i + batch_size]},
-                                 allow_redirects=not offline_mode.is_offline())
+            with offline_mode.local_connections_only():
+                resp = requests.post(f"{base_url}/api/embed",
+                                     json={"model": model_name, "input": texts[i:i + batch_size]},
+                                     allow_redirects=not offline_mode.is_offline())
         except requests.RequestException as e:
             raise ValueError(f"Could not reach Ollama at {base_url}. Is it running? ({e})")
         try:

@@ -67,26 +67,67 @@ export function setOfflineMode(on: boolean): void {
   }
 }
 
-/**
- * Whether a hostname is this machine or on a private network: loopback,
- * private and link-local IP ranges, .local and .localhost names, and bare
- * single-label names (e.g. "labserver"), which only resolve on a local network.
- * 100.64.0.0/10 is included since VPNs like Tailscale use it for private
- * networks of machines.
- */
-export function isLocalHostname(hostname: string): boolean {
-  const host = hostname
+function normalizeHost(hostname: string): string {
+  return hostname
     .trim()
     .toLowerCase()
     .replace(/^\[|\]$/g, "")
     .replace(/\.$/, "");
+}
+
+function isIPAddress(host: string): boolean {
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(":");
+}
+
+/**
+ * Other names, e.g. "labserver" or "labmac.local", count as local only once
+ * ChainForge's server has resolved them to local addresses: a browser can't
+ * look names up itself, and on some networks a name without dots resolves
+ * to a public server (through a DNS search domain). Results, by name.
+ */
+const RESOLVED_TTL_MS = 5 * 60_000;
+const resolvedHosts = new Map<string, { local: boolean; at: number }>();
+let checkHost: ((host: string) => Promise<boolean>) | undefined;
+
+/** Sets how names are checked: by asking ChainForge's server (see index.js). */
+export function setHostChecker(
+  check: ((host: string) => Promise<boolean>) | undefined,
+): void {
+  checkHost = check;
+  resolvedHosts.clear();
+}
+
+/**
+ * Whether a name resolves only to local addresses, asking ChainForge's server
+ * (remembered for a few minutes). False when there's no server to ask.
+ */
+export async function resolvesLocally(hostname: string): Promise<boolean> {
+  const host = normalizeHost(hostname);
+  if (isLocalHostname(host)) return true;
+  if (isIPAddress(host) || !checkHost) return false;
+  const known = resolvedHosts.get(host);
+  if (known && Date.now() - known.at < RESOLVED_TTL_MS) return known.local;
+  let local = false;
+  try {
+    local = await checkHost(host);
+  } catch {
+    local = false;
+  }
+  resolvedHosts.set(host, { local, at: Date.now() });
+  return local;
+}
+
+/**
+ * Whether a hostname is this machine or on a private network, as far as can
+ * be told without looking it up: loopback, private and link-local IP ranges,
+ * .localhost names, and names ChainForge's server has resolved to local
+ * addresses (see resolvesLocally). 100.64.0.0/10 is included since VPNs like
+ * Tailscale use it for private networks of machines.
+ */
+export function isLocalHostname(hostname: string): boolean {
+  const host = normalizeHost(hostname);
   if (host.length === 0) return false;
-  if (
-    host === "localhost" ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".local") ||
-    host === "0.0.0.0"
-  )
+  if (host === "localhost" || host.endsWith(".localhost") || host === "0.0.0.0")
     return true;
 
   const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
@@ -110,8 +151,12 @@ export function isLocalHostname(hostname: string): boolean {
     );
   }
 
-  // A name without dots can't be a public domain
-  return !host.includes(".");
+  const known = resolvedHosts.get(host);
+  return (
+    known !== undefined &&
+    known.local &&
+    Date.now() - known.at < RESOLVED_TTL_MS
+  );
 }
 
 function pageHref(): string {
@@ -174,8 +219,28 @@ function isDownloadHost(hostname: string): boolean {
 }
 
 /**
+ * Like offlineBlockReason, but looks up a name the page can't judge by
+ * itself first (see resolvesLocally).
+ */
+export async function offlineBlockReasonAfterLookup(
+  url: string,
+  method = "GET",
+): Promise<string | undefined> {
+  // Nothing to look up for what's already known to be local, which includes
+  // ChainForge's own server (so asking it about a name doesn't loop)
+  if (!isOfflineMode() || isLocalURL(url)) return undefined;
+  try {
+    await resolvesLocally(new URL(url, pageHref()).hostname);
+  } catch {
+    /* not a URL: judged as given */
+  }
+  return offlineBlockReason(url, method);
+}
+
+/**
  * Why a request may not be sent in offline mode, or undefined if it may.
- * Always undefined when offline mode is off.
+ * Always undefined when offline mode is off. Names not yet looked up (see
+ * offlineBlockReasonAfterLookup) count as not local.
  */
 export function offlineBlockReason(
   url: string,
@@ -229,10 +294,10 @@ export function isLocalProvider(provider: LLMProvider | undefined): boolean {
 }
 
 /** Throws an OfflineModeError if offline mode is on and calling this model would send data off the local network. */
-export function assertProviderAllowedOffline(
+export async function assertProviderAllowedOffline(
   provider: LLMProvider | undefined,
   params?: Dict,
-): void {
+): Promise<void> {
   if (!isOfflineMode()) return;
   if (!isLocalProvider(provider)) {
     const name = (provider && PROVIDER_NAMES[provider]) ?? "This provider";
@@ -246,7 +311,13 @@ export function assertProviderAllowedOffline(
       : provider === LLMProvider.OpenAICompatible
         ? params?.base_url
         : undefined;
-  if (typeof url === "string" && url.trim() && !isLocalURL(url.trim()))
+  if (typeof url !== "string" || !url.trim()) return;
+  try {
+    await resolvesLocally(new URL(url.trim()).hostname);
+  } catch {
+    /* not a URL: judged as given */
+  }
+  if (!isLocalURL(url.trim()))
     throw new OfflineModeError(
       `Offline mode is on, and this model's server (${url}) is not on this machine or your local network. Point it at a local server, or turn off offline mode in Settings.`,
     );
@@ -256,7 +327,7 @@ type FetchFn = typeof fetch;
 
 /** Wraps fetch so that, in offline mode, requests off the local network are refused. */
 export function withOfflineGuard(fetchFn: FetchFn): FetchFn {
-  return (input, init) => {
+  return async (input, init) => {
     const isRequest =
       typeof Request !== "undefined" && input instanceof Request;
     const url =
@@ -267,13 +338,20 @@ export function withOfflineGuard(fetchFn: FetchFn): FetchFn {
           : (input as Request).url;
     const method =
       init?.method ?? (isRequest ? (input as Request).method : "GET");
-    const reason = offlineBlockReason(url, method);
-    if (reason) return Promise.reject(new OfflineModeError(reason));
+    const reason = await offlineBlockReasonAfterLookup(url, method);
+    if (reason) throw new OfflineModeError(reason);
     return fetchFn(input, init);
   };
 }
 
-/** Installs the offline guard on this page's fetch and XMLHttpRequest. */
+/**
+ * Installs the offline guard on this page's ways of sending requests: fetch,
+ * XMLHttpRequest, WebSocket, EventSource and navigator.sendBeacon.
+ * XMLHttpRequest can't wait for a name to be looked up, so it counts only
+ * names already found local. Code running in workers (the in-browser Python
+ * that runs evaluators, in-browser models downloading their files) has its
+ * own fetch and isn't covered: code users write runs as written.
+ */
 export function installOfflineGuard(win: Window & typeof globalThis): void {
   const flag = win as unknown as { __cfOfflineGuardInstalled?: boolean };
   if (flag.__cfOfflineGuardInstalled) return;
@@ -296,5 +374,33 @@ export function installOfflineGuard(win: Window & typeof globalThis): void {
       if (reason) throw new OfflineModeError(reason);
       return (send as any).apply(this, args);
     };
+  }
+
+  // A WebSocket or event stream sends and receives from where it connects;
+  // each is checked as a request with a body
+  const guardConstructor = (name: "WebSocket" | "EventSource") => {
+    const Original = (win as any)[name];
+    if (typeof Original !== "function") return;
+    const Guarded = function (
+      this: unknown,
+      url: string | URL,
+      ...rest: any[]
+    ) {
+      const reason = offlineBlockReason(String(url), "POST");
+      if (reason) throw new OfflineModeError(reason);
+      return new Original(url, ...rest);
+    } as any;
+    Guarded.prototype = Original.prototype;
+    Object.setPrototypeOf(Guarded, Original); // keeps constants like WebSocket.OPEN
+    (win as any)[name] = Guarded;
+  };
+  guardConstructor("WebSocket");
+  guardConstructor("EventSource");
+
+  const nav = win.navigator as Navigator | undefined;
+  if (nav && typeof nav.sendBeacon === "function") {
+    const sendBeacon = nav.sendBeacon.bind(nav);
+    nav.sendBeacon = (url: string | URL, data?: BodyInit | null) =>
+      offlineBlockReason(String(url), "POST") ? false : sendBeacon(url, data);
   }
 }

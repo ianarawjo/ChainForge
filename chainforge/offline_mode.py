@@ -15,8 +15,12 @@ ChainForge can't know where it sends data.
 
 import ipaddress
 import socket
+import threading
+from contextlib import contextmanager
 from typing import Optional
 from urllib.parse import urlsplit
+
+import urllib3.util.connection
 
 _locked = False
 _enabled = False
@@ -122,3 +126,49 @@ def block_reason_for_reranker(method: Optional[str]) -> Optional[str]:
         return None
     return (f"Offline mode is on, so {name} reranking can't be used: it would send your "
             f"documents to {name}. Use a local reranker, or turn off offline mode in Settings.")
+
+
+# --------------------------------------------------------------------------
+# Connecting only to what was checked
+# --------------------------------------------------------------------------
+# Checking a URL resolves its name, and connecting resolves it again: a name
+# can answer with a local address for the check and a public one moments
+# later (DNS rebinding). So while offline, the server's own requests connect
+# to an address checked as it connects. Only in the thread making them, and
+# only inside `local_connections_only()`: other requests (e.g. downloading a
+# model's files, which offline mode allows) are unaffected.
+
+_guard = threading.local()
+_create_connection = urllib3.util.connection.create_connection
+
+
+def _local_only_create_connection(address, *args, **kwargs):
+    if not getattr(_guard, "active", False):
+        return _create_connection(address, *args, **kwargs)
+    host, port = address[0], address[1]
+    infos = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    addresses = [info[4][0] for info in infos]
+    if not addresses or not all(_address_is_local(a) for a in addresses):
+        raise ConnectionRefusedError(
+            f"Offline mode is on, so ChainForge did not connect to {host}: it isn't on this "
+            "machine or your local network.")
+    # The address just checked, so nothing is resolved again
+    return _create_connection((addresses[0], port), *args, **kwargs)
+
+
+urllib3.util.connection.create_connection = _local_only_create_connection
+
+
+@contextmanager
+def local_connections_only():
+    """While offline, requests made in this block connect only to local
+    addresses, checked as they connect."""
+    if not is_offline():
+        yield
+        return
+    previous = getattr(_guard, "active", False)
+    _guard.active = True
+    try:
+        yield
+    finally:
+        _guard.active = previous
