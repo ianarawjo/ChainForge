@@ -429,7 +429,9 @@ class TestLinuxPower:
 
     def test_a_usb_c_charger_is_ac_power(self, tmp_path):
         root = make_sys(tmp_path, [("ADP1", "Mains", {"online": "0"}),
-                                   ("ucsi-source-psy-USBC000:001", "USB", {"online": "1"}),
+                                   # Really "ucsi-source-psy-USBC000:001", but Windows
+                                   # (where the tests also run) can't name a folder with ":"
+                                   ("ucsi-source-psy-USBC000-001", "USB", {"online": "1"}),
                                    ("BAT0", "Battery", {"status": "Charging"})])
         assert LinuxPower(root).conditions()["power_source"] == "AC power"
 
