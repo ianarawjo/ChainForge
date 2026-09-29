@@ -17,6 +17,7 @@ import {
   stripHuggingFacePrefix,
   stripTogetherPrefix,
   stripOpenRouterPrefix,
+  stripOpenAICompatiblePrefix,
 } from "./models";
 import {
   Dict,
@@ -252,6 +253,8 @@ let TOGETHER_API_KEY = get_environ("TOGETHER_API_KEY");
 let DEEPSEEK_API_KEY = get_environ("DEEPSEEK_API_KEY");
 let MINIMAX_API_KEY = get_environ("MINIMAX_API_KEY");
 let OPENROUTER_API_KEY = get_environ("OPENROUTER_API_KEY");
+// For OpenAI-compatible servers that ask for a key (most local ones don't)
+let OPENAI_COMPATIBLE_API_KEY = get_environ("OPENAI_COMPATIBLE_API_KEY");
 
 /**
  * The AWS SDK is a heavy dependency that reaches for web-stream globals as soon
@@ -349,6 +352,7 @@ export function clear_api_keys(): void {
   DEEPSEEK_API_KEY = get_environ("DEEPSEEK_API_KEY");
   MINIMAX_API_KEY = get_environ("MINIMAX_API_KEY");
   OPENROUTER_API_KEY = get_environ("OPENROUTER_API_KEY");
+  OPENAI_COMPATIBLE_API_KEY = get_environ("OPENAI_COMPATIBLE_API_KEY");
 }
 
 /**
@@ -392,6 +396,8 @@ export function set_api_keys(given_keys: Dict<string>): void {
   if (key_is_present("DeepSeek")) DEEPSEEK_API_KEY = api_keys.DeepSeek;
   if (key_is_present("MiniMax")) MINIMAX_API_KEY = api_keys.MiniMax;
   if (key_is_present("OpenRouter")) OPENROUTER_API_KEY = api_keys.OpenRouter;
+  if (key_is_present("OpenAICompatible"))
+    OPENAI_COMPATIBLE_API_KEY = api_keys.OpenAICompatible;
 }
 
 export function get_azure_openai_api_keys(): [
@@ -630,6 +636,7 @@ export async function call_chatgpt(
   images?: string[],
   BASE_URL?: string,
   API_KEY?: string,
+  request_options?: { signal?: AbortSignal; maxRetries?: number },
 ): Promise<[Dict, Dict]> {
   const effectiveKey = API_KEY ?? OPENAI_API_KEY;
   if (!effectiveKey)
@@ -705,7 +712,12 @@ export async function call_chatgpt(
 
   // Get the correct function to call
   let openai_call: any;
-  if (modelname.includes("davinci") || modelname.includes("instruct")) {
+  // OpenAI's legacy completion models. Other servers' model names often contain
+  // "instruct" too (e.g. Qwen2.5-7B-Instruct), but are chat models.
+  if (
+    BASE_URL === undefined &&
+    (modelname.includes("davinci") || modelname.includes("instruct"))
+  ) {
     if ("response_format" in query) delete query.response_format;
     // Create call to text completions model
     openai_call = openai.completions.create.bind(openai.completions);
@@ -731,7 +743,7 @@ export async function call_chatgpt(
   // Try to call OpenAI
   let response: Dict = {};
   try {
-    response = (await openai_call(query)) as Dict;
+    response = (await openai_call(query, request_options)) as Dict;
   } catch (error: any) {
     throw new Error(openai_error_message(error));
   }
@@ -2389,19 +2401,43 @@ export async function call_huggingface(
   return [query, responses];
 }
 
-// The request each Ollama server (or all servers on this machine) is working on
-const ollamaQueues = new Map<string, Promise<unknown>>();
+/**
+ * An AbortSignal that fires once `should_cancel` says so (checked every
+ * 250 ms), for aborting requests in flight, and a function to stop checking.
+ */
+function watchForCancel(should_cancel?: () => boolean): {
+  signal: AbortSignal;
+  stop: () => void;
+} {
+  const controller = new AbortController();
+  const timer = should_cancel
+    ? setInterval(() => {
+        if (should_cancel()) controller.abort();
+      }, 250)
+    : undefined;
+  return {
+    signal: controller.signal,
+    stop: () => {
+      if (timer !== undefined) clearInterval(timer);
+    },
+  };
+}
+
+// The request each local model server (or all servers on this machine) is working on
+const localQueues = new Map<string, Promise<unknown>>();
 
 /**
- * Runs Ollama requests one at a time: all those to servers on this machine
- * in turn, and to any other server one at a time each.
+ * Runs requests to local model servers (Ollama, and OpenAI-compatible servers
+ * like LM Studio or llama.cpp) one at a time: all those to servers on this
+ * machine in turn, whichever server, and to any other server one at a time each.
  *
  * Sent together, requests to different models run at the same time, sharing
- * the machine; and requests to one model wait in Ollama's queue. Either way a
- * request's latency, and its measured energy (see localEnergy.ts), would
- * include time spent on other requests. One at a time, each gets its own.
+ * the machine; and requests to one model wait in the server's queue. Either
+ * way a request's latency, and its measured energy (see localEnergy.ts, which
+ * reads the whole machine's energy), would include time spent on other
+ * requests. One at a time, each gets its own.
  */
-async function oneOllamaRequestAtATime<T>(
+async function oneLocalRequestAtATime<T>(
   url: string,
   run: () => Promise<T>,
   signal?: AbortSignal,
@@ -2409,7 +2445,7 @@ async function oneOllamaRequestAtATime<T>(
   // By server (host and port), not endpoint: /api/chat and /api/generate on
   // one server share it. All servers on this machine share its hardware.
   const key = isLoopbackUrl(url) ? "this machine" : serverOrigin(url);
-  const before = (ollamaQueues.get(key) ?? Promise.resolve()).catch(
+  const before = (localQueues.get(key) ?? Promise.resolve()).catch(
     () => undefined,
   );
   let finished!: () => void;
@@ -2417,7 +2453,7 @@ async function oneOllamaRequestAtATime<T>(
   // The next request waits for this one and every one before it, even if
   // this one is cancelled while still waiting its turn
   const tail = before.then(() => mine);
-  ollamaQueues.set(key, tail);
+  localQueues.set(key, tail);
   try {
     // Cancelling leaves the queue at once, rather than when its turn comes
     await new Promise<void>((resolve, reject) => {
@@ -2436,9 +2472,58 @@ async function oneOllamaRequestAtATime<T>(
     // not just this request (a cancelled one finishes while those before it
     // may still be running, and a new request mustn't start alongside them)
     tail.then(() => {
-      if (ollamaQueues.get(key) === tail) ollamaQueues.delete(key);
+      if (localQueues.get(key) === tail) localQueues.delete(key);
     });
   }
+}
+
+/**
+ * Runs other work that uses a model on this machine (e.g. embedding documents
+ * with a local model, on ChainForge's server) in turn with local model
+ * requests, for the same reasons (see oneLocalRequestAtATime). Where this
+ * machine's energy is measured, the time is marked as busy, not idle.
+ */
+export async function onThisMachine<T>(
+  run: () => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  return oneLocalRequestAtATime(
+    "http://localhost/",
+    async () => {
+      const energyId = await beginEnergy("http://localhost/");
+      try {
+        return await run();
+      } finally {
+        endEnergy(energyId, performance.now());
+      }
+    },
+    signal,
+  );
+}
+
+// Embedding providers that run a model on ChainForge's server, or in Ollama
+const LOCAL_EMBEDDING_PROVIDERS = new Set([
+  "huggingface",
+  "sentence-transformers",
+  "ollama",
+]);
+
+/**
+ * Whether a retrieval or rerank method runs a model on the machine running
+ * ChainForge's server, rather than calling an online API or only counting
+ * words (BM25 and the like). Reads the provider as the server does.
+ */
+export function ragMethodRunsLocalModel(method: {
+  baseMethod?: string;
+  embeddingProvider?: string | null;
+  settings?: Dict;
+}): boolean {
+  const provider =
+    method.settings?.embeddingProvider ?? method.embeddingProvider;
+  return (
+    method.baseMethod === "cross_encoder" ||
+    (typeof provider === "string" && LOCAL_EMBEDDING_PROVIDERS.has(provider))
+  );
 }
 
 /** A URL's scheme, host and port, e.g. "http://gpu-box:11434". */
@@ -2566,7 +2651,8 @@ export async function call_ollama_provider(
     }
   }
 
-  // Ollama's reply also carries its timings and token counts, which extract_stats reads
+  // Ollama's reply also carries its timings and token counts, which extract_stats
+  // reads, and a reasoning model's reasoning, in `thinking` or <think> tags.
   const OLLAMA_STATS = [
     "total_duration",
     "load_duration",
@@ -2575,14 +2661,33 @@ export async function call_ollama_provider(
     "eval_count",
     "eval_duration",
   ];
-  const parse_response = (body: string, latency_ms: number) => {
-    const json = JSON.parse(body);
+  const parse_response = (resp: Response, body: string, latency_ms: number) => {
+    let json: Dict | undefined;
+    try {
+      json = JSON.parse(body);
+    } catch {
+      json = undefined;
+    }
+    if (!json || json.error || resp.ok === false)
+      throw new Error(
+        `Ollama returned an error (${resp.status}): ${json?.error ?? body.slice(0, 300)}`,
+      );
+    const reply: Dict = json;
     const stats = Object.fromEntries(
-      OLLAMA_STATS.filter((key) => key in json).map((key) => [key, json[key]]),
+      OLLAMA_STATS.filter((key) => key in reply).map((key) => [
+        key,
+        reply[key],
+      ]),
     );
+    // chat models reply with a message; text-only models with a response
+    const split = split_think_tags(
+      (json.message ? json.message.content : json.response) ?? "",
+    );
+    const reasoning =
+      json.message?.thinking ?? json.thinking ?? split.reasoning;
     return {
-      // chat models reply with a message; text-only models with a response
-      generated_text: json.message ? json.message.content : json.response,
+      generated_text: split.content,
+      ...(reasoning ? { thinking: reasoning } : {}),
       ...stats,
       [LATENCY_KEY]: latency_ms,
     };
@@ -2592,12 +2697,7 @@ export async function call_ollama_provider(
   // requests still waiting in its queue. So when the user cancels, abort the
   // requests in flight, rather than leave Ollama generating responses no one
   // will read (and holding up whatever runs next).
-  const controller = new AbortController();
-  const watcher = should_cancel
-    ? setInterval(() => {
-        if (should_cancel()) controller.abort();
-      }, 250)
-    : undefined;
+  const cancel = watchForCancel(should_cancel);
 
   const responses: Dict[] = [];
   try {
@@ -2607,49 +2707,210 @@ export async function call_ollama_provider(
       if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
       // Query Ollama and collect the response, one request at a time (see
-      // oneOllamaRequestAtATime). Where this machine's energy can be measured
+      // oneLocalRequestAtATime). Where this machine's energy can be measured
       // (Ollama running here too), the request is marked as started and
       // finished, and the reply carries its energy above idle.
-      const reply = await oneOllamaRequestAtATime(
-        url,
-        async () => {
-          if (should_cancel && should_cancel())
-            throw new UserForcedPrematureExit();
-          const energyId = await beginEnergy(url);
-          const start = performance.now();
-          let reply: Dict;
-          let repliedAt: number;
-          try {
-            const response = await fetch(url, {
-              method: "POST",
-              body: JSON.stringify(query),
-              signal: controller.signal,
-            });
-            const body = await response.text();
-            // How long the request took; Ollama replies once the whole response is ready
-            repliedAt = performance.now();
-            reply = parse_response(body, repliedAt - start);
-          } catch (err) {
-            endEnergy(energyId, performance.now()); // drops the request
-            throw err;
-          }
-          const energy = await endEnergy(
-            energyId,
-            repliedAt,
-            ollamaTimings(reply),
-          );
-          if (energy) reply[ENERGY_KEY] = energy;
-          return reply;
-        },
-        controller.signal,
-      );
+      let reply: Dict;
+      try {
+        reply = await oneLocalRequestAtATime(
+          url,
+          async () => {
+            if (should_cancel && should_cancel())
+              throw new UserForcedPrematureExit();
+            const energyId = await beginEnergy(url);
+            const start = performance.now();
+            let reply: Dict;
+            let repliedAt: number;
+            try {
+              const response = await fetch(url, {
+                method: "POST",
+                body: JSON.stringify(query),
+                signal: cancel.signal,
+              });
+              const body = await response.text();
+              // How long the request took; Ollama replies once the whole response is ready
+              repliedAt = performance.now();
+              reply = parse_response(response, body, repliedAt - start);
+            } catch (err) {
+              endEnergy(energyId, performance.now()); // drops the request
+              throw err;
+            }
+            const energy = await endEnergy(
+              energyId,
+              repliedAt,
+              ollamaTimings(reply),
+            );
+            if (energy) reply[ENERGY_KEY] = energy;
+            return reply;
+          },
+          cancel.signal,
+        );
+      } catch (err) {
+        if (responses.length === 0 || cancel.signal.aborted) throw err;
+        keepPartialResponses("Ollama", responses.length, n, err);
+        break;
+      }
       responses.push(reply);
     }
   } catch (err) {
-    if (controller.signal.aborted) throw new UserForcedPrematureExit();
+    if (cancel.signal.aborted) throw new UserForcedPrematureExit();
     throw err;
   } finally {
-    if (watcher !== undefined) clearInterval(watcher);
+    cancel.stop();
+  }
+
+  return [query, responses];
+}
+
+/**
+ * When a request fails after others for the same prompt succeeded, the ones
+ * that succeeded are kept rather than thrown away with the error: they were
+ * generated at real cost, and a rerun asks for only the rest (see query.ts).
+ */
+function keepPartialResponses(
+  server: string,
+  kept: number,
+  n: number,
+  err: unknown,
+): void {
+  console.warn(
+    `${server}: kept ${kept} of ${n} responses; the next one failed (${(err as Error)?.message ?? err}). Run the prompt again for the rest.`,
+  );
+}
+
+/**
+ * Splits a leading <think>...</think> block, which reasoning models served
+ * locally often write into their reply, from the answer. A block that never
+ * closes (the model ran out of tokens while reasoning) is all reasoning.
+ */
+export function split_think_tags(text: string): {
+  content: string;
+  reasoning?: string;
+} {
+  if (typeof text !== "string") return { content: text };
+  const match = text.match(/^\s*<think>([\s\S]*?)(?:<\/think>|$)/);
+  if (!match) return { content: text };
+  const reasoning = match[1].trim();
+  return {
+    content: text.slice(match[0].length).trim(),
+    ...(reasoning ? { reasoning } : {}),
+  };
+}
+
+/**
+ * Calls a model on any server with an OpenAI-compatible Chat Completions API:
+ * LM Studio, llama.cpp's llama-server, MLX (mlx_lm.server), vLLM, Ollama's
+ * /v1 endpoint, and many more. Each model carries its own server URL, so
+ * several servers, and cloud models, can be compared side by side.
+ *
+ * The browser calls the server directly, so the server must accept requests
+ * from web pages (CORS): llama-server, mlx_lm.server, vLLM and Ollama do by
+ * default; LM Studio needs "Enable CORS" turned on.
+ */
+export async function call_openai_compatible(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict[]]> {
+  const settings: Dict = { ...(params ?? {}) };
+  const base_url =
+    typeof settings.base_url === "string" ? settings.base_url.trim() : "";
+  if (!base_url)
+    throw new Error(
+      "This model has no server URL. Set the Base URL in its model settings, e.g. http://localhost:1234/v1 for LM Studio.",
+    );
+  const model_name = stripOpenAICompatiblePrefix(model).trim();
+  if (!model_name)
+    throw new Error(
+      "This model has no model ID. Choose or type one in its model settings.",
+    );
+  // The key in Settings, for servers that ask for one. The OpenAI SDK wants a
+  // key even for servers that don't; never fall back to the user's OpenAI key,
+  // which would send it to this server.
+  const api_key = OPENAI_COMPATIBLE_API_KEY?.trim() || "not-needed";
+  // (Flows saved while the key was a model setting may still carry one)
+  for (const name of ["base_url", "api_key"]) delete settings[name];
+  for (const [key, value] of Object.entries(settings))
+    if (value === "" || value === null || value === undefined)
+      delete settings[key];
+
+  // Many of these servers ignore `n`, so a request is sent per response, one
+  // at a time with any other local model requests (see oneLocalRequestAtATime)
+  const cancel = watchForCancel(should_cancel);
+  let query: Dict = {};
+  const responses: Dict[] = [];
+  try {
+    while (responses.length < n) {
+      if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+      let reply: Dict;
+      let latency_ms = 0;
+      try {
+        [query, reply] = await oneLocalRequestAtATime(
+          base_url,
+          async () => {
+            if (should_cancel && should_cancel())
+              throw new UserForcedPrematureExit();
+            // Only Ollama's timings are read to measure energy so far, but on
+            // this machine the request is marked as started and then dropped,
+            // so that its work isn't counted as idle power
+            const energyId = await beginEnergy(base_url);
+            const start = performance.now();
+            try {
+              return await call_chatgpt(
+                prompt,
+                model_name,
+                1,
+                temperature,
+                deepcopy(settings),
+                should_cancel,
+                images,
+                base_url,
+                api_key,
+                // Cancelling stops the request in flight, which would
+                // otherwise hold up every local model; and asking a local
+                // server again won't fix what made it fail
+                { signal: cancel.signal, maxRetries: 0 },
+              );
+            } finally {
+              latency_ms = performance.now() - start;
+              endEnergy(energyId, performance.now());
+            }
+          },
+          cancel.signal,
+        );
+      } catch (err) {
+        if (err instanceof UserForcedPrematureExit || cancel.signal.aborted)
+          throw new UserForcedPrematureExit();
+        const message = (err as Error).message;
+        const error = new Error(
+          /connection error|failed to fetch/i.test(message)
+            ? `Could not reach ${base_url}. Check that the server is running and accepts requests from web pages (CORS); in LM Studio, turn on "Enable CORS". (${message})`
+            : message,
+        );
+        if (responses.length === 0) throw error;
+        keepPartialResponses(base_url, responses.length, n, error);
+        break;
+      }
+      // Servers put reasoning in reasoning_content, reasoning, or <think> tags in the reply.
+      reply.choices = (reply.choices ?? []).map((choice: Dict) => {
+        const split = split_webllm_thinking(choice);
+        const reasoning = split.message?.reasoning;
+        return reasoning && !split.message.reasoning_content
+          ? {
+              ...split,
+              message: { ...split.message, reasoning_content: reasoning },
+            }
+          : split;
+      });
+      reply[LATENCY_KEY] = latency_ms;
+      responses.push(reply);
+    }
+  } finally {
+    cancel.stop();
   }
 
   return [query, responses];
@@ -2980,15 +3241,14 @@ async function call_custom_provider(
 export function split_webllm_thinking(choice: Dict): Dict {
   const content = choice?.message?.content;
   if (typeof content !== "string") return choice;
-  const match = content.match(/^\s*<think>([\s\S]*?)(?:<\/think>|$)/);
-  if (!match) return choice;
-  const reasoning = match[1].trim();
+  const split = split_think_tags(content);
+  if (split.content === content) return choice;
   return {
     ...choice,
     message: {
       ...choice.message,
-      content: content.slice(match[0].length).trim(),
-      ...(reasoning ? { reasoning_content: reasoning } : {}),
+      content: split.content,
+      ...(split.reasoning ? { reasoning_content: split.reasoning } : {}),
     },
   };
 }
@@ -3097,6 +3357,8 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.HuggingFace)
     call_api = call_huggingface;
   else if (llm_provider === LLMProvider.Ollama) call_api = call_ollama_provider;
+  else if (llm_provider === LLMProvider.OpenAICompatible)
+    call_api = call_openai_compatible;
   else if (llm_provider === LLMProvider.Custom) call_api = call_custom_provider;
   else if (llm_provider === LLMProvider.Bedrock) call_api = call_bedrock;
   else if (llm_provider === LLMProvider.Together) call_api = call_together;
@@ -3384,8 +3646,12 @@ export function extract_reasoning(
           ),
         );
       break;
+    case LLMProvider.Ollama:
+      reasoning = responses.map((r) => readable(r?.thinking));
+      break;
     case LLMProvider.DeepSeek:
     case LLMProvider.WebLLM: // see split_webllm_thinking
+    case LLMProvider.OpenAICompatible: // see call_openai_compatible
       // OpenAI-format chat completions, with the reasoning beside the content
       reasoning = responses.flatMap((r) =>
         (r?.choices ?? []).map((c: Dict) =>
@@ -3625,6 +3891,10 @@ export function extract_responses(
       return _extract_huggingface_responses(response as Dict[]);
     case LLMProvider.Ollama:
       return _extract_ollama_responses(response as Dict[]);
+    case LLMProvider.OpenAICompatible:
+      return (response as Dict[]).flatMap((r) =>
+        _extract_chatgpt_responses(r).map((text) => text ?? ""),
+      );
     case LLMProvider.Bedrock:
       return _extract_bedrock_responses(response as Dict[]);
     case LLMProvider.Together:

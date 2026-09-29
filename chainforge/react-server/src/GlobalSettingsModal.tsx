@@ -36,11 +36,19 @@ import { Dropzone, FileWithPath } from "@mantine/dropzone";
 import useStore, { initLLMProviderMenu } from "./store";
 import { APP_IS_RUNNING_LOCALLY, clear_api_keys } from "./backend/utils";
 import {
+  LOCAL_MODELS_GROUP,
+  discoverLocalModels,
+  localModelsMenuGroup,
+} from "./backend/localModels";
+import {
   forgetStoredAPIKeys,
   loadStoredAPIKeys,
   storeAPIKeys,
 } from "./backend/apiKeyStorage";
-import { setCustomProviders } from "./ModelSettingSchemas";
+import {
+  setCustomProviders,
+  setOpenAICompatibleModelSuggestions,
+} from "./ModelSettingSchemas";
 import AISupportSettings from "./AISupportSettings";
 import { AIModelOverrides } from "./backend/aiModels";
 import { CustomLLMProviderSpec, Dict, JSONCompatible } from "./backend/typing";
@@ -266,6 +274,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         DeepSeek: "",
         MiniMax: "",
         OpenRouter: "",
+        OpenAICompatible: "",
         Cohere: "",
       },
 
@@ -281,6 +290,35 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
       aiProvider: "",
       aiModels: {},
     });
+
+    /**
+     * Finds the model servers running on this machine, and lists their models
+     * in the model menu and in the OpenAI-compatible server settings form.
+     */
+    const refreshLocalModels = useCallback(async (ollama_url?: string) => {
+      const servers = await discoverLocalModels(ollama_url);
+      const idx = initLLMProviderMenu.findIndex(
+        (item) => "group" in item && item.group === LOCAL_MODELS_GROUP,
+      );
+      if (idx !== -1) initLLMProviderMenu[idx] = localModelsMenuGroup(servers);
+      setOpenAICompatibleModelSuggestions(
+        servers
+          .filter((server) => server.kind === "openai-compatible")
+          .flatMap((server) => server.models),
+      );
+      // Prompt nodes rebuild their model menus
+      const state = useStore.getState();
+      state.setAvailableLLMs([...state.AvailableLLMs]);
+      state.nodes
+        .filter((n) => n.type === "prompt" || n.type === "chat")
+        .forEach((n) =>
+          state.setDataPropsForNode(n.id, { refreshLLMList: true }),
+        );
+      // AI support features can use Ollama's models
+      state.setOllamaModels(
+        servers.find((server) => server.kind === "ollama")?.models ?? [],
+      );
+    }, []);
 
     // Fetch the global settings from the backend
     const loadSettingsFromBackend = useCallback(() => {
@@ -317,61 +355,13 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
           return backendSettings;
         })
         .then((backendSettings) => {
-          // Attempt to fetch Ollama model list
-          // TODO: This should use the Ollama BaseURL setting
-          const Ollama_BaseURL =
-            backendSettings.Ollama_BaseURL || "http://localhost:11434";
-          fetch(`${Ollama_BaseURL}/api/tags`)
-            .then((response) => {
-              if (response.ok) {
-                return response.json();
-              } else {
-                throw new Error("Server not running?");
-              }
-            })
-            .then((data) => {
-              const models_available = data.models?.map(
-                (model_obj: Dict) => model_obj.name,
-              );
-
-              if (models_available.length === 0) {
-                console.log("No Ollama models available.");
-                return;
-              }
-              setOllamaModels(models_available);
-
-              // Set the available models in the global provider menu,
-              // by replacing the default Ollama generic model with the model list from the server.
-              const ollama_item = initLLMProviderMenu.findIndex(
-                (item) => "base_model" in item && item.base_model === "ollama",
-              );
-              if (ollama_item !== -1) {
-                initLLMProviderMenu[ollama_item] = {
-                  group: "Ollama",
-                  emoji: "🦙",
-                  items: models_available.map((model: string, idx: number) => ({
-                    key: idx,
-                    name: model,
-                    emoji: "🦙",
-                    model: "ollama",
-                    base_model: "ollama",
-                    formData: {
-                      ollamaModel: model,
-                    },
-                    settings: {
-                      ollamaModel: model,
-                    },
-                    temp: 1.0,
-                  })),
-                };
-              }
-
-              console.log("Ollama models available:", models_available);
-              console.log("Loaded Ollama model list from backend.");
-            })
-            .catch((error) => {
-              console.error("Error trying to fetch Ollama models", error);
-            });
+          // List the models on servers running on this machine
+          const ollama_url = backendSettings.Ollama_BaseURL;
+          refreshLocalModels(
+            typeof ollama_url === "string" ? ollama_url : undefined,
+          ).catch((err) =>
+            console.error("Could not look for local model servers:", err),
+          );
         });
     }, [form, settings]);
 
@@ -423,7 +413,6 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
     // Web version only: keep keys on this device, rather than for this tab.
     const [rememberKeys, setRememberKeys] = useState(false);
     const AvailableLLMs = useStore((state) => state.AvailableLLMs);
-    const setOllamaModels = useStore((state) => state.setOllamaModels);
     const setAvailableLLMs = useStore((state) => state.setAvailableLLMs);
     const setFavorites = useStore((state) => state.setFavorites);
     const nodes = useStore((state) => state.nodes);
@@ -726,7 +715,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   <>
                     <Divider
                       my="xs"
-                      label="Ollama Settings"
+                      label="Local Model Servers"
                       labelPosition="center"
                     />
                     <TextInput
@@ -734,6 +723,13 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                       description="ChainForge will attempt to contact the Ollama API at this URL. The default is http://localhost:11434"
                       placeholder="Paste your Ollama Server Base URL here."
                       {...form.getInputProps("Ollama_BaseURL")}
+                    />
+                    <br />
+                    <TextInput
+                      label="OpenAI-compatible Server API Key"
+                      description="Only if your server asks for one (e.g. vLLM started with --api-key). Sent to OpenAI-compatible servers only, never your OpenAI key."
+                      placeholder="Leave blank if your server needs no key"
+                      {...form.getInputProps("OpenAICompatible")}
                     />
                     <br />
                   </>

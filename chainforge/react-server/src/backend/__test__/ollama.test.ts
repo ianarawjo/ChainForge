@@ -200,13 +200,18 @@ describe("Ollama energy", () => {
     expect(end).toHaveBeenCalledWith("req-2", expect.any(Number));
   });
 
-  test("an error reply has no timings, so it's dropped too", async () => {
+  test("an error reply is shown, and its request dropped too", async () => {
     begin.mockResolvedValue("req-3");
     globalThis.fetch = jest.fn(async () => ({
+      ok: false,
+      status: 404,
       text: async () => JSON.stringify({ error: "model not found" }),
     })) as any;
-    await call_ollama_provider("Q", "ollama", 1, 1.0, params(), () => false);
-    expect(end).toHaveBeenCalledWith("req-3", expect.any(Number), undefined);
+    await expect(
+      call_ollama_provider("Q", "ollama", 1, 1.0, params(), () => false),
+    ).rejects.toThrow("Ollama returned an error (404): model not found");
+    // Ended without timings, i.e. dropped
+    expect(end).toHaveBeenCalledWith("req-3", expect.any(Number));
   });
 });
 

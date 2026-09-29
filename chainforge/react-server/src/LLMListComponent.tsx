@@ -26,6 +26,7 @@ import ModelSettingsModal, {
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import {
   BEDROCK_PREFIX,
+  OPENAI_COMPATIBLE_PREFIX,
   TOGETHER_PREFIX,
   HUGGINGFACE_PREFIX,
   NativeLLM,
@@ -53,6 +54,7 @@ const MODEL_NAME_PREFIXES: Record<string, string> = {
   "openrouter-image": OPENROUTER_IMAGE_PREFIX,
   hf: HUGGINGFACE_PREFIX,
   bedrock: BEDROCK_PREFIX,
+  "openai-compatible": OPENAI_COMPATIBLE_PREFIX,
 };
 
 // Helper funcs
@@ -425,11 +427,22 @@ export const LLMListContainer = forwardRef<
           item.settings.ollamaModel = _item?.settings?.ollamaModel;
         }
 
-        // If the user has entered a custom base url, pass it over
-        if (apiKeys.Ollama_BaseURL) {
-          item.formData.ollama_url = apiKeys.Ollama_BaseURL;
-          item.settings.ollama_url = apiKeys.Ollama_BaseURL;
+        // The server the model was found on, or else a base url the user entered in Settings
+        const ollama_url =
+          _item?.settings?.ollama_url ?? apiKeys.Ollama_BaseURL;
+        if (ollama_url) {
+          item.formData.ollama_url = ollama_url;
+          item.settings.ollama_url = ollama_url;
         }
+      }
+
+      // Models found on a local server carry that server's URL
+      if (
+        item.base_model === "openai-compatible" &&
+        typeof _item?.settings?.base_url === "string"
+      ) {
+        item.formData.base_url = _item.settings.base_url;
+        item.settings.base_url = _item.settings.base_url;
       }
 
       let new_items: LLMSpec[] = [];

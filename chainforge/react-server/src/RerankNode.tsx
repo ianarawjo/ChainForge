@@ -35,7 +35,11 @@ import {
   canRerankInBrowser,
   rerankInBrowser,
 } from "./backend/browserRerankers";
-import { FLASK_BASE_URL } from "./backend/utils";
+import {
+  FLASK_BASE_URL,
+  onThisMachine,
+  ragMethodRunsLocalModel,
+} from "./backend/utils";
 import { groupDocumentsForRerank } from "./backend/rerankGroups";
 import { v4 as uuid } from "uuid";
 
@@ -283,10 +287,16 @@ const RerankNode: React.FC<RerankNodeProps> = ({ data, id }) => {
                 formData.append("api_keys", JSON.stringify(apiKeys));
               }
 
-              const res = await fetch(`${FLASK_BASE_URL}rerank`, {
-                method: "POST",
-                body: formData,
-              });
+              const send = () =>
+                fetch(`${FLASK_BASE_URL}rerank`, {
+                  method: "POST",
+                  body: formData,
+                });
+              // A cross-encoder on ChainForge's server takes its turn with
+              // local LLM requests (see onThisMachine)
+              const res = ragMethodRunsLocalModel(method)
+                ? await onThisMachine(send)
+                : await send();
 
               if (!res.ok) {
                 const err = await res.json();

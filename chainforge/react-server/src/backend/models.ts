@@ -299,6 +299,8 @@ export enum LLMProvider {
   DeepSeek = "deepseek",
   MiniMax = "minimax",
   OpenRouter = "openrouter",
+  /** Any server with an OpenAI-compatible API, e.g. LM Studio, llama.cpp, MLX or vLLM */
+  OpenAICompatible = "openai-compatible",
   Custom = "__custom",
 }
 
@@ -429,6 +431,21 @@ export function stripTogetherPrefix(llm: LLM | string): string {
     : name;
 }
 
+/**
+ * Models served by an OpenAI-compatible server (LM Studio, llama.cpp, MLX,
+ * vLLM, ...) are whatever that server has loaded, so their IDs are typed in or
+ * discovered, and prefixed so they map back to this provider.
+ */
+export const OPENAI_COMPATIBLE_PREFIX = "openai-compatible/";
+
+/** The model ID the server expects, without ChainForge's prefix. */
+export function stripOpenAICompatiblePrefix(llm: LLM | string): string {
+  const name = llm.toString();
+  return name.startsWith(OPENAI_COMPATIBLE_PREFIX)
+    ? name.substring(OPENAI_COMPATIBLE_PREFIX.length)
+    : name;
+}
+
 /** The model or inference profile ID Bedrock expects, without ChainForge's prefix. */
 export function stripBedrockPrefix(llm: LLM | string): string {
   const name = llm.toString();
@@ -445,6 +462,8 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
     isOpenRouterImageModel(llm)
   )
     return LLMProvider.OpenRouter;
+  else if (llm.toString().startsWith(OPENAI_COMPATIBLE_PREFIX))
+    return LLMProvider.OpenAICompatible;
   else if (llm_name?.startsWith("OpenAI")) return LLMProvider.OpenAI;
   else if (llm_name?.startsWith("Azure")) return LLMProvider.Azure_OpenAI;
   else if (llm_name?.startsWith("GEMINI")) return LLMProvider.Google;
@@ -520,6 +539,17 @@ for (const webllm_model of Object.entries(NativeLLM)
 const DEFAULT_RATE_LIMIT = 100; // RPM for any models not listed above
 
 /**
+ * Providers that run models on a server the user runs, whether on this machine
+ * or their network. They have no rate limits to respect: their requests are
+ * sent one at a time per server instead (see oneLocalRequestAtATime in
+ * utils.ts), so the rate limiter lets them straight through.
+ */
+export const LOCAL_SERVER_PROVIDERS = new Set<LLMProvider>([
+  LLMProvider.Ollama,
+  LLMProvider.OpenAICompatible,
+]);
+
+/**
  * Singleton which all LLM API calls should go through to perform rate limiting via Botteneck.
  */
 export class RateLimiter {
@@ -573,6 +603,13 @@ export class RateLimiter {
     func: () => PromiseLike<T>,
     should_cancel?: () => boolean,
   ): Promise<T> {
+    // Local servers' requests are queued where they're sent (see LOCAL_SERVER_PROVIDERS)
+    if (LOCAL_SERVER_PROVIDERS.has(provider))
+      return (async () => {
+        if (should_cancel && should_cancel())
+          throw new UserForcedPrematureExit();
+        return await func();
+      })();
     // Rate limit per model, and abort if the API request takes 3 minutes or more.
     return this.getInstance()
       .getLimiter(model, provider)

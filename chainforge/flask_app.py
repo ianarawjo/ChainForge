@@ -13,6 +13,7 @@ from chainforge.local_access import (
     normalize_origin, origin_allowed, token_valid,
 )
 from chainforge.idle_shutdown import IdleWatchdog, idle_shutdown_message, stop_this_server
+from chainforge import local_models
 import requests as py_requests
 from platformdirs import user_data_dir
 import copy
@@ -693,6 +694,7 @@ def fetchEnvironAPIKeys():
         'DEEPSEEK_API_KEY': 'DeepSeek',
         'MINIMAX_API_KEY': 'MiniMax',
         'OPENROUTER_API_KEY': 'OpenRouter',
+        'OPENAI_COMPATIBLE_API_KEY': 'OpenAICompatible',
     }
     d = { alias: os.environ.get(key) for key, alias in keymap.items() }
     ret = jsonify(d)
@@ -987,6 +989,15 @@ async def callCustomProvider():
 
     # Return the response
     return jsonify({'response': response})
+
+"""
+    LOCAL MODELS
+"""
+@app.route('/app/discoverLocalModels', methods=['POST'])
+def discover_local_models():
+    """Finds OpenAI-compatible servers running on this machine, and their models. See chainforge/local_models.py."""
+    servers = local_models.discover_local_models(own_port=PORT)
+    return jsonify({'servers': servers})
 
 """ 
     LOCALLY SAVED FLOWS
