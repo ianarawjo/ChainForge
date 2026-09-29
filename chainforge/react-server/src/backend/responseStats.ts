@@ -186,6 +186,12 @@ export function statsFromReply(reply: Dict): ResponseStats {
       stats.energy_conditions_changed = true;
     if (energy.baseline_before_change === true)
       stats.energy_baseline_before_change = true;
+    if (Array.isArray(energy.other_gpu_use)) {
+      const others = energy.other_gpu_use.filter(
+        (name: unknown) => typeof name === "string" && name.length > 0,
+      );
+      if (others.length > 0) stats.energy_other_gpu_use = others;
+    }
   }
 
   return stats;
@@ -233,6 +239,8 @@ function finish(stats: ResponseStats): ResponseStats | null {
   if (stats.energy_conditions_changed) res.energy_conditions_changed = true;
   if (stats.energy_baseline_before_change)
     res.energy_baseline_before_change = true;
+  if (stats.energy_other_gpu_use)
+    res.energy_other_gpu_use = stats.energy_other_gpu_use;
   if (Object.keys(res).length === 0) return null;
   if (stats.averaged_over !== undefined && stats.averaged_over > 1)
     res.averaged_over = stats.averaged_over;
@@ -469,11 +477,20 @@ const ENERGY_PARTS: Dict<string> = {
   dram: "memory",
   ane: "Neural Engine",
 };
+const partName = (c: string) =>
+  ENERGY_PARTS[c] ?? c.replace(/^gpu(\d+)$/, "GPU $1");
+const isGpu = (c: string) => /^gpu\d*$/.test(c);
+const isCpu = (c: string) => c === "cpu" || c === "dram";
+
+// macOS's power modes and heat levels (Windows and Linux name their own)
+const MAC_POWER_MODES = new Set(["Automatic", "Low Power", "High Power"]);
+const MAC_THERMAL = new Set(["fair", "serious", "critical"]);
 
 /**
  * The power settings a measurement was taken under, in words, e.g. "on
  * battery, in Low Power Mode", "on AC power, in Automatic power mode, while
- * the Mac was hot (serious)". Undefined if unknown.
+ * the Mac was hot (serious)", "on AC power, with the Balanced power plan,
+ * with GPU 1 limited to 300 W (default 450 W)". Undefined if unknown.
  */
 export function describeConditions(
   conditions: Dict<string> | undefined,
@@ -485,11 +502,21 @@ export function describeConditions(
   const mode = conditions.power_mode;
   if (mode)
     parts.push(
-      mode === "Automatic" ? "in Automatic power mode" : `in ${mode} Mode`,
+      mode === "Automatic"
+        ? "in Automatic power mode"
+        : MAC_POWER_MODES.has(mode)
+          ? `in ${mode} Mode`
+          : mode === "Battery saver"
+            ? "with Battery saver on"
+            : `with the ${mode}`,
     );
+  const limit = conditions.gpu_power_limit;
+  if (limit && limit !== "default") parts.push(`with ${limit}`);
   const thermal = conditions.thermal;
-  if (thermal && thermal !== "nominal" && thermal !== "unknown")
+  if (thermal && MAC_THERMAL.has(thermal))
     parts.push(`while the Mac was hot (${thermal})`);
+  else if (thermal && thermal !== "nominal" && thermal !== "unknown")
+    parts.push(`while ${thermal}`);
   return parts.length > 0 ? parts.join(", ") : undefined;
 }
 
@@ -512,10 +539,16 @@ function describeMeasuredEnergy(stats: ResponseStats): string[] {
     const [unit, scale] = energyUnit(wh);
     lines.push(
       `  ${parts
-        .map(([c, v]) => `${ENERGY_PARTS[c] ?? c} ${twoDigits(v * scale)}`)
+        .map(([c, v]) => `${partName(c)} ${twoDigits(v * scale)}`)
         .join(" · ")} ${unit}`,
     );
   }
+  // Where the machine measures only some of its parts
+  const measured = Object.keys(stats.energy_parts_wh ?? {});
+  if (measured.length > 0 && measured.every(isGpu))
+    lines.push("  GPU only: this machine's CPU isn't measured");
+  else if (measured.length > 0 && measured.every(isCpu))
+    lines.push("  CPU only: this machine's GPU isn't measured");
   const conditions = describeConditions(stats.energy_conditions);
   if (conditions) lines.push(`  Measured ${conditions}`);
   if (stats.energy_conditions_changed)
@@ -524,6 +557,10 @@ function describeMeasuredEnergy(stats: ResponseStats): string[] {
     lines.push("  Idle power is from before the power settings changed");
   if (stats.energy_shared)
     lines.push("  Shared with requests generating at the same time");
+  if (stats.energy_other_gpu_use)
+    lines.push(
+      `  Other programs used the GPU meanwhile (${stats.energy_other_gpu_use.join(", ")}): their energy is counted in this`,
+    );
   if (stats.load_energy_wh !== undefined)
     lines.push(
       `Loading the model: ${formatEnergy(stats.load_energy_wh)} (not included above)`,

@@ -706,4 +706,30 @@ describe("Vis Node plotting response stats", () => {
         ?.textContent,
     ).toContain("1 under unknown power settings");
   });
+
+  test("notes measurements taken while other programs used the GPU", async () => {
+    const measured = (others?: string[]): ResponseStats => ({
+      latency_ms: 1000,
+      output_tokens: 100,
+      energy_wh: 0.05,
+      ...(others ? { energy_other_gpu_use: others } : {}),
+    });
+    await renderVis([
+      respObj("Haiku", "ollama", [measured(["ComfyUI"]), measured()]),
+      respObj("Gemini", "ollama", [measured()]),
+    ]);
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_energy_mwh" },
+    });
+    const note = await screen.findByText(
+      "Other programs used the GPU during some requests.",
+    );
+    const trigger = note.closest("[aria-describedby]") as HTMLElement;
+    expect(
+      document.getElementById(trigger.getAttribute("aria-describedby")!)
+        ?.textContent,
+    ).toContain(
+      "1 of these was measured while other programs used the GPU (ComfyUI)",
+    );
+  });
 });

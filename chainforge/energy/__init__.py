@@ -1,6 +1,7 @@
 """Measures the energy local models use on this machine (see monitor.py and
 attribution.py). Everything specific to a kind of hardware or OS is in
-`meters/`; so far there is a meter for Apple silicon Macs.
+`meters/`: so far, Apple silicon Macs, and Windows and Linux PCs with
+NVIDIA GPUs (plus, on Linux, Intel and AMD CPUs).
 """
 
 import threading

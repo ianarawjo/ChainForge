@@ -27,6 +27,8 @@ export interface MeasuredEnergy {
   conditions_changed?: boolean;
   /** Whether idle power is from before the power settings last changed. */
   baseline_before_change?: boolean;
+  /** Other programs that used the GPU meanwhile; null if the meter can't tell. */
+  other_gpu_use?: string[] | null;
 }
 
 let available: Promise<boolean> | undefined;

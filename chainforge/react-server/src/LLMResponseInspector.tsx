@@ -301,8 +301,13 @@ export const responsesToTable = async (
           row["Power source"] = stats.energy_conditions.power_source;
         if (stats?.energy_conditions?.power_mode)
           row["Power mode"] = stats.energy_conditions.power_mode;
+        if (stats?.energy_conditions?.gpu_power_limit)
+          row["GPU power limit"] = stats.energy_conditions.gpu_power_limit;
         if (stats?.energy_conditions?.thermal)
           row["Thermal state"] = stats.energy_conditions.thermal;
+        if (stats?.energy_other_gpu_use)
+          row["Other programs using the GPU"] =
+            stats.energy_other_gpu_use.join(", ");
         if (stats?.averaged_over !== undefined)
           row["Stats averaged over"] = stats.averaged_over;
 

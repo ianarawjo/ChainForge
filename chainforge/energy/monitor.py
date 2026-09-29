@@ -51,7 +51,13 @@ REFRESH_CONDITIONS_EVERY_S = 30.0
 REFRESH_AT_REQUEST_AFTER_S = 2.0
 # Idle power is measured afresh when these change (heat is only recorded:
 # a long run warming the chip would otherwise keep discarding it)
-BASELINE_CONDITIONS = ("power_source", "power_mode")
+BASELINE_CONDITIONS = ("power_source", "power_mode", "gpu_power_limit")
+# Thermal states that aren't hot
+COOL = ("nominal", "unknown")
+# How often to check for other programs using the GPU, where the meter can
+# (see EnergyMeter.other_gpu_use): their energy would be counted as the
+# request's, or as idle power
+OTHER_USE_EVERY_S = 1.0
 
 
 class EnergyMonitor:
@@ -73,6 +79,11 @@ class EnergyMonitor:
         self._conditions_since = -math.inf  # when the current power settings began
         self._request_conditions: Dict[str, Dict[str, str]] = {}
         self._refreshed_at = -math.inf
+        # Spans in which other programs used the GPU: (start, end, their names)
+        self._other_use: List[Tuple[float, float, Tuple[str, ...]]] = []
+        self._other_use_lock = threading.Lock()  # the meter's check isn't reentrant
+        self._other_use_checked = clock()
+        self._other_use_known = False  # whether the meter can tell
         self._thread: Optional[threading.Thread] = None
         self._stopped = False
 
@@ -98,6 +109,13 @@ class EnergyMonitor:
         if key(conditions) != key(self._conditions) and self._conditions:
             self._conditions_since = now  # a change, not the first check
         self._conditions = conditions
+        # Heat that builds up during a request is recorded with it, not only
+        # heat at its start (when a GPU has only just started working)
+        thermal = conditions.get("thermal")
+        if thermal and thermal not in COOL:
+            for recorded in self._request_conditions.values():
+                if recorded.get("thermal") in (None,) + COOL:
+                    recorded["thermal"] = thermal
         return conditions
 
     def _refresh_conditions(self, if_older_than: float) -> None:
@@ -111,6 +129,23 @@ class EnergyMonitor:
             self.meter.refresh_conditions()
         except Exception:
             pass
+
+    def _check_other_use(self, if_older_than: float) -> None:
+        """Notes whether other programs used the GPU since the last check,
+        outside the lock (on Windows, the check takes a few milliseconds)."""
+        with self._other_use_lock:
+            now = self._clock()
+            if now - self._other_use_checked < if_older_than:
+                return
+            since, self._other_use_checked = self._other_use_checked, now
+            try:
+                others = self.meter.other_gpu_use()
+            except Exception:
+                others = None
+            self._other_use_known = others is not None
+        if others:
+            with self._lock:
+                self._other_use.append((since, now, tuple(others)))
 
     def _sample_locked(self) -> None:
         now = self._clock()
@@ -131,6 +166,8 @@ class EnergyMonitor:
             self._busy = [s for s in self._busy if s[1] >= cutoff]
         if self._windows and self._windows[0].end < cutoff:
             self._windows = [w for w in self._windows if w.end >= cutoff]
+        if self._other_use and self._other_use[0][1] < cutoff:
+            self._other_use = [u for u in self._other_use if u[1] >= cutoff]
 
     def _interval(self) -> float:
         with self._lock:
@@ -164,6 +201,7 @@ class EnergyMonitor:
             if self._stopped:
                 break
             self._refresh_conditions(REFRESH_CONDITIONS_EVERY_S)
+            self._check_other_use(OTHER_USE_EVERY_S)
             try:
                 self.sample()
             except Exception:  # a failed reading shouldn't stop the monitor
@@ -175,11 +213,14 @@ class EnergyMonitor:
         """Marks a request as started. Returns its id, for `end()`."""
         # So a power mode just switched to is what it's recorded under
         self._refresh_conditions(REFRESH_AT_REQUEST_AFTER_S)
+        # So other programs' use of the GPU up to now isn't counted as during it
+        self._check_other_use(0)
         with self._lock:
             self._sample_locked()
             request = str(next(self._ids))
             self._in_flight[request] = self._last_used = self._clock()
-            self._request_conditions[request] = self._check_conditions_locked(self._clock())
+            # A copy: heat during the request is added to it
+            self._request_conditions[request] = dict(self._check_conditions_locked(self._clock()))
         self._wake.set()
         return request
 
@@ -213,14 +254,15 @@ class EnergyMonitor:
         # The time `since_reply_s` counts back from: now, not after waiting
         # for the lock (e.g. while another request is being settled)
         now = self._clock()
+        self._check_other_use(0)  # up to the end of the request
         with self._lock:
             self._sample_locked()
             self._last_used = now
             began = self._in_flight.pop(request, None)
             if began is None:
                 return None
+            conditions_now = self._check_conditions_locked(now)  # adds heat up to now
             conditions = self._request_conditions.pop(request, {})
-            conditions_now = self._check_conditions_locked(now)
             replied = now - since_reply_s
             self._busy.append((began, replied + WIND_DOWN_S))
             timings = (since_reply_s, load_s, generation_s, total_s)
@@ -241,6 +283,9 @@ class EnergyMonitor:
             if baseline is None:
                 return None
             result = attribute(request, self._windows, self._readings, baseline)
+            start = min(w.start for w in windows)
+            others = sorted({name for s, e, names in self._other_use
+                             if s < replied and e > start for name in names})
 
         # Ollama counts waiting for a busy model as loading it: where the
         # "load" came to no more than idle power's swings, nothing was loaded
@@ -265,12 +310,17 @@ class EnergyMonitor:
             "conditions_changed": any(
                 conditions.get(k) != conditions_now.get(k) for k in BASELINE_CONDITIONS),
             "baseline_before_change": not baseline_current,
+            # Other programs that used the GPU meanwhile, whose energy is
+            # counted in this; None if the meter can't tell
+            "other_gpu_use": others if self._other_use_known or others else None,
         }
 
     def _baseline(self, now: float) -> Tuple[Optional[Baseline], bool]:
         """Idle power, and whether it's from under the current power settings."""
         busy = list(self._busy)
         busy.extend((began, math.inf) for began in self._in_flight.values())
+        # Not idle, either: other programs using the GPU
+        busy.extend((s, e + WIND_DOWN_S) for s, e, _ in self._other_use)
         # The last few minutes' idle time, or, during a long run with none,
         # whatever idle time is still in the history; only since the power
         # settings last changed, since they change idle power too

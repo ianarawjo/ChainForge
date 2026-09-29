@@ -305,6 +305,12 @@ export interface ResponseStats {
   /** Set when idle power was measured before the power settings last changed (no idle time since). */
   energy_baseline_before_change?: boolean;
   /**
+   * Other programs that used the GPU during the request (e.g. an image
+   * generation in ComfyUI), whose energy is counted in `energy_wh`. Only set
+   * when there were some.
+   */
+  energy_other_gpu_use?: string[];
+  /**
    * Set when the provider reported one total for several responses, e.g. one
    * request that returned n of them: how many responses the total was shared
    * between. The stats it covers (output tokens and speed, or latency) are
