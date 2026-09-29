@@ -68,9 +68,17 @@ code:
 | `response.meta`   | Values carried along with the inputs, by name, such as the rest of a table row                |
 | `response.llm`    | The model's nickname, as shown in the Prompt Node                                             |
 
-Return a number, `true`/`false`, or a short string; or an object whose values
-are those, such as `{ length: 12, polite: true }`. Anything else, including
-returning nothing, fails the run. The function may be `async`.
+Return one of three kinds of score, chosen by what the check decides:
+
+- **Binary**, `true` or `false`: an assertion that holds or doesn't, such as
+  whether an answer is correct.
+- **Numeric**, a number: a measure with a scale, such as a length or a count.
+- **Categorical**, a short string: one of a few labels, such as `"refused"`,
+  `"answered"` or `"unclear"`.
+
+Or return an object whose values are those, such as
+`{ length: 12, polite: true }`. Anything else, including returning nothing,
+fails the run. The function may be `async`.
 
 Return the same kind, and for an object the same keys, for every response.
 Nothing checks this: a Vis Node plots every score as the kind of the first.
@@ -92,6 +100,9 @@ code: |
 
 ## Watch out for
 
+- **A yes/no check returns `true` or `false`, never 1 or 0.** A Vis Node
+  counts true/false outcomes, but plots 1 and 0 as numbers, as a spread or a
+  sum.
 - **The code runs inside ChainForge's own page** when the user runs the
   node. Write plain, readable functions, and explain what the code checks
   when proposing it.
