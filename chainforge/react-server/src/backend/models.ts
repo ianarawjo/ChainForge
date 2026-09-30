@@ -18,6 +18,9 @@ export enum NativeLLM {
   // OpenAI Chat. Models OpenAI still serves, newest first.
   // See https://developers.openai.com/api/docs/models
   OpenAI_GPT6_Astra = "gpt-6-astra",
+  OpenAI_GPT6_1_Sol = "gpt-6.1-sol",
+  OpenAI_GPT6_Sol = "gpt-6-sol",
+  OpenAI_GPT6_Luna = "gpt-6-luna",
   OpenAI_GPT5_6_Sol = "gpt-5.6-sol",
   OpenAI_GPT5_6 = "gpt-5.6", // alias of gpt-5.6-sol
   OpenAI_GPT5_6_Terra = "gpt-5.6-terra",
@@ -95,6 +98,8 @@ export enum NativeLLM {
   // See https://platform.claude.com/docs/en/about-claude/models/overview
   // NOTE: getProvider() routes anything starting with "claude" to Anthropic,
   // so models released after this list still work when typed in by hand.
+  Claude_opus_5_5 = "claude-opus-5-5",
+  Claude_sonnet_5_5 = "claude-sonnet-5-5",
   Claude_fable_5_1 = "claude-fable-5-1",
   Claude_fable_5 = "claude-fable-5",
   Claude_opus_5 = "claude-opus-5",
@@ -107,7 +112,7 @@ export enum NativeLLM {
   Claude_sonnet_4_6 = "claude-sonnet-4-6",
   Claude_sonnet_4_5 = "claude-sonnet-4-5",
   Claude_sonnet_4 = "claude-sonnet-4-0", // deprecated
-  Claude_haiku_4_5 = "claude-haiku-4-5",
+  Claude_haiku_4_5 = "claude-haiku-4-5", // retires no sooner than 2026-10-15
 
   // Anthropic models that have been retired. Kept so old flows still load.
   Claude_opus_4_1 = "claude-opus-4-1", // retired 2026-08-05
@@ -143,7 +148,7 @@ export enum NativeLLM {
   GEMINI_v3_1_pro_preview = "gemini-3.1-pro-preview",
   GEMINI_v3_flash_preview = "gemini-3-flash-preview",
 
-  // Google Gemini 2.5 models
+  // Google Gemini 2.5 models. Since 2026-09-18, only open to projects that used them before.
   GEMINI_v2_5_pro = "gemini-2.5-pro",
   GEMINI_v2_5_flash = "gemini-2.5-flash",
   GEMINI_v2_5_flash_lite = "gemini-2.5-flash-lite",
@@ -319,6 +324,75 @@ export function isOpenAIImageModel(llm: LLM | string): boolean {
     name.startsWith("chatgpt-image") ||
     name.startsWith("dall-e")
   );
+}
+
+/** OpenAI's reasoning effort levels, lowest first. */
+export const OPENAI_REASONING_EFFORTS = [
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+];
+
+/**
+ * The reasoning efforts each OpenAI model accepts, from its page in OpenAI's
+ * docs (https://developers.openai.com/api/docs/models). Other values return a
+ * 400. Models whose page doesn't say (e.g. gpt-5-mini, gpt-5-nano, the
+ * o-series and gpt-5.6-cyber) aren't listed.
+ */
+const OPENAI_MODEL_REASONING_EFFORTS: Record<string, string[]> = {
+  "gpt-6-astra": ["low", "medium", "high", "xhigh", "max"],
+  "gpt-6.1-sol": ["low", "medium", "high", "xhigh", "max"],
+  "gpt-6-sol": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-6-luna": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-5.6-sol": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-5.6": ["none", "low", "medium", "high", "xhigh", "max"], // alias of gpt-5.6-sol
+  "gpt-5.6-terra": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-5.6-luna": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-5.5": ["none", "low", "medium", "high", "xhigh"],
+  "gpt-5.5-pro": ["medium", "high", "xhigh"],
+  "gpt-5.4": ["none", "low", "medium", "high", "xhigh"],
+  "gpt-5.4-mini": ["none", "low", "medium", "high", "xhigh"],
+  "gpt-5.4-nano": ["none", "low", "medium", "high", "xhigh"],
+  "gpt-5.4-pro": ["medium", "high", "xhigh"],
+  "gpt-5.2": ["none", "low", "medium", "high", "xhigh"],
+  "gpt-5.1": ["none", "low", "medium", "high"],
+  "gpt-5": ["minimal", "low", "medium", "high"],
+  "gpt-5-pro": ["high"],
+};
+
+/**
+ * The reasoning efforts an OpenAI model accepts, if OpenAI's docs say.
+ * Dated snapshots (e.g. "gpt-5.4-2026-03-05") take their model's.
+ */
+export function openAIReasoningEfforts(model: string): string[] | undefined {
+  return OPENAI_MODEL_REASONING_EFFORTS[
+    model.replace(/-\d{4}-\d{2}-\d{2}$/, "")
+  ];
+}
+
+/**
+ * A reasoning effort the model accepts: the given one if it does, or else the
+ * nearest one it does (the higher, on a tie). Models OpenAI's docs don't cover
+ * get the effort unchanged.
+ */
+export function fitOpenAIReasoningEffort(
+  model: string,
+  effort: string,
+): string {
+  const allowed = openAIReasoningEfforts(model);
+  const rank = OPENAI_REASONING_EFFORTS.indexOf(effort);
+  if (!allowed || allowed.includes(effort) || rank < 0) return effort;
+  let best = allowed[0];
+  for (const e of allowed) {
+    const d = Math.abs(OPENAI_REASONING_EFFORTS.indexOf(e) - rank);
+    const bestD = Math.abs(OPENAI_REASONING_EFFORTS.indexOf(best) - rank);
+    if (d <= bestD) best = e;
+  }
+  return best;
 }
 
 /** Whether a Google model generates images (e.g. "gemini-3.1-flash-image"). */

@@ -343,6 +343,8 @@ describe("Claude sampling settings", () => {
 
   test("models after Opus 4.6 get no temperature, top_p or top_k", () => {
     for (const model of [
+      "claude-sonnet-5-5",
+      "claude-opus-5-5",
       "claude-sonnet-5",
       "claude-opus-5",
       "claude-fable-5-1",
@@ -394,9 +396,14 @@ describe("Claude sampling settings", () => {
 
 describe("asking providers for reasoning", () => {
   test("Claude: 'auto' asks for summarized thinking only from models that think by default", () => {
-    expect(anthropic_thinking_config("claude-sonnet-5", {})).toEqual({
-      thinking: { type: "adaptive", display: "summarized" },
-    });
+    for (const model of [
+      "claude-sonnet-5-5",
+      "claude-opus-5-5",
+      "claude-sonnet-5",
+    ])
+      expect(anthropic_thinking_config(model, {})).toEqual({
+        thinking: { type: "adaptive", display: "summarized" },
+      });
     expect(anthropic_thinking_config("claude-haiku-4-5", {})).toEqual({});
     expect(
       anthropic_thinking_config("claude-haiku-4-5", {
@@ -413,6 +420,15 @@ describe("asking providers for reasoning", () => {
       thinking: { type: "adaptive", display: "summarized" },
       output_config: { effort: "low" },
     });
+  });
+
+  test("Claude: 'disabled' is 'between_tools' on Sonnet 5.5, which rejects 'disabled'", () => {
+    expect(
+      anthropic_thinking_config("claude-sonnet-5-5", { thinking: "disabled" }),
+    ).toEqual({ thinking: { type: "between_tools" } });
+    expect(
+      anthropic_thinking_config("claude-sonnet-5", { thinking: "disabled" }),
+    ).toEqual({ thinking: { type: "disabled" } });
   });
 
   test("Gemini: thought summaries from thinking models, unless turned off", () => {
@@ -478,6 +494,35 @@ describe("asking providers for reasoning", () => {
       "4",
       "4",
     ]);
+  });
+
+  test("OpenAI: an effort the model doesn't take is sent as the nearest one it does", async () => {
+    set_api_keys({ OpenAI: "sk-test" });
+    const bodies: Dict[] = [];
+    (globalThis as any).fetch = jest.fn(
+      async (url: string, init: RequestInit) => {
+        bodies.push(JSON.parse(init.body as string));
+        const body = chatReply({ content: "4" });
+        return {
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          headers: new Headers({ "content-type": "application/json" }),
+          json: async () => body,
+          text: async () => JSON.stringify(body),
+        };
+      },
+    );
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    await call_chatgpt("What is 2 + 2?", "gpt-5.4", 1, 1, {
+      reasoning_effort: "max",
+    });
+    await call_chatgpt("What is 2 + 2?", "gpt-6-luna", 1, 1, {
+      reasoning_effort: "max",
+    });
+    warn.mockRestore();
+    expect(bodies[0].reasoning_effort).toBe("xhigh");
+    expect(bodies[1].reasoning_effort).toBe("max");
   });
 
   test("Gemini: a thinking level, for Gemini 3, instead of a budget", () => {

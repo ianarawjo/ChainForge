@@ -135,7 +135,7 @@ describe("recognizing OpenRouter models", () => {
     expect(openRouterEmoji("openrouter/google/gemini-3.1-flash-lite")).toBe(
       "♊",
     );
-    expect(openRouterEmoji("deepseek/deepseek-v4-flash")).toBe("🐋");
+    expect(openRouterEmoji("deepseek/deepseek-v4.1-flash")).toBe("🐋");
     // Labs without one of their own keep OpenRouter's.
     expect(openRouterEmoji("openrouter/some-lab/brand-new-model")).toBe("🔀");
   });
@@ -290,14 +290,14 @@ describe("OpenRouter chat completions", () => {
     );
     const [, responses] = await call_openrouter(
       "Count",
-      "openrouter/x-ai/grok-4.6",
+      "openrouter/x-ai/grok-4.7",
       3,
     );
     expect(calls).toHaveLength(3);
     expect(
       extract_responses(
         responses,
-        "openrouter/x-ai/grok-4.6",
+        "openrouter/x-ai/grok-4.7",
         LLMProvider.OpenRouter,
       ),
     ).toEqual(["one", "two", "three"]);

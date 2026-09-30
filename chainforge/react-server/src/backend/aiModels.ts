@@ -60,7 +60,7 @@ export const AI_PROVIDERS: AIProvider[] = [
     emoji: "📚",
     base_model: "claude-v1",
     apiKey: "Anthropic",
-    recommended: { fast: "claude-haiku-4-5", smart: "claude-sonnet-5" },
+    recommended: { fast: "claude-haiku-4-5", smart: "claude-sonnet-5-5" },
     settings: { max_tokens_to_sample: 8192 },
   },
   {
