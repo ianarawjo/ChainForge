@@ -30,6 +30,7 @@ import {
   getProvider,
   isDecisionModel,
   isOllamaDecisionModelName,
+  bestOllamaDecisionModel,
   offeredInMenu,
 } from "../models";
 // eslint-disable-next-line import/first
@@ -115,6 +116,14 @@ describe("recognizing Ollama's decision models", () => {
       expect(isOllamaDecisionModelName(name)).toBe(true);
     for (const name of ["gemma4:e4b", "nimbler", "llama3", "tevatron"])
       expect(isOllamaDecisionModelName(name)).toBe(false);
+  });
+
+  test("a new LLM Scorer's default judge is the most capable one pulled", () => {
+    expect(bestOllamaDecisionModel(["tev1:0.8b", "nimble:latest"])).toBe(
+      "nimble:latest",
+    );
+    expect(bestOllamaDecisionModel(["tev2", "tev1:0.8b", "tev1"])).toBe("tev1");
+    expect(bestOllamaDecisionModel(["tev2"])).toBe("tev2");
   });
 
   test("model menus offer them only where decisions are allowed", () => {

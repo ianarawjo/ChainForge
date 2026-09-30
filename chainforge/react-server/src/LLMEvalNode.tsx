@@ -39,6 +39,7 @@ import LLMResponseInspectorModal, {
 import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import {
+  APP_IS_RUNNING_LOCALLY,
   extractSettingsVars,
   genDebounceFunc,
   stripLLMDetailsFromResponses,
@@ -64,6 +65,11 @@ import {
   grabResponses,
 } from "./backend/backend";
 import { UserForcedPrematureExit } from "./backend/errors";
+import {
+  NativeLLM,
+  OPENROUTER_PREFIX,
+  bestOllamaDecisionModel,
+} from "./backend/models";
 import CancelTracker from "./backend/canceler";
 import { PromptInfo, PromptListModal, PromptListPopover } from "./PromptNode";
 import { useDisclosure } from "@mantine/hooks";
@@ -103,20 +109,62 @@ const OUTPUT_FORMATS = [
   { value: OutputFormat.Any, label: "open-ended" },
 ];
 
-// The default LLM annotator is GPT-4 at temperature 0.
-const DEFAULT_LLM_ITEM = (() => {
-  const item = [initLLMProviders.find((i) => i.base_model === "gpt-4")].map(
-    (i) => ({
+/** A judge from the model menu, with its default settings, at temperature 0. */
+const judgeFromMenu = (model: string): LLMSpec | undefined => {
+  const i = initLLMProviders.find((p) => p.model === model);
+  if (!i) return undefined;
+  const settings = getDefaultModelSettings(
+    StringLookup.get(i.base_model) as string,
+  );
+  settings.temperature = 0.0;
+  return { ...i, key: uuid(), settings };
+};
+
+/**
+ * The judge a new LLM Scorer starts with: a decision model, since those are
+ * fast and cheap and answer the scorer's typed questions directly. That's one
+ * pulled in Ollama when running locally (it costs nothing), else TypeSafe's
+ * Jev on OpenRouter. Decision models can't give open-ended answers, so an
+ * open-ended scorer starts with a cheap text model instead.
+ */
+function defaultJudge(
+  format: OutputFormat | undefined,
+  ollamaDecisionModels: string[],
+  ollamaURL?: string,
+): LLMSpec {
+  if (format === OutputFormat.Any)
+    return (judgeFromMenu("gpt-6-luna") ??
+      judgeFromMenu(initLLMProviders[0].model)) as LLMSpec;
+
+  if (APP_IS_RUNNING_LOCALLY() && ollamaDecisionModels.length > 0) {
+    const model = bestOllamaDecisionModel(ollamaDecisionModels);
+    return {
       key: uuid(),
-      settings: getDefaultModelSettings(
-        StringLookup.get(i?.base_model) as string,
-      ),
-      ...i,
-    }),
-  )[0];
-  item.settings.temperature = 0.0;
-  return item as LLMSpec;
-})();
+      name: model,
+      emoji: "🦙",
+      model: NativeLLM.Ollama_Decision,
+      base_model: NativeLLM.Ollama_Decision,
+      temp: 0,
+      formData: {
+        shortname: model,
+        ollamaModel: model,
+        ...(ollamaURL ? { ollama_url: ollamaURL } : {}),
+      },
+      settings: {
+        ...getDefaultModelSettings(NativeLLM.Ollama_Decision),
+        ollamaModel: model,
+        ...(ollamaURL ? { ollama_url: ollamaURL } : {}),
+      },
+    };
+  }
+
+  const jev = judgeFromMenu(`${OPENROUTER_PREFIX}~typesafe/jev-latest`);
+  return {
+    ...(jev as LLMSpec),
+    formData: { shortname: jev?.name ?? "Jev", model: "~typesafe/jev-latest" },
+    settings: {},
+  };
+}
 
 export interface LLMEvaluatorComponentRef {
   run: (
@@ -208,11 +256,24 @@ export const LLMEvaluatorComponent = forwardRef<
   ref,
 ) {
   const [promptText, setPromptText] = useState(prompt ?? "");
+  const apiKeys = useStore((state) => state.apiKeys);
+  const ollamaDecisionModels = useStore((state) => state.ollamaDecisionModels);
+  // A scorer that hasn't saved a judge gets the default, saved below so that
+  // it stays put, rather than changing with what's pulled in Ollama
+  const [defaultGrader] = useState<LLMSpec | undefined>(() =>
+    grader || (allowMultipleJudges && graders && graders.length > 0)
+      ? undefined
+      : defaultJudge(format, ollamaDecisionModels, apiKeys?.Ollama_BaseURL),
+  );
   const [llmScorers, setLLMScorers] = useState<LLMSpec[]>(
     allowMultipleJudges && graders && graders.length > 0
       ? graders
-      : [grader ?? DEFAULT_LLM_ITEM],
+      : [(grader ?? defaultGrader) as LLMSpec],
   );
+  useEffect(() => {
+    if (defaultGrader && onLLMGraderChange) onLLMGraderChange(defaultGrader);
+    // Only once, when the scorer is first shown
+  }, []);
   const [categoriesText, setCategoriesText] = useState(categories ?? "");
   const [scaleText, setScaleText] = useState(scale ?? "");
   const [expectedFormat, setExpectedFormat] = useState<OutputFormat>(
@@ -221,7 +282,6 @@ export const LLMEvaluatorComponent = forwardRef<
   const [useReasoning, setUseReasoning] = useState<boolean>(
     reasonBeforeScoring ?? false,
   );
-  const apiKeys = useStore((state) => state.apiKeys);
 
   // Debounce helpers
   const debounceTimeoutRef = useRef(null);

@@ -348,6 +348,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 isOllamaDecisionModelName(m),
               );
               setOllamaModels(text_models);
+              setOllamaDecisionModels(decision_models);
 
               // Set the available models in the global provider menu,
               // by replacing the default Ollama generic model with the model list from the server.
@@ -458,6 +459,9 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
     const [rememberKeys, setRememberKeys] = useState(false);
     const AvailableLLMs = useStore((state) => state.AvailableLLMs);
     const setOllamaModels = useStore((state) => state.setOllamaModels);
+    const setOllamaDecisionModels = useStore(
+      (state) => state.setOllamaDecisionModels,
+    );
     const setAvailableLLMs = useStore((state) => state.setAvailableLLMs);
     const setFavorites = useStore((state) => state.setFavorites);
     const nodes = useStore((state) => state.nodes);

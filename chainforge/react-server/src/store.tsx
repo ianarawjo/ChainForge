@@ -521,6 +521,9 @@ export interface StoreHandles {
   // The models pulled on the Ollama server, if it's running (local only)
   ollamaModels: string[];
   setOllamaModels: (models: string[]) => void;
+  // The decision models (e.g. nimble) pulled on it, which LLM Scorers can use
+  ollamaDecisionModels: string[];
+  setOllamaDecisionModels: (models: string[]) => void;
 
   // Global settings (flags) from the settings menu
   globalSettings: Dict<JSONCompatible>;
@@ -639,6 +642,8 @@ const useStore = create<StoreHandles>((set, get) => ({
 
   ollamaModels: [],
   setOllamaModels: (models) => set({ ollamaModels: models }),
+  ollamaDecisionModels: [],
+  setOllamaDecisionModels: (models) => set({ ollamaDecisionModels: models }),
 
   // Keeping track of LLM API keys
   apiKeys: initialAPIKeys,

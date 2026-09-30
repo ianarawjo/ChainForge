@@ -444,6 +444,18 @@ export function isDecisionModel(llm: LLM | string): boolean {
 export const OLLAMA_DECISION_MODELS = ["nimble", "tev1", "tev1:0.8b"];
 
 /**
+ * The most capable of the decision models pulled in Ollama, going by the
+ * order of OLLAMA_DECISION_MODELS (nimble, then tev1, ...); others come last.
+ */
+export function bestOllamaDecisionModel(pulled: string[]): string {
+  const rank = (m: string) => {
+    const i = OLLAMA_DECISION_MODELS.indexOf(m.replace(/:latest$/, ""));
+    return i === -1 ? OLLAMA_DECISION_MODELS.length : i;
+  };
+  return [...pulled].sort((a, b) => rank(a) - rank(b))[0];
+}
+
+/**
  * Whether a model pulled in Ollama (e.g. "nimble:latest", "tev1:0.8b") is one
  * of its decision models: a Nimble or Tev model, as Ollama puts it. Goes by
  * name, since Ollama's model list doesn't say.
