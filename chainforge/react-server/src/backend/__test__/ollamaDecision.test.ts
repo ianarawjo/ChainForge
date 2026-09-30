@@ -135,8 +135,18 @@ describe("recognizing Ollama's decision models", () => {
     expect(offeredInMenu(spec("ollama"), false)).toBe(true);
     expect(offeredInMenu(spec(DECISION), true)).toBe(true);
     expect(offeredInMenu(group, true)).toBe(true);
-    // Jev shares OpenRouter's form with text models, so is offered as before
-    expect(offeredInMenu(spec("openrouter"), false)).toBe(true);
+    // On OpenRouter, a form shared with text models, Jev alone is left out
+    const openrouter = (model: string): LLMSpec => ({
+      ...spec("openrouter"),
+      model: `openrouter/${model}`,
+    });
+    expect(offeredInMenu(openrouter("~typesafe/jev-latest"), false)).toBe(
+      false,
+    );
+    expect(offeredInMenu(openrouter("~typesafe/jev-latest"), true)).toBe(true);
+    expect(
+      offeredInMenu(openrouter("anthropic/claude-sonnet-5.5"), false),
+    ).toBe(true);
   });
 });
 

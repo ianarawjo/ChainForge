@@ -454,17 +454,29 @@ export function isOllamaDecisionModelName(name: string): boolean {
 }
 
 /**
- * The base models (settings forms) whose models only make decisions, so model
- * menus offer them only where a decision model can be used: an LLM Scorer.
- * (Jev, on OpenRouter, shares its form with text models, so isn't one.)
+ * The base models (settings forms) whose models only make decisions. (Jev, on
+ * OpenRouter, shares its form with text models, so isn't one; see
+ * isDecisionMenuItem.)
  */
 export const DECISION_ONLY_BASE_MODELS = new Set<string>([
   NativeLLM.Ollama_Decision,
 ]);
 
 /**
+ * Whether a model menu item only makes decisions: from a decision-only form
+ * (e.g. Ollama's), or a decision model on a shared one (e.g. Jev, on OpenRouter).
+ */
+export function isDecisionMenuItem(item: LLMSpec): boolean {
+  return (
+    DECISION_ONLY_BASE_MODELS.has(item.base_model) ||
+    isDecisionModel(item.model)
+  );
+}
+
+/**
  * Whether a model menu offers a model, or a group with any model it offers:
- * menus for text generation leave out models that only make decisions.
+ * menus for text generation leave out models that only make decisions, which
+ * only an LLM Scorer can use.
  */
 export function offeredInMenu(
   item: LLMSpec | LLMGroup,
@@ -472,7 +484,7 @@ export function offeredInMenu(
 ): boolean {
   return "group" in item
     ? item.items.some((i) => offeredInMenu(i, allowDecisionModels))
-    : allowDecisionModels || !DECISION_ONLY_BASE_MODELS.has(item.base_model);
+    : allowDecisionModels || !isDecisionMenuItem(item);
 }
 
 /**

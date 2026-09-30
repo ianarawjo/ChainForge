@@ -26,12 +26,12 @@ import ModelSettingsModal, {
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import {
   BEDROCK_PREFIX,
-  DECISION_ONLY_BASE_MODELS,
   TOGETHER_PREFIX,
   HUGGINGFACE_PREFIX,
   NativeLLM,
   OPENROUTER_IMAGE_PREFIX,
   OPENROUTER_PREFIX,
+  isDecisionMenuItem,
   offeredInMenu,
   openRouterEmoji,
 } from "./backend/models";
@@ -313,8 +313,7 @@ export interface LLMListContainerProps {
  */
 const menuTitle = (item: LLMSpec) =>
   `${item.emoji} ${item.name}${
-    DECISION_ONLY_BASE_MODELS.has(item.base_model) &&
-    !item.name.includes("(decision model)")
+    isDecisionMenuItem(item) && !item.name.includes("(decision model)")
       ? " (decision model)"
       : ""
   }`;
