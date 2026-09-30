@@ -343,6 +343,8 @@ describe("Claude sampling settings", () => {
 
   test("models after Opus 4.6 get no temperature, top_p or top_k", () => {
     for (const model of [
+      "claude-sonnet-5-5",
+      "claude-opus-5-5",
       "claude-sonnet-5",
       "claude-opus-5",
       "claude-fable-5-1",
@@ -394,9 +396,14 @@ describe("Claude sampling settings", () => {
 
 describe("asking providers for reasoning", () => {
   test("Claude: 'auto' asks for summarized thinking only from models that think by default", () => {
-    expect(anthropic_thinking_config("claude-sonnet-5", {})).toEqual({
-      thinking: { type: "adaptive", display: "summarized" },
-    });
+    for (const model of [
+      "claude-sonnet-5-5",
+      "claude-opus-5-5",
+      "claude-sonnet-5",
+    ])
+      expect(anthropic_thinking_config(model, {})).toEqual({
+        thinking: { type: "adaptive", display: "summarized" },
+      });
     expect(anthropic_thinking_config("claude-haiku-4-5", {})).toEqual({});
     expect(
       anthropic_thinking_config("claude-haiku-4-5", {
@@ -413,6 +420,15 @@ describe("asking providers for reasoning", () => {
       thinking: { type: "adaptive", display: "summarized" },
       output_config: { effort: "low" },
     });
+  });
+
+  test("Claude: 'disabled' is 'between_tools' on Sonnet 5.5, which rejects 'disabled'", () => {
+    expect(
+      anthropic_thinking_config("claude-sonnet-5-5", { thinking: "disabled" }),
+    ).toEqual({ thinking: { type: "between_tools" } });
+    expect(
+      anthropic_thinking_config("claude-sonnet-5", { thinking: "disabled" }),
+    ).toEqual({ thinking: { type: "disabled" } });
   });
 
   test("Gemini: thought summaries from thinking models, unless turned off", () => {

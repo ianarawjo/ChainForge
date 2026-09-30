@@ -18,6 +18,9 @@ export enum NativeLLM {
   // OpenAI Chat. Models OpenAI still serves, newest first.
   // See https://developers.openai.com/api/docs/models
   OpenAI_GPT6_Astra = "gpt-6-astra",
+  OpenAI_GPT6_1_Sol = "gpt-6.1-sol",
+  OpenAI_GPT6_Sol = "gpt-6-sol",
+  OpenAI_GPT6_Luna = "gpt-6-luna",
   OpenAI_GPT5_6_Sol = "gpt-5.6-sol",
   OpenAI_GPT5_6 = "gpt-5.6", // alias of gpt-5.6-sol
   OpenAI_GPT5_6_Terra = "gpt-5.6-terra",
@@ -95,6 +98,8 @@ export enum NativeLLM {
   // See https://platform.claude.com/docs/en/about-claude/models/overview
   // NOTE: getProvider() routes anything starting with "claude" to Anthropic,
   // so models released after this list still work when typed in by hand.
+  Claude_opus_5_5 = "claude-opus-5-5",
+  Claude_sonnet_5_5 = "claude-sonnet-5-5",
   Claude_fable_5_1 = "claude-fable-5-1",
   Claude_fable_5 = "claude-fable-5",
   Claude_opus_5 = "claude-opus-5",
@@ -107,7 +112,7 @@ export enum NativeLLM {
   Claude_sonnet_4_6 = "claude-sonnet-4-6",
   Claude_sonnet_4_5 = "claude-sonnet-4-5",
   Claude_sonnet_4 = "claude-sonnet-4-0", // deprecated
-  Claude_haiku_4_5 = "claude-haiku-4-5",
+  Claude_haiku_4_5 = "claude-haiku-4-5", // retires no sooner than 2026-10-15
 
   // Anthropic models that have been retired. Kept so old flows still load.
   Claude_opus_4_1 = "claude-opus-4-1", // retired 2026-08-05
@@ -143,7 +148,7 @@ export enum NativeLLM {
   GEMINI_v3_1_pro_preview = "gemini-3.1-pro-preview",
   GEMINI_v3_flash_preview = "gemini-3-flash-preview",
 
-  // Google Gemini 2.5 models
+  // Google Gemini 2.5 models. Since 2026-09-18, only open to projects that used them before.
   GEMINI_v2_5_pro = "gemini-2.5-pro",
   GEMINI_v2_5_flash = "gemini-2.5-flash",
   GEMINI_v2_5_flash_lite = "gemini-2.5-flash-lite",

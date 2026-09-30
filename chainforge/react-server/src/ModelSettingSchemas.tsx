@@ -61,6 +61,9 @@ const ChatGPTSettings: ModelSettingsDict = {
         // a shutdown date for are marked; retired models have been removed.
         enum: [
           "gpt-6-astra",
+          "gpt-6.1-sol",
+          "gpt-6-sol",
+          "gpt-6-luna",
           "gpt-5.6-sol",
           "gpt-5.6-terra",
           "gpt-5.6-luna",
@@ -125,8 +128,8 @@ const ChatGPTSettings: ModelSettingsDict = {
         type: "string",
         title: "reasoning.effort",
         description:
-          "A parameter specific to o1+ and GPT-5+ models that controls the amount of reasoning effort the model expends when generating a response. NOTE: Currently, only GPT-5 supports the 'minimal' option.",
-        enum: ["minimal", "low", "medium", "high"],
+          "A parameter specific to o1+ and GPT-5+ models that controls the amount of reasoning effort the model expends when generating a response. Not every model supports every level: only GPT-5 supports 'minimal', and 'none', 'xhigh' and 'max' are for newer models (e.g. GPT-6 Luna supports 'none' through 'max').",
+        enum: ["none", "minimal", "low", "medium", "high", "xhigh", "max"],
         default: "medium", // TODO: Add reasoning.summary option to visualize reasoning tokens in UI.
       },
       verbosity: {
@@ -617,37 +620,43 @@ export const OpenRouterSettings: ModelSettingsDict = {
         type: "string",
         title: "Model",
         description:
-          "The OpenRouter model to query. Pick a popular one, or type any model ID listed at https://openrouter.ai/models (e.g. anthropic/claude-sonnet-5).",
+          "The OpenRouter model to query. Pick a popular one, or type any model ID listed at https://openrouter.ai/models (e.g. anthropic/claude-sonnet-5.5).",
         // A mix of frontier models and cheap ones (e.g. for workshops), grouped by lab.
         enum: [
+          "anthropic/claude-sonnet-5.5",
+          "anthropic/claude-opus-5.5",
           "anthropic/claude-sonnet-5",
           "anthropic/claude-haiku-4.5",
-          "openai/gpt-5.5",
+          "openai/gpt-6.1-sol",
+          "openai/gpt-6-luna",
           "openai/gpt-5.4-mini",
           "openai/gpt-5.4-nano",
           "google/gemini-3.8-flash",
           "google/gemini-3.1-flash-lite",
-          "x-ai/grok-4.6",
+          "x-ai/grok-4.7",
           "deepseek/deepseek-v4-pro",
-          "deepseek/deepseek-v4-flash",
+          "deepseek/deepseek-v4.1-flash",
           "qwen/qwen3.8-max-0902",
           "qwen/qwen3.8-flash",
           "moonshotai/kimi-k3",
           // A decision model, for LLM Scorers only: it answers typed questions rather than writing text
           "~typesafe/jev-latest",
         ],
-        default: "anthropic/claude-sonnet-5",
+        default: "anthropic/claude-sonnet-5.5",
         shortname_map: {
+          "anthropic/claude-sonnet-5.5": "Claude Sonnet 5.5",
+          "anthropic/claude-opus-5.5": "Claude Opus 5.5",
           "anthropic/claude-sonnet-5": "Claude Sonnet 5",
           "anthropic/claude-haiku-4.5": "Claude Haiku 4.5",
-          "openai/gpt-5.5": "GPT-5.5",
+          "openai/gpt-6.1-sol": "GPT-6.1 Sol",
+          "openai/gpt-6-luna": "GPT-6 Luna",
           "openai/gpt-5.4-mini": "GPT-5.4 Mini",
           "openai/gpt-5.4-nano": "GPT-5.4 Nano",
           "google/gemini-3.8-flash": "Gemini 3.8 Flash",
           "google/gemini-3.1-flash-lite": "Gemini 3.1 Flash-Lite",
-          "x-ai/grok-4.6": "Grok 4.6",
+          "x-ai/grok-4.7": "Grok 4.7",
           "deepseek/deepseek-v4-pro": "DeepSeek V4 Pro",
-          "deepseek/deepseek-v4-flash": "DeepSeek V4 Flash",
+          "deepseek/deepseek-v4.1-flash": "DeepSeek V4.1 Flash",
           "qwen/qwen3.8-max-0902": "Qwen3.8 Max",
           "qwen/qwen3.8-flash": "Qwen3.8 Flash",
           "moonshotai/kimi-k3": "Kimi K3",
@@ -765,7 +774,7 @@ export const OpenRouterSettings: ModelSettingsDict = {
     ...ChatGPTSettings.uiSchema,
     model: {
       "ui:help":
-        "Defaults to anthropic/claude-sonnet-5. Type to enter any other OpenRouter model ID.",
+        "Defaults to anthropic/claude-sonnet-5.5. Type to enter any other OpenRouter model ID.",
       "ui:widget": "datalist",
     },
     reasoning_effort: {
@@ -1238,11 +1247,13 @@ const ClaudeSettings: ModelSettingsDict = {
         // Models Anthropic still serves. Everything Claude 3 and older has
         // been retired, so those have been removed.
         enum: [
-          "claude-opus-5",
-          "claude-sonnet-5",
+          "claude-opus-5-5",
+          "claude-sonnet-5-5",
           "claude-haiku-4-5",
           "claude-fable-5-1",
           "claude-fable-5",
+          "claude-opus-5",
+          "claude-sonnet-5",
           "claude-opus-4-8",
           "claude-opus-4-7",
           "claude-opus-4-6",
@@ -1252,13 +1263,15 @@ const ClaudeSettings: ModelSettingsDict = {
           "claude-opus-4-0",
           "claude-sonnet-4-0",
         ],
-        default: "claude-sonnet-5",
+        default: "claude-sonnet-5-5",
         shortname_map: {
-          "claude-opus-5": "Claude Opus 5",
-          "claude-sonnet-5": "Claude Sonnet 5",
+          "claude-opus-5-5": "Claude Opus 5.5",
+          "claude-sonnet-5-5": "Claude Sonnet 5.5",
           "claude-haiku-4-5": "Claude Haiku 4.5",
           "claude-fable-5-1": "Claude Fable 5.1",
           "claude-fable-5": "Claude Fable 5",
+          "claude-opus-5": "Claude Opus 5",
+          "claude-sonnet-5": "Claude Sonnet 5",
           "claude-opus-4-8": "Claude Opus 4.8",
           "claude-opus-4-7": "Claude Opus 4.7",
           "claude-opus-4-6": "Claude Opus 4.6",
@@ -1273,7 +1286,7 @@ const ClaudeSettings: ModelSettingsDict = {
         type: "string",
         title: "thinking",
         description:
-          "Whether Claude thinks before it answers, with its thinking shown alongside each response. 'auto' shows the thinking of models that think by default (Claude Opus 5, Sonnet 5 and Fable), and leaves other models as they are. 'adaptive' lets Claude 4.6 and later decide when and how much to think. 'enabled' thinks within a fixed token budget, for Claude 3.7 through 4.5. 'disabled' turns thinking off, where the model allows it. Thinking counts toward max_tokens_to_sample, so set it generously. While Claude thinks, ChainForge leaves out a temperature other than 1, top_k, and a top_p below 0.95, which thinking doesn't allow. Claude Opus 4.7 and later, Sonnet 5 and Fable don't take temperature, top_p or top_k at all.",
+          "Whether Claude thinks before it answers, with its thinking shown alongside each response. 'auto' shows the thinking of models that think by default (Claude Opus 5 and later, Sonnet 5 and later, and Fable), and leaves other models as they are. 'adaptive' lets Claude 4.6 and later decide when and how much to think. 'enabled' thinks within a fixed token budget, for Claude 3.7 through 4.5. 'disabled' turns thinking off, where the model allows it: Claude Opus 5.5 and Fable always think, and on Sonnet 5.5 it turns off up-front thinking ('between_tools'), at effort 'high' or below. Thinking counts toward max_tokens_to_sample, so set it generously. While Claude thinks, ChainForge leaves out a temperature other than 1, top_k, and a top_p below 0.95, which thinking doesn't allow. Claude Opus 4.7 and later, Sonnet 5 and later, and Fable don't take temperature, top_p or top_k at all.",
         enum: ["auto", "adaptive", "enabled", "disabled"],
         default: "auto",
       },
@@ -1321,7 +1334,7 @@ const ClaudeSettings: ModelSettingsDict = {
         type: "string",
         title: "tool_choice",
         description:
-          "How the model should use the provided tools. The model can use a specific tool by its name, any available tool ('any'), or decide by itself whether to use a tool or not ('auto').",
+          "How the model should use the provided tools. The model can use a specific tool by its name, any available tool ('any'), or decide by itself whether to use a tool or not ('auto'). Claude Opus 5.5, Sonnet 5.5 and Fable 5.1 only take 'auto'.",
         default: "",
       },
       parallel_tool_calls: {
@@ -1383,7 +1396,7 @@ const ClaudeSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help":
-        "Defaults to claude-sonnet-5. Claude 3 and older have all been retired by Anthropic and are no longer queryable. Newer models than those listed here can be typed in by hand.",
+        "Defaults to claude-sonnet-5-5. Claude 3 and older have all been retired by Anthropic and are no longer queryable. Newer models than those listed here can be typed in by hand.",
       "ui:widget": "datalist",
     },
     system_msg: {
@@ -1477,9 +1490,9 @@ const Gemini25Settings: ModelSettingsDict = {
           "gemini-3.1-flash-lite",
           "gemini-3.1-pro-preview",
           "gemini-3-flash-preview",
-          "gemini-2.5-pro",
-          "gemini-2.5-flash",
-          "gemini-2.5-flash-lite",
+          "gemini-2.5-pro", // prior users only since 2026-09-18
+          "gemini-2.5-flash", // prior users only since 2026-09-18
+          "gemini-2.5-flash-lite", // prior users only since 2026-09-18
           "gemini-embedding-001",
         ],
         default: "gemini-3.8-flash",
@@ -2005,8 +2018,9 @@ export const BedrockSettings: ModelSettingsDict = {
         description:
           "The Bedrock model or inference profile to call. Which models you can use depends on your region and the model access granted to your AWS account, so type in whatever your account serves -- the catalog is in the Bedrock console. Most models released since 2025 reject their bare model ID on on-demand throughput and need an inference profile: the same ID behind a 'us.', 'eu.', 'apac.', 'jp.', 'au.' or 'global.' prefix. Swap the prefix to match your region.",
         enum: [
+          "us.anthropic.claude-sonnet-5-5",
+          "us.anthropic.claude-opus-5-5",
           "us.anthropic.claude-sonnet-5",
-          "us.anthropic.claude-opus-4-8",
           "us.anthropic.claude-haiku-4-5-20251001-v1:0",
           "us.amazon.nova-2-lite-v1:0",
           "us.meta.llama4-maverick-17b-instruct-v1:0",
@@ -2014,10 +2028,11 @@ export const BedrockSettings: ModelSettingsDict = {
           "us.mistral.mistral-large-3-675b-instruct",
           "us.openai.gpt-oss-120b-1:0",
         ],
-        default: "us.anthropic.claude-sonnet-5",
+        default: "us.anthropic.claude-sonnet-5-5",
         shortname_map: {
+          "us.anthropic.claude-sonnet-5-5": "Claude Sonnet 5.5",
+          "us.anthropic.claude-opus-5-5": "Claude Opus 5.5",
           "us.anthropic.claude-sonnet-5": "Claude Sonnet 5",
-          "us.anthropic.claude-opus-4-8": "Claude Opus 4.8",
           "us.anthropic.claude-haiku-4-5-20251001-v1:0": "Claude Haiku 4.5",
           "us.amazon.nova-2-lite-v1:0": "Nova 2 Lite",
           "us.meta.llama4-maverick-17b-instruct-v1:0": "Llama 4 Maverick",
@@ -2085,7 +2100,7 @@ export const BedrockSettings: ModelSettingsDict = {
     },
     model: {
       "ui:help":
-        "Defaults to us.anthropic.claude-sonnet-5. Any model or inference profile your account can call may be typed in.",
+        "Defaults to us.anthropic.claude-sonnet-5-5. Any model or inference profile your account can call may be typed in.",
       "ui:widget": "datalist",
     },
     system_msg: {

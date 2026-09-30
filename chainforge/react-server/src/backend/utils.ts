@@ -1636,6 +1636,13 @@ function is_newer_anthropic_model(model: LLM) {
 /** Claude models that think by default, but leave out the thinking's text unless asked for it. */
 const CLAUDE_THINKS_BY_DEFAULT = /^claude-(opus-5|sonnet-5|fable|mythos)/;
 
+/** Claude models that reject thinking "disabled", whose lowest setting is "between_tools" (no up-front thinking). */
+const CLAUDE_THINKS_BETWEEN_TOOLS = /^claude-sonnet-5-5/;
+
+/** Claude models that reject forced tool use (tool_choice "any" or "tool"). */
+const CLAUDE_NO_FORCED_TOOLS =
+  /^claude-(opus-5-5|sonnet-5-5|fable-5-1|mythos-5-1)/;
+
 /** Claude models released after Opus 4.6, which reject temperature, top_p and top_k set to anything but their defaults. */
 const CLAUDE_FIXED_SAMPLING =
   /^claude-(opus-4-[7-9]|sonnet-4-[7-9]|(opus|sonnet|haiku)-[5-9]|fable|mythos)/;
@@ -1693,7 +1700,12 @@ export function anthropic_thinking_config(model: string, params?: Dict): Dict {
     (mode === "auto" && CLAUDE_THINKS_BY_DEFAULT.test(model))
   )
     fields.thinking = { type: "adaptive", display: "summarized" };
-  else if (mode === "disabled") fields.thinking = { type: "disabled" };
+  else if (mode === "disabled")
+    fields.thinking = {
+      type: CLAUDE_THINKS_BETWEEN_TOOLS.test(model)
+        ? "between_tools"
+        : "disabled",
+    };
 
   const effort = params?.effort;
   if (typeof effort === "string" && effort && effort !== "default")
@@ -1774,10 +1786,15 @@ export async function call_anthropic(
     delete params.tool_choice;
   if (params?.tools === undefined) delete params?.parallel_tool_calls;
   else {
-    // A fixed thinking budget only allows Claude to choose its tools itself.
+    // A fixed thinking budget only allows Claude to choose its tools itself,
+    // as do the models that reject forced tool use.
     if (params?.tool_choice === undefined)
       params.tool_choice = {
-        type: thinking_fields.thinking?.type === "enabled" ? "auto" : "any",
+        type:
+          thinking_fields.thinking?.type === "enabled" ||
+          CLAUDE_NO_FORCED_TOOLS.test(model.toString())
+            ? "auto"
+            : "any",
       };
     params.tool_choice.disable_parallel_tool_use = !params.parallel_tool_calls;
     delete params?.parallel_tool_calls;
