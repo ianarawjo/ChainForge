@@ -27,11 +27,9 @@ import {
   IconRobot,
   IconSearch,
 } from "@tabler/icons-react";
-import { v4 as uuid } from "uuid";
-import useStore, { initLLMProviders } from "./store";
+import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
-import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import { LLMListContainer } from "./LLMListComponent";
 import LLMResponseInspectorModal, {
   LLMResponseInspectorModalRef,
@@ -65,16 +63,12 @@ import {
   grabResponses,
 } from "./backend/backend";
 import { UserForcedPrematureExit } from "./backend/errors";
-import {
-  NativeLLM,
-  OPENROUTER_PREFIX,
-  bestOllamaDecisionModel,
-} from "./backend/models";
+import { defaultJudge } from "./backend/aiModels";
 import CancelTracker from "./backend/canceler";
 import { PromptInfo, PromptListModal, PromptListPopover } from "./PromptNode";
 import { useDisclosure } from "@mantine/hooks";
 import { PromptTemplate } from "./backend/template";
-import StorageCache, { StringLookup } from "./backend/cache";
+import StorageCache from "./backend/cache";
 import {
   DATA_INPUT_NODE_TYPES,
   DataInputValue,
@@ -109,62 +103,15 @@ const OUTPUT_FORMATS = [
   { value: OutputFormat.Any, label: "open-ended" },
 ];
 
-/** A judge from the model menu, with its default settings, at temperature 0. */
-const judgeFromMenu = (model: string): LLMSpec | undefined => {
-  const i = initLLMProviders.find((p) => p.model === model);
-  if (!i) return undefined;
-  const settings = getDefaultModelSettings(
-    StringLookup.get(i.base_model) as string,
-  );
-  settings.temperature = 0.0;
-  return { ...i, key: uuid(), settings };
-};
-
 /**
- * The judge a new LLM Scorer starts with: a decision model, since those are
- * fast and cheap and answer the scorer's typed questions directly. That's one
- * pulled in Ollama when running locally (it costs nothing), else TypeSafe's
- * Jev on OpenRouter. Decision models can't give open-ended answers, so an
- * open-ended scorer starts with a cheap text model instead.
+ * Whether two judges are the same, settings and all. The judge list echoes
+ * back the judges it's given, as copies, when it's set up.
  */
-function defaultJudge(
-  format: OutputFormat | undefined,
-  ollamaDecisionModels: string[],
-  ollamaURL?: string,
-): LLMSpec {
-  if (format === OutputFormat.Any)
-    return (judgeFromMenu("gpt-6-luna") ??
-      judgeFromMenu(initLLMProviders[0].model)) as LLMSpec;
-
-  if (APP_IS_RUNNING_LOCALLY() && ollamaDecisionModels.length > 0) {
-    const model = bestOllamaDecisionModel(ollamaDecisionModels);
-    return {
-      key: uuid(),
-      name: model,
-      emoji: "🦙",
-      model: NativeLLM.Ollama_Decision,
-      base_model: NativeLLM.Ollama_Decision,
-      temp: 0,
-      formData: {
-        shortname: model,
-        ollamaModel: model,
-        ...(ollamaURL ? { ollama_url: ollamaURL } : {}),
-      },
-      settings: {
-        ...getDefaultModelSettings(NativeLLM.Ollama_Decision),
-        ollamaModel: model,
-        ...(ollamaURL ? { ollama_url: ollamaURL } : {}),
-      },
-    };
-  }
-
-  const jev = judgeFromMenu(`${OPENROUTER_PREFIX}~typesafe/jev-latest`);
-  return {
-    ...(jev as LLMSpec),
-    formData: { shortname: jev?.name ?? "Jev", model: "~typesafe/jev-latest" },
-    settings: {},
-  };
-}
+const sameJudge = (a: LLMSpec, b: LLMSpec) =>
+  a.key === b.key &&
+  a.name === b.name &&
+  JSON.stringify(a.settings) === JSON.stringify(b.settings) &&
+  JSON.stringify(a.formData) === JSON.stringify(b.formData);
 
 export interface LLMEvaluatorComponentRef {
   run: (
@@ -257,28 +204,49 @@ export const LLMEvaluatorComponent = forwardRef<
 ) {
   const [promptText, setPromptText] = useState(prompt ?? "");
   const apiKeys = useStore((state) => state.apiKeys);
+  const ollamaModels = useStore((state) => state.ollamaModels);
   const ollamaDecisionModels = useStore((state) => state.ollamaDecisionModels);
-  // A scorer that hasn't saved a judge gets the default, saved below so that
-  // it stays put, rather than changing with what's pulled in Ollama
-  const [defaultGrader] = useState<LLMSpec | undefined>(() =>
-    grader || (allowMultipleJudges && graders && graders.length > 0)
-      ? undefined
-      : defaultJudge(format, ollamaDecisionModels, apiKeys?.Ollama_BaseURL),
+  const [categoriesText, setCategoriesText] = useState(categories ?? "");
+  const [scaleText, setScaleText] = useState(scale ?? "");
+  const [expectedFormat, setExpectedFormat] = useState<OutputFormat>(
+    format ?? OutputFormat.Bin,
+  );
+
+  // Until the user picks a judge, the scorer uses a default that follows what
+  // they can run (see defaultJudge): it changes as their API keys and Ollama's
+  // models load, or when the answer format changes, and isn't saved.
+  const [pickedJudges, setPickedJudges] = useState<boolean>(
+    grader !== undefined ||
+      (allowMultipleJudges === true && !!graders && graders.length > 0),
+  );
+  const defaultGrader = useMemo(
+    () =>
+      pickedJudges
+        ? undefined
+        : defaultJudge({
+            openEnded: expectedFormat === OutputFormat.Any,
+            apiKeys: apiKeys ?? {},
+            ollamaModels,
+            ollamaDecisionModels,
+            runningLocally: APP_IS_RUNNING_LOCALLY(),
+          }),
+    [pickedJudges, expectedFormat, apiKeys, ollamaModels, ollamaDecisionModels],
   );
   const [llmScorers, setLLMScorers] = useState<LLMSpec[]>(
     allowMultipleJudges && graders && graders.length > 0
       ? graders
       : [(grader ?? defaultGrader) as LLMSpec],
   );
-  useEffect(() => {
-    if (defaultGrader && onLLMGraderChange) onLLMGraderChange(defaultGrader);
-    // Only once, when the scorer is first shown
-  }, []);
-  const [categoriesText, setCategoriesText] = useState(categories ?? "");
-  const [scaleText, setScaleText] = useState(scale ?? "");
-  const [expectedFormat, setExpectedFormat] = useState<OutputFormat>(
-    format ?? OutputFormat.Bin,
+  // The judge list only reads its judges when it's set up, so a new default
+  // sets it up afresh
+  const [judgeListKey, setJudgeListKey] = useState<string>(
+    defaultGrader?.key ?? "judges",
   );
+  useEffect(() => {
+    if (!defaultGrader) return;
+    setLLMScorers([defaultGrader]);
+    setJudgeListKey(defaultGrader.key ?? "judges");
+  }, [defaultGrader]);
   const [useReasoning, setUseReasoning] = useState<boolean>(
     reasonBeforeScoring ?? false,
   );
@@ -303,13 +271,21 @@ export const LLMEvaluatorComponent = forwardRef<
 
   const handleLLMListItemsChange = useCallback(
     (new_items: LLMSpec[]) => {
+      // The list echoing back the default judge isn't the user picking one
+      if (
+        defaultGrader &&
+        new_items.length === 1 &&
+        sameJudge(new_items[0], defaultGrader)
+      )
+        return;
+      setPickedJudges(true);
       setLLMScorers(new_items);
 
       if (new_items.length > 0 && onLLMGraderChange)
         onLLMGraderChange(new_items[0]);
       if (onLLMGradersChange) onLLMGradersChange(new_items);
     },
-    [setLLMScorers, onLLMGraderChange, onLLMGradersChange],
+    [defaultGrader, setLLMScorers, onLLMGraderChange, onLLMGradersChange],
   );
 
   const handleCategoriesChange = useCallback(
@@ -607,6 +583,7 @@ export const LLMEvaluatorComponent = forwardRef<
       </Group>
 
       <LLMListContainer
+        key={judgeListKey}
         initLLMItems={llmScorers}
         description={allowMultipleJudges ? "Judges" : "Model to use as scorer:"}
         modelSelectButtonText={allowMultipleJudges ? "Add judge +" : "Change"}

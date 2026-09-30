@@ -429,6 +429,26 @@ describe("asking providers for reasoning", () => {
     expect(
       anthropic_thinking_config("claude-sonnet-5", { thinking: "disabled" }),
     ).toEqual({ thinking: { type: "disabled" } });
+    // ...which only works at high effort or below
+    for (const effort of ["xhigh", "max"])
+      expect(
+        anthropic_thinking_config("claude-sonnet-5-5", {
+          thinking: "disabled",
+          effort,
+        }),
+      ).toEqual({
+        thinking: { type: "between_tools" },
+        output_config: { effort: "high" },
+      });
+    expect(
+      anthropic_thinking_config("claude-sonnet-5-5", {
+        thinking: "disabled",
+        effort: "low",
+      }),
+    ).toEqual({
+      thinking: { type: "between_tools" },
+      output_config: { effort: "low" },
+    });
   });
 
   test("Gemini: thought summaries from thinking models, unless turned off", () => {

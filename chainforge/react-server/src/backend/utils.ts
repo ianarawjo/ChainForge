@@ -1743,7 +1743,18 @@ export function anthropic_thinking_config(model: string, params?: Dict): Dict {
         : "disabled",
     };
 
-  const effort = params?.effort;
+  let effort = params?.effort;
+  // "between_tools" only works at high effort or below, so thinking turned off
+  // there takes the highest effort it allows, rather than a 400
+  if (
+    fields.thinking?.type === "between_tools" &&
+    (effort === "xhigh" || effort === "max")
+  ) {
+    console.warn(
+      `${model} can't turn thinking off at effort '${effort}'; using 'high'.`,
+    );
+    effort = "high";
+  }
   if (typeof effort === "string" && effort && effort !== "default")
     fields.output_config = { effort };
   return fields;

@@ -7,8 +7,14 @@
  * Either can be overridden. The result is an ordinary LLMSpec, so AI features
  * query models through queryLLM like any Prompt Node does.
  */
+import { v4 as uuid } from "uuid";
 import { getDefaultModelSettings, ModelSettings } from "../ModelSettingSchemas";
-import { OPENROUTER_PREFIX } from "./models";
+import {
+  NativeLLM,
+  OPENROUTER_PREFIX,
+  bestOllamaDecisionModel,
+  openRouterEmoji,
+} from "./models";
 import { Dict, LLMSpec } from "./typing";
 
 export type AITier = "fast" | "smart";
@@ -201,5 +207,97 @@ export function aiModelSpec(
     base_model: provider.base_model,
     temp: settings.temperature ?? 1.0,
     settings,
+  };
+}
+
+/** A model's short name, from its settings form (e.g. "Jev"), else its ID. */
+function shortName(base_model: string, model: string): string {
+  const names = ModelSettings[base_model]?.schema?.properties?.model
+    ?.shortname_map as Dict<string> | undefined;
+  return names?.[model] ?? model;
+}
+
+const JEV = "~typesafe/jev-latest";
+
+/** TypeSafe's Jev, on OpenRouter, as an LLM Scorer's judge. */
+function jevJudge(): LLMSpec {
+  const name = shortName("openrouter", JEV);
+  return {
+    key: uuid(),
+    name,
+    emoji: openRouterEmoji(OPENROUTER_PREFIX + JEV),
+    model: OPENROUTER_PREFIX + JEV,
+    base_model: "openrouter",
+    temp: 0,
+    formData: { shortname: name, model: JEV },
+    settings: {},
+  };
+}
+
+/** A decision model pulled in Ollama (e.g. nimble), as an LLM Scorer's judge. */
+function ollamaDecisionJudge(model: string, ollamaURL?: string): LLMSpec {
+  const url = ollamaURL ? { ollama_url: ollamaURL } : {};
+  return {
+    key: uuid(),
+    name: model,
+    emoji: "🦙",
+    model: NativeLLM.Ollama_Decision,
+    base_model: NativeLLM.Ollama_Decision,
+    temp: 0,
+    formData: { shortname: model, ollamaModel: model, ...url },
+    settings: {
+      ...getDefaultModelSettings(NativeLLM.Ollama_Decision),
+      ollamaModel: model,
+      ...url,
+    },
+  };
+}
+
+/**
+ * The judge a new LLM Scorer starts with, from what the user can run. A
+ * decision model if possible, since those are fast and cheap and answer the
+ * scorer's typed questions directly: one pulled in Ollama when running locally
+ * (it costs nothing), else Jev, with an OpenRouter key. Otherwise, or when the
+ * scorer is open-ended (which decision models can't answer), the fast model
+ * AI features would use (see autoPickAIProvider). With nothing set up at all,
+ * Jev, whose error then says which key to add.
+ */
+export function defaultJudge(options: {
+  openEnded: boolean;
+  apiKeys: Dict<string>;
+  ollamaModels: string[];
+  ollamaDecisionModels: string[];
+  runningLocally: boolean;
+}): LLMSpec {
+  const { openEnded, apiKeys, ollamaModels, ollamaDecisionModels } = options;
+  const { runningLocally } = options;
+  if (!openEnded) {
+    if (runningLocally && ollamaDecisionModels.length > 0)
+      return ollamaDecisionJudge(
+        bestOllamaDecisionModel(ollamaDecisionModels),
+        apiKeys.Ollama_BaseURL,
+      );
+    if (apiKeys.OpenRouter) return jevJudge();
+  }
+
+  const provider = autoPickAIProvider(apiKeys, ollamaModels, runningLocally);
+  const ready = aiSetupProblem(provider, apiKeys, ollamaModels) === undefined;
+  if (!ready && !openEnded) return jevJudge();
+
+  const spec = aiModelSpec(provider, "fast", undefined, apiKeys, ollamaModels);
+  const model = aiModelName(provider, "fast", undefined, ollamaModels);
+  const name = shortName(provider.base_model, model);
+  const isOllama = provider.base_model === "ollama";
+  return {
+    ...spec,
+    key: uuid(),
+    name,
+    emoji:
+      provider.prefix === OPENROUTER_PREFIX
+        ? openRouterEmoji(spec.model)
+        : spec.emoji,
+    formData: isOllama
+      ? { shortname: name, ollamaModel: model }
+      : { shortname: name, model },
   };
 }

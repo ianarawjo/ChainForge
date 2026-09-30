@@ -29,6 +29,7 @@ import {
   aiModelSpec,
   aiSetupProblem,
   autoPickAIProvider,
+  defaultJudge,
   getAIProviders,
 } from "../aiModels";
 // eslint-disable-next-line import/first
@@ -495,5 +496,68 @@ describe("AI features", () => {
         "evaluate",
       ),
     ).toEqual(["def evaluate(r):\n  return 1", "print(evaluate(example))"]);
+  });
+});
+
+describe("an LLM Scorer's default judge", () => {
+  const judge = (
+    apiKeys: Record<string, string>,
+    opts: Partial<Parameters<typeof defaultJudge>[0]> = {},
+  ) =>
+    defaultJudge({
+      openEnded: false,
+      apiKeys,
+      ollamaModels: [],
+      ollamaDecisionModels: [],
+      runningLocally: false,
+      ...opts,
+    });
+
+  test("is an Ollama decision model when running locally with one pulled", () => {
+    const j = judge(
+      { OpenRouter: "k", Ollama_BaseURL: "http://localhost:11434/api" },
+      { runningLocally: true, ollamaDecisionModels: ["tev1:0.8b", "nimble"] },
+    );
+    expect(j.base_model).toBe("ollama-decision");
+    expect(j.settings?.ollamaModel).toBe("nimble");
+    expect(j.settings?.ollama_url).toBe("http://localhost:11434/api");
+    // ...but not when it isn't running locally
+    expect(
+      judge({ OpenRouter: "k" }, { ollamaDecisionModels: ["nimble"] }).model,
+    ).toBe("openrouter/~typesafe/jev-latest");
+  });
+
+  test("is Jev with an OpenRouter key", () => {
+    const j = judge({ OpenRouter: "k", OpenAI: "k" });
+    expect(j.model).toBe("openrouter/~typesafe/jev-latest");
+    expect(j.name).toBe("Jev");
+  });
+
+  test("follows the keys set, without an OpenRouter key", () => {
+    expect(judge({ OpenAI: "k" }).model).toBe("gpt-5.4-nano");
+    expect(judge({ Anthropic: "k" }).model).toBe("claude-haiku-4-5");
+    const ollama = judge(
+      {},
+      { runningLocally: true, ollamaModels: ["qwen3:4b"] },
+    );
+    expect(ollama.model).toBe("ollama");
+    expect(ollama.settings?.ollamaModel).toBe("qwen3:4b");
+  });
+
+  test("is a text model for open-ended answers, which decision models can't give", () => {
+    expect(
+      judge(
+        { OpenRouter: "k" },
+        {
+          openEnded: true,
+          runningLocally: true,
+          ollamaDecisionModels: ["nimble"],
+        },
+      ).model,
+    ).toBe("openrouter/google/gemini-3.1-flash-lite");
+  });
+
+  test("is Jev with nothing set up, so its error says which key to add", () => {
+    expect(judge({}).model).toBe("openrouter/~typesafe/jev-latest");
   });
 });
