@@ -42,6 +42,7 @@ import {
   BEDROCK_PREFIX,
   TOGETHER_PREFIX,
   HUGGINGFACE_PREFIX,
+  NativeLLM,
   OPENROUTER_IMAGE_PREFIX,
   OPENROUTER_PREFIX,
   OPENROUTER_EMOJI,
@@ -448,6 +449,15 @@ if (IS_RUNNING_LOCALLY) {
     model: "ollama",
     base_model: "ollama",
     temp: 1.0,
+  });
+  // Ollama's decision models, which model menus only offer in LLM Scorers
+  // (see DECISION_ONLY_BASE_MODELS). The model to ask is in its settings.
+  initLLMProviderMenu.push({
+    name: "Ollama (decision model)",
+    emoji: "🦙",
+    model: NativeLLM.Ollama_Decision,
+    base_model: NativeLLM.Ollama_Decision,
+    temp: 0,
   });
 }
 

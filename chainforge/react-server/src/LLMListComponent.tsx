@@ -26,11 +26,13 @@ import ModelSettingsModal, {
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import {
   BEDROCK_PREFIX,
+  DECISION_ONLY_BASE_MODELS,
   TOGETHER_PREFIX,
   HUGGINGFACE_PREFIX,
   NativeLLM,
   OPENROUTER_IMAGE_PREFIX,
   OPENROUTER_PREFIX,
+  offeredInMenu,
   openRouterEmoji,
 } from "./backend/models";
 import useStore, { initLLMProviders, initLLMProviderMenu } from "./store";
@@ -298,7 +300,24 @@ export interface LLMListContainerProps {
   hideTrashIcon?: boolean;
   bgColor?: string;
   selectModelAction?: "add" | "replace";
+  /**
+   * Whether to offer models that only make decisions (e.g. Ollama's nimble),
+   * which only an LLM Scorer can use. Off by default, for text generation.
+   */
+  allowDecisionModels?: boolean;
 }
+
+/**
+ * A model's title in the menu. Decision models say so, since they can't
+ * write text. (Their names stay short, as judges' names head score columns.)
+ */
+const menuTitle = (item: LLMSpec) =>
+  `${item.emoji} ${item.name}${
+    DECISION_ONLY_BASE_MODELS.has(item.base_model) &&
+    !item.name.includes("(decision model)")
+      ? " (decision model)"
+      : ""
+  }`;
 
 export const LLMListContainer = forwardRef<
   LLMListContainerRef,
@@ -313,6 +332,7 @@ export const LLMListContainer = forwardRef<
     onItemsChange,
     hideTrashIcon,
     bgColor,
+    allowDecisionModels,
   },
   ref,
 ) {
@@ -419,7 +439,10 @@ export const LLMListContainer = forwardRef<
       );
 
       // Ollama models use a different format for the model name, that we need to carry over:
-      if (item.base_model === "ollama") {
+      if (
+        item.base_model === "ollama" ||
+        item.base_model === NativeLLM.Ollama_Decision
+      ) {
         if (_item?.settings?.ollamaModel) {
           item.formData.ollamaModel = _item?.settings?.ollamaModel;
           item.settings.ollamaModel = _item?.settings?.ollamaModel;
@@ -478,6 +501,9 @@ export const LLMListContainer = forwardRef<
 
   const menuItems = useMemo(() => {
     const initModels: Set<string> = new Set<string>();
+    // Models only an LLM Scorer can use are left out of other menus
+    const offered = (item: LLMSpec | LLMGroup) =>
+      offeredInMenu(item, allowDecisionModels === true);
     const convert = (
       item: LLMSpec | LLMGroup,
       groupName?: string,
@@ -486,13 +512,13 @@ export const LLMListContainer = forwardRef<
         return {
           key: item.group,
           title: `${item.emoji} ${item.group}`,
-          items: item.items.map((i) => convert(i, item.group)),
+          items: item.items.filter(offered).map((i) => convert(i, item.group)),
         };
       } else {
         initModels.add(item.base_model);
         return {
           key: item.key ?? item.model,
-          title: `${item.emoji} ${item.name}`,
+          title: menuTitle(item),
           onClick: () => handleSelectModel(item),
           onTrash:
             groupName === "Favorites"
@@ -505,21 +531,22 @@ export const LLMListContainer = forwardRef<
         };
       }
     };
-    const res = initLLMProviderMenu.map((i) => convert(i));
+    const res = initLLMProviderMenu.filter(offered).map((i) => convert(i));
 
     for (const item of AvailableLLMs) {
-      if (initModels.has(item.base_model)) {
+      if (initModels.has(item.base_model) || !offered(item)) {
         continue;
       }
       res.push({
         key: item.base_model,
-        title: `${item.emoji} ${item.name}`,
+        title: menuTitle(item),
         onClick: () => handleSelectModel(item),
       });
     }
     return res;
   }, [
     AvailableLLMs,
+    allowDecisionModels,
     handleSelectModel,
     refreshLLMProviderList,
     removeFavorite,

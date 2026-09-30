@@ -41,6 +41,7 @@ import {
   storeAPIKeys,
 } from "./backend/apiKeyStorage";
 import { setCustomProviders } from "./ModelSettingSchemas";
+import { NativeLLM, isOllamaDecisionModelName } from "./backend/models";
 import AISupportSettings from "./AISupportSettings";
 import { AIModelOverrides } from "./backend/aiModels";
 import { CustomLLMProviderSpec, Dict, JSONCompatible } from "./backend/typing";
@@ -338,18 +339,51 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                 console.log("No Ollama models available.");
                 return;
               }
-              setOllamaModels(models_available);
+              // Decision models (e.g. nimble) can't write text, so they're
+              // listed apart, and never picked for AI features
+              const text_models = models_available.filter(
+                (m: string) => !isOllamaDecisionModelName(m),
+              );
+              const decision_models = models_available.filter((m: string) =>
+                isOllamaDecisionModelName(m),
+              );
+              setOllamaModels(text_models);
 
               // Set the available models in the global provider menu,
               // by replacing the default Ollama generic model with the model list from the server.
               const ollama_item = initLLMProviderMenu.findIndex(
                 (item) => "base_model" in item && item.base_model === "ollama",
               );
-              if (ollama_item !== -1) {
+              const decision_item = initLLMProviderMenu.findIndex(
+                (item) =>
+                  "base_model" in item &&
+                  item.base_model === NativeLLM.Ollama_Decision,
+              );
+              if (decision_item !== -1 && decision_models.length > 0) {
+                initLLMProviderMenu[decision_item] = {
+                  group: "Ollama (decision model)",
+                  emoji: "🦙",
+                  items: decision_models.map((model: string) => ({
+                    key: `ollama-decision/${model}`,
+                    name: model,
+                    emoji: "🦙",
+                    model: NativeLLM.Ollama_Decision,
+                    base_model: NativeLLM.Ollama_Decision,
+                    formData: {
+                      ollamaModel: model,
+                    },
+                    settings: {
+                      ollamaModel: model,
+                    },
+                    temp: 0,
+                  })),
+                };
+              }
+              if (ollama_item !== -1 && text_models.length > 0) {
                 initLLMProviderMenu[ollama_item] = {
                   group: "Ollama",
                   emoji: "🦙",
-                  items: models_available.map((model: string, idx: number) => ({
+                  items: text_models.map((model: string, idx: number) => ({
                     key: idx,
                     name: model,
                     emoji: "🦙",

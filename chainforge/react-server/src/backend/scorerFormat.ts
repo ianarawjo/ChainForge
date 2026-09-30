@@ -416,10 +416,26 @@ export function findDisagreements(
   return out;
 }
 
+/** A decision model's limits on a question's options. */
+export interface DecisionLimits {
+  maxCategories: number;
+  minLevels: number;
+  maxLevels: number;
+}
+
 /** Jev's limits on a question's options. */
-const MAX_DECISION_CATEGORIES = 255;
-const MIN_DECISION_LEVELS = 2;
-const MAX_DECISION_LEVELS = 10;
+export const JEV_DECISION_LIMITS: DecisionLimits = {
+  maxCategories: 255,
+  minLevels: 2,
+  maxLevels: 10,
+};
+
+/** Ollama's (e.g. nimble's): 2 to 26 options, whether categories or levels. */
+export const OLLAMA_DECISION_LIMITS: DecisionLimits = {
+  maxCategories: 26,
+  minLevels: 2,
+  maxLevels: 26,
+};
 
 /**
  * The typed question a decision model (e.g. Jev) answers for a scorer: a
@@ -431,7 +447,13 @@ export function decisionQuestion(
   spec: ScoreSpec,
   rubric: string,
   judge: string,
+  limits: DecisionLimits = JEV_DECISION_LIMITS,
 ): Dict {
+  const {
+    maxCategories: MAX_DECISION_CATEGORIES,
+    minLevels: MIN_DECISION_LEVELS,
+    maxLevels: MAX_DECISION_LEVELS,
+  } = limits;
   const instructions = rubric.trim();
   if (!instructions)
     throw new Error(`${judge} needs a rubric: describe what to decide.`);

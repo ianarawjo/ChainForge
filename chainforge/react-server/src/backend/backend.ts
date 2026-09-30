@@ -54,7 +54,13 @@ import {
   escapeBraces,
 } from "./template";
 import { UserForcedPrematureExit } from "./errors";
-import { ScoreSpec, decisionQuestion, parseScore } from "./scorerFormat";
+import {
+  JEV_DECISION_LIMITS,
+  OLLAMA_DECISION_LIMITS,
+  ScoreSpec,
+  decisionQuestion,
+  parseScore,
+} from "./scorerFormat";
 import CancelTracker from "./canceler";
 import { execPy } from "./pyodide/exec-py";
 import { baseModelToProvider } from "../ModelSettingSchemas";
@@ -1426,7 +1432,14 @@ function evalQueryRuns(
         ...j,
         settings: {
           ...j.settings,
-          decision_question: decisionQuestion(score_spec, rubric, j.name),
+          decision_question: decisionQuestion(
+            score_spec,
+            rubric,
+            j.name,
+            getProvider(j.model as LLM) === LLMProvider.OllamaDecision
+              ? OLLAMA_DECISION_LIMITS
+              : JEV_DECISION_LIMITS,
+          ),
         },
       };
     },

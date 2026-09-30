@@ -36,11 +36,13 @@ const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // Custom UI widgets for react-jsonschema-form
 export const DatalistWidget = (props: WidgetProps) => {
+  // Optional labels for the suggestions, by value, from "ui:options": { labels }
+  const labels = (props.options.labels ?? {}) as Dict<string>;
   const [data, setData] = useState(
     (
       props.options.enumOptions?.map((option) => ({
         value: option.value,
-        label: option.value,
+        label: labels[option.value] ?? option.value,
       })) ?? []
     ).concat(
       props.options.enumOptions?.find((o) => o.value === props.value)

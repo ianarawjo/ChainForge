@@ -311,6 +311,12 @@ export interface ResponseStats {
   /** Set when idle power was measured before the power settings last changed (no idle time since). */
   energy_baseline_before_change?: boolean;
   /**
+   * Set when the server reported no timings (e.g. Ollama's decision models),
+   * so `energy_wh` is over the whole request as ChainForge timed it, which
+   * includes loading the model if it had to be loaded.
+   */
+  energy_includes_load?: boolean;
+  /**
    * Set when the provider reported one total for several responses, e.g. one
    * request that returned n of them: how many responses the total was shared
    * between. The stats it covers (output tokens and speed, or latency) are

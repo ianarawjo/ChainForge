@@ -3,6 +3,7 @@
  */
 import Bottleneck from "bottleneck";
 import { UserForcedPrematureExit } from "./errors";
+import type { LLMGroup, LLMSpec } from "./typing";
 
 export enum NativeLLM {
   // WebLLM (fully in-browser, no API key). Model IDs come from web-llm's own
@@ -193,6 +194,10 @@ export enum NativeLLM {
   HF_OTHER = "Other (HuggingFace)",
 
   Ollama = "ollama",
+  // Ollama's decision models (e.g. nimble, tev1), which answer typed questions
+  // rather than writing text. Kept apart from "ollama" so they have their own
+  // settings, and are only offered where a decision model can be used.
+  Ollama_Decision = "ollama-decision",
 
   // Together.ai
   Together_ZeroOneAI_01ai_Yi_Chat_34B = "together/zero-one-ai/Yi-34B-Chat",
@@ -299,6 +304,7 @@ export enum LLMProvider {
   Google = "google",
   HuggingFace = "hf",
   Ollama = "ollama",
+  OllamaDecision = "ollama-decision",
   Bedrock = "bedrock",
   Together = "together",
   DeepSeek = "deepseek",
@@ -415,8 +421,9 @@ export function isOpenRouterImageModel(llm: LLM | string): boolean {
 }
 
 /**
- * Whether a model is a "decision" model reached through OpenRouter's decisions
- * endpoint, e.g. TypeSafe's Jev ("openrouter/~typesafe/jev-latest"). Such
+ * Whether a model is a "decision" model: one reached through OpenRouter's
+ * decisions endpoint, e.g. TypeSafe's Jev ("openrouter/~typesafe/jev-latest"),
+ * or one of Ollama's (e.g. nimble), whose model name is in its settings. Such
  * models don't generate text: they answer typed questions (yes/no, one of a
  * set of categories, or a position on a scale) about a piece of text, so
  * ChainForge only uses them as judges in an LLM Scorer.
@@ -424,9 +431,48 @@ export function isOpenRouterImageModel(llm: LLM | string): boolean {
 export function isDecisionModel(llm: LLM | string): boolean {
   const name = llm.toString();
   return (
-    name.startsWith(OPENROUTER_PREFIX) &&
-    /^~?typesafe\//i.test(name.substring(OPENROUTER_PREFIX.length))
+    name === NativeLLM.Ollama_Decision ||
+    (name.startsWith(OPENROUTER_PREFIX) &&
+      /^~?typesafe\//i.test(name.substring(OPENROUTER_PREFIX.length)))
   );
+}
+
+/**
+ * The decision models Ollama serves through its /v1/systemone endpoint (since
+ * Ollama 0.35): Bespoke Labs' nimble, and Together AI's tev1 in two sizes.
+ */
+export const OLLAMA_DECISION_MODELS = ["nimble", "tev1", "tev1:0.8b"];
+
+/**
+ * Whether a model pulled in Ollama (e.g. "nimble:latest", "tev1:0.8b") is one
+ * of its decision models: a Nimble or Tev model, as Ollama puts it. Goes by
+ * name, since Ollama's model list doesn't say.
+ */
+export function isOllamaDecisionModelName(name: string): boolean {
+  const base = name.split(":")[0].split("/").at(-1) ?? "";
+  return /^(nimble|tev\d+)([-_.]|$)/i.test(base);
+}
+
+/**
+ * The base models (settings forms) whose models only make decisions, so model
+ * menus offer them only where a decision model can be used: an LLM Scorer.
+ * (Jev, on OpenRouter, shares its form with text models, so isn't one.)
+ */
+export const DECISION_ONLY_BASE_MODELS = new Set<string>([
+  NativeLLM.Ollama_Decision,
+]);
+
+/**
+ * Whether a model menu offers a model, or a group with any model it offers:
+ * menus for text generation leave out models that only make decisions.
+ */
+export function offeredInMenu(
+  item: LLMSpec | LLMGroup,
+  allowDecisionModels: boolean,
+): boolean {
+  return "group" in item
+    ? item.items.some((i) => offeredInMenu(i, allowDecisionModels))
+    : allowDecisionModels || !DECISION_ONLY_BASE_MODELS.has(item.base_model);
 }
 
 /**
@@ -528,6 +574,8 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
   )
     return LLMProvider.HuggingFace;
   else if (llm.toString().startsWith("claude")) return LLMProvider.Anthropic;
+  else if (llm.toString() === NativeLLM.Ollama_Decision)
+    return LLMProvider.OllamaDecision;
   else if (llm_name?.startsWith("Ollama")) return LLMProvider.Ollama;
   else if (llm.toString().startsWith(BEDROCK_PREFIX))
     return LLMProvider.Bedrock;
