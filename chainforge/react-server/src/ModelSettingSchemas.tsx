@@ -14,8 +14,10 @@ import {
   LLMProvider,
   MAX_CONCURRENT,
   NativeLLM,
+  OPENAI_REASONING_EFFORTS,
   RATE_LIMIT_BY_MODEL,
   getProvider,
+  openAIReasoningEfforts,
   isGeminiImageModel,
   isOpenAIImageModel,
   isOpenRouterImageModel,
@@ -128,8 +130,8 @@ const ChatGPTSettings: ModelSettingsDict = {
         type: "string",
         title: "reasoning.effort",
         description:
-          "A parameter specific to o1+ and GPT-5+ models that controls the amount of reasoning effort the model expends when generating a response. Not every model supports every level: only GPT-5 supports 'minimal', and 'none', 'xhigh' and 'max' are for newer models (e.g. GPT-6 Luna supports 'none' through 'max').",
-        enum: ["none", "minimal", "low", "medium", "high", "xhigh", "max"],
+          "A parameter specific to o1+ and GPT-5+ models that controls the amount of reasoning effort the model expends when generating a response. Only the levels the selected model takes are offered (for models OpenAI's docs don't cover, minimal to high). A saved level the model doesn't take is sent as the nearest one it does.",
+        enum: OPENAI_REASONING_EFFORTS,
         default: "medium", // TODO: Add reasoning.summary option to visualize reasoning tokens in UI.
       },
       verbosity: {
@@ -301,6 +303,17 @@ const ChatGPTSettings: ModelSettingsDict = {
     },
   },
 
+  // Models take different reasoning efforts. Where OpenAI's docs don't say
+  // (e.g. the o-series), the four levels ChainForge has always offered remain.
+  modelEnums: (model) => ({
+    reasoning_effort: openAIReasoningEfforts(model) ?? [
+      "minimal",
+      "low",
+      "medium",
+      "high",
+    ],
+  }),
+
   postprocessors: {
     functions: (str) => {
       if (typeof str !== "string") return str;
@@ -370,6 +383,7 @@ const GPT4Settings: ModelSettingsDict = {
       "ui:widget": "datalist",
     },
   },
+  modelEnums: ChatGPTSettings.modelEnums,
   postprocessors: ChatGPTSettings.postprocessors,
 };
 
@@ -1663,6 +1677,12 @@ const AzureOpenAISettings: ModelSettingsDict = {
         ChatGPTSettings.schema.properties,
         (key) => key !== "model",
       ),
+      // A deployment name doesn't say which model it is, so every level is offered.
+      reasoning_effort: {
+        ...ChatGPTSettings.schema.properties.reasoning_effort,
+        description:
+          "A parameter specific to o1+ and GPT-5+ models that controls the amount of reasoning effort the model expends when generating a response. Not every model takes every level: see the documentation for the model you deployed.",
+      },
     },
   },
   uiSchema: {
@@ -2684,10 +2704,67 @@ export const getDefaultModelFormData = (
         : null;
   });
   if (model !== undefined) default_formdata.model = model;
-  return {
+  return fitFormDataToModel(settingsSpec, {
     ...default_formdata,
     ...modelDefaultsFor(settingsSpec, default_formdata.model),
-  };
+  });
+};
+
+/**
+ * The form's schema for a model, with the options of fields that differ by
+ * model (see ModelSettingsDict.modelEnums) cut down to the ones it takes.
+ */
+export const schemaForModel = (
+  settingsSpec: ModelSettingsDict,
+  model: JSONCompatible | undefined,
+): ModelSettingsDict["schema"] => {
+  const enums =
+    typeof model === "string" ? settingsSpec.modelEnums?.(model) : undefined;
+  if (!enums) return settingsSpec.schema;
+  const properties = { ...settingsSpec.schema.properties };
+  for (const [key, allowed] of Object.entries(enums)) {
+    const field = properties[key];
+    if (!field || !Array.isArray(field.enum)) continue;
+    const kept = field.enum.filter((v) => allowed.includes(v));
+    if (kept.length > 0) properties[key] = { ...field, enum: kept };
+  }
+  return { ...settingsSpec.schema, properties };
+};
+
+/**
+ * Form data whose values are all ones its model takes (see schemaForModel):
+ * a value the model doesn't offer becomes the nearest one in the field's
+ * option list that it does (the later one, on a tie).
+ */
+export const fitFormDataToModel = (
+  settingsSpec: ModelSettingsDict | undefined,
+  formData: Dict<JSONCompatible>,
+): Dict<JSONCompatible> => {
+  if (!settingsSpec?.modelEnums) return formData;
+  const schema = schemaForModel(settingsSpec, formData.model);
+  const fitted = { ...formData };
+  for (const [key, field] of Object.entries(schema.properties)) {
+    const full = settingsSpec.schema.properties[key]?.enum;
+    const kept = field.enum;
+    if (
+      !Array.isArray(full) ||
+      !Array.isArray(kept) ||
+      kept === full ||
+      fitted[key] === undefined ||
+      kept.includes(fitted[key])
+    )
+      continue;
+    const rank = full.indexOf(fitted[key]);
+    if (rank < 0) continue;
+    let best = kept[0];
+    for (const v of kept)
+      if (
+        Math.abs(full.indexOf(v) - rank) <= Math.abs(full.indexOf(best) - rank)
+      )
+        best = v;
+    fitted[key] = best;
+  }
+  return fitted;
 };
 
 /** The defaults a model has in place of the form's (see modelDefaults). */

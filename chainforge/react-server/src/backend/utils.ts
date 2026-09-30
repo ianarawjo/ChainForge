@@ -8,6 +8,7 @@ import {
   LLM,
   LLMProvider,
   NativeLLM,
+  fitOpenAIReasoningEffort,
   getProvider,
   isGeminiImageModel,
   isOpenAIImageModel,
@@ -646,6 +647,17 @@ export async function call_chatgpt(
   const modelname: string = model.toString();
 
   strip_empty_chat_params(params);
+
+  // An effort the model doesn't take (e.g. from a flow made for another model)
+  // becomes the nearest one it does, rather than a 400 from OpenAI.
+  if (typeof params?.reasoning_effort === "string") {
+    const effort = fitOpenAIReasoningEffort(modelname, params.reasoning_effort);
+    if (effort !== params.reasoning_effort)
+      console.warn(
+        `${modelname} doesn't take reasoning effort '${params.reasoning_effort}'; using '${effort}'.`,
+      );
+    params.reasoning_effort = effort;
+  }
 
   // Reasoning summaries only come from the Responses API, so OpenAI's reasoning
   // models go through it when a summary is asked for.

@@ -496,6 +496,35 @@ describe("asking providers for reasoning", () => {
     ]);
   });
 
+  test("OpenAI: an effort the model doesn't take is sent as the nearest one it does", async () => {
+    set_api_keys({ OpenAI: "sk-test" });
+    const bodies: Dict[] = [];
+    (globalThis as any).fetch = jest.fn(
+      async (url: string, init: RequestInit) => {
+        bodies.push(JSON.parse(init.body as string));
+        const body = chatReply({ content: "4" });
+        return {
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          headers: new Headers({ "content-type": "application/json" }),
+          json: async () => body,
+          text: async () => JSON.stringify(body),
+        };
+      },
+    );
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    await call_chatgpt("What is 2 + 2?", "gpt-5.4", 1, 1, {
+      reasoning_effort: "max",
+    });
+    await call_chatgpt("What is 2 + 2?", "gpt-6-luna", 1, 1, {
+      reasoning_effort: "max",
+    });
+    warn.mockRestore();
+    expect(bodies[0].reasoning_effort).toBe("xhigh");
+    expect(bodies[1].reasoning_effort).toBe("max");
+  });
+
   test("Gemini: a thinking level, for Gemini 3, instead of a budget", () => {
     expect(
       gemini_thinking_config("gemini-3.8-flash", {
