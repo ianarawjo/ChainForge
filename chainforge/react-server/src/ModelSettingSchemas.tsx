@@ -14,6 +14,7 @@ import {
   LLMProvider,
   MAX_CONCURRENT,
   NativeLLM,
+  OLLAMA_DECISION_MODELS,
   RATE_LIMIT_BY_MODEL,
   getProvider,
   isGeminiImageModel,
@@ -1974,6 +1975,60 @@ const OllamaSettings: ModelSettingsDict = {
 };
 
 /**
+ * Ollama's decision models (e.g. nimble, tev1), for LLM Scorers only. They
+ * answer typed questions (yes/no, a category, or a position on a scale) about a
+ * text, through Ollama's /v1/systemone endpoint, rather than writing text, so
+ * they take none of the text models' generation settings.
+ */
+const OllamaDecisionSettings: ModelSettingsDict = {
+  fullName: "Ollama (decision model)",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "nimble",
+      },
+      ollamaModel: {
+        type: "string",
+        title: "Model",
+        description:
+          "The decision model to ask, through Ollama's decision endpoint (Ollama 0.35 or later). Make sure you've pulled it first, e.g. with `ollama pull nimble`. For more details, see https://docs.ollama.com/capabilities/decision",
+        enum: OLLAMA_DECISION_MODELS,
+        default: "nimble",
+      },
+      ollama_url: {
+        type: "string",
+        title: "URL",
+        description:
+          "Base URL of the Ollama server. A URL ending in /api works too.",
+        default: "http://localhost:11434",
+      },
+    },
+  },
+  uiSchema: {
+    "ui:submitButtonOptions": UI_SUBMIT_BUTTON_SPEC,
+    shortname: {
+      "ui:autofocus": true,
+    },
+    ollamaModel: {
+      "ui:help": "Defaults to nimble. Type to enter any other decision model.",
+      "ui:widget": "datalist",
+      "ui:options": {
+        labels: Object.fromEntries(
+          OLLAMA_DECISION_MODELS.map((m) => [m, `${m} (decision model)`]),
+        ),
+      },
+    },
+  },
+  postprocessors: {},
+};
+
+/**
  * Amazon Bedrock, through the Converse API -- one request shape for every
  * vendor on Bedrock, which is why a single form replaces the per-vendor ones
  * ChainForge used to carry.
@@ -2343,6 +2398,7 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   "azure-openai": AzureOpenAISettings,
   hf: HuggingFaceSettings,
   ollama: OllamaSettings,
+  "ollama-decision": OllamaDecisionSettings,
   bedrock: BedrockSettings,
   // The per-vendor keys flows were saved with before Bedrock's Converse API
   // let one form cover every vendor. They all open that form now.
@@ -2377,6 +2433,7 @@ export function baseModelToProvider(base_model: string): LLMProvider {
     "azure-openai": LLMProvider.Azure_OpenAI,
     hf: LLMProvider.HuggingFace,
     ollama: LLMProvider.Ollama,
+    "ollama-decision": LLMProvider.OllamaDecision,
     bedrock: LLMProvider.Bedrock,
     "br.anthropic.claude": LLMProvider.Bedrock,
     "br.ai21.j2": LLMProvider.Bedrock,
@@ -2418,6 +2475,7 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.HuggingFace]: HuggingFaceSettings,
     [LLMProvider.Bedrock]: BedrockSettings,
     [LLMProvider.Ollama]: OllamaSettings,
+    [LLMProvider.OllamaDecision]: OllamaDecisionSettings,
     [LLMProvider.Together]: TogetherChatSettings,
     [LLMProvider.DeepSeek]: DeepSeekSettings,
     [LLMProvider.MiniMax]: MiniMaxSettings,

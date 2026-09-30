@@ -554,6 +554,8 @@ export const LLMEvaluatorComponent = forwardRef<
         onItemsChange={handleLLMListItemsChange}
         hideTrashIcon={!allowMultipleJudges || llmScorers.length <= 1}
         bgColor={modelContainerBgColor}
+        // Judges can be decision models (e.g. Ollama's nimble), asked a typed question
+        allowDecisionModels
       />
     </>
   );

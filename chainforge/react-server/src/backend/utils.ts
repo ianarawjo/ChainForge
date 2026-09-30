@@ -1034,31 +1034,30 @@ export async function call_openrouter(
 const OPENROUTER_DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions";
 
 /**
- * Asks a decision model (e.g. TypeSafe's Jev) one typed question about a text,
- * through OpenRouter's decisions endpoint. The text is sent as the state, and
- * the question comes from `params.decision_question`, which an LLM Scorer sets
- * from its rubric and format: { type: "noul" | "choice" | "score",
- * instructions, criteria? }. Each reply's answer is under `answers.score`.
+ * Asks a decision model one typed question about a text, `n` times. The text
+ * is sent as the state, and the question comes from `params.decision_question`,
+ * which an LLM Scorer sets from its rubric and format: { type: "noul" |
+ * "choice" | "score", instructions, criteria? }. Each reply's answer is under
+ * `answers.score`. OpenRouter (for Jev) and Ollama (for nimble and tev1) take
+ * the same request, so only how it's sent differs: `send` posts it and returns
+ * the reply, timing it itself where it waits its turn first.
  */
-export async function call_openrouter_decision(
+async function ask_decision_model(
+  modelname: string,
   prompt: string,
-  model: LLM,
-  n = 1,
-  _temperature = 1.0,
-  params?: Dict,
-  should_cancel?: () => boolean,
-  images?: string[],
+  n: number,
+  params: Dict | undefined,
+  should_cancel: (() => boolean) | undefined,
+  images: string[] | undefined,
+  /** A judge to suggest instead, for scoring images. */
+  image_judge: string,
+  send: (query: Dict) => Promise<Dict>,
 ): Promise<[Dict, Dict]> {
-  if (!OPENROUTER_API_KEY)
-    throw new Error(
-      "Could not find an OpenRouter API key. Double-check that your API key is set in Settings or in your local environment.",
-    );
-  const modelname = stripOpenRouterPrefix(model);
   // Decision models read text only: asked about an image, they'd answer about
   // an empty string, so say so rather than return a meaningless answer
   if (images && images.length > 0)
     throw new Error(
-      `${modelname} reads text only, so it can't score images. Use a judge that takes images, e.g. GPT-5.4 Mini.`,
+      `${modelname} reads text only, so it can't score images. Use a judge that takes images, e.g. ${image_judge}.`,
     );
   const question = params?.decision_question;
   if (!question)
@@ -1077,17 +1076,44 @@ export async function call_openrouter_decision(
   while (responses.length < n) {
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
     const start = performance.now();
-    const payload = await openrouter_request(
-      OPENROUTER_DECISIONS_URL,
-      query,
-      should_cancel,
-    );
-    if (!payload.answers?.score)
+    const payload = await send(query);
+    if (!payload?.answers?.score)
       throw new Error(`${modelname} returned no answer.`);
-    payload[LATENCY_KEY] = performance.now() - start;
+    // Decision endpoints report no timings, so the request is timed here
+    payload[LATENCY_KEY] ??= performance.now() - start;
     responses.push(payload);
   }
   return [query, responses];
+}
+
+/**
+ * Asks a decision model on OpenRouter (e.g. TypeSafe's Jev) a typed question
+ * about a text, through OpenRouter's decisions endpoint (see ask_decision_model).
+ */
+export async function call_openrouter_decision(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  _temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  if (!OPENROUTER_API_KEY)
+    throw new Error(
+      "Could not find an OpenRouter API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+  return ask_decision_model(
+    stripOpenRouterPrefix(model),
+    prompt,
+    n,
+    params,
+    should_cancel,
+    images,
+    "GPT-5.4 Mini",
+    (query) =>
+      openrouter_request(OPENROUTER_DECISIONS_URL, query, should_cancel),
+  );
 }
 
 /**
@@ -1098,11 +1124,9 @@ export async function call_openrouter_decision(
  * its answer is right, where that's one number: for a yes/no question or a
  * choice. The scale's levels come back numbered from 0, and the position is a
  * probability-weighted mean that can land between levels, so it's shifted to
- * the scorer's 1-to-N numbering.
+ * the scorer's 1-to-N numbering. The same for OpenRouter's and Ollama's.
  */
-function _extract_openrouter_decision_responses(
-  responses: Array<Dict>,
-): Array<string> {
+function _extract_decision_responses(responses: Array<Dict>): Array<string> {
   return responses.map((r) => {
     const a = r?.answers?.score ?? {};
     if (a.type === "noul" && typeof a.noul === "number")
@@ -2656,6 +2680,163 @@ export async function call_ollama_provider(
 }
 
 /**
+ * The URL of an Ollama server's endpoint for decision models, from its base
+ * URL, which may end in /api (as the Ollama settings form's does).
+ */
+function ollamaDecisionUrl(base: string): string {
+  const root = base
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/api$/, "");
+  return `${root}/v1/systemone`;
+}
+
+/**
+ * Reads the reply to a decision request to Ollama, throwing with a message
+ * for the user when it's an error. Ollama answers errors with { error }, but
+ * a server too old to have the endpoint answers 404 with plain text.
+ */
+function readOllamaDecisionReply(
+  status: number,
+  body: string,
+  modelname: string,
+): Dict {
+  let json: Dict | undefined;
+  try {
+    json = JSON.parse(body);
+  } catch {
+    json = undefined;
+  }
+  if (status >= 200 && status < 300 && json && !json.error) return json;
+  const error: string | undefined =
+    typeof json?.error === "string" ? json.error : undefined;
+  if (status === 404 && error === undefined)
+    throw new Error(
+      `This Ollama server doesn't serve decision models. Update Ollama to version 0.35 or later.`,
+    );
+  // e.g. {"error":"model \"nimble\" not found, try pulling it first"}
+  if (status === 404)
+    throw new Error(
+      `Ollama doesn't have ${modelname}. Pull it first, with \`ollama pull ${modelname}\`.`,
+    );
+  if (status === 413)
+    throw new Error(
+      `The response is too long for ${modelname}: Ollama takes at most 64 KiB per request.`,
+    );
+  // e.g. {"error":"model \"gemma3:1b\" is not supported by System One; use a local Nimble or Tev GGUF model"}
+  if (status === 400 && error?.includes("not supported by System One"))
+    throw new Error(
+      `${modelname} isn't a decision model. Pick one, e.g. nimble or tev1, or add ${modelname} as an Ollama judge instead.`,
+    );
+  throw new Error(
+    `Ollama couldn't ask ${modelname}: ${error ?? `HTTP ${status}`}`,
+  );
+}
+
+/**
+ * Asks one of Ollama's decision models (e.g. nimble, tev1) a typed question
+ * about a text, through its /v1/systemone endpoint (Ollama 0.35 or later; see
+ * ask_decision_model). The model name and server URL are in the settings, as
+ * for Ollama's text models, and requests go one at a time in the same queue.
+ *
+ * The reply has no timings, so the request is timed here. Where energy can be
+ * measured, it's measured over that whole time (see endEnergy), which includes
+ * loading the model, if it had to be loaded, since the reply doesn't say.
+ */
+export async function call_ollama_decision(
+  prompt: string,
+  _model: LLM,
+  n = 1,
+  _temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  if (!params?.ollama_url)
+    throw Error(
+      "Could not find a base URL for Ollama model. Double-check that your base URL is set in the model settings.",
+    );
+  const modelname = String(params?.ollamaModel ?? "").trim();
+  if (!modelname)
+    throw Error(
+      "Enter the decision model to use (e.g. nimble) in the model's settings.",
+    );
+  const url = ollamaDecisionUrl(params.ollama_url);
+
+  // Cancelling aborts the request in flight, as for Ollama's text models
+  const controller = new AbortController();
+  const watcher = should_cancel
+    ? setInterval(() => {
+        if (should_cancel()) controller.abort();
+      }, 250)
+    : undefined;
+
+  // One request at a time, with its energy measured where it can be
+  const send = (query: Dict) =>
+    oneOllamaRequestAtATime(
+      url,
+      async () => {
+        if (should_cancel && should_cancel())
+          throw new UserForcedPrematureExit();
+        const energyId = await beginEnergy(url);
+        const start = performance.now();
+        let reply: Dict;
+        let repliedAt: number;
+        try {
+          let response: Response;
+          try {
+            response = await fetch(url, {
+              method: "POST",
+              body: JSON.stringify(query),
+              signal: controller.signal,
+            });
+          } catch (err) {
+            if (controller.signal.aborted) throw err;
+            throw new Error(
+              `Could not reach Ollama at ${url}. Make sure Ollama is running, and check the URL in the model's settings.`,
+            );
+          }
+          const body = await response.text();
+          repliedAt = performance.now();
+          reply = readOllamaDecisionReply(response.status, body, modelname);
+        } catch (err) {
+          endEnergy(energyId, performance.now()); // drops the request
+          throw err;
+        }
+        // Timed here, not waiting in the queue
+        const seconds = (repliedAt - start) / 1000;
+        reply[LATENCY_KEY] = repliedAt - start;
+        const energy = await endEnergy(energyId, repliedAt, {
+          load_s: 0,
+          generation_s: seconds,
+          total_s: seconds,
+        });
+        if (energy) reply[ENERGY_KEY] = { ...energy, includes_load: true };
+        return reply;
+      },
+      controller.signal,
+    );
+
+  try {
+    return await ask_decision_model(
+      modelname,
+      prompt,
+      n,
+      params,
+      should_cancel,
+      images,
+      "a vision model in Ollama",
+      send,
+    );
+  } catch (err) {
+    if (controller.signal.aborted) throw new UserForcedPrematureExit();
+    throw err;
+  } finally {
+    if (watcher !== undefined) clearInterval(watcher);
+  }
+}
+
+/**
  * Turns ChainForge's chat history into Converse API messages. Converse takes
  * one content block list per message, with images as raw bytes rather than
  * base64, and carries the system prompt outside the messages.
@@ -3097,6 +3278,8 @@ export async function call_llm(
   else if (llm_provider === LLMProvider.HuggingFace)
     call_api = call_huggingface;
   else if (llm_provider === LLMProvider.Ollama) call_api = call_ollama_provider;
+  else if (llm_provider === LLMProvider.OllamaDecision)
+    call_api = call_ollama_decision;
   else if (llm_provider === LLMProvider.Custom) call_api = call_custom_provider;
   else if (llm_provider === LLMProvider.Bedrock) call_api = call_bedrock;
   else if (llm_provider === LLMProvider.Together) call_api = call_together;
@@ -3625,6 +3808,8 @@ export function extract_responses(
       return _extract_huggingface_responses(response as Dict[]);
     case LLMProvider.Ollama:
       return _extract_ollama_responses(response as Dict[]);
+    case LLMProvider.OllamaDecision:
+      return _extract_decision_responses(response as Dict[]);
     case LLMProvider.Bedrock:
       return _extract_bedrock_responses(response as Dict[]);
     case LLMProvider.Together:
@@ -3637,7 +3822,7 @@ export function extract_responses(
       if (isOpenRouterImageModel(llm))
         return _extract_openrouter_image_responses(response as Dict[]);
       if (isDecisionModel(llm))
-        return _extract_openrouter_decision_responses(response as Dict[]);
+        return _extract_decision_responses(response as Dict[]);
       return _extract_openrouter_chat_responses(response as Dict[]);
     default:
       if (

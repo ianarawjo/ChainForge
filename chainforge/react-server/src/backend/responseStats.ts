@@ -186,6 +186,7 @@ export function statsFromReply(reply: Dict): ResponseStats {
       stats.energy_conditions_changed = true;
     if (energy.baseline_before_change === true)
       stats.energy_baseline_before_change = true;
+    if (energy.includes_load === true) stats.energy_includes_load = true;
   }
 
   return stats;
@@ -233,6 +234,7 @@ function finish(stats: ResponseStats): ResponseStats | null {
   if (stats.energy_conditions_changed) res.energy_conditions_changed = true;
   if (stats.energy_baseline_before_change)
     res.energy_baseline_before_change = true;
+  if (stats.energy_includes_load) res.energy_includes_load = true;
   if (Object.keys(res).length === 0) return null;
   if (stats.averaged_over !== undefined && stats.averaged_over > 1)
     res.averaged_over = stats.averaged_over;
@@ -524,6 +526,10 @@ function describeMeasuredEnergy(stats: ResponseStats): string[] {
     lines.push("  Idle power is from before the power settings changed");
   if (stats.energy_shared)
     lines.push("  Shared with requests generating at the same time");
+  if (stats.energy_includes_load)
+    lines.push(
+      "  Over the whole request, as the server reports no timings: includes loading the model, if it wasn't loaded",
+    );
   if (stats.load_energy_wh !== undefined)
     lines.push(
       `Loading the model: ${formatEnergy(stats.load_energy_wh)} (not included above)`,
