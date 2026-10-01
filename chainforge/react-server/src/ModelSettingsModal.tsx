@@ -4,6 +4,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useEffect,
+  useMemo,
 } from "react";
 import { Button, Flex, Modal, Popover, Select, Tooltip } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -16,9 +17,11 @@ import { WidgetProps } from "@rjsf/utils";
 import {
   ModelSettings,
   applyModelDefaultsOnModelChange,
+  fitFormDataToModel,
   getDefaultModelFormData,
   modelDefaultsFor,
   postProcessFormData,
+  schemaForModel,
 } from "./ModelSettingSchemas";
 import {
   Dict,
@@ -33,11 +36,13 @@ const IS_RUNNING_LOCALLY = APP_IS_RUNNING_LOCALLY();
 
 // Custom UI widgets for react-jsonschema-form
 export const DatalistWidget = (props: WidgetProps) => {
+  // Optional labels for the suggestions, by value, from "ui:options": { labels }
+  const labels = (props.options.labels ?? {}) as Dict<string>;
   const [data, setData] = useState(
     (
       props.options.enumOptions?.map((option) => ({
         value: option.value,
-        label: option.value,
+        label: labels[option.value] ?? option.value,
       })) ?? []
     ).concat(
       props.options.enumOptions?.find((o) => o.value === props.value)
@@ -141,14 +146,16 @@ const ModelSettingsModal = forwardRef<
           settingsSpec,
           model.formData.model,
         );
-        setFormData({
-          ...Object.fromEntries(
-            Object.entries(ownDefaults).filter(
-              ([key]) => model.formData?.[key] === undefined,
+        setFormData(
+          fitFormDataToModel(settingsSpec, {
+            ...Object.fromEntries(
+              Object.entries(ownDefaults).filter(
+                ([key]) => model.formData?.[key] === undefined,
+              ),
             ),
-          ),
-          ...model.formData,
-        });
+            ...model.formData,
+          }),
+        );
         setInitShortname(model.formData.shortname as string | undefined);
 
         // If the "custom_model" field is set, use that as the initial model name, overriding "model".
@@ -171,6 +178,14 @@ const ModelSettingsModal = forwardRef<
       }
     }
   }, [model]);
+
+  // Fields whose options differ by model offer only the current model's.
+  const formSchema = useMemo(() => {
+    const settingsSpec = model ? ModelSettings[model.base_model] : undefined;
+    return settingsSpec && settingsSpec.schema === schema
+      ? schemaForModel(settingsSpec, formData?.model)
+      : schema;
+  }, [model, schema, formData?.model]);
 
   // Postprocess the form data into the format expected by the backend (kwargs passed to Python API calls)
   const postprocess = useCallback(
@@ -250,12 +265,15 @@ const ModelSettingsModal = forwardRef<
 
       // Fields still at the previous model's defaults take the new model's.
       const prevModel = formData?.model as string | undefined;
+      const settingsSpec = model ? ModelSettings[model.base_model] : undefined;
       state.formData = applyModelDefaultsOnModelChange(
-        model ? ModelSettings[model.base_model] : undefined,
+        settingsSpec,
         state.formData,
         prevModel,
         modelname,
       );
+      // Options the new model doesn't take become the nearest ones it does.
+      state.formData = fitFormDataToModel(settingsSpec, state.formData);
 
       setFormData(state.formData);
     }
@@ -356,7 +374,7 @@ const ModelSettingsModal = forwardRef<
         </Modal.Header>
         <Modal.Body>
           <Form
-            schema={schema}
+            schema={formSchema}
             uiSchema={uiSchema}
             widgets={widgets} // Custom UI widgets
             formData={formData}

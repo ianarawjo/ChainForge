@@ -49,6 +49,9 @@ const OFF_MENU_OPENROUTER_MODELS = new Set([
   "meta-llama/llama-3.2-1b-instruct",
   "mistralai/ministral-8b-2512",
   "qwen/qwen3-8b",
+  // Retired, and served by DeepSeek V4.1 Flash, which replaced it in the menu.
+  // The flows that use it move over when they're next re-run.
+  "deepseek/deepseek-v4-flash",
 ]);
 
 /** Each (base_model, model) pair in a flow, e.g. in Prompt Nodes and LLM Scorers. */

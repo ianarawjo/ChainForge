@@ -225,6 +225,12 @@ export interface ModelSettingsDict {
    * They take the place of the schema's defaults for that model.
    */
   modelDefaults?: Dict<Dict<JSONCompatible>>;
+  /**
+   * Options that differ by model: for a value of the form's `model` field, the
+   * values each returned field offers, in place of its schema's enum (e.g. the
+   * reasoning efforts a model accepts). See schemaForModel.
+   */
+  modelEnums?: (model: string) => Dict<JSONCompatible[]>;
 }
 
 /** Standard properties that every LLM response object must have. */
@@ -304,6 +310,12 @@ export interface ResponseStats {
   energy_conditions_changed?: boolean;
   /** Set when idle power was measured before the power settings last changed (no idle time since). */
   energy_baseline_before_change?: boolean;
+  /**
+   * Set when the server reported no timings (e.g. Ollama's decision models),
+   * so `energy_wh` is over the whole request as ChainForge timed it, which
+   * includes loading the model if it had to be loaded.
+   */
+  energy_includes_load?: boolean;
   /**
    * Set when the provider reported one total for several responses, e.g. one
    * request that returned n of them: how many responses the total was shared

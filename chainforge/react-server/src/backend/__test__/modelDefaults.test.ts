@@ -18,13 +18,16 @@ jest.mock("../../store", () => ({
 import { describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
 import {
+  ModelSettings,
   WebLLMSettings,
   applyModelDefaultsOnModelChange,
+  fitFormDataToModel,
   getDefaultModelFormData,
   getDefaultModelSettings,
+  schemaForModel,
 } from "../../ModelSettingSchemas";
 // eslint-disable-next-line import/first
-import { NativeLLM } from "../models";
+import { NativeLLM, fitOpenAIReasoningEffort } from "../models";
 
 const QWEN3 = NativeLLM.WebLLM_Qwen3_1_7B;
 const QWEN3_5 = NativeLLM.WebLLM_Qwen3_5_0_8B;
@@ -66,5 +69,71 @@ describe("per-model defaults for in-browser models", () => {
       applyModelDefaultsOnModelChange(WebLLMSettings, form, GEMMA, QWEN3)
         .max_tokens,
     ).toBe(1000);
+  });
+});
+
+describe("OpenAI reasoning efforts, per model", () => {
+  const efforts = (model: string) =>
+    schemaForModel(ModelSettings["gpt-4"], model).properties.reasoning_effort
+      .enum;
+
+  test("the form offers only the efforts OpenAI's docs list for the model", () => {
+    expect(efforts("gpt-6-luna")).toEqual([
+      "none",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ]);
+    expect(efforts("gpt-6-astra")).toEqual([
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+    ]);
+    expect(efforts("gpt-5.4")).toEqual([
+      "none",
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+    ]);
+    expect(efforts("gpt-5")).toEqual(["minimal", "low", "medium", "high"]);
+    expect(efforts("gpt-5-pro")).toEqual(["high"]);
+    // A dated snapshot takes its model's
+    expect(efforts("gpt-5.4-2026-03-05")).toEqual(efforts("gpt-5.4"));
+    // Models the docs don't cover keep the four levels offered before
+    expect(efforts("o3")).toEqual(["minimal", "low", "medium", "high"]);
+    // The GPT-3.5 menu entry's form is filtered too
+    expect(
+      schemaForModel(ModelSettings["gpt-3.5-turbo"], "gpt-5-pro").properties
+        .reasoning_effort.enum,
+    ).toEqual(["high"]);
+  });
+
+  test("an effort the model doesn't take becomes the nearest one it does", () => {
+    const spec = ModelSettings["gpt-4"];
+    const fit = (model: string, reasoning_effort: string) =>
+      fitFormDataToModel(spec, { model, reasoning_effort }).reasoning_effort;
+    expect(fit("gpt-5.4", "max")).toBe("xhigh");
+    expect(fit("gpt-6-astra", "none")).toBe("low");
+    expect(fit("gpt-5.1", "minimal")).toBe("low"); // the higher, on a tie
+    expect(fit("gpt-5-pro", "medium")).toBe("high");
+    expect(fit("gpt-6-luna", "max")).toBe("max");
+    expect(fit("o3", "max")).toBe("high");
+    // New settings start at an effort the model takes
+    expect(getDefaultModelFormData("gpt-4", "gpt-5-pro").reasoning_effort).toBe(
+      "high",
+    );
+  });
+
+  test("the backend sends a supported effort, and leaves unknown models alone", () => {
+    expect(fitOpenAIReasoningEffort("gpt-5.4-mini", "max")).toBe("xhigh");
+    expect(fitOpenAIReasoningEffort("gpt-6.1-sol", "minimal")).toBe("low");
+    expect(fitOpenAIReasoningEffort("gpt-6-sol", "none")).toBe("none");
+    expect(fitOpenAIReasoningEffort("o3", "max")).toBe("max");
+    expect(fitOpenAIReasoningEffort("some-new-model", "xhigh")).toBe("xhigh");
   });
 });

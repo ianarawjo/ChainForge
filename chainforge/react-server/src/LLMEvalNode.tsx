@@ -27,11 +27,9 @@ import {
   IconRobot,
   IconSearch,
 } from "@tabler/icons-react";
-import { v4 as uuid } from "uuid";
-import useStore, { initLLMProviders } from "./store";
+import useStore from "./store";
 import BaseNode from "./BaseNode";
 import NodeLabel from "./NodeLabelComponent";
-import { getDefaultModelSettings } from "./ModelSettingSchemas";
 import { LLMListContainer } from "./LLMListComponent";
 import LLMResponseInspectorModal, {
   LLMResponseInspectorModalRef,
@@ -39,6 +37,7 @@ import LLMResponseInspectorModal, {
 import InspectFooter from "./InspectFooter";
 import LLMResponseInspectorDrawer from "./LLMResponseInspectorDrawer";
 import {
+  APP_IS_RUNNING_LOCALLY,
   extractSettingsVars,
   genDebounceFunc,
   stripLLMDetailsFromResponses,
@@ -64,11 +63,12 @@ import {
   grabResponses,
 } from "./backend/backend";
 import { UserForcedPrematureExit } from "./backend/errors";
+import { defaultJudge } from "./backend/aiModels";
 import CancelTracker from "./backend/canceler";
 import { PromptInfo, PromptListModal, PromptListPopover } from "./PromptNode";
 import { useDisclosure } from "@mantine/hooks";
 import { PromptTemplate } from "./backend/template";
-import StorageCache, { StringLookup } from "./backend/cache";
+import StorageCache from "./backend/cache";
 import {
   DATA_INPUT_NODE_TYPES,
   DataInputValue,
@@ -103,20 +103,15 @@ const OUTPUT_FORMATS = [
   { value: OutputFormat.Any, label: "open-ended" },
 ];
 
-// The default LLM annotator is GPT-4 at temperature 0.
-const DEFAULT_LLM_ITEM = (() => {
-  const item = [initLLMProviders.find((i) => i.base_model === "gpt-4")].map(
-    (i) => ({
-      key: uuid(),
-      settings: getDefaultModelSettings(
-        StringLookup.get(i?.base_model) as string,
-      ),
-      ...i,
-    }),
-  )[0];
-  item.settings.temperature = 0.0;
-  return item as LLMSpec;
-})();
+/**
+ * Whether two judges are the same, settings and all. The judge list echoes
+ * back the judges it's given, as copies, when it's set up.
+ */
+const sameJudge = (a: LLMSpec, b: LLMSpec) =>
+  a.key === b.key &&
+  a.name === b.name &&
+  JSON.stringify(a.settings) === JSON.stringify(b.settings) &&
+  JSON.stringify(a.formData) === JSON.stringify(b.formData);
 
 export interface LLMEvaluatorComponentRef {
   run: (
@@ -208,20 +203,53 @@ export const LLMEvaluatorComponent = forwardRef<
   ref,
 ) {
   const [promptText, setPromptText] = useState(prompt ?? "");
-  const [llmScorers, setLLMScorers] = useState<LLMSpec[]>(
-    allowMultipleJudges && graders && graders.length > 0
-      ? graders
-      : [grader ?? DEFAULT_LLM_ITEM],
-  );
+  const apiKeys = useStore((state) => state.apiKeys);
+  const ollamaModels = useStore((state) => state.ollamaModels);
+  const ollamaDecisionModels = useStore((state) => state.ollamaDecisionModels);
   const [categoriesText, setCategoriesText] = useState(categories ?? "");
   const [scaleText, setScaleText] = useState(scale ?? "");
   const [expectedFormat, setExpectedFormat] = useState<OutputFormat>(
     format ?? OutputFormat.Bin,
   );
+
+  // Until the user picks a judge, the scorer uses a default that follows what
+  // they can run (see defaultJudge): it changes as their API keys and Ollama's
+  // models load, or when the answer format changes, and isn't saved.
+  const [pickedJudges, setPickedJudges] = useState<boolean>(
+    grader !== undefined ||
+      (allowMultipleJudges === true && !!graders && graders.length > 0),
+  );
+  const defaultGrader = useMemo(
+    () =>
+      pickedJudges
+        ? undefined
+        : defaultJudge({
+            openEnded: expectedFormat === OutputFormat.Any,
+            apiKeys: apiKeys ?? {},
+            ollamaModels,
+            ollamaDecisionModels,
+            runningLocally: APP_IS_RUNNING_LOCALLY(),
+          }),
+    [pickedJudges, expectedFormat, apiKeys, ollamaModels, ollamaDecisionModels],
+  );
+  const [llmScorers, setLLMScorers] = useState<LLMSpec[]>(
+    allowMultipleJudges && graders && graders.length > 0
+      ? graders
+      : [(grader ?? defaultGrader) as LLMSpec],
+  );
+  // The judge list only reads its judges when it's set up, so a new default
+  // sets it up afresh
+  const [judgeListKey, setJudgeListKey] = useState<string>(
+    defaultGrader?.key ?? "judges",
+  );
+  useEffect(() => {
+    if (!defaultGrader) return;
+    setLLMScorers([defaultGrader]);
+    setJudgeListKey(defaultGrader.key ?? "judges");
+  }, [defaultGrader]);
   const [useReasoning, setUseReasoning] = useState<boolean>(
     reasonBeforeScoring ?? false,
   );
-  const apiKeys = useStore((state) => state.apiKeys);
 
   // Debounce helpers
   const debounceTimeoutRef = useRef(null);
@@ -243,13 +271,21 @@ export const LLMEvaluatorComponent = forwardRef<
 
   const handleLLMListItemsChange = useCallback(
     (new_items: LLMSpec[]) => {
+      // The list echoing back the default judge isn't the user picking one
+      if (
+        defaultGrader &&
+        new_items.length === 1 &&
+        sameJudge(new_items[0], defaultGrader)
+      )
+        return;
+      setPickedJudges(true);
       setLLMScorers(new_items);
 
       if (new_items.length > 0 && onLLMGraderChange)
         onLLMGraderChange(new_items[0]);
       if (onLLMGradersChange) onLLMGradersChange(new_items);
     },
-    [setLLMScorers, onLLMGraderChange, onLLMGradersChange],
+    [defaultGrader, setLLMScorers, onLLMGraderChange, onLLMGradersChange],
   );
 
   const handleCategoriesChange = useCallback(
@@ -547,6 +583,7 @@ export const LLMEvaluatorComponent = forwardRef<
       </Group>
 
       <LLMListContainer
+        key={judgeListKey}
         initLLMItems={llmScorers}
         description={allowMultipleJudges ? "Judges" : "Model to use as scorer:"}
         modelSelectButtonText={allowMultipleJudges ? "Add judge +" : "Change"}
@@ -554,6 +591,8 @@ export const LLMEvaluatorComponent = forwardRef<
         onItemsChange={handleLLMListItemsChange}
         hideTrashIcon={!allowMultipleJudges || llmScorers.length <= 1}
         bgColor={modelContainerBgColor}
+        // Judges can be decision models (e.g. Ollama's nimble), asked a typed question
+        allowDecisionModels
       />
     </>
   );

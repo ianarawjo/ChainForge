@@ -129,6 +129,7 @@ describe("the unified Bedrock settings form", () => {
   test("suggests inference profile IDs, not bare model IDs", () => {
     const models = ModelSettings.bedrock.schema.properties.model
       .enum as string[];
+    expect(models).toContain("us.anthropic.claude-sonnet-5-5");
     expect(models).toContain("us.anthropic.claude-sonnet-5");
     expect(models).toContain("us.amazon.nova-2-lite-v1:0");
     // Every suggestion carries a geography prefix, which on-demand requires.

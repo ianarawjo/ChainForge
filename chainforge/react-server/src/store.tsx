@@ -42,6 +42,7 @@ import {
   BEDROCK_PREFIX,
   TOGETHER_PREFIX,
   HUGGINGFACE_PREFIX,
+  NativeLLM,
   OPENROUTER_IMAGE_PREFIX,
   OPENROUTER_PREFIX,
   OPENROUTER_EMOJI,
@@ -152,9 +153,9 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         temp: 1.0,
       },
       {
-        name: "GPT-5.6 Sol",
+        name: "GPT-6.1 Sol",
         emoji: "☀️",
-        model: "gpt-5.6-sol",
+        model: "gpt-6.1-sol",
         base_model: "gpt-4",
         temp: 1.0,
       },
@@ -166,9 +167,9 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         temp: 1.0,
       },
       {
-        name: "GPT-5.6 Luna",
+        name: "GPT-6 Luna",
         emoji: "🌙",
-        model: "gpt-5.6-luna",
+        model: "gpt-6-luna",
         base_model: "gpt-4",
         temp: 1.0,
       },
@@ -235,16 +236,16 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
     emoji: "📚",
     items: [
       {
-        name: "Claude Opus 5",
+        name: "Claude Opus 5.5",
         emoji: "📚",
-        model: "claude-opus-5",
+        model: "claude-opus-5-5",
         base_model: "claude-v1",
         temp: 1.0,
       },
       {
-        name: "Claude Sonnet 5",
+        name: "Claude Sonnet 5.5",
         emoji: "📘",
-        model: "claude-sonnet-5",
+        model: "claude-sonnet-5-5",
         base_model: "claude-v1",
         temp: 1.0,
       },
@@ -449,6 +450,15 @@ if (IS_RUNNING_LOCALLY) {
     base_model: "ollama",
     temp: 1.0,
   });
+  // Ollama's decision models, which model menus only offer in LLM Scorers
+  // (see DECISION_ONLY_BASE_MODELS). The model to ask is in its settings.
+  initLLMProviderMenu.push({
+    name: "Ollama (decision model)",
+    emoji: "🦙",
+    model: NativeLLM.Ollama_Decision,
+    base_model: NativeLLM.Ollama_Decision,
+    temp: 0,
+  });
 }
 
 function flattenLLMGroup(group: LLMGroup): LLMSpec[] {
@@ -511,6 +521,9 @@ export interface StoreHandles {
   // The models pulled on the Ollama server, if it's running (local only)
   ollamaModels: string[];
   setOllamaModels: (models: string[]) => void;
+  // The decision models (e.g. nimble) pulled on it, which LLM Scorers can use
+  ollamaDecisionModels: string[];
+  setOllamaDecisionModels: (models: string[]) => void;
 
   // Global settings (flags) from the settings menu
   globalSettings: Dict<JSONCompatible>;
@@ -629,6 +642,8 @@ const useStore = create<StoreHandles>((set, get) => ({
 
   ollamaModels: [],
   setOllamaModels: (models) => set({ ollamaModels: models }),
+  ollamaDecisionModels: [],
+  setOllamaDecisionModels: (models) => set({ ollamaDecisionModels: models }),
 
   // Keeping track of LLM API keys
   apiKeys: initialAPIKeys,

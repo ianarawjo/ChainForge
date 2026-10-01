@@ -3,6 +3,7 @@
  */
 import Bottleneck from "bottleneck";
 import { UserForcedPrematureExit } from "./errors";
+import type { LLMGroup, LLMSpec } from "./typing";
 
 export enum NativeLLM {
   // WebLLM (fully in-browser, no API key). Model IDs come from web-llm's own
@@ -18,6 +19,9 @@ export enum NativeLLM {
   // OpenAI Chat. Models OpenAI still serves, newest first.
   // See https://developers.openai.com/api/docs/models
   OpenAI_GPT6_Astra = "gpt-6-astra",
+  OpenAI_GPT6_1_Sol = "gpt-6.1-sol",
+  OpenAI_GPT6_Sol = "gpt-6-sol",
+  OpenAI_GPT6_Luna = "gpt-6-luna",
   OpenAI_GPT5_6_Sol = "gpt-5.6-sol",
   OpenAI_GPT5_6 = "gpt-5.6", // alias of gpt-5.6-sol
   OpenAI_GPT5_6_Terra = "gpt-5.6-terra",
@@ -95,6 +99,8 @@ export enum NativeLLM {
   // See https://platform.claude.com/docs/en/about-claude/models/overview
   // NOTE: getProvider() routes anything starting with "claude" to Anthropic,
   // so models released after this list still work when typed in by hand.
+  Claude_opus_5_5 = "claude-opus-5-5",
+  Claude_sonnet_5_5 = "claude-sonnet-5-5",
   Claude_fable_5_1 = "claude-fable-5-1",
   Claude_fable_5 = "claude-fable-5",
   Claude_opus_5 = "claude-opus-5",
@@ -107,7 +113,7 @@ export enum NativeLLM {
   Claude_sonnet_4_6 = "claude-sonnet-4-6",
   Claude_sonnet_4_5 = "claude-sonnet-4-5",
   Claude_sonnet_4 = "claude-sonnet-4-0", // deprecated
-  Claude_haiku_4_5 = "claude-haiku-4-5",
+  Claude_haiku_4_5 = "claude-haiku-4-5", // retires no sooner than 2026-10-15
 
   // Anthropic models that have been retired. Kept so old flows still load.
   Claude_opus_4_1 = "claude-opus-4-1", // retired 2026-08-05
@@ -143,7 +149,7 @@ export enum NativeLLM {
   GEMINI_v3_1_pro_preview = "gemini-3.1-pro-preview",
   GEMINI_v3_flash_preview = "gemini-3-flash-preview",
 
-  // Google Gemini 2.5 models
+  // Google Gemini 2.5 models. Since 2026-09-18, only open to projects that used them before.
   GEMINI_v2_5_pro = "gemini-2.5-pro",
   GEMINI_v2_5_flash = "gemini-2.5-flash",
   GEMINI_v2_5_flash_lite = "gemini-2.5-flash-lite",
@@ -188,6 +194,10 @@ export enum NativeLLM {
   HF_OTHER = "Other (HuggingFace)",
 
   Ollama = "ollama",
+  // Ollama's decision models (e.g. nimble, tev1), which answer typed questions
+  // rather than writing text. Kept apart from "ollama" so they have their own
+  // settings, and are only offered where a decision model can be used.
+  Ollama_Decision = "ollama-decision",
 
   // Together.ai
   Together_ZeroOneAI_01ai_Yi_Chat_34B = "together/zero-one-ai/Yi-34B-Chat",
@@ -294,6 +304,7 @@ export enum LLMProvider {
   Google = "google",
   HuggingFace = "hf",
   Ollama = "ollama",
+  OllamaDecision = "ollama-decision",
   Bedrock = "bedrock",
   Together = "together",
   DeepSeek = "deepseek",
@@ -321,6 +332,75 @@ export function isOpenAIImageModel(llm: LLM | string): boolean {
   );
 }
 
+/** OpenAI's reasoning effort levels, lowest first. */
+export const OPENAI_REASONING_EFFORTS = [
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+];
+
+/**
+ * The reasoning efforts each OpenAI model accepts, from its page in OpenAI's
+ * docs (https://developers.openai.com/api/docs/models). Other values return a
+ * 400. Models whose page doesn't say (e.g. gpt-5-mini, gpt-5-nano, the
+ * o-series and gpt-5.6-cyber) aren't listed.
+ */
+const OPENAI_MODEL_REASONING_EFFORTS: Record<string, string[]> = {
+  "gpt-6-astra": ["low", "medium", "high", "xhigh", "max"],
+  "gpt-6.1-sol": ["low", "medium", "high", "xhigh", "max"],
+  "gpt-6-sol": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-6-luna": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-5.6-sol": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-5.6": ["none", "low", "medium", "high", "xhigh", "max"], // alias of gpt-5.6-sol
+  "gpt-5.6-terra": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-5.6-luna": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-5.5": ["none", "low", "medium", "high", "xhigh"],
+  "gpt-5.5-pro": ["medium", "high", "xhigh"],
+  "gpt-5.4": ["none", "low", "medium", "high", "xhigh"],
+  "gpt-5.4-mini": ["none", "low", "medium", "high", "xhigh"],
+  "gpt-5.4-nano": ["none", "low", "medium", "high", "xhigh"],
+  "gpt-5.4-pro": ["medium", "high", "xhigh"],
+  "gpt-5.2": ["none", "low", "medium", "high", "xhigh"],
+  "gpt-5.1": ["none", "low", "medium", "high"],
+  "gpt-5": ["minimal", "low", "medium", "high"],
+  "gpt-5-pro": ["high"],
+};
+
+/**
+ * The reasoning efforts an OpenAI model accepts, if OpenAI's docs say.
+ * Dated snapshots (e.g. "gpt-5.4-2026-03-05") take their model's.
+ */
+export function openAIReasoningEfforts(model: string): string[] | undefined {
+  return OPENAI_MODEL_REASONING_EFFORTS[
+    model.replace(/-\d{4}-\d{2}-\d{2}$/, "")
+  ];
+}
+
+/**
+ * A reasoning effort the model accepts: the given one if it does, or else the
+ * nearest one it does (the higher, on a tie). Models OpenAI's docs don't cover
+ * get the effort unchanged.
+ */
+export function fitOpenAIReasoningEffort(
+  model: string,
+  effort: string,
+): string {
+  const allowed = openAIReasoningEfforts(model);
+  const rank = OPENAI_REASONING_EFFORTS.indexOf(effort);
+  if (!allowed || allowed.includes(effort) || rank < 0) return effort;
+  let best = allowed[0];
+  for (const e of allowed) {
+    const d = Math.abs(OPENAI_REASONING_EFFORTS.indexOf(e) - rank);
+    const bestD = Math.abs(OPENAI_REASONING_EFFORTS.indexOf(best) - rank);
+    if (d <= bestD) best = e;
+  }
+  return best;
+}
+
 /** Whether a Google model generates images (e.g. "gemini-3.1-flash-image"). */
 export function isGeminiImageModel(llm: LLM | string): boolean {
   return /^(models\/)?gemini-[\w.-]*image/i.test(llm.toString());
@@ -341,8 +421,9 @@ export function isOpenRouterImageModel(llm: LLM | string): boolean {
 }
 
 /**
- * Whether a model is a "decision" model reached through OpenRouter's decisions
- * endpoint, e.g. TypeSafe's Jev ("openrouter/~typesafe/jev-latest"). Such
+ * Whether a model is a "decision" model: one reached through OpenRouter's
+ * decisions endpoint, e.g. TypeSafe's Jev ("openrouter/~typesafe/jev-latest"),
+ * or one of Ollama's (e.g. nimble), whose model name is in its settings. Such
  * models don't generate text: they answer typed questions (yes/no, one of a
  * set of categories, or a position on a scale) about a piece of text, so
  * ChainForge only uses them as judges in an LLM Scorer.
@@ -350,9 +431,72 @@ export function isOpenRouterImageModel(llm: LLM | string): boolean {
 export function isDecisionModel(llm: LLM | string): boolean {
   const name = llm.toString();
   return (
-    name.startsWith(OPENROUTER_PREFIX) &&
-    /^~?typesafe\//i.test(name.substring(OPENROUTER_PREFIX.length))
+    name === NativeLLM.Ollama_Decision ||
+    (name.startsWith(OPENROUTER_PREFIX) &&
+      /^~?typesafe\//i.test(name.substring(OPENROUTER_PREFIX.length)))
   );
+}
+
+/**
+ * The decision models Ollama serves through its /v1/systemone endpoint (since
+ * Ollama 0.35): Bespoke Labs' nimble, and Together AI's tev1 in two sizes.
+ */
+export const OLLAMA_DECISION_MODELS = ["nimble", "tev1", "tev1:0.8b"];
+
+/**
+ * The most capable of the decision models pulled in Ollama, going by the
+ * order of OLLAMA_DECISION_MODELS (nimble, then tev1, ...); others come last.
+ */
+export function bestOllamaDecisionModel(pulled: string[]): string {
+  const rank = (m: string) => {
+    const i = OLLAMA_DECISION_MODELS.indexOf(m.replace(/:latest$/, ""));
+    return i === -1 ? OLLAMA_DECISION_MODELS.length : i;
+  };
+  return [...pulled].sort((a, b) => rank(a) - rank(b))[0];
+}
+
+/**
+ * Whether a model pulled in Ollama (e.g. "nimble:latest", "tev1:0.8b") is one
+ * of its decision models: a Nimble or Tev model, as Ollama puts it. Goes by
+ * name, since Ollama's model list doesn't say.
+ */
+export function isOllamaDecisionModelName(name: string): boolean {
+  const base = name.split(":")[0].split("/").at(-1) ?? "";
+  return /^(nimble|tev\d+)([-_.]|$)/i.test(base);
+}
+
+/**
+ * The base models (settings forms) whose models only make decisions. (Jev, on
+ * OpenRouter, shares its form with text models, so isn't one; see
+ * isDecisionMenuItem.)
+ */
+export const DECISION_ONLY_BASE_MODELS = new Set<string>([
+  NativeLLM.Ollama_Decision,
+]);
+
+/**
+ * Whether a model menu item only makes decisions: from a decision-only form
+ * (e.g. Ollama's), or a decision model on a shared one (e.g. Jev, on OpenRouter).
+ */
+export function isDecisionMenuItem(item: LLMSpec): boolean {
+  return (
+    DECISION_ONLY_BASE_MODELS.has(item.base_model) ||
+    isDecisionModel(item.model)
+  );
+}
+
+/**
+ * Whether a model menu offers a model, or a group with any model it offers:
+ * menus for text generation leave out models that only make decisions, which
+ * only an LLM Scorer can use.
+ */
+export function offeredInMenu(
+  item: LLMSpec | LLMGroup,
+  allowDecisionModels: boolean,
+): boolean {
+  return "group" in item
+    ? item.items.some((i) => offeredInMenu(i, allowDecisionModels))
+    : allowDecisionModels || !isDecisionMenuItem(item);
 }
 
 /**
@@ -454,6 +598,8 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
   )
     return LLMProvider.HuggingFace;
   else if (llm.toString().startsWith("claude")) return LLMProvider.Anthropic;
+  else if (llm.toString() === NativeLLM.Ollama_Decision)
+    return LLMProvider.OllamaDecision;
   else if (llm_name?.startsWith("Ollama")) return LLMProvider.Ollama;
   else if (llm.toString().startsWith(BEDROCK_PREFIX))
     return LLMProvider.Bedrock;
