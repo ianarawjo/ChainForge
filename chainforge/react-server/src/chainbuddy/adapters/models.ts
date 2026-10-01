@@ -11,6 +11,7 @@ import {
   isDecisionModel,
   LLM,
   LLMProvider,
+  NativeLLM,
   OPENROUTER_PREFIX,
 } from "../../backend/models";
 import { LLMGroup, LLMSpec } from "../../backend/typing";
@@ -25,10 +26,16 @@ import { ModelResolver } from "../nodes/types";
  */
 export const DEFAULT_JUDGE = `${OPENROUTER_PREFIX}~typesafe/jev-latest`;
 
-/** A model's ID: "ollama/<name>" for Ollama models, else its model string. */
+/** The menu entries for Ollama, whose models are named in their settings. */
+const OLLAMA_MENU_ENTRIES = ["ollama", NativeLLM.Ollama_Decision] as string[];
+
+/**
+ * A model's ID: "<entry>/<name>" for Ollama's models, such as "ollama/qwen3.5:4b"
+ * or "ollama-decision/nimble", else its model string.
+ */
 export function modelIdOf(llm: LLMSpec): string {
-  if (llm.base_model === "ollama")
-    return `ollama/${llm.settings?.ollamaModel ?? llm.formData?.ollamaModel ?? ""}`;
+  if (OLLAMA_MENU_ENTRIES.includes(llm.base_model))
+    return `${llm.base_model}/${llm.settings?.ollamaModel ?? llm.formData?.ollamaModel ?? ""}`;
   return llm.model;
 }
 
@@ -58,18 +65,31 @@ function menuGroups(): Map<string, string> {
  * nothing else is set up, and models that only judge (such as Jev) as such.
  */
 export function listModels(): ModelInfo[] {
-  const { apiKeys, ollamaModels, AvailableLLMs } = useStore.getState();
+  const { apiKeys, ollamaModels, ollamaDecisionModels, AvailableLLMs } =
+    useStore.getState();
   const groups = menuGroups();
-  const models: ModelInfo[] = ollamaModels.map((name) => ({
-    id: `ollama/${name}`,
-    name,
-    provider: "Ollama",
-    ready: true,
-  }));
+  const models: ModelInfo[] = [
+    ...ollamaModels.map((name) => ({
+      id: `ollama/${name}`,
+      name,
+      provider: "Ollama",
+      ready: true,
+    })),
+    ...ollamaDecisionModels.map((name) => ({
+      id: `${NativeLLM.Ollama_Decision}/${name}`,
+      name,
+      provider: "Ollama",
+      ready: true,
+      judgeOnly: true,
+    })),
+  ];
   const seen = new Set<string>();
   for (const item of AvailableLLMs) {
     // Ollama's models come from its server; favorites repeat menu entries.
-    if (item.base_model === "ollama" || NEEDS_SETTING_UP.has(item.model))
+    if (
+      OLLAMA_MENU_ENTRIES.includes(item.base_model) ||
+      NEEDS_SETTING_UP.has(item.model)
+    )
       continue;
     if (seen.has(item.model)) continue;
     seen.add(item.model);
@@ -94,16 +114,17 @@ export const modelResolver: ModelResolver = {
   // Built as the Prompt Node's model menu builds them (see modelSpec.ts).
   toSpec(id: string, takenNames: string[]) {
     const { apiKeys, AvailableLLMs } = useStore.getState();
-    if (id.startsWith("ollama/")) {
-      const ollamaModel = id.slice("ollama/".length);
+    const entry = OLLAMA_MENU_ENTRIES.find((e) => id.startsWith(`${e}/`));
+    if (entry) {
+      const ollamaModel = id.slice(entry.length + 1);
       const menuItem: LLMSpec = AvailableLLMs.find(
-        (m) => m.base_model === "ollama",
+        (m) => m.base_model === entry,
       ) ?? {
         name: "Ollama",
         emoji: "🦙",
-        model: "ollama",
-        base_model: "ollama",
-        temp: 1.0,
+        model: entry,
+        base_model: entry,
+        temp: entry === "ollama" ? 1.0 : 0,
       };
       return newModelSpec(
         {
@@ -116,7 +137,7 @@ export const modelResolver: ModelResolver = {
       );
     }
     const item = AvailableLLMs.find(
-      (m) => m.model === id && m.base_model !== "ollama",
+      (m) => m.model === id && !OLLAMA_MENU_ENTRIES.includes(m.base_model),
     );
     return item
       ? newModelSpec(item, takenNames, apiKeys.Ollama_BaseURL)

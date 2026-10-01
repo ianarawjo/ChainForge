@@ -1,5 +1,5 @@
 import doc from "../knowledge/nodes/llmeval.md";
-import { isDecisionModel } from "../../backend/models";
+import { isDecisionModel, NativeLLM } from "../../backend/models";
 import { parseCategories, parseScale } from "../../backend/scorerFormat";
 import { extractTemplateVars } from "../../backend/template";
 import { Dict, LLMSpec } from "../../backend/typing";
@@ -25,6 +25,13 @@ const FORMATS: Record<string, string> = {
 };
 const formatName = (code: unknown) =>
   Object.keys(FORMATS).find((name) => FORMATS[name] === code) ?? "binary";
+
+/**
+ * Whether a model, by list_models ID, only judges: a decision model such as
+ * Jev, or one of Ollama's ("ollama-decision/<name>", see adapters/models.ts).
+ */
+const isJudgeOnly = (id: string) =>
+  isDecisionModel(id) || id.startsWith(`${NativeLLM.Ollama_Decision}/`);
 
 /** How many levels a scale may have: what a judge-only model can answer on. */
 const MIN_LEVELS = 2;
@@ -134,7 +141,7 @@ export const llmevalKind: NodeKind = {
     // Judge-only models answer a typed question, with the rubric as written
     const judgeOnly = listOf(settings.judges)
       .map((j) => String(field(j, "model")))
-      .filter((id) => isDecisionModel(id));
+      .filter(isJudgeOnly);
     if (judgeOnly.length === 0) return undefined;
     if (format === "open-ended")
       return `${judgeOnly[0]} only gives binary, categorical or numeric answers, not open-ended ones.`;
