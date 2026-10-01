@@ -377,6 +377,38 @@ describe("Jev as a judge beside an LLM", () => {
     ).toContain("Which team should handle Ana's ticket?");
   });
 
+  test("a rubric with unfilled braces stops Jev, as it does a text judge", async () => {
+    mockOpenRouter(
+      () => ({ type: "choice", choice: "billing" }),
+      () => "billing",
+    );
+    for (const rubric of [
+      "Which team should handle {customer}'s ticket?",
+      "Which team should handle {#customer}'s ticket?",
+    ])
+      for (const j of [
+        judge("Jev", JEV),
+        judge("Sonnet", "openrouter/anthropic/claude-sonnet-5"),
+      ])
+        await expect(
+          evalWithLLM(
+            `llmeval-braces-${j.name}`,
+            j,
+            `You are evaluating text that will be pasted below. ${rubric}\n\`\`\`\n{__input}\n\`\`\`\n\n${formatInstruction(SPEC, false)}`,
+            ["prompt-1"],
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            false,
+            SPEC,
+            rubric,
+          ),
+        ).rejects.toThrow(/Prompt is a template/);
+    // Neither judge was asked anything
+    expect(calls).toEqual([]);
+  });
+
   test("editing the rubric and changing it back reuses Jev's earlier answers", async () => {
     mockOpenRouter(() => ({ type: "choice", choice: "billing" }));
     const run = (rubric: string) =>
