@@ -1060,6 +1060,28 @@ describe("LLM Scorers and their judges", () => {
     ]);
   });
 
+  test("Ollama's decision models are judge-only too", () => {
+    const nimble: ModelInfo = {
+      id: "ollama-decision/nimble",
+      name: "nimble",
+      provider: "Ollama",
+      ready: true,
+      judgeOnly: true,
+    };
+    const { tools } = createStubTools({ models: [...withJev, nimble] });
+    expect(
+      propose(
+        tools,
+        scored({
+          rubric: "Same answer as {#answer}?",
+          judges: [{ model: nimble.id }],
+        }),
+      ).problems,
+    ).toEqual([
+      "changes[3] (add_node): ollama-decision/nimble sees each response and the rubric as written, so it can't use {#answer}. Give the scorer judges from list_models' models instead.",
+    ]);
+  });
+
   test("categorical and numeric scores need their categories and scale", () => {
     const { tools } = createStubTools({ models: withJev });
     const rubric = "How polite is the response?";

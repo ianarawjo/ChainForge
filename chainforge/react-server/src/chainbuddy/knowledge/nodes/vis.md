@@ -49,7 +49,9 @@ metric:
 chart:
   type: string
   description: >
-    "bar", or "box" to show the spread of values. Default "bar".
+    How to draw numbers: "bar" (the default), or a chart that shows how the
+    values spread, from those listed below. A violin or density gradient
+    needs many values per group; with few, it's drawn as a box plot.
 ```
 
 ## Example

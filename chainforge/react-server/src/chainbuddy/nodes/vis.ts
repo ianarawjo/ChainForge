@@ -23,7 +23,8 @@ const measures = () =>
 const measureName = (key: string) =>
   Object.entries(measures()).find(([, k]) => k === key)?.[0];
 
-const CHARTS = ["bar", "box"];
+/** The Vis Node's chart types (GRAPH_OPTIONS in VisNode.tsx). */
+const CHARTS = ["bar", "box", "violin", "gradient"];
 
 export const visKind: NodeKind = {
   type: "vis",

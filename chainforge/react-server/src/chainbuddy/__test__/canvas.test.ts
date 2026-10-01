@@ -57,6 +57,7 @@ jest.mock("../../store", () => {
     edges: [],
     apiKeys: { OpenRouter: "sk-or-test" },
     ollamaModels: [],
+    ollamaDecisionModels: [],
     AvailableLLMs: flat,
     setDataPropsForNode: (id: string, props: object) =>
       set({
@@ -725,6 +726,30 @@ test("model IDs match list_models", () => {
       settings: { ollamaModel: "qwen3.5:4b" },
     }),
   ).toBe("ollama/qwen3.5:4b");
+});
+
+test("Ollama's decision models are listed by name, as judges only", () => {
+  useStore.setState({ ollamaDecisionModels: ["nimble:latest"] } as any);
+  try {
+    const nimble = listModels().find((m) => m.name === "nimble:latest");
+    expect(nimble).toMatchObject({
+      id: "ollama-decision/nimble:latest",
+      ready: true,
+      judgeOnly: true,
+    });
+    expect(
+      modelIdOf({
+        name: "nimble:latest",
+        emoji: "🦙",
+        model: "ollama-decision",
+        base_model: "ollama-decision",
+        temp: 0,
+        settings: { ollamaModel: "nimble:latest" },
+      }),
+    ).toBe("ollama-decision/nimble:latest");
+  } finally {
+    useStore.setState({ ollamaDecisionModels: [] } as any);
+  }
 });
 
 describe("models from the providers set up", () => {
