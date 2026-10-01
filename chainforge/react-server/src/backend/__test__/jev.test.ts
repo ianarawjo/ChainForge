@@ -404,7 +404,12 @@ describe("Jev as a judge beside an LLM", () => {
             SPEC,
             rubric,
           ),
-        ).rejects.toThrow(/Prompt is a template/);
+        ).rejects.toThrow(
+          // Jev's error shows the rubric alone, not the response or how they're joined
+          j.name === "Jev"
+            ? `Cannot send a prompt '${rubric}' to LLM: Prompt is a template`
+            : "Prompt is a template",
+        );
     // Neither judge was asked anything
     expect(calls).toEqual([]);
   });
