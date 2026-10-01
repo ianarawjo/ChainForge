@@ -1046,11 +1046,37 @@ export async function call_openrouter(
 const OPENROUTER_DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions";
 
 /**
+ * Separates a decision judge's instructions from the text it judges, in the
+ * prompt an LLM Scorer sends it: "<rubric><separator><response>". The rubric
+ * is filled in for each response, like a text judge's whole prompt, so its
+ * template variables (e.g. {#question}) take that response's values.
+ */
+export const DECISION_PROMPT_SEPARATOR =
+  "\n\n\u241e\u241e response \u241e\u241e\n\n";
+
+/**
+ * A decision judge's prompt, split into its filled-in instructions and the
+ * text to judge. A prompt without the separator is all text to judge.
+ */
+export function splitDecisionPrompt(prompt: string): {
+  instructions?: string;
+  text: string;
+} {
+  const at = prompt.indexOf(DECISION_PROMPT_SEPARATOR);
+  if (at < 0) return { text: prompt };
+  return {
+    instructions: prompt.substring(0, at),
+    text: prompt.substring(at + DECISION_PROMPT_SEPARATOR.length),
+  };
+}
+
+/**
  * Asks a decision model one typed question about a text, `n` times. The text
  * is sent as the state, and the question comes from `params.decision_question`,
  * which an LLM Scorer sets from its rubric and format: { type: "noul" |
- * "choice" | "score", instructions, criteria? }. Each reply's answer is under
- * `answers.score`. OpenRouter (for Jev) and Ollama (for nimble and tev1) take
+ * "choice" | "score", instructions, criteria? }. The prompt's own instructions
+ * (see splitDecisionPrompt), filled in for this text, replace the question's.
+ * Each reply's answer is under `answers.score`. OpenRouter (for Jev) and Ollama (for nimble and tev1) take
  * the same request, so only how it's sent differs: `send` posts it and returns
  * the reply, timing it itself where it waits its turn first.
  */
@@ -1077,10 +1103,18 @@ async function ask_decision_model(
       `${modelname} makes decisions rather than writing text, so it can't answer prompts. Use it as a judge in an LLM Scorer.`,
     );
 
+  const { instructions, text } = splitDecisionPrompt(prompt);
+  if (instructions !== undefined && !instructions.trim())
+    throw new Error(`${modelname} needs a rubric: describe what to decide.`);
   const query: Dict = {
     model: modelname,
-    state: { response: prompt },
-    questions: { score: question },
+    state: { response: text },
+    questions: {
+      score:
+        instructions === undefined
+          ? question
+          : { ...question, instructions: instructions.trim() },
+    },
   };
   console.log(`Asking decision model '${modelname}' (n=${n})...`);
 

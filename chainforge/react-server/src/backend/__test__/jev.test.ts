@@ -311,6 +311,109 @@ describe("Jev as a judge beside an LLM", () => {
     );
   });
 
+  test("the rubric's template variables are filled in for each response", async () => {
+    StorageCache.store("prompt-2.json", [
+      {
+        uid: "r1",
+        prompt: "Write a ticket from Ana.",
+        vars: { customer: "Ana" },
+        metavars: {},
+        llm: "GPT",
+        responses: [TICKETS[0]],
+      },
+      {
+        uid: "r2",
+        prompt: "Write a ticket from Ben.",
+        vars: { customer: "Ben" },
+        metavars: {},
+        llm: "GPT",
+        responses: [TICKETS[1]],
+      },
+    ] as LLMResponse[]);
+    mockOpenRouter(
+      () => ({ type: "choice", choice: "billing" }),
+      () => "billing",
+    );
+    const rubric = "Which team should handle {#customer}'s ticket?";
+
+    const { errors } = await evalWithLLM(
+      "llmeval-jev-vars",
+      [
+        judge("Jev", JEV),
+        judge("Sonnet", "openrouter/anthropic/claude-sonnet-5"),
+      ],
+      `You are evaluating text that will be pasted below. ${rubric}\n\`\`\`\n{__input}\n\`\`\`\n\n${formatInstruction(SPEC, false)}`,
+      ["prompt-2"],
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      false,
+      SPEC,
+      rubric,
+    );
+
+    expect(errors).toEqual([]);
+    const decisions = calls.filter((c) => c.url === DECISIONS_URL);
+    // Each response's question names its own customer, as the LLM's prompt does
+    expect(
+      Object.fromEntries(
+        decisions.map((c) => [
+          c.body.state.response,
+          c.body.questions.score.instructions,
+        ]),
+      ),
+    ).toEqual({
+      [TICKETS[0]]: "Which team should handle Ana's ticket?",
+      [TICKETS[1]]: "Which team should handle Ben's ticket?",
+    });
+    // The text to judge is the response alone
+    expect(decisions.map((c) => c.body.state)).toEqual(
+      expect.arrayContaining([{ response: TICKETS[0] }]),
+    );
+    const chats = calls.filter((c) => c.url !== DECISIONS_URL);
+    expect(
+      chats.map((c) => c.body.messages.at(-1).content).join("\n"),
+    ).toContain("Which team should handle Ana's ticket?");
+  });
+
+  test("a rubric with unfilled braces stops Jev, as it does a text judge", async () => {
+    mockOpenRouter(
+      () => ({ type: "choice", choice: "billing" }),
+      () => "billing",
+    );
+    for (const rubric of [
+      "Which team should handle {customer}'s ticket?",
+      "Which team should handle {#customer}'s ticket?",
+    ])
+      for (const j of [
+        judge("Jev", JEV),
+        judge("Sonnet", "openrouter/anthropic/claude-sonnet-5"),
+      ])
+        await expect(
+          evalWithLLM(
+            `llmeval-braces-${j.name}`,
+            j,
+            `You are evaluating text that will be pasted below. ${rubric}\n\`\`\`\n{__input}\n\`\`\`\n\n${formatInstruction(SPEC, false)}`,
+            ["prompt-1"],
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            false,
+            SPEC,
+            rubric,
+          ),
+        ).rejects.toThrow(
+          // Jev's error shows the rubric alone, not the response or how they're joined
+          j.name === "Jev"
+            ? `Cannot send a prompt '${rubric}' to LLM: Prompt is a template`
+            : "Prompt is a template",
+        );
+    // Neither judge was asked anything
+    expect(calls).toEqual([]);
+  });
+
   test("editing the rubric and changing it back reuses Jev's earlier answers", async () => {
     mockOpenRouter(() => ({ type: "choice", choice: "billing" }));
     const run = (rubric: string) =>

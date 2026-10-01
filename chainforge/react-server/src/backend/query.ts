@@ -25,6 +25,7 @@ import {
   extractMediaVars,
   imageMimeFromBase64,
   usesCustomOpenAIEndpoint,
+  splitDecisionPrompt,
 } from "./utils";
 import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import { energyEstimator, extract_stats } from "./responseStats";
@@ -298,7 +299,8 @@ export class PromptPipeline {
 
         if (!prompt.is_concrete())
           throw new Error(
-            `Cannot send a prompt '${prompt}' to LLM: Prompt is a template. Either fill all the template variables {} with inputs, or escape the braces in the prompt if you want to send it as-is.\n\nFor more info on templating in ChainForge, see: https://chainforge.ai/docs/prompt_templates/`,
+            // A decision judge's prompt is its rubric plus the response; the rubric is what's unfilled
+            `Cannot send a prompt '${splitDecisionPrompt(prompt.toString()).instructions ?? prompt}' to LLM: Prompt is a template. Either fill all the template variables {} with inputs, or escape the braces in the prompt if you want to send it as-is.\n\nFor more info on templating in ChainForge, see: https://chainforge.ai/docs/prompt_templates/`,
           );
 
         // Get the cache of responses with respect to this prompt, + normalize format so it's always an array (of size >= 0)

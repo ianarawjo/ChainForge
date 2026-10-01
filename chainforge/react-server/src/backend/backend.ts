@@ -44,6 +44,7 @@ import {
   stripWrappingQuotes,
   extractMediaVars,
   withResponseMetavars,
+  DECISION_PROMPT_SEPARATOR,
 } from "./utils";
 import StorageCache, { MediaLookup, StringLookup } from "./cache";
 import { PromptPipeline } from "./query";
@@ -1446,7 +1447,13 @@ function evalQueryRuns(
   );
   return [
     { suffix: "", judges: text_judges, template: root_prompt },
-    { suffix: "-decisions", judges: decision_judges, template: "{__input}" },
+    {
+      // The rubric is the decision question's instructions, filled in for each
+      // response like a text judge's prompt (see splitDecisionPrompt)
+      suffix: "-decisions",
+      judges: decision_judges,
+      template: `${rubric ?? ""}${DECISION_PROMPT_SEPARATOR}{__input}`,
+    },
   ].filter((r) => r.judges.length > 0);
 }
 
