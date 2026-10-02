@@ -31,10 +31,10 @@ export enum NativeLLM {
   OpenAI_GPT5_5_Pro = "gpt-5.5-pro",
   OpenAI_GPT5_4 = "gpt-5.4",
   OpenAI_GPT5_4_mini = "gpt-5.4-mini",
-  OpenAI_GPT5_4_nano = "gpt-5.4-nano",
+  OpenAI_GPT5_4_nano = "gpt-5.4-nano", // shuts down 2027-04-01
   OpenAI_GPT5_4_Pro = "gpt-5.4-pro",
   OpenAI_GPT5_2 = "gpt-5.2",
-  OpenAI_GPT5_1 = "gpt-5.1",
+  OpenAI_GPT5_1 = "gpt-5.1", // shuts down 2027-04-01
   OpenAI_GPT5 = "gpt-5", // snapshot shuts down 2026-12-11
   OpenAI_GPT5_mini = "gpt-5-mini", // snapshot shuts down 2026-12-11
   OpenAI_GPT5_nano = "gpt-5-nano", // snapshot shuts down 2026-12-11
@@ -87,7 +87,7 @@ export enum NativeLLM {
   OpenAI_GPT_Image_2_5_Sunburst = "gpt-image-2.5-sunburst",
   OpenAI_GPT_Image_2 = "gpt-image-2",
   OpenAI_GPT_Image_1_5 = "gpt-image-1.5", // shuts down 2026-12-01
-  OpenAI_GPT_Image_1 = "gpt-image-1", // retiring; replaced by gpt-image-2
+  OpenAI_GPT_Image_1 = "gpt-image-1", // shuts down 2026-10-23
   OpenAI_GPT_Image_1_mini = "gpt-image-1-mini", // shuts down 2026-12-01
   OpenAI_DallE_2 = "dall-e-2", // shut down 2026-05-12; kept so old flows still load
   OpenAI_DallE_3 = "dall-e-3", // shut down 2026-05-12
