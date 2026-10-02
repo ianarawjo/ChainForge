@@ -74,7 +74,7 @@ export const AI_PROVIDERS: AIProvider[] = [
     emoji: "🤖",
     base_model: "gpt-4",
     apiKey: "OpenAI",
-    recommended: { fast: "gpt-6-luna", smart: "gpt-5.4-mini" },
+    recommended: { fast: "gpt-6-luna", smart: "gpt-6.1-sol" },
     settings: { reasoning_effort: "low" },
   },
   {
