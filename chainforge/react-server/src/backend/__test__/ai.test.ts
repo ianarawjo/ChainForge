@@ -129,7 +129,7 @@ describe("model specs", () => {
     ).toBe("gpt-5.5");
     expect(
       aiModelSpec(provider("OpenAI"), "fast", overrides, {}, []).model,
-    ).toBe("gpt-5.4-nano");
+    ).toBe("gpt-6-luna");
   });
 
   test("Ollama uses the first model pulled, through the chat endpoint", () => {
@@ -172,7 +172,7 @@ describe("AI features", () => {
     await queryAI(model, "Say {hi}", { system: "Be brief." });
     const [, llms, , prompt, , , , noCache] = queryLLMMock.mock.calls[0];
     expect((llms as LLMSpec[])[0].settings?.system_msg).toBe("Be brief.");
-    expect((llms as LLMSpec[])[0].model).toBe("gpt-5.4-nano");
+    expect((llms as LLMSpec[])[0].model).toBe("gpt-6-luna");
     // Braces in the prompt are literal text, not template variables
     expect(prompt).toBe("Say \\{hi\\}");
     expect(noCache).toBe(true);
@@ -534,7 +534,7 @@ describe("an LLM Scorer's default judge", () => {
   });
 
   test("follows the keys set, without an OpenRouter key", () => {
-    expect(judge({ OpenAI: "k" }).model).toBe("gpt-5.4-nano");
+    expect(judge({ OpenAI: "k" }).model).toBe("gpt-6-luna");
     expect(judge({ Anthropic: "k" }).model).toBe("claude-haiku-4-5");
     const ollama = judge(
       {},
