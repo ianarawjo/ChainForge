@@ -112,9 +112,23 @@ describe("recognizing Ollama's decision models", () => {
     expect(getProvider(NativeLLM.Ollama)).toBe(LLMProvider.Ollama);
     expect(isDecisionModel(DECISION)).toBe(true);
     expect(isDecisionModel(NativeLLM.Ollama)).toBe(false);
-    for (const name of ["nimble", "nimble:latest", "tev1", "tev1:0.8b"])
+    for (const name of [
+      "nimble",
+      "nimble:latest",
+      "tev1",
+      "tev1:0.8b",
+      "clef",
+      "clef:27b",
+    ])
       expect(isOllamaDecisionModelName(name)).toBe(true);
-    for (const name of ["gemma4:e4b", "nimbler", "llama3", "tevatron"])
+    for (const name of [
+      "gemma4:e4b",
+      "nimbler",
+      "llama3",
+      "tevatron",
+      "clef-flash",
+      "clefable",
+    ])
       expect(isOllamaDecisionModelName(name)).toBe(false);
   });
 
