@@ -439,9 +439,11 @@ export function isDecisionModel(llm: LLM | string): boolean {
 
 /**
  * The decision models Ollama serves through its /v1/systemone endpoint (since
- * Ollama 0.35): Bespoke Labs' nimble, and Together AI's tev1 in two sizes.
+ * Ollama 0.35): Bespoke Labs' nimble, Together AI's tev1 in two sizes, and
+ * Cloudflare's clef. (Not clef-flash yet: it fails on /v1/systemone, per
+ * https://github.com/ollama/ollama/issues/18769.)
  */
-export const OLLAMA_DECISION_MODELS = ["nimble", "tev1", "tev1:0.8b"];
+export const OLLAMA_DECISION_MODELS = ["nimble", "tev1", "clef", "tev1:0.8b"];
 
 /**
  * The most capable of the decision models pulled in Ollama, going by the
@@ -457,12 +459,13 @@ export function bestOllamaDecisionModel(pulled: string[]): string {
 
 /**
  * Whether a model pulled in Ollama (e.g. "nimble:latest", "tev1:0.8b") is one
- * of its decision models: a Nimble or Tev model, as Ollama puts it. Goes by
- * name, since Ollama's model list doesn't say.
+ * of its decision models: a Nimble, Tev or Clef model. Goes by name,
+ * since Ollama's model list doesn't say. clef-flash stays a text model for
+ * now (see above).
  */
 export function isOllamaDecisionModelName(name: string): boolean {
   const base = name.split(":")[0].split("/").at(-1) ?? "";
-  return /^(nimble|tev\d+)([-_.]|$)/i.test(base);
+  return /^(nimble|tev\d+|clef(?!-flash))([-_.]|$)/i.test(base);
 }
 
 /**
