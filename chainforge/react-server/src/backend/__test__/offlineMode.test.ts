@@ -188,6 +188,15 @@ describe("offline mode", () => {
     await assertProviderAllowedOffline(LLMProvider.Ollama, {
       ollama_url: "http://localhost:11434/api",
     });
+    // Ollama's decision models, on Ollama
+    await assertProviderAllowedOffline(LLMProvider.OllamaDecision, {
+      ollama_url: "http://localhost:11434",
+    });
+    await expect(
+      assertProviderAllowedOffline(LLMProvider.OllamaDecision, {
+        ollama_url: "https://ollama.example.com",
+      }),
+    ).rejects.toThrow(OfflineModeError);
     await assertProviderAllowedOffline(LLMProvider.OpenAICompatible, {
       base_url: "http://10.1.2.3:8000/v1",
     });

@@ -288,6 +288,7 @@ export function isLocalProvider(provider: LLMProvider | undefined): boolean {
   return (
     provider === LLMProvider.WebLLM ||
     provider === LLMProvider.Ollama ||
+    provider === LLMProvider.OllamaDecision ||
     provider === LLMProvider.OpenAICompatible ||
     provider === LLMProvider.Custom
   );
@@ -306,7 +307,7 @@ export async function assertProviderAllowedOffline(
     );
   }
   const url =
-    provider === LLMProvider.Ollama
+    provider === LLMProvider.Ollama || provider === LLMProvider.OllamaDecision
       ? params?.ollama_url
       : provider === LLMProvider.OpenAICompatible
         ? params?.base_url
