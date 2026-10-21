@@ -317,6 +317,12 @@ export interface ResponseStats {
    */
   energy_includes_load?: boolean;
   /**
+   * The custom provider that reported this response's energy (measured on its
+   * server, or estimated by it), rather than ChainForge measuring or
+   * estimating it. Set only where a provider did.
+   */
+  energy_reported_by?: string;
+  /**
    * Set when the provider reported one total for several responses, e.g. one
    * request that returned n of them: how many responses the total was shared
    * between. The stats it covers (output tokens and speed, or latency) are

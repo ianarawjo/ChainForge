@@ -660,6 +660,17 @@ export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
 // Max concurrent requests. Add to this to further constrain the rate limiter.
 export const MAX_CONCURRENT: { [key in string | NativeLLM]?: number } = {};
 
+/**
+ * The name a model's requests are rate limited under: its own, but for a
+ * custom provider's models (__custom/<provider>/<model>), which share their
+ * provider's, as setCustomProvider sets its limits (e.g. "sequential": one
+ * request at a time, to the one server that serves them all).
+ */
+export function rateLimitKey(model: string): string {
+  const custom = model.match(/^__custom\/[^/]+/);
+  return custom ? custom[0] : model;
+}
+
 // In-browser inference runs on the one GPU, so never more than one at a time.
 for (const webllm_model of Object.entries(NativeLLM)
   .filter(([name]) => name.startsWith("WebLLM"))
@@ -691,23 +702,24 @@ export class RateLimiter {
 
   /** Get the Bottleneck limiter for the given model. If it doesn't already exist, instantiates it dynamically. */
   private getLimiter(model: LLM, provider: LLMProvider): Bottleneck {
+    const key = rateLimitKey(model);
     // Find if there's an existing limiter for this model
-    if (!(model in this.limiters)) {
+    if (!(key in this.limiters)) {
       // If there isn't, make one:
       // Find the RPM. First search if the model is present in predefined rate limits; then search for pre-defined RLs by provider; then set to default.
       const rpm =
-        RATE_LIMIT_BY_MODEL[model] ??
+        RATE_LIMIT_BY_MODEL[key] ??
         RATE_LIMIT_BY_PROVIDER[provider ?? LLMProvider.Custom] ??
         DEFAULT_RATE_LIMIT;
-      this.limiters[model] = new Bottleneck({
+      this.limiters[key] = new Bottleneck({
         reservoir: rpm, // max requests per minute
         reservoirRefreshAmount: rpm, // refresh up to max requests every minute
         reservoirRefreshInterval: 60000, // refresh every minute
-        maxConcurrent: MAX_CONCURRENT[model] ?? Math.ceil(rpm / 2), // throttle max concurrent requests to half, just in case
+        maxConcurrent: MAX_CONCURRENT[key] ?? Math.ceil(rpm / 2), // throttle max concurrent requests to half, just in case
         minTime: 20,
       }); // space out the requests by 20ms, to be safe
     }
-    return this.limiters[model];
+    return this.limiters[key];
   }
 
   /** Throttles the API call for the given model, using Bottleneck

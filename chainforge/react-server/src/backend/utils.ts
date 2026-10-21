@@ -58,6 +58,9 @@ import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import {
   ENERGY_KEY,
   LATENCY_KEY,
+  PROVIDER_REPORTED_STATS,
+  REPORTED_BY_KEY,
+  REPORTED_KEY,
   isStatsMetavar,
   statsAt,
   statsToMetavars,
@@ -3207,6 +3210,7 @@ async function call_custom_provider(
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
     // Collect response from the custom provider
+    const start = performance.now();
     const { response, error } = await call_flask_backend("callCustomProvider", {
       name: provider_name,
       params: {
@@ -3221,9 +3225,51 @@ async function call_custom_provider(
     // Fail if an error is encountered
     if (error !== undefined || response === undefined) throw new Error(error);
 
-    responses.push(response);
+    responses.push(
+      custom_provider_reply(response, provider_name, performance.now() - start),
+    );
   }
   return [query, responses];
+}
+
+/**
+ * A custom provider's reply, as ChainForge keeps it. A provider returns its
+ * response's text, an image ({ t: "img", d: <base64> }), or a dict with its
+ * text and, where it knows them, its own figures for the response, under
+ * ChainForge's names for them (see PROVIDER_REPLY_FIELDS; the server checks
+ * the reply's shape). The figures are kept apart from the text, under the
+ * keys the stats are read from (see statsFromReply), with the time the call
+ * took as ChainForge timed it, for where the provider doesn't say.
+ */
+export function custom_provider_reply(
+  reply: unknown,
+  provider_name: string,
+  elapsed_ms: number,
+): Dict {
+  const out: Dict = { [LATENCY_KEY]: elapsed_ms };
+  if (typeof reply === "string") return { ...out, text: reply };
+  if (
+    reply &&
+    typeof reply === "object" &&
+    isImageResponseData(reply as LLMResponseData)
+  )
+    return { ...out, image: reply };
+  const r = (reply ?? {}) as Dict;
+  if (typeof r.text !== "string")
+    throw new Error(
+      `${provider_name} returned a reply without its text: a custom provider returns a string, or a dict with the response's "text".`,
+    );
+  out.text = r.text;
+  if (typeof r.reasoning === "string") out.reasoning = r.reasoning;
+  const reported: Dict = {};
+  for (const field of PROVIDER_REPORTED_STATS)
+    if (r[field] !== undefined) reported[field] = r[field];
+  if (r.est_energy_wh !== undefined) reported.est_energy_wh = r.est_energy_wh;
+  if (Object.keys(reported).length > 0) out[REPORTED_KEY] = reported;
+  if (r.energy && typeof r.energy === "object") out[ENERGY_KEY] = r.energy;
+  if (out[REPORTED_KEY] || out[ENERGY_KEY])
+    out[REPORTED_BY_KEY] = provider_name;
+  return out;
 }
 
 /**
@@ -3683,6 +3729,10 @@ export function extract_reasoning(
           ),
         );
       break;
+    case LLMProvider.Custom:
+      // A custom provider's own "reasoning" (see custom_provider_reply)
+      reasoning = responses.map((r) => readable(r?.reasoning));
+      break;
   }
   return reasoning.some((r) => r !== null) ? reasoning : undefined;
 }
@@ -3892,6 +3942,8 @@ export function extract_responses(
       return _extract_openai_responses(response as Dict[]);
     case LLMProvider.MiniMax:
       return _extract_openai_responses(response as Dict[]);
+    case LLMProvider.Custom:
+      return _extract_custom_provider_responses(response, llm);
     case LLMProvider.OpenRouter:
       if (isOpenRouterImageModel(llm))
         return _extract_openrouter_image_responses(response as Dict[]);
@@ -3911,6 +3963,24 @@ export function extract_responses(
           `No method defined to extract responses for LLM ${llm}.`,
         );
   }
+}
+
+/**
+ * The text or image of each custom provider reply: as kept by
+ * custom_provider_reply, or, from before it, the string or image itself.
+ */
+function _extract_custom_provider_responses(
+  response: Array<string | Dict> | Dict,
+  llm: LLM | string,
+): LLMResponseData[] {
+  const replies = Array.isArray(response) ? response : [response];
+  return replies.map((r) => {
+    if (typeof r === "string" || isImageResponseData(r))
+      return r as LLMResponseData;
+    if (typeof r?.text === "string") return r.text;
+    if (r?.image && isImageResponseData(r.image)) return r.image;
+    throw new Error(`No method defined to extract responses for LLM ${llm}.`);
+  });
 }
 
 /**

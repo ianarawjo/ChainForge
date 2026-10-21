@@ -1,5 +1,7 @@
 from typing import Protocol, Optional, Dict, List, Literal, Union, Any, TypedDict
 import inspect
+import math
+import numbers
 
 """
     OpenAI chat message format typing
@@ -12,6 +14,124 @@ class ChatMessage(Dict):
     function_call: Optional[Dict]
 
 ChatHistory = List[ChatMessage]
+
+
+class EnergyReport(TypedDict, total=False):
+    """
+    The energy a request used, as measured on the server that ran it. The
+    same shape as ChainForge's own energy monitor reports (`chainforge.energy`),
+    so a server that runs it can pass its result on as is. Only `energy_wh`
+    is needed.
+    """
+    energy_wh: float  # the energy the request used above the machine's idle power, in Wh
+    noise_wh: float  # how far idle power's usual swings could move energy_wh, in Wh
+    components_wh: Dict[str, float]  # energy_wh by part, e.g. {"gpu0": 0.06, "cpu": 0.01}
+    load_energy_wh: float  # loading the model first, if it had to be (not in energy_wh)
+    shared: bool  # whether it generated alongside other requests, which shared its energy
+    conditions: Dict[str, str]  # power settings, e.g. {"power_source": "AC power"}
+    conditions_changed: bool  # whether the power settings changed during the request
+    baseline_before_change: bool  # whether idle power is from before they changed
+    includes_load: bool  # whether energy_wh covers any model load too
+
+
+class ProviderReply(TypedDict, total=False):
+    """
+    What a custom model provider can return for a response, instead of just its
+    text: the text, plus whatever the provider knows about the response, under
+    the names ChainForge uses for them. ChainForge shows these as it does for
+    its built-in providers (on the response, in the Inspector, and as values the
+    Vis Node can plot). Only `text` is needed; leave out what you don't know.
+
+    For example, from a server that reports its token counts and timings:
+
+        return {"text": reply["response"],
+                "input_tokens": reply["prompt_eval_count"],
+                "output_tokens": reply["eval_count"],
+                "latency_ms": reply["total_duration"] / 1e6}
+
+    Without `latency_ms`, a response's latency is ChainForge's timing of the
+    call, which includes the trip to and from the server. Speed (tokens per
+    second) is worked out from `output_tokens` and the latency.
+    """
+    text: str  # the response (required)
+    reasoning: str  # a reasoning model's "thinking", shown apart from the response
+    input_tokens: int  # tokens in the prompt
+    output_tokens: int  # tokens generated, including any reasoning
+    latency_ms: float  # how long the request took, in milliseconds
+    ttft_ms: float  # time before the first output token, in milliseconds
+    decode_tokens_per_s: float  # generation speed, not counting reading the prompt
+    cost_usd: float  # what the request cost, in US dollars
+    est_energy_wh: Dict[str, float]  # an estimate of its energy: {"min": ..., "max": ...}, in Wh
+    energy: EnergyReport  # its energy, as measured on the server
+
+
+# The fields a ProviderReply can have (the front end reads the same names:
+# PROVIDER_REPLY_FIELDS in react-server/src/backend/responseStats.ts)
+PROVIDER_REPLY_FIELDS = tuple(ProviderReply.__annotations__)
+_NUMBER_FIELDS = ("input_tokens", "output_tokens", "latency_ms", "ttft_ms",
+                  "decode_tokens_per_s", "cost_usd")
+
+
+def _number(value: Any, where: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, numbers.Real) \
+            or not math.isfinite(value) or value < 0:
+        raise ValueError(f'"{where}" should be a number, 0 or more (got {value!r}).')
+    return int(value) if isinstance(value, numbers.Integral) else float(value)
+
+
+def check_provider_reply(reply: Any) -> Union[str, Dict[str, Any]]:
+    """
+    A custom model provider's reply, checked: a string, an image
+    ({"t": "img", "d": <base64>}), or a ProviderReply. Numbers are made plain
+    floats and ints (e.g. from numpy), to send on as JSON.
+    Raises ValueError, saying what's wrong, for anything else.
+    """
+    if isinstance(reply, str):
+        return reply
+    if not isinstance(reply, dict):
+        raise ValueError(f"A custom provider returns a string, or a dict with the response's \"text\" "
+                         f"(got {type(reply).__name__}).")
+    if reply.get("t") == "img" and set(reply) == {"t", "d"}:
+        return reply
+    unknown = [k for k in reply if k not in PROVIDER_REPLY_FIELDS]
+    if unknown:
+        raise ValueError(f"ChainForge doesn't know the field(s) {', '.join(map(repr, unknown))}. "
+                         f"A reply can have: {', '.join(PROVIDER_REPLY_FIELDS)}.")
+    if not isinstance(reply.get("text"), str):
+        raise ValueError('A reply that\'s a dict needs the response\'s "text", as a string.')
+    out: Dict[str, Any] = {"text": reply["text"]}
+    if reply.get("reasoning") is not None:
+        if not isinstance(reply["reasoning"], str):
+            raise ValueError('"reasoning" should be a string.')
+        out["reasoning"] = reply["reasoning"]
+    for field in _NUMBER_FIELDS:
+        if reply.get(field) is not None:
+            out[field] = _number(reply[field], field)
+    est = reply.get("est_energy_wh")
+    if est is not None:
+        if not isinstance(est, dict) or set(est) != {"min", "max"}:
+            raise ValueError('"est_energy_wh" should be {"min": ..., "max": ...}, in Wh.')
+        lo, hi = _number(est["min"], "est_energy_wh.min"), _number(est["max"], "est_energy_wh.max")
+        if lo > hi:
+            raise ValueError('"est_energy_wh" has its "min" above its "max".')
+        out["est_energy_wh"] = {"min": lo, "max": hi}
+    energy = reply.get("energy")
+    if energy is not None:
+        if not isinstance(energy, dict) or "energy_wh" not in energy:
+            raise ValueError('"energy" should be a dict with at least "energy_wh" (see EnergyReport).')
+        # Passed on as it is, but for its numbers: it's the energy monitor's
+        # own report, which may have more in it than ChainForge shows
+        out["energy"] = dict(energy)
+        for key in ("energy_wh", "noise_wh", "load_energy_wh"):
+            if energy.get(key) is not None:
+                out["energy"][key] = _number(energy[key], f"energy.{key}")
+        parts = energy.get("components_wh")
+        if parts is not None:
+            if not isinstance(parts, dict):
+                raise ValueError('"energy.components_wh" should be a dict of Wh by part.')
+            out["energy"]["components_wh"] = {
+                str(k): _number(v, f"energy.components_wh.{k}") for k, v in parts.items()}
+    return out
 
 class SettingsSchema(TypedDict, total=False):
     # react-jsonschema-form contract:
@@ -31,7 +151,7 @@ class CustomProviderProtocol(Protocol):
                  prompt: str,
                  model: Optional[str], 
                  chat_history: Optional[ChatHistory],
-                 **kwargs: Any) -> str:
+                 **kwargs: Any) -> Union[str, ProviderReply]:
         """
           Define a call to your custom provider.
 
@@ -42,6 +162,10 @@ class CustomProviderProtocol(Protocol):
                              Chat history does not include the new message to send off (which is passed instead as the `prompt` parameter).
            - `kwargs`: Any other parameters to pass the provider API call, like temperature. Parameter names are the keynames in your provider's settings_schema.
                        Only relevant if you are defining a custom settings_schema JSON to edit provider/model settings in ChainForge. 
+
+          Returns the response's text, or a `ProviderReply`: a dict with the text and what
+          the provider knows about the response (token counts, timings, energy), which
+          ChainForge then shows as it does for its built-in providers.
         """
         pass
 
@@ -195,7 +319,7 @@ def provider(name: str = 'Custom Provider',
         - category: "model" | "retriever" | "chunker"
             Callable shapes:
             - category == "model":
-                (prompt, model, chat_history, **kwargs) -> str
+                (prompt, model, chat_history, **kwargs) -> str | ProviderReply
             - category == "retriever":
                 (chunks, queries, settings) -> List[...]
             - category == "chunker":

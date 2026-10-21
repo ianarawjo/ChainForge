@@ -800,7 +800,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
           isEnergy
             ? `Some responses from ${names(others)} have no estimate (for instance, ones collected before ChainForge estimated energy, or without a token count), hence they are omitted here.`
             : isMeasuredEnergy
-              ? `Energy is measured only for local models (Ollama) on this machine, where ChainForge can read its energy counters (so far, Apple silicon Macs). Responses from ${names(others)} have no measurement, hence they are omitted here.`
+              ? `Energy is measured only for local models (Ollama) on this machine, where ChainForge can read its energy counters (so far, Apple silicon Macs), or reported by custom providers that measure it on their servers. Responses from ${names(others)} have no measurement, hence they are omitted here.`
               : `Some responses from ${names(others)} have no ${metricName.toLowerCase()}, hence they are omitted here.`,
         );
       return sentences.join(" ");
@@ -833,6 +833,34 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       return `These were measured under different power settings (${which}), which change the energy the same work takes. Compare them with care.`;
     }, [isMeasuredEnergy, statsView]);
 
+    // Energy can come from ChainForge (measured on this machine, or estimated
+    // by EcoLogits) or from a custom provider's server, which may measure or
+    // estimate it differently: say when the values plotted came from several
+    const sourcesNote = useMemo(() => {
+      if (!(isEnergy || isMeasuredEnergy) || !statsView) return undefined;
+      const counts = new Map<string, number>();
+      statsView.responses.forEach((r) =>
+        r.stats?.forEach((s) => {
+          if (!s) return;
+          const key = s.energy_reported_by
+            ? isEnergy
+              ? `by ${s.energy_reported_by}`
+              : `reported by ${s.energy_reported_by}`
+            : isEnergy
+              ? "by EcoLogits"
+              : "on this machine";
+          counts.set(key, (counts.get(key) ?? 0) + 1);
+        }),
+      );
+      if (counts.size < 2) return undefined;
+      const which = Array.from(counts.entries())
+        .map(([source, n]) => `${n} ${source}`)
+        .join("; ");
+      return isEnergy
+        ? `These were estimated in different ways (${which}). Compare them with care.`
+        : `These were measured in different places (${which}), which may measure energy differently. Compare them with care.`;
+    }, [isEnergy, isMeasuredEnergy, statsView]);
+
     const notes: { text: string; details: string }[] = [];
     if (omittedNote)
       notes.push({
@@ -847,6 +875,13 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       notes.push({
         text: "Measured under different power settings.",
         details: conditionsNote,
+      });
+    if (sourcesNote)
+      notes.push({
+        text: isEnergy
+          ? "Estimated in different ways."
+          : "Measured in different places.",
+        details: sourcesNote,
       });
 
     // Typically, a user will only need the default LLM 'group' --all LLMs in responses.

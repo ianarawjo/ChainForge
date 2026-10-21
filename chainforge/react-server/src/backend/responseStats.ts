@@ -40,6 +40,42 @@ export const LATENCY_KEY = "__cf_latency_ms";
 export const ENERGY_KEY = "__cf_energy";
 
 /**
+ * Where a custom provider's own figures for a response are kept on its reply
+ * (see call_custom_provider), and the name of the provider that gave them.
+ */
+export const REPORTED_KEY = "__cf_reported";
+export const REPORTED_BY_KEY = "__cf_reported_by";
+
+/**
+ * What a custom provider can return for a response, besides its text, under
+ * the names ChainForge uses for them (see ResponseStats). Anything else is
+ * worked out by ChainForge (e.g. tokens per second, from these).
+ */
+export const PROVIDER_REPORTED_STATS = [
+  "input_tokens",
+  "output_tokens",
+  "latency_ms",
+  "ttft_ms",
+  "decode_tokens_per_s",
+  "cost_usd",
+] as const;
+
+/**
+ * Every field a custom provider's reply can have. `energy` takes the same
+ * shape as ChainForge's own energy monitor reports (chainforge/energy, and
+ * ENERGY_KEY above), so a server that runs it can pass its result on as is.
+ * chainforge/providers/protocol.py's ProviderReply lists the same names (a
+ * test checks they agree).
+ */
+export const PROVIDER_REPLY_FIELDS = [
+  "text",
+  "reasoning",
+  ...PROVIDER_REPORTED_STATS,
+  "est_energy_wh",
+  "energy",
+] as const;
+
+/**
  * The metavars each response's stats are exposed under, e.g. to code evaluators
  * as `response.meta["stat_tokens_per_s"]`. The prefix keeps them from colliding
  * with metavars of the user's own, which stats would otherwise overwrite.
@@ -189,6 +225,27 @@ export function statsFromReply(reply: Dict): ResponseStats {
     if (energy.includes_load === true) stats.energy_includes_load = true;
   }
 
+  // A custom provider's own figures, which it knows better than ChainForge's
+  // timing of the call (e.g. the time on its server, not the network's)
+  const reported: Dict = r?.[REPORTED_KEY] ?? {};
+  for (const field of PROVIDER_REPORTED_STATS) {
+    const v = num(reported[field]);
+    if (v !== undefined) stats[field] = v;
+  }
+  const est: Dict = reported.est_energy_wh ?? {};
+  if (
+    num(est.min) !== undefined &&
+    num(est.max) !== undefined &&
+    est.min <= est.max
+  )
+    stats.est_energy_wh = { min: est.min, max: est.max };
+  const reportedBy = r?.[REPORTED_BY_KEY];
+  if (
+    typeof reportedBy === "string" &&
+    (stats.energy_wh !== undefined || stats.est_energy_wh !== undefined)
+  )
+    stats.energy_reported_by = reportedBy;
+
   return stats;
 }
 
@@ -235,6 +292,8 @@ function finish(stats: ResponseStats): ResponseStats | null {
   if (stats.energy_baseline_before_change)
     res.energy_baseline_before_change = true;
   if (stats.energy_includes_load) res.energy_includes_load = true;
+  if (stats.energy_reported_by)
+    res.energy_reported_by = stats.energy_reported_by;
   if (Object.keys(res).length === 0) return null;
   if (stats.averaged_over !== undefined && stats.averaged_over > 1)
     res.averaged_over = stats.averaged_over;
@@ -321,6 +380,8 @@ export function extract_stats(
       s.latency_ms !== undefined
         ? estimateEnergy(s.output_tokens, s.latency_ms)
         : undefined;
+    // EcoLogits' estimate, or failing that, one a custom provider gave
+    const est = energy ?? s.est_energy_wh;
     for (let j = 0; j < k; j++)
       stats.push(
         finish({
@@ -329,7 +390,7 @@ export function extract_stats(
             s.output_tokens !== undefined ? s.output_tokens / k : undefined,
           // One request's cost, shared between the responses it returned
           cost_usd: s.cost_usd !== undefined ? s.cost_usd / k : undefined,
-          est_energy_wh: energy && { min: energy.min / k, max: energy.max / k },
+          est_energy_wh: est && { min: est.min / k, max: est.max / k },
           // Measured energy too (one reply per response for Ollama, so k is 1)
           energy_wh: s.energy_wh !== undefined ? s.energy_wh / k : undefined,
           energy_noise_wh:
@@ -453,7 +514,7 @@ export function describeStats(stats: ResponseStats | undefined): string[] {
     lines.push(`Cost: ${formatCost(stats.cost_usd)}`);
   if (stats.est_energy_wh !== undefined)
     lines.push(
-      `Energy: ${formatEnergyRange(stats.est_energy_wh)} (estimated by EcoLogits)`,
+      `Energy: ${formatEnergyRange(stats.est_energy_wh)} (estimated by ${stats.energy_reported_by ?? "EcoLogits"})`,
     );
   if (stats.energy_wh !== undefined)
     lines.push(...describeMeasuredEnergy(stats));
@@ -495,7 +556,7 @@ export function describeConditions(
   return parts.length > 0 ? parts.join(", ") : undefined;
 }
 
-/** The tooltip lines for energy measured on this machine. */
+/** The tooltip lines for measured energy: on this machine, or as a custom provider reported it. */
 function describeMeasuredEnergy(stats: ResponseStats): string[] {
   const wh = stats.energy_wh as number;
   const noise =
@@ -503,7 +564,9 @@ function describeMeasuredEnergy(stats: ResponseStats): string[] {
       ? `, ± ${formatEnergy(stats.energy_noise_wh)}`
       : "";
   const lines = [
-    `Energy: ${formatEnergy(wh)} (measured on this machine, above idle power${noise})`,
+    stats.energy_reported_by
+      ? `Energy: ${formatEnergy(wh)} (reported by ${stats.energy_reported_by}${noise})`
+      : `Energy: ${formatEnergy(wh)} (measured on this machine, above idle power${noise})`,
   ];
   // The parts, largest first, in the energy's unit; tiny ones left out
   const parts = Object.entries(stats.energy_parts_wh ?? {})
@@ -695,7 +758,9 @@ export const PLOTTABLE_STATS: PlottableStat[] = [
     describe: (s) =>
       s.energy_wh === undefined
         ? ""
-        : `Energy: ${formatEnergy(s.energy_wh)} (measured, above idle)`,
+        : s.energy_reported_by
+          ? `Energy: ${formatEnergy(s.energy_wh)} (reported by ${s.energy_reported_by})`
+          : `Energy: ${formatEnergy(s.energy_wh)} (measured, above idle)`,
   },
   {
     // One number per response: the middle of the estimate's range, as on the
@@ -709,7 +774,7 @@ export const PLOTTABLE_STATS: PlottableStat[] = [
     describe: (s) =>
       s.est_energy_wh === undefined
         ? ""
-        : `Energy: ${formatEnergyRange(s.est_energy_wh)} (estimated by EcoLogits)`,
+        : `Energy: ${formatEnergyRange(s.est_energy_wh)} (estimated by ${s.energy_reported_by ?? "EcoLogits"})`,
   },
 ];
 
