@@ -23,7 +23,10 @@ import { StrictModeDroppable } from "./StrictModeDroppable";
 import ModelSettingsModal, {
   ModelSettingsModalRef,
 } from "./ModelSettingsModal";
-import { getDefaultModelSettings } from "./ModelSettingSchemas";
+import {
+  baseModelToProvider,
+  getDefaultModelSettings,
+} from "./ModelSettingSchemas";
 import {
   BEDROCK_PREFIX,
   OPENAI_COMPATIBLE_PREFIX,
@@ -41,6 +44,7 @@ import { Dict, JSONCompatible, LLMGroup, LLMSpec } from "./backend/typing";
 import { ContextMenuItemOptions } from "mantine-contextmenu/dist/types";
 import { deepcopy, ensureUniqueName } from "./backend/utils";
 import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
+import { isLocalProvider, isOfflineMode } from "./backend/offlineMode";
 
 // The LLM(s) to include by default on a PromptNode whenever one is created.
 // Defaults to an in-browser Qwen 2.5 model.
@@ -58,6 +62,21 @@ const MODEL_NAME_PREFIXES: Record<string, string> = {
   bedrock: BEDROCK_PREFIX,
   "openai-compatible": OPENAI_COMPATIBLE_PREFIX,
 };
+
+/** The menu without models that offline mode rules out, and without groups it leaves empty. */
+function localMenuEntries(
+  entries: (LLMSpec | LLMGroup)[],
+): (LLMSpec | LLMGroup)[] {
+  return entries.flatMap((entry): (LLMSpec | LLMGroup)[] => {
+    if ("group" in entry) {
+      const items = localMenuEntries(entry.items);
+      return items.length > 0 ? [{ ...entry, items }] : [];
+    }
+    return isLocalProvider(baseModelToProvider(entry.base_model))
+      ? [entry]
+      : [];
+  });
+}
 
 // Helper funcs
 /** Get position CSS style below and left-aligned to the input element */
@@ -341,6 +360,11 @@ export const LLMListContainer = forwardRef<
   const AvailableLLMs = useStore((state) => state.AvailableLLMs);
   const removeFavorite = useStore((state) => state.removeFavorite);
   const apiKeys = useStore((state) => state.apiKeys);
+  // In offline mode, the menu only offers local models
+  const offlineMode =
+    (useStore((state) => state.globalSettings.offlineMode) as
+      | boolean
+      | undefined) ?? isOfflineMode();
 
   // For some reason, when the AvailableLLMs list is updated in the store/, it is not
   // immediately updated here. I've tried all kinds of things, but cannot seem to fix this problem.
@@ -543,10 +567,18 @@ export const LLMListContainer = forwardRef<
         };
       }
     };
-    const res = initLLMProviderMenu.filter(offered).map((i) => convert(i));
+    // In offline mode, only local models
+    const menu = offlineMode
+      ? localMenuEntries(initLLMProviderMenu)
+      : initLLMProviderMenu;
+    const res = menu.filter(offered).map((i) => convert(i));
 
     for (const item of AvailableLLMs) {
-      if (initModels.has(item.base_model) || !offered(item)) {
+      if (
+        initModels.has(item.base_model) ||
+        !offered(item) ||
+        (offlineMode && !isLocalProvider(baseModelToProvider(item.base_model)))
+      ) {
         continue;
       }
       res.push({
@@ -562,6 +594,7 @@ export const LLMListContainer = forwardRef<
     handleSelectModel,
     refreshLLMProviderList,
     removeFavorite,
+    offlineMode,
   ]);
 
   return (

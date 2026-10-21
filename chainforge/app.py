@@ -79,6 +79,16 @@ def main():
                                 Open pages send a heartbeat every 5 minutes, so use 15 or more.
                                 Off by default."""))
 
+    serve_parser.add_argument('--offline',
+                              action='store_true',
+                              help=textwrap.dedent("""\
+                                Keep prompts, responses and documents on this machine or your local network:
+                                only local models (Ollama, OpenAI-compatible servers on your network,
+                                in-browser models) and local RAG methods can be used. Stays on for everyone
+                                using this server; it can't be turned off in the app. Model files can still
+                                be downloaded, and code you write yourself (custom providers, Python
+                                evaluators) runs as written."""))
+
     args = parser.parse_args()
 
     # Currently only support the 'serve' command...
@@ -115,7 +125,7 @@ def main():
     print(f"Serving Flask server on {host} on port {port}...")
     run_server(host=host, port=port, flows_dir=args.dir, secure=args.secure,
                allowed_hosts=parse_list(args.allowed_hosts), dev_origins=dev_origins,
-               idle_shutdown_minutes=args.idle_shutdown)
+               idle_shutdown_minutes=args.idle_shutdown, offline=args.offline)
 
 if __name__ == "__main__":
     main()
