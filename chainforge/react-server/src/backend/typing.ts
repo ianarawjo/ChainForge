@@ -189,7 +189,7 @@ export type LLMSpec = {
 export type LLMGroup = {
   group: string;
   emoji: string;
-  items: LLMSpec[] | LLMGroup[];
+  items: (LLMSpec | LLMGroup)[];
 };
 
 /** A spec for a user-defined custom LLM provider */
