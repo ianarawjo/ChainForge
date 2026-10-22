@@ -1,0 +1,387 @@
+// Checks each kind's translation between node data and ChainBuddy's
+// settings, using the example flows as real node data. If a node's data
+// changes shape, these tests are meant to fail and point at its kind in nodes/.
+
+import { describe, expect, test } from "@jest/globals";
+import * as fs from "fs";
+import * as path from "path";
+import { Dict, LLMSpec } from "../../backend/typing";
+import { PLOTTABLE_STATS } from "../../backend/responseStats";
+import { inputsOf, kindOf, supportOf } from "../nodes";
+import { ModelResolver } from "../nodes/types";
+
+const EXAMPLES = path.join(__dirname, "..", "..", "..", "..", "examples");
+
+// Stands in for adapters/models.ts, which needs the store. Any ID that tells
+// a node's models apart will do; names are unique within a node.
+const resolver: ModelResolver = {
+  idOf: (llm) => llm.name,
+  toSpec: (id, taken) => ({
+    key: `new-${id}`,
+    name: taken.includes(id) ? `${id} (2)` : id,
+    emoji: "🤖",
+    model: id,
+    base_model: "openrouter",
+    temp: 1,
+  }),
+};
+
+// Every Prompt, TextFields and JavaScript Evaluator node in the examples.
+const exampleNodes = fs
+  .readdirSync(EXAMPLES)
+  .filter((f) => f.endsWith(".cforge"))
+  .flatMap((file) =>
+    JSON.parse(fs.readFileSync(path.join(EXAMPLES, file), "utf8"))
+      .flow.nodes.filter((n: any) => supportOf(n.type, n.data) === "editable")
+      .map((n: any) => [`${file}: ${n.id}`, n.type, n.data] as const),
+  );
+
+/** The parts of node data ChainBuddy reads and writes. */
+const MANAGED: Record<string, string[]> = {
+  prompt: ["prompt", "promptVariantLabel", "llms", "n", "title"],
+  textfields: ["fields", "fields_visibility", "title"],
+  evaluator: ["code", "language", "title"],
+  llmeval: [
+    "prompt",
+    "format",
+    "categories",
+    "scale",
+    "grader",
+    "graders",
+    "title",
+  ],
+  vis: ["selected_eval_res_var", "graph_type", "title"],
+  inspect: ["viewFormat", "title"],
+  table: ["columns", "rows", "sample", "sampleNum", "title"],
+};
+
+const settingsOf = (type: string, data: Dict, models: ModelResolver) =>
+  kindOf(type)?.read(data, models) ?? {};
+const dataWithSettings = (
+  type: string,
+  settings: Record<string, unknown>,
+  base: Dict | undefined,
+  models: ModelResolver,
+) => kindOf(type)?.write(settings, base, models) ?? {};
+
+const pick = (data: any, keys: string[]) =>
+  Object.fromEntries(
+    keys.filter((k) => data[k] !== undefined).map((k) => [k, data[k]]),
+  );
+
+test("the examples include every supported node type", () => {
+  const types = new Set(exampleNodes.map(([, type]) => type));
+  expect(Array.from(types).sort()).toEqual([
+    "evaluator",
+    "inspect",
+    "llmeval",
+    "prompt",
+    "table",
+    "textfields",
+    "vis",
+  ]);
+});
+
+describe.each(exampleNodes)("%s", (_, type, data) => {
+  test("writing ChainBuddy's view back leaves the node as it was", () => {
+    const settings = settingsOf(type, data, resolver);
+    const editable = { ...settings };
+    delete editable.disabled_values;
+    const rebuilt = dataWithSettings(type, editable, data, resolver);
+
+    expect(settingsOf(type, rebuilt, resolver)).toEqual(settings);
+    // The node's own data is unchanged, apart from defaults filled in.
+    const before = pick(data, MANAGED[type]);
+    const after = pick(rebuilt, Object.keys(before));
+    if (
+      type === "prompt" &&
+      Array.isArray(data.prompt) &&
+      data.prompt.length === 1
+    )
+      after.prompt = [after.prompt]; // one variant is stored either way
+    if (type === "prompt" && data.promptVariantLabel === undefined)
+      delete after.promptVariantLabel;
+    // A table row with no cell for a column is empty there, as ChainForge
+    // reads it; writing it back fills the cell in.
+    if (type === "table")
+      before.rows = before.rows.map((row: any) => ({
+        ...Object.fromEntries(before.columns.map((c: any) => [c.key, ""])),
+        ...row,
+      }));
+    expect(after).toEqual(before);
+  });
+});
+
+describe("dataWithSettings", () => {
+  test("builds a new Prompt Node with variants and its inputs", () => {
+    const data = dataWithSettings(
+      "prompt",
+      {
+        title: "Summaries",
+        prompts: [
+          { label: "Plain", text: "Summarize: {text}" },
+          { text: "For a child: {text} in {lang}" },
+        ],
+        models: [{ model: "a" }, { model: "a" }],
+        responses_per_prompt: 3,
+      },
+      undefined,
+      resolver,
+    );
+    expect(data).toMatchObject({
+      title: "Summaries",
+      prompt: ["Summarize: {text}", "For a child: {text} in {lang}"],
+      promptVariantLabel: ["Plain", "Variant 2"],
+      idxPromptVariantShown: 0,
+      vars: ["text", "lang"],
+      n: 3,
+    });
+    // The same model twice gets two distinct names, as the model menu does.
+    expect(data.llms.map((l: LLMSpec) => l.name)).toEqual(["a", "a (2)"]);
+  });
+
+  test("keeps a Prompt Node's existing models, settings and all", () => {
+    const existing: LLMSpec = {
+      key: "k1",
+      name: "Haiku",
+      emoji: "📚",
+      model: "openrouter/anthropic/claude-haiku-4.5",
+      base_model: "openrouter",
+      temp: 0.2,
+      settings: { temperature: 0.2 },
+    };
+    const data = dataWithSettings(
+      "prompt",
+      { models: [{ model: "b" }, { model: existing.name }] },
+      { prompt: "Hi", llms: [existing] },
+      resolver,
+    );
+    expect(data.llms[1]).toBe(existing);
+    expect(data.llms[0].model).toBe("b");
+  });
+
+  test("replaces TextFields values but keeps disabled ones", () => {
+    const base = {
+      fields: { f0: "old one", f1: "hidden {x}", f2: "old two" },
+      fields_visibility: { f1: false },
+    };
+    const data = dataWithSettings(
+      "textfields",
+      { values: ["new one", "new two", "new three"] },
+      base,
+      resolver,
+    );
+    expect(data.fields).toEqual({
+      f0: "new one",
+      f1: "hidden {x}",
+      f2: "new two",
+      f3: "new three",
+    });
+    expect(data.fields_visibility).toEqual({ f1: false });
+    expect(data.vars).toEqual(["x"]);
+    expect(settingsOf("textfields", data, resolver)).toMatchObject({
+      values: ["new one", "new two", "new three"],
+      disabled_values: ["hidden {x}"],
+    });
+  });
+
+  test("builds a JavaScript Evaluator", () => {
+    expect(
+      dataWithSettings(
+        "evaluator",
+        { code: "function evaluate(r) {}" },
+        undefined,
+        resolver,
+      ),
+    ).toEqual({ code: "function evaluate(r) {}", language: "javascript" });
+  });
+});
+
+describe("nodes that only show results", () => {
+  test("a Vis Node's measure is named, not one of the node's own keys", () => {
+    const data = dataWithSettings(
+      "vis",
+      { title: "Speed", metric: "latency", chart: "box" },
+      undefined,
+      resolver,
+    );
+    expect(data).toEqual({
+      title: "Speed",
+      selected_eval_res_var: "__stat_latency_s",
+      graph_type: "box",
+    });
+    expect(settingsOf("vis", data, resolver)).toEqual({
+      title: "Speed",
+      metric: "latency",
+      chart: "box",
+    });
+  });
+
+  test("every measure ChainForge records gets its own name", () => {
+    // Names come from the measures' labels, so a new one needs no code; this
+    // catches a label that would name nothing, or clash with another.
+    const names = kindOf("vis")?.settings.metric.values?.() ?? [];
+    expect(names.length).toBe(PLOTTABLE_STATS.length + 1); // and "score"
+    expect(new Set(names).size).toBe(names.length);
+    expect(names.every((n) => /^[a-z][a-z0-9_]*$/.test(n))).toBe(true);
+  });
+
+  test("a Vis Node may also plot an evaluator's own key", () => {
+    const data = dataWithSettings("vis", { metric: "length" }, {}, resolver);
+    expect(data.selected_eval_res_var).toBe("length");
+    expect(settingsOf("vis", data, resolver)).toMatchObject({
+      metric: "length",
+      chart: "bar",
+    });
+  });
+
+  test("an Inspect Node's view is named as the tabs read", () => {
+    const data = dataWithSettings("inspect", { view: "grouped" }, {}, resolver);
+    expect(data).toEqual({ viewFormat: "hierarchy" });
+    expect(settingsOf("inspect", data, resolver)).toEqual({
+      title: "Inspect Node",
+      view: "grouped",
+    });
+  });
+});
+
+describe("tables", () => {
+  const write = (settings: Record<string, unknown>, base?: Dict) =>
+    dataWithSettings("table", settings, base, resolver);
+
+  test("rows are kept under column keys, each with its own id", () => {
+    const data = write({
+      columns: ["question", "answer"],
+      rows: [
+        { question: "What is 2+2?", answer: 4 },
+        { question: "What is 7 times 6?" },
+      ],
+    });
+    expect(data.columns).toEqual([
+      { key: "col-0", header: "question" },
+      { key: "col-1", header: "answer" },
+    ]);
+    expect(data.rows.map((r: Dict) => ({ ...r, __uid: undefined }))).toEqual([
+      { __uid: undefined, "col-0": "What is 2+2?", "col-1": "4" },
+      { __uid: undefined, "col-0": "What is 7 times 6?", "col-1": "" },
+    ]);
+    expect(new Set(data.rows.map((r: Dict) => r.__uid)).size).toBe(2);
+    expect(settingsOf("table", data, resolver)).toEqual({
+      title: "Tabular Data Node",
+      columns: ["question", "answer"],
+      rows: [
+        { question: "What is 2+2?", answer: "4" },
+        { question: "What is 7 times 6?", answer: "" },
+      ],
+    });
+  });
+
+  test("a column keeps its key while its name stays, and rows keep their ids", () => {
+    const base = write({
+      columns: ["question", "answer"],
+      rows: [{ question: "Q1", answer: "A1" }],
+    });
+    const data = write({ columns: ["question", "expected", "topic"] }, base);
+    expect(data.columns).toEqual([
+      { key: "col-0", header: "question" },
+      { key: "col-2", header: "expected" },
+      { key: "col-3", header: "topic" },
+    ]);
+    // Cells of the removed column go; new columns start empty.
+    expect(data.rows).toEqual([
+      { __uid: base.rows[0].__uid, "col-0": "Q1", "col-2": "", "col-3": "" },
+    ]);
+  });
+
+  test("sample picks rows at random, and 0 sends them all", () => {
+    expect(write({ sample: 5 }, {})).toMatchObject({
+      sample: true,
+      sampleNum: 5,
+    });
+    expect(write({ sample: 0 }, { sample: true, sampleNum: 5 })).toMatchObject({
+      sample: false,
+    });
+    expect(
+      settingsOf(
+        "table",
+        { columns: [], rows: [], sample: true, sampleNum: 5 },
+        resolver,
+      ),
+    ).toMatchObject({ sample: 5 });
+  });
+});
+
+test("Python evaluators aren't supported", () => {
+  expect(supportOf("evaluator", { language: "python" })).toBe("not-supported");
+  expect(supportOf("evaluator", { language: "javascript" })).toBe("editable");
+  expect(supportOf("join", {})).toBe("not-supported");
+});
+
+test("inputs follow ChainForge's template rules", () => {
+  expect(
+    inputsOf("prompt", {
+      prompts: [{ text: "{a} and \\{not} and {#ref} and {=system_msg}" }],
+    }),
+  ).toEqual(["a", "=system_msg"]);
+  expect(inputsOf("evaluator", {})).toEqual(["responses"]);
+});
+
+describe("LLM Scorer data", () => {
+  test("a new scorer's judges score at temperature 0", () => {
+    const withSettings: ModelResolver = {
+      ...resolver,
+      toSpec: (id, taken) => ({
+        ...(resolver.toSpec(id, taken) as any),
+        settings: { temperature: 1 },
+        formData: { shortname: id, temperature: 1 },
+      }),
+    };
+    const data = dataWithSettings(
+      "llmeval",
+      {
+        rubric: "Is it polite?",
+        judges: [{ model: "a" }, { model: "b" }],
+      },
+      undefined,
+      withSettings,
+    );
+    expect(data.prompt).toBe("Is it polite?");
+    expect(data.format).toBe("bin");
+    expect(data.graders.map((g: any) => g.name)).toEqual(["a", "b"]);
+    expect(data.grader).toBe(data.graders[0]);
+    expect(data.graders[0].settings.temperature).toBe(0);
+    expect(data.graders[0].formData.temperature).toBe(0);
+  });
+
+  test("categories and scales are written as the node lists them", () => {
+    const data = dataWithSettings(
+      "llmeval",
+      {
+        rubric: "Which?",
+        format: "categorical",
+        categories: [
+          { label: "billing", description: "charges" },
+          { label: "other" },
+        ],
+      },
+      undefined,
+      resolver,
+    );
+    expect(data.format).toBe("cat");
+    expect(data.categories).toBe("billing: charges\nother");
+    expect(settingsOf("llmeval", data, resolver).categories).toEqual([
+      { label: "billing", description: "charges" },
+      { label: "other" },
+    ]);
+    // Text that already says the same is kept as the user typed it.
+    const typed = { ...data, categories: "billing:charges\n\nother" };
+    expect(
+      dataWithSettings(
+        "llmeval",
+        settingsOf("llmeval", typed, resolver),
+        typed,
+        resolver,
+      ).categories,
+    ).toBe("billing:charges\n\nother");
+  });
+});

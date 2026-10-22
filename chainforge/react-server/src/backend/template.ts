@@ -412,11 +412,21 @@ export class PromptTemplate {
   }
 
   /**
-   * Fills in any 'special' variables with # before them, by using the passed fill_history dict.
+   * Fills in any 'special' variables with # before them, from the values that filled earlier
+   * variables (fill_history) and the metavariables carried along with them, such as the other
+   * columns of a table row. A metavariable of the same name wins.
    * Modifies the prompt template in place.
+   *
+   * Values in fill_history filled a template already, so their braces are escaped where they
+   * were made. Metavariables' aren't, so they're escaped here: otherwise a brace in one (a JSON
+   * answer, say) would leave the prompt looking like a template, and it couldn't be sent.
    * @param fill_history A fill history dict.
+   * @param metavars The metavariables carried with the filled values.
    */
-  fill_special_vars(fill_history: Dict<LLMResponseData>): void {
+  fill_special_vars(
+    fill_history: Dict<LLMResponseData>,
+    metavars: Dict<LLMResponseData> = {},
+  ): void {
     // Special variables {#...} denotes filling a variable from a matching var in fill_history or metavars.
     // Find any special variables:
     const unfilled_vars = new StringTemplate(this.template).get_vars();
@@ -425,7 +435,11 @@ export class PromptTemplate {
       if (v.length > 0 && v[0] === "#") {
         // special template variables must begin with #
         const svar = v.substring(1);
-        if (svar in fill_history)
+        if (svar in metavars)
+          special_vars_to_fill[v] = escapeBraces(
+            llmResponseDataToString(metavars[svar]),
+          );
+        else if (svar in fill_history)
           special_vars_to_fill[v] = llmResponseDataToString(fill_history[svar]);
         else
           console.warn(
@@ -571,7 +585,7 @@ export class PromptPermutationGenerator {
       Object.keys(paramDict),
       paramDict,
     )) {
-      p.fill_special_vars({ ...p.fill_history, ...p.metavars });
+      p.fill_special_vars(p.fill_history, p.metavars);
 
       // Yield the final prompt template
       yield p;
