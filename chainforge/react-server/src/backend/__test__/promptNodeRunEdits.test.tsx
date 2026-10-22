@@ -164,7 +164,7 @@ const type = (container: HTMLElement, value: string) =>
   });
 
 const clickRun = () =>
-  fireEvent.click(screen.getByRole("button", { name: "Run" }));
+  fireEvent.click(screen.getByRole("button", { name: "▶" }));
 
 /** What each query was sent: its prompt, its models and its inputs. */
 const promptsSent = () => mockQueryLLM.mock.calls.map((call) => call[3]);

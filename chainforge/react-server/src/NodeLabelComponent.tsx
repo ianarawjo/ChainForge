@@ -53,6 +53,7 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
 }) => {
   const setDataPropsForNode = useStore((state) => state.setDataPropsForNode);
   const [statusIndicator, setStatusIndicator] = useState(<></>);
+  const [runButton, setRunButton] = useState(<></>);
   const removeNode = useStore((state) => state.removeNode);
 
   // For 'delete node' confirmation popup
@@ -68,7 +69,6 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
       <button
         className="AmitSahoo45-button-3 nodrag"
         style={{ padding: "0px 10px 0px 9px" }}
-        aria-label="Stop"
         onClick={() => {
           if (handleStopClick) handleStopClick(nodeId);
         }}
@@ -99,35 +99,35 @@ export const NodeLabel: React.FC<NodeLabelProps> = ({
     }
   }, [status, statusMessage]);
 
-  // Made as the label renders, not in an effect, so a click always reaches
-  // the node's current run function (a node's changes as it's edited)
-  const runButton = useMemo(() => {
-    if (handleRunClick === undefined) return <></>;
-    const run_btn = (
-      <button
-        className="AmitSahoo45-button-3 nodrag"
-        aria-label="Run"
-        onClick={handleRunClick}
-        onPointerEnter={handleRunHover}
-      >
-        &#9654;
-      </button>
-    );
-    return runButtonTooltip ? (
-      <Tooltip
-        label={runButtonTooltip}
-        withArrow
-        arrowSize={6}
-        arrowRadius={2}
-        zIndex={1001}
-        withinPortal={true}
-      >
-        {run_btn}
-      </Tooltip>
-    ) : (
-      run_btn
-    );
-  }, [handleRunClick, handleRunHover, runButtonTooltip]);
+  useEffect(() => {
+    if (handleRunClick !== undefined) {
+      const run_btn = (
+        <button
+          className="AmitSahoo45-button-3 nodrag"
+          onClick={handleRunClick}
+          onPointerEnter={handleRunHover}
+        >
+          &#9654;
+        </button>
+      );
+      if (runButtonTooltip)
+        setRunButton(
+          <Tooltip
+            label={runButtonTooltip}
+            withArrow
+            arrowSize={6}
+            arrowRadius={2}
+            zIndex={1001}
+            withinPortal={true}
+          >
+            {run_btn}
+          </Tooltip>,
+        );
+      else setRunButton(run_btn);
+    } else {
+      setRunButton(<></>);
+    }
+  }, [handleRunClick, runButtonTooltip]);
 
   const handleCloseButtonClick = useCallback(() => {
     setDeleteConfirmProps({
