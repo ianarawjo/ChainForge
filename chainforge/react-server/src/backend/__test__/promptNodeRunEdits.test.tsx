@@ -165,7 +165,9 @@ const type = (container: HTMLElement, value: string) =>
   });
 
 const clickRun = () =>
-  fireEvent.click(screen.getByRole("button", { name: "▶" }));
+  // By its text, not getByRole: in jsdom, a role query works out every
+  // element's accessible role and name, which here takes about a second
+  fireEvent.click(screen.getByText("▶").closest("button") as HTMLElement);
 
 /** What each query was sent: its prompt, its models and its inputs. */
 const promptsSent = () => mockQueryLLM.mock.calls.map((call) => call[3]);

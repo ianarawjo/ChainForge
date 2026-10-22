@@ -174,7 +174,9 @@ const type = (container: HTMLElement, value: string) =>
   });
 
 const clickRun = () =>
-  fireEvent.click(screen.getByRole("button", { name: "▶" }));
+  // By its text, not getByRole: in jsdom, a role query works out every
+  // element's accessible role and name, which here takes about a second
+  fireEvent.click(screen.getByText("▶").closest("button") as HTMLElement);
 
 /** What was saved to the flow, by property. */
 const saved = (prop: string) =>
@@ -303,7 +305,9 @@ describe("a Prompt Node, as it always has", () => {
     // The variant controls' trash icon comes before the models'
     const trash = container.querySelector(".tabler-icon-trash") as SVGElement;
     fireEvent.click(trash.closest("button") as HTMLButtonElement);
-    fireEvent.click(await screen.findByRole("button", { name: "Confirm" }));
+    fireEvent.click(
+      (await screen.findByText("Confirm")).closest("button") as HTMLElement,
+    );
     await wait(0);
     expect(saved("prompt")).toEqual([["A", "C"]]);
     expect(saved("promptVariantLabel")).toEqual([]);
