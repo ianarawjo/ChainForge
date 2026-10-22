@@ -293,8 +293,14 @@ export const responsesToTable = async (
           row["Energy, estimated min (Wh)"] = stats.est_energy_wh.min;
           row["Energy, estimated max (Wh)"] = stats.est_energy_wh.max;
         }
-        if (stats?.energy_wh !== undefined)
+        if (stats?.energy_wh !== undefined) {
           row["Energy, measured (Wh)"] = stats.energy_wh;
+          // On this machine, or on a custom provider's server, as it reported
+          row["Energy measured by"] =
+            stats.energy_reported_by ?? "this machine";
+          if (stats.energy_noise_wh !== undefined)
+            row["Energy noise (Wh)"] = stats.energy_noise_wh;
+        }
         if (stats?.load_energy_wh !== undefined)
           row["Model load energy, measured (Wh)"] = stats.load_energy_wh;
         if (stats?.energy_conditions?.power_source)
