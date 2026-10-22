@@ -16,31 +16,14 @@ class ChatMessage(Dict):
 ChatHistory = List[ChatMessage]
 
 
-class EnergyReport(TypedDict, total=False):
-    """
-    The energy a request used, as measured on the server that ran it. The
-    same shape as ChainForge's own energy monitor reports (`chainforge.energy`),
-    so a server that runs it can pass its result on as is. Only `energy_wh`
-    is needed.
-    """
-    energy_wh: float  # the energy the request used above the machine's idle power, in Wh
-    noise_wh: float  # how far idle power's usual swings could move energy_wh, in Wh
-    components_wh: Dict[str, float]  # energy_wh by part, e.g. {"gpu0": 0.06, "cpu": 0.01}
-    load_energy_wh: float  # loading the model first, if it had to be (not in energy_wh)
-    shared: bool  # whether it generated alongside other requests, which shared its energy
-    conditions: Dict[str, str]  # power settings, e.g. {"power_source": "AC power"}
-    conditions_changed: bool  # whether the power settings changed during the request
-    baseline_before_change: bool  # whether idle power is from before they changed
-    includes_load: bool  # whether energy_wh covers any model load too
-
-
 class ProviderReply(TypedDict, total=False):
     """
     What a custom model provider can return for a response, instead of just its
     text: the text, plus whatever the provider knows about the response, under
     the names ChainForge uses for them. ChainForge shows these as it does for
     its built-in providers (on the response, in the Inspector, and as values the
-    Vis Node can plot). Only `text` is needed; leave out what you don't know.
+    Vis Node can plot). Only `text` is needed; leave out (or set to None) what
+    you don't know.
 
     For example, from a server that reports its token counts and timings:
 
@@ -57,19 +40,19 @@ class ProviderReply(TypedDict, total=False):
     reasoning: str  # a reasoning model's "thinking", shown apart from the response
     input_tokens: int  # tokens in the prompt
     output_tokens: int  # tokens generated, including any reasoning
-    latency_ms: float  # how long the request took, in milliseconds
+    latency_ms: float  # how long the request took on the server, in milliseconds
     ttft_ms: float  # time before the first output token, in milliseconds
     decode_tokens_per_s: float  # generation speed, not counting reading the prompt
     cost_usd: float  # what the request cost, in US dollars
-    est_energy_wh: Dict[str, float]  # an estimate of its energy: {"min": ..., "max": ...}, in Wh
-    energy: EnergyReport  # its energy, as measured on the server
+    energy_wh: float  # the energy the request used, as measured on the server, in Wh
+    energy_noise_wh: float  # how far off energy_wh could be, in Wh (with energy_wh only)
 
 
 # The fields a ProviderReply can have (the front end reads the same names:
-# PROVIDER_REPLY_FIELDS in react-server/src/backend/responseStats.ts)
+# PROVIDER_REPORTED_STATS in react-server/src/backend/responseStats.ts, with
+# "text" and "reasoning")
 PROVIDER_REPLY_FIELDS = tuple(ProviderReply.__annotations__)
-_NUMBER_FIELDS = ("input_tokens", "output_tokens", "latency_ms", "ttft_ms",
-                  "decode_tokens_per_s", "cost_usd")
+_NUMBER_FIELDS = tuple(f for f in PROVIDER_REPLY_FIELDS if f not in ("text", "reasoning"))
 
 
 def _number(value: Any, where: str) -> float:
@@ -82,8 +65,9 @@ def _number(value: Any, where: str) -> float:
 def check_provider_reply(reply: Any) -> Union[str, Dict[str, Any]]:
     """
     A custom model provider's reply, checked: a string, an image
-    ({"t": "img", "d": <base64>}), or a ProviderReply. Numbers are made plain
-    floats and ints (e.g. from numpy), to send on as JSON.
+    ({"t": "img", "d": <base64>}), or a ProviderReply. A field set to None is
+    taken as left out. Numbers are made plain floats and ints (e.g. from
+    numpy), to send on as JSON.
     Raises ValueError, saying what's wrong, for anything else.
     """
     if isinstance(reply, str):
@@ -91,8 +75,9 @@ def check_provider_reply(reply: Any) -> Union[str, Dict[str, Any]]:
     if not isinstance(reply, dict):
         raise ValueError(f"A custom provider returns a string, or a dict with the response's \"text\" "
                          f"(got {type(reply).__name__}).")
-    if reply.get("t") == "img" and set(reply) == {"t", "d"}:
-        return reply
+    # An image, as ChainForge's own image responses are (any other keys are ignored)
+    if reply.get("t") == "img" and isinstance(reply.get("d"), str):
+        return {"t": "img", "d": reply["d"]}
     unknown = [k for k in reply if k not in PROVIDER_REPLY_FIELDS]
     if unknown:
         raise ValueError(f"ChainForge doesn't know the field(s) {', '.join(map(repr, unknown))}. "
@@ -107,30 +92,8 @@ def check_provider_reply(reply: Any) -> Union[str, Dict[str, Any]]:
     for field in _NUMBER_FIELDS:
         if reply.get(field) is not None:
             out[field] = _number(reply[field], field)
-    est = reply.get("est_energy_wh")
-    if est is not None:
-        if not isinstance(est, dict) or set(est) != {"min", "max"}:
-            raise ValueError('"est_energy_wh" should be {"min": ..., "max": ...}, in Wh.')
-        lo, hi = _number(est["min"], "est_energy_wh.min"), _number(est["max"], "est_energy_wh.max")
-        if lo > hi:
-            raise ValueError('"est_energy_wh" has its "min" above its "max".')
-        out["est_energy_wh"] = {"min": lo, "max": hi}
-    energy = reply.get("energy")
-    if energy is not None:
-        if not isinstance(energy, dict) or "energy_wh" not in energy:
-            raise ValueError('"energy" should be a dict with at least "energy_wh" (see EnergyReport).')
-        # Passed on as it is, but for its numbers: it's the energy monitor's
-        # own report, which may have more in it than ChainForge shows
-        out["energy"] = dict(energy)
-        for key in ("energy_wh", "noise_wh", "load_energy_wh"):
-            if energy.get(key) is not None:
-                out["energy"][key] = _number(energy[key], f"energy.{key}")
-        parts = energy.get("components_wh")
-        if parts is not None:
-            if not isinstance(parts, dict):
-                raise ValueError('"energy.components_wh" should be a dict of Wh by part.')
-            out["energy"]["components_wh"] = {
-                str(k): _number(v, f"energy.components_wh.{k}") for k, v in parts.items()}
+    if "energy_noise_wh" in out and "energy_wh" not in out:
+        raise ValueError('"energy_noise_wh" is how far off "energy_wh" could be, so needs "energy_wh" too.')
     return out
 
 class SettingsSchema(TypedDict, total=False):

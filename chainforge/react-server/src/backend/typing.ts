@@ -317,9 +317,9 @@ export interface ResponseStats {
    */
   energy_includes_load?: boolean;
   /**
-   * The custom provider that reported this response's energy (measured on its
-   * server, or estimated by it), rather than ChainForge measuring or
-   * estimating it. Set only where a provider did.
+   * The custom provider that reported this response's energy, as measured on
+   * its server, rather than ChainForge measuring it. Set only where a
+   * provider did.
    */
   energy_reported_by?: string;
   /**

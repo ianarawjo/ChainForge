@@ -47,9 +47,11 @@ export const REPORTED_KEY = "__cf_reported";
 export const REPORTED_BY_KEY = "__cf_reported_by";
 
 /**
- * What a custom provider can return for a response, besides its text, under
- * the names ChainForge uses for them (see ResponseStats). Anything else is
- * worked out by ChainForge (e.g. tokens per second, from these).
+ * What a custom provider can return for a response, besides its text and
+ * reasoning, under the names ChainForge uses for them (see ResponseStats).
+ * Anything else is worked out by ChainForge (e.g. tokens per second, from
+ * these). chainforge/providers/protocol.py's ProviderReply lists the same
+ * names (a test checks they agree).
  */
 export const PROVIDER_REPORTED_STATS = [
   "input_tokens",
@@ -58,21 +60,8 @@ export const PROVIDER_REPORTED_STATS = [
   "ttft_ms",
   "decode_tokens_per_s",
   "cost_usd",
-] as const;
-
-/**
- * Every field a custom provider's reply can have. `energy` takes the same
- * shape as ChainForge's own energy monitor reports (chainforge/energy, and
- * ENERGY_KEY above), so a server that runs it can pass its result on as is.
- * chainforge/providers/protocol.py's ProviderReply lists the same names (a
- * test checks they agree).
- */
-export const PROVIDER_REPLY_FIELDS = [
-  "text",
-  "reasoning",
-  ...PROVIDER_REPORTED_STATS,
-  "est_energy_wh",
-  "energy",
+  "energy_wh",
+  "energy_noise_wh",
 ] as const;
 
 /**
@@ -232,18 +221,8 @@ export function statsFromReply(reply: Dict): ResponseStats {
     const v = num(reported[field]);
     if (v !== undefined) stats[field] = v;
   }
-  const est: Dict = reported.est_energy_wh ?? {};
-  if (
-    num(est.min) !== undefined &&
-    num(est.max) !== undefined &&
-    est.min <= est.max
-  )
-    stats.est_energy_wh = { min: est.min, max: est.max };
   const reportedBy = r?.[REPORTED_BY_KEY];
-  if (
-    typeof reportedBy === "string" &&
-    (stats.energy_wh !== undefined || stats.est_energy_wh !== undefined)
-  )
+  if (typeof reportedBy === "string" && num(reported.energy_wh) !== undefined)
     stats.energy_reported_by = reportedBy;
 
   return stats;
@@ -380,8 +359,6 @@ export function extract_stats(
       s.latency_ms !== undefined
         ? estimateEnergy(s.output_tokens, s.latency_ms)
         : undefined;
-    // EcoLogits' estimate, or failing that, one a custom provider gave
-    const est = energy ?? s.est_energy_wh;
     for (let j = 0; j < k; j++)
       stats.push(
         finish({
@@ -390,7 +367,7 @@ export function extract_stats(
             s.output_tokens !== undefined ? s.output_tokens / k : undefined,
           // One request's cost, shared between the responses it returned
           cost_usd: s.cost_usd !== undefined ? s.cost_usd / k : undefined,
-          est_energy_wh: est && { min: est.min / k, max: est.max / k },
+          est_energy_wh: energy && { min: energy.min / k, max: energy.max / k },
           // Measured energy too (one reply per response for Ollama, so k is 1)
           energy_wh: s.energy_wh !== undefined ? s.energy_wh / k : undefined,
           energy_noise_wh:
@@ -514,7 +491,7 @@ export function describeStats(stats: ResponseStats | undefined): string[] {
     lines.push(`Cost: ${formatCost(stats.cost_usd)}`);
   if (stats.est_energy_wh !== undefined)
     lines.push(
-      `Energy: ${formatEnergyRange(stats.est_energy_wh)} (estimated by ${stats.energy_reported_by ?? "EcoLogits"})`,
+      `Energy: ${formatEnergyRange(stats.est_energy_wh)} (estimated by EcoLogits)`,
     );
   if (stats.energy_wh !== undefined)
     lines.push(...describeMeasuredEnergy(stats));
@@ -774,7 +751,7 @@ export const PLOTTABLE_STATS: PlottableStat[] = [
     describe: (s) =>
       s.est_energy_wh === undefined
         ? ""
-        : `Energy: ${formatEnergyRange(s.est_energy_wh)} (estimated by ${s.energy_reported_by ?? "EcoLogits"})`,
+        : `Energy: ${formatEnergyRange(s.est_energy_wh)} (estimated by EcoLogits)`,
   },
 ];
 

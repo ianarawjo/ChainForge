@@ -48,8 +48,7 @@ class TestCallingAProvider:
         assert reply == {"response": "[small t=0.2] Hi after 1 turns"}
 
     def test_a_reply_with_what_the_provider_knows(self, client, lab):
-        lab["Hi"] = {"text": "Hello!", "output_tokens": 3, "latency_ms": 120.5,
-                     "energy": {"energy_wh": 0.08, "components_wh": {"gpu0": 0.06, "gpu1": 0.02}}}
+        lab["Hi"] = {"text": "Hello!", "output_tokens": 3, "latency_ms": 120.5, "energy_wh": 0.08}
         assert call(client, "Hi")["response"] == lab["Hi"]
 
     def test_a_misspelled_field_is_an_error_saying_what_can_be_returned(self, client, lab):
@@ -63,27 +62,32 @@ class TestCheckingReplies:
         assert check_provider_reply("Hello") == "Hello"
         image = {"t": "img", "d": "aGVsbG8="}
         assert check_provider_reply(image) == image
+        # Other keys beside an image were ignored before, and still are
+        assert check_provider_reply({**image, "seed": 42}) == image
 
     def test_everything_a_reply_can_say(self):
         reply = {
             "text": "Hello", "reasoning": "They said hi.",
             "input_tokens": 12, "output_tokens": 40, "latency_ms": 2210.5, "ttft_ms": 180,
             "decode_tokens_per_s": 31.2, "cost_usd": 0.0,
-            "est_energy_wh": {"min": 0.01, "max": 0.03},
-            "energy": {"energy_wh": 0.081, "noise_wh": 0.002, "components_wh": {"gpu0": 0.081},
-                       "conditions": {"power_source": "AC power"}, "meter": "NVIDIA GPUs"},
+            "energy_wh": 0.081, "energy_noise_wh": 0.002,
         }
         assert check_provider_reply(reply) == reply
+
+    def test_none_is_left_out(self):
+        # e.g. a server whose meter couldn't measure this request
+        assert check_provider_reply({"text": "x", "energy_wh": None, "output_tokens": 3}) == \
+            {"text": "x", "output_tokens": 3}
 
     def test_numbers_become_plain_ones(self):
         # e.g. numpy's, which JSON can't carry
         np = pytest.importorskip("numpy")
         out = check_provider_reply({"text": "x", "latency_ms": np.float32(0.5),
                                     "output_tokens": np.int64(3), "ttft_ms": Fraction(1, 4),
-                                    "energy": {"energy_wh": np.float64(0.1)}})
+                                    "energy_wh": np.float64(0.1)})
         assert out["latency_ms"] == 0.5 and type(out["latency_ms"]) is float
         assert out["output_tokens"] == 3 and type(out["output_tokens"]) is int
-        assert type(out["ttft_ms"]) is float and type(out["energy"]["energy_wh"]) is float
+        assert type(out["ttft_ms"]) is float and type(out["energy_wh"]) is float
 
     @pytest.mark.parametrize("reply, says", [
         (42, "string"),
@@ -92,10 +96,9 @@ class TestCheckingReplies:
         ({"text": "x", "latency_ms": -1}, "latency_ms"),
         ({"text": "x", "latency_ms": float("nan")}, "latency_ms"),
         ({"text": "x", "input_tokens": "12"}, "input_tokens"),
-        ({"text": "x", "est_energy_wh": 0.02}, "est_energy_wh"),
-        ({"text": "x", "est_energy_wh": {"min": 0.3, "max": 0.1}}, "min"),
-        ({"text": "x", "energy": {"noise_wh": 0.1}}, "energy_wh"),
-        ({"text": "x", "energy": {"energy_wh": 0.1, "components_wh": {"gpu": "lots"}}}, "components_wh.gpu"),
+        ({"text": "x", "energy_wh": "lots"}, "energy_wh"),
+        ({"text": "x", "energy_noise_wh": 0.1}, '"energy_wh" too'),
+        ({"text": "x", "energy": {"energy_wh": 0.1}}, "'energy'"),
         ({"text": "x", "reasoning": ["a"]}, "reasoning"),
     ])
     def test_says_whats_wrong(self, reply, says):
@@ -108,15 +111,10 @@ class TestCheckingReplies:
 
 
 def test_the_front_end_reads_the_same_fields():
-    """PROVIDER_REPLY_FIELDS in responseStats.ts lists the same names."""
+    """PROVIDER_REPORTED_STATS in responseStats.ts names the same figures
+    (the front end reads "text" and "reasoning" on their own)."""
     src = (Path(__file__).parents[1] / "chainforge" / "react-server" / "src" / "backend"
            / "responseStats.ts").read_text(encoding="utf-8")
-
-    def names(const):
-        body = re.search(rf"export const {const} = \[(.*?)\] as const", src, re.S).group(1)
-        return re.findall(r'"([a-z_]+)"', body), "..." in body
-
-    stats, _ = names("PROVIDER_REPORTED_STATS")
-    fields, spreads = names("PROVIDER_REPLY_FIELDS")
-    assert spreads  # ...PROVIDER_REPORTED_STATS, after "text" and "reasoning"
-    assert tuple(fields[:2] + stats + fields[2:]) == PROVIDER_REPLY_FIELDS
+    body = re.search(r"PROVIDER_REPORTED_STATS\s*=\s*\[([^\]]*)\]", src).group(1)
+    front_end = set(re.findall(r'"([A-Za-z_]+)"', body)) | {"text", "reasoning"}
+    assert front_end == set(PROVIDER_REPLY_FIELDS)

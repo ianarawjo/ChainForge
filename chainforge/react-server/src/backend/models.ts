@@ -661,14 +661,29 @@ export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
 export const MAX_CONCURRENT: { [key in string | NativeLLM]?: number } = {};
 
 /**
+ * A custom provider's model, "__custom/<provider>" or
+ * "__custom/<provider>/<model>" (see setCustomProvider), split into the
+ * provider's name, as registered in the Python backend's ProviderRegistry,
+ * and the model, where there is one (which may itself contain "/").
+ * Undefined for any other model.
+ */
+export function parseCustomModel(
+  model: string,
+): { provider: string; submodel?: string } | undefined {
+  const m = model.match(/^__custom\/([^/]+)(?:\/(.*))?$/);
+  if (!m) return undefined;
+  return { provider: m[1], submodel: m[2] || undefined };
+}
+
+/**
  * The name a model's requests are rate limited under: its own, but for a
- * custom provider's models (__custom/<provider>/<model>), which share their
- * provider's, as setCustomProvider sets its limits (e.g. "sequential": one
- * request at a time, to the one server that serves them all).
+ * custom provider's models, which share their provider's, as
+ * setCustomProvider sets its limits (e.g. "sequential": one request at a
+ * time, to the one server that serves them all).
  */
 export function rateLimitKey(model: string): string {
-  const custom = model.match(/^__custom\/[^/]+/);
-  return custom ? custom[0] : model;
+  const custom = parseCustomModel(model);
+  return custom ? `__custom/${custom.provider}` : model;
 }
 
 // In-browser inference runs on the one GPU, so never more than one at a time.

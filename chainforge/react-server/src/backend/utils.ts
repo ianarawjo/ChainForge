@@ -14,6 +14,7 @@ import {
   isOpenAIImageModel,
   isOpenRouterImageModel,
   isDecisionModel,
+  parseCustomModel,
   stripBedrockPrefix,
   stripHuggingFacePrefix,
   stripTogetherPrefix,
@@ -3187,16 +3188,12 @@ async function call_custom_provider(
       "The ChainForge app does not appear to be running locally. You can only call custom model providers if you are running ChainForge on your local machine, from a Flask app.",
     );
 
-  // The model to call is in format:
-  // __custom/<provider_name>/<submodel name>
-  // It may also exclude the final tag.
-  // We extract the provider name (this is the name used in the Python backend's `ProviderRegistry`) and optionally, the submodel name
-  const provider_path = model.substring(9);
-  const provider_name = provider_path.substring(0, provider_path.indexOf("/"));
-  const submodel_name =
-    provider_path.length === provider_name.length - 1
-      ? undefined
-      : provider_path.substring(provider_path.lastIndexOf("/") + 1);
+  // The provider's name in the Python backend's ProviderRegistry, and the
+  // model to ask it for, if it has several
+  const custom = parseCustomModel(model);
+  if (!custom) throw new Error(`${model} is not a custom provider's model.`);
+  const provider_name = custom.provider;
+  const submodel_name = custom.submodel;
 
   const responses: Dict[] = [];
   const query = { prompt, model, temperature, ...params };
@@ -3236,10 +3233,10 @@ async function call_custom_provider(
  * A custom provider's reply, as ChainForge keeps it. A provider returns its
  * response's text, an image ({ t: "img", d: <base64> }), or a dict with its
  * text and, where it knows them, its own figures for the response, under
- * ChainForge's names for them (see PROVIDER_REPLY_FIELDS; the server checks
- * the reply's shape). The figures are kept apart from the text, under the
- * keys the stats are read from (see statsFromReply), with the time the call
- * took as ChainForge timed it, for where the provider doesn't say.
+ * ChainForge's names for them (see PROVIDER_REPORTED_STATS; the server
+ * checks the reply's shape). The figures are kept apart from the text, under
+ * the key the stats are read from (see statsFromReply), with the time the
+ * call took as ChainForge timed it, for where the provider doesn't say.
  */
 export function custom_provider_reply(
   reply: unknown,
@@ -3263,12 +3260,11 @@ export function custom_provider_reply(
   if (typeof r.reasoning === "string") out.reasoning = r.reasoning;
   const reported: Dict = {};
   for (const field of PROVIDER_REPORTED_STATS)
-    if (r[field] !== undefined) reported[field] = r[field];
-  if (r.est_energy_wh !== undefined) reported.est_energy_wh = r.est_energy_wh;
-  if (Object.keys(reported).length > 0) out[REPORTED_KEY] = reported;
-  if (r.energy && typeof r.energy === "object") out[ENERGY_KEY] = r.energy;
-  if (out[REPORTED_KEY] || out[ENERGY_KEY])
+    if (r[field] !== undefined && r[field] !== null) reported[field] = r[field];
+  if (Object.keys(reported).length > 0) {
+    out[REPORTED_KEY] = reported;
     out[REPORTED_BY_KEY] = provider_name;
+  }
   return out;
 }
 

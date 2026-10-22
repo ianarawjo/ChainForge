@@ -43,6 +43,7 @@ import {
   LLMProvider,
   MAX_CONCURRENT,
   RateLimiter,
+  parseCustomModel,
   rateLimitKey,
 } from "../models";
 // eslint-disable-next-line import/first
@@ -51,14 +52,14 @@ import { Dict } from "../typing";
 const LLM = "__custom/LabServer/gemma3:1b";
 
 /** Calls the provider as a Prompt Node does, with the server's replies faked. */
-async function run(replies: unknown[], n = replies.length) {
+async function run(replies: unknown[], n = replies.length, llm = LLM) {
   const queue = [...replies];
   const fetchMock = jest.fn(async (_url: unknown, init?: RequestInit) => ({
     json: async () => ({ response: queue.shift() }),
     body: init?.body,
   }));
   global.fetch = fetchMock as unknown as typeof fetch;
-  const [, response] = await call_llm(LLM, LLMProvider.Custom, "Hi", n, 0.5);
+  const [, response] = await call_llm(llm, LLMProvider.Custom, "Hi", n, 0.5);
   return {
     sent: JSON.parse(fetchMock.mock.calls[0][1]?.body as string),
     responses: extract_responses(response, LLM, LLMProvider.Custom),
@@ -100,12 +101,8 @@ describe("custom providers", () => {
         ttft_ms: 180,
         decode_tokens_per_s: 31.24,
         cost_usd: 0.0001,
-        energy: {
-          energy_wh: 0.081,
-          noise_wh: 0.002,
-          components_wh: { gpu0: 0.06, gpu1: 0.021 },
-          conditions: { power_source: "AC power" },
-        },
+        energy_wh: 0.081,
+        energy_noise_wh: 0.002,
       },
     ]);
     expect(responses).toEqual(["Hello!"]);
@@ -120,8 +117,6 @@ describe("custom providers", () => {
       cost_usd: 0.0001,
       energy_wh: 0.081,
       energy_noise_wh: 0.002,
-      energy_parts_wh: { gpu0: 0.06, gpu1: 0.021 },
-      energy_conditions: { power_source: "AC power" },
       energy_reported_by: "LabServer",
     });
     const lines = describeStats(stats?.[0] ?? undefined);
@@ -131,14 +126,19 @@ describe("custom providers", () => {
     );
   });
 
-  test("a provider's own energy estimate says whose it is", async () => {
-    const { stats } = await run([
-      { text: "x", output_tokens: 10, est_energy_wh: { min: 0.01, max: 0.03 } },
-    ]);
-    expect(stats?.[0]?.est_energy_wh).toEqual({ min: 0.01, max: 0.03 });
-    expect(describeStats(stats?.[0] ?? undefined)).toContain(
-      "Energy: 10–30 mWh (estimated by LabServer)",
-    );
+  test("a provider without a list of models is called by its name", async () => {
+    const { sent, responses } = await run(["A"], 1, "__custom/LabServer");
+    expect(sent.name).toBe("LabServer");
+    expect(sent.params.model).toBeUndefined();
+    expect(responses).toEqual(["A"]);
+  });
+
+  test("a model's name can have slashes in it", async () => {
+    const { sent } = await run(["A"], 1, "__custom/LabServer/qwen/qwen3-32b");
+    expect(sent).toMatchObject({
+      name: "LabServer",
+      params: { model: "qwen/qwen3-32b" },
+    });
   });
 
   test("what isn't a number ChainForge can use is left out", async () => {
@@ -149,6 +149,14 @@ describe("custom providers", () => {
     expect(stats?.[0]?.output_tokens).toBeUndefined();
     // ChainForge's own timing, in place of the provider's
     expect(stats?.[0]?.latency_ms).toBeGreaterThanOrEqual(0);
+    expect(stats?.[0]?.energy_reported_by).toBeUndefined();
+  });
+
+  test("a field left as null is left out", async () => {
+    const { stats } = await run([
+      { text: "x", output_tokens: 3, energy_wh: null },
+    ]);
+    expect(stats?.[0]?.energy_wh).toBeUndefined();
     expect(stats?.[0]?.energy_reported_by).toBeUndefined();
   });
 
@@ -177,6 +185,22 @@ describe("custom providers", () => {
 });
 
 describe("a custom provider's rate limit", () => {
+  test("goes by its name", () => {
+    expect(parseCustomModel("__custom/LabServer/gemma3:1b")).toEqual({
+      provider: "LabServer",
+      submodel: "gemma3:1b",
+    });
+    expect(parseCustomModel("__custom/LabServer")).toEqual({
+      provider: "LabServer",
+      submodel: undefined,
+    });
+    expect(parseCustomModel("__custom/LabServer/")).toEqual({
+      provider: "LabServer",
+      submodel: undefined,
+    });
+    expect(parseCustomModel("gpt-4o")).toBeUndefined();
+  });
+
   test("is its own, shared by all its models", () => {
     expect(rateLimitKey("__custom/LabServer/gemma3:1b")).toBe(
       "__custom/LabServer",

@@ -86,6 +86,6 @@ def lab_server(prompt, model=None, chat_history=None, temperature=0.7, max_token
         out["ttft_ms"] = (reply.get("load_duration", 0) + reply["prompt_eval_duration"]) / NS_PER_MS
     if reply.get("eval_count") and reply.get("eval_duration"):
         out["decode_tokens_per_s"] = reply["eval_count"] / (reply["eval_duration"] / 1e9)
-    # If your server measures each request's energy, pass it on as "energy":
-    # e.g. out["energy"] = {"energy_wh": ..., "components_wh": {"gpu0": ..., "gpu1": ...}}
+    # If your server measures each request's energy, pass it on too, in Wh:
+    # out["energy_wh"] = ...  (and, optionally, out["energy_noise_wh"]: how far off it could be)
     return out

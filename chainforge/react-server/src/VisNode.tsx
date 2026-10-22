@@ -833,22 +833,18 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       return `These were measured under different power settings (${which}), which change the energy the same work takes. Compare them with care.`;
     }, [isMeasuredEnergy, statsView]);
 
-    // Energy can come from ChainForge (measured on this machine, or estimated
-    // by EcoLogits) or from a custom provider's server, which may measure or
-    // estimate it differently: say when the values plotted came from several
+    // Measured energy can come from this machine or from a custom provider's
+    // server, which may measure it differently: say when the values plotted
+    // came from several places
     const sourcesNote = useMemo(() => {
-      if (!(isEnergy || isMeasuredEnergy) || !statsView) return undefined;
+      if (!isMeasuredEnergy || !statsView) return undefined;
       const counts = new Map<string, number>();
       statsView.responses.forEach((r) =>
         r.stats?.forEach((s) => {
           if (!s) return;
           const key = s.energy_reported_by
-            ? isEnergy
-              ? `by ${s.energy_reported_by}`
-              : `reported by ${s.energy_reported_by}`
-            : isEnergy
-              ? "by EcoLogits"
-              : "on this machine";
+            ? `reported by ${s.energy_reported_by}`
+            : "on this machine";
           counts.set(key, (counts.get(key) ?? 0) + 1);
         }),
       );
@@ -856,10 +852,8 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       const which = Array.from(counts.entries())
         .map(([source, n]) => `${n} ${source}`)
         .join("; ");
-      return isEnergy
-        ? `These were estimated in different ways (${which}). Compare them with care.`
-        : `These were measured in different places (${which}), which may measure energy differently. Compare them with care.`;
-    }, [isEnergy, isMeasuredEnergy, statsView]);
+      return `These were measured in different places (${which}), which may measure energy differently. Compare them with care.`;
+    }, [isMeasuredEnergy, statsView]);
 
     const notes: { text: string; details: string }[] = [];
     if (omittedNote)
@@ -878,9 +872,7 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       });
     if (sourcesNote)
       notes.push({
-        text: isEnergy
-          ? "Estimated in different ways."
-          : "Measured in different places.",
+        text: "Measured in different places.",
         details: sourcesNote,
       });
 
