@@ -95,6 +95,15 @@ import TemplateHighlightTextarea, {
 } from "./TemplateHighlightTextarea";
 import { AIGenPromptVariantsPopover } from "./AiPopover";
 
+/** The template variables in a prompt, or in any of its variants. */
+const templateVarsIn = (text: string | string[]): Set<string> => {
+  let found = new Set<string>();
+  // All strs within braces {} that aren't escaped; e.g., ignores \{this\} but captures {this}
+  for (const t of typeof text === "string" ? [text] : text)
+    found = union(found, new Set(extractBracketedSubstrings(t)));
+  return found;
+};
+
 const getUniqueLLMMetavarKey = (responses: LLMResponse[]) => {
   const metakeys = new Set(
     responses.map((resp_obj) => Object.keys(resp_obj.metavars)).flat(),
@@ -378,6 +387,9 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const [idxPromptVariantShown, setIdxPromptVariantShown] = useState<number>(
     data.idxPromptVariantShown ?? 0,
   );
+  // The prompt as shown in the box: saved to `promptText` only after a pause
+  // in typing (see saveAfterPause)
+  const promptTextShown = useRef(promptText);
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState<
     string | string[] | null
   >(null);
@@ -390,6 +402,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   // The LLM items container
   const llmListContainer = useRef<LLMListContainerRef>(null);
   const [llmItemsCurrState, setLLMItemsCurrState] = useState<LLMSpec[]>([]);
+  const llmItemsShown = useRef<LLMSpec[]>([]); // likewise, the models
 
   // For displaying error messages to user
   // Alerts from a run driven elsewhere, such as a chat, are reported there.
@@ -429,9 +442,50 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const [cancelId, setCancelId] = useState(Date.now());
   const refreshCancelId = () => setCancelId(Date.now());
 
-  // Debounce helpers
+  // Debounce helpers (now only for progress bars while running)
   const debounceTimeoutRef = useRef(null);
   const debounce = genDebounceFunc(debounceTimeoutRef);
+
+  // Edits to the prompt and models are saved after a pause in typing, to
+  // limit re-rendering. Each on its own timer, so other debounces (e.g. the
+  // progress bars') can't cancel it; and running, or changing the prompt
+  // variants, first saves any edits still waiting.
+  const pendingSaves = useRef(
+    new Map<
+      string,
+      { timer: ReturnType<typeof setTimeout>; save: () => void }
+    >(),
+  );
+  const saveAfterPause = useCallback(
+    (key: string, save: () => void, ms: number) => {
+      const pending = pendingSaves.current.get(key);
+      if (pending) clearTimeout(pending.timer);
+      const timer = setTimeout(() => {
+        pendingSaves.current.delete(key);
+        save();
+      }, ms);
+      pendingSaves.current.set(key, { timer, save });
+    },
+    [],
+  );
+  const savePendingEdits = useCallback(() => {
+    const pending = Array.from(pendingSaves.current.values());
+    pendingSaves.current.clear();
+    pending.forEach(({ timer, save }) => {
+      clearTimeout(timer);
+      save();
+    });
+  }, []);
+  // When the node goes (deleted, or another flow loaded), a prompt still to
+  // be saved is dropped, as it always was; the models' save still happens.
+  useEffect(
+    () => () => {
+      const pending = pendingSaves.current.get("prompt");
+      if (pending) clearTimeout(pending.timer);
+      pendingSaves.current.delete("prompt");
+    },
+    [],
+  );
 
   const triggerAlert = useCallback(
     (msg: string) => {
@@ -458,10 +512,15 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const onLLMListItemsChange = useCallback(
     (new_items: LLMSpec[], old_items: LLMSpec[]) => {
       // Update the local and global state, with some debounce to limit re-rendering:
-      debounce((_id, _new_items) => {
-        setLLMItemsCurrState(_new_items);
-        setDataPropsForNode(_id, { llms: _new_items });
-      }, 300)(id, new_items);
+      llmItemsShown.current = new_items;
+      saveAfterPause(
+        "llms",
+        () => {
+          setLLMItemsCurrState(new_items);
+          setDataPropsForNode(id, { llms: new_items });
+        },
+        300,
+      );
 
       // If there's been any change to the item list, signal dirty:
       if (
@@ -549,17 +608,24 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         status !== Status.WARNING &&
         value !== promptTextOnLastRun;
 
-      // Debounce the global state change to happen only after 500ms, as it forces a costly rerender:
-      debounce((_value: string, _updateStatus, _idxPromptVariantShown) => {
-        setPromptText((prompts) => {
-          if (typeof prompts === "string") prompts = _value;
-          else prompts[_idxPromptVariantShown] = _value;
+      const shown = promptTextShown.current;
+      const prompts =
+        typeof shown === "string"
+          ? value
+          : shown.map((p, i) => (i === idxPromptVariantShown ? value : p));
+      promptTextShown.current = prompts;
+
+      // Debounce the global state change to happen only after 300ms, as it forces a costly rerender:
+      saveAfterPause(
+        "prompt",
+        () => {
+          setPromptText(prompts);
           setDataPropsForNode(id, { prompt: prompts });
           refreshTemplateHooks(prompts);
-          return prompts;
-        });
-        if (_updateStatus) setStatus(Status.WARNING);
-      }, 300)(value, updateStatus, idxPromptVariantShown);
+          if (updateStatus) setStatus(Status.WARNING);
+        },
+        300,
+      );
 
       // Debounce refreshing the template hooks so we don't annoy the user
       // debounce((_value) => refreshTemplateHooks(_value), 500)(value);
@@ -570,9 +636,31 @@ const PromptNode: React.FC<PromptNodeProps> = ({
       status,
       refreshTemplateHooks,
       setDataPropsForNode,
-      debounceTimeoutRef,
+      saveAfterPause,
     ],
   );
+
+  // Changes made other ways (e.g. adding a prompt variant) are shown at once
+  useEffect(() => {
+    if (!pendingSaves.current.has("prompt"))
+      promptTextShown.current = promptText;
+  }, [promptText]);
+  useEffect(() => {
+    if (!pendingSaves.current.has("llms"))
+      llmItemsShown.current = llmItemsCurrState;
+  }, [llmItemsCurrState]);
+
+  /**
+   * The template variables in the prompt as shown. `templateVars` (the
+   * handles') follows after a pause in typing; while they're the same
+   * variables, its order is kept, as inputs are pulled in that order.
+   */
+  const templateVarsShown = useCallback(() => {
+    const found = templateVarsIn(promptTextShown.current);
+    return setsAreEqual(found, new Set(templateVars))
+      ? templateVars
+      : Array.from(found);
+  }, [templateVars]);
 
   // On initialization
   useEffect(() => {
@@ -728,11 +816,11 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const handlePreviewHover = useCallback(() => {
     // Pull input data and prompt
     try {
-      const pulled_vars = pullInputData(templateVars, id);
+      const pulled_vars = pullInputData(templateVarsShown(), id);
       updateShowContToggle(pulled_vars);
 
-      const prompts =
-        typeof promptText === "string" ? [promptText] : promptText;
+      const shown = promptTextShown.current; // edits still to be saved, too
+      const prompts = typeof shown === "string" ? [shown] : shown;
 
       Promise.all(prompts.map((p) => generatePrompts(p, pulled_vars))).then(
         (results) => {
@@ -764,7 +852,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     }
   }, [
     pullInputData,
-    templateVars,
+    templateVarsShown,
     id,
     updateShowContToggle,
     generatePrompts,
@@ -780,7 +868,9 @@ const PromptNode: React.FC<PromptNodeProps> = ({
       return;
     }
 
-    let _llmItemsCurrState = llmItemsCurrState;
+    // As shown: edits still to be saved, too
+    const prompt_text = promptTextShown.current;
+    let _llmItemsCurrState = llmItemsShown.current;
 
     // If this is a chat node, we also need to pull chat histories:
     const [past_chat_llms, pulled_chats] =
@@ -801,7 +891,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     // Pull the input data
     let pulled_vars = {};
     try {
-      pulled_vars = pullInputData(templateVars, id);
+      pulled_vars = pullInputData(templateVarsShown(), id);
     } catch (err) {
       setRunTooltip("Error: Duplicate variables detected.");
       console.error(err);
@@ -827,7 +917,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
 
     // Fetch response counts from backend
     fetchResponseCounts(
-      promptText,
+      prompt_text,
       pulled_vars,
       _llmItemsCurrState,
       chat_hist_by_llm,
@@ -912,11 +1002,18 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     pullInputData,
     fetchResponseCounts,
     promptText,
+    templateVarsShown,
   ]);
 
   const handleRunClick = useCallback(() => {
+    // Save edits still waiting for a pause in typing, and run with the
+    // prompt, its template variables and the models as shown
+    savePendingEdits();
+    const prompt_text = promptTextShown.current;
+    const template_vars = templateVarsShown();
+
     // Go through all template hooks (if any) and check they're connected:
-    const is_fully_connected = templateVars.every((varname) => {
+    const is_fully_connected = template_vars.every((varname) => {
       // Check that some edge has, as its target, this node and its template hook:
       return edges.some((e) => e.target === id && e.targetHandle === varname);
     });
@@ -939,7 +1036,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     // LLMs present by finding the set of 'llm' key with unique 'name' properties
     // in the input variables (if any). If there's keys present w/o LLMs (for instance a text node),
     // we need to pop-up an error message.
-    let _llmItemsCurrState = llmItemsCurrState;
+    let _llmItemsCurrState = llmItemsShown.current;
     if (node_type === "chat" && contWithPriorLLMs) {
       // If there's nothing attached to past conversations, we can't continue the chat:
       if (past_chat_llms === undefined || pulled_chats === undefined) {
@@ -985,16 +1082,16 @@ Soft failing by replacing undefined with empty strings.`,
     let var_for_prompt_templates: string;
     try {
       // Try to pull inputs
-      pulled_data = pullInputData(templateVars, id);
+      pulled_data = pullInputData(template_vars, id);
 
       // Add a special new variable for the root prompt template(s)
       var_for_prompt_templates = ensureUniqueName(
         "prompt",
         Object.keys(pulled_data),
       );
-      if (typeof promptText !== "string" && promptText.length > 1)
+      if (typeof prompt_text !== "string" && prompt_text.length > 1)
         // this will be filled in when calling queryLLMs
-        pulled_data[var_for_prompt_templates] = promptText.map(
+        pulled_data[var_for_prompt_templates] = prompt_text.map(
           (prompt, idx) => {
             const label = promptVariantLabel[idx];
             const info: TemplateVarInfo = {
@@ -1013,7 +1110,7 @@ Soft failing by replacing undefined with empty strings.`,
       return; // early exit
     }
 
-    const prompt_template = promptText;
+    const prompt_template = prompt_text;
 
     // Whether to continue with only the prior LLMs, for each value in vars dict
     if (node_type !== "chat" && showContToggle && contWithPriorLLMs) {
@@ -1284,7 +1381,7 @@ Soft failing by replacing undefined with empty strings.`,
         llmListContainer?.current?.resetLLMItemsProgress();
 
         // Save prompt text so we remember what prompt we have responses cache'd for:
-        setPromptTextOnLastRun(promptText);
+        setPromptTextOnLastRun(prompt_text);
         setNumGenerationsLastRun(numGenerations);
 
         // All responses collected! Change status to 'ready':
@@ -1303,6 +1400,8 @@ Soft failing by replacing undefined with empty strings.`,
       .then(query_llms)
       .catch(rejected);
   }, [
+    savePendingEdits,
+    templateVarsShown,
     templateVars,
     triggerAlert,
     pullInputChats,
@@ -1399,8 +1498,10 @@ Soft failing by replacing undefined with empty strings.`,
 
   const deleteVariantConfirmModal = useRef<AreYouSureModalRef>(null);
   const handleAddPromptVariant = useCallback(() => {
+    savePendingEdits(); // so a pending save can't overwrite this one
+    const shown = promptTextShown.current;
     // Pushes a new prompt variant, updating the prompts list and duplicating the current shown prompt
-    const prompts = typeof promptText === "string" ? [promptText] : promptText;
+    const prompts = typeof shown === "string" ? [shown] : shown;
     const curIdx = Math.max(
       0,
       Math.min(prompts.length - 1, idxPromptVariantShown),
@@ -1418,13 +1519,14 @@ Soft failing by replacing undefined with empty strings.`,
       promptVariantLabel: updatedPromptVarLabels,
     });
     setStatus(Status.WARNING);
-  }, [promptText, idxPromptVariantShown, promptVariantLabel]);
+  }, [idxPromptVariantShown, promptVariantLabel, savePendingEdits]);
 
   // Adds variants an AI wrote after the existing ones, and shows the first.
   // Builds on the prompts and labels as they are when the variants arrive,
   // so edits made while they were being written are kept.
   const handleAddAIPromptVariants = useCallback(
     (variants: string[]) => {
+      savePendingEdits(); // so a pending save can't overwrite this one
       setPromptText((prev) => {
         const prompts = typeof prev === "string" ? [prev] : prev;
         const updatedPrompts = prompts.concat(variants);
@@ -1442,11 +1544,14 @@ Soft failing by replacing undefined with empty strings.`,
       });
       setStatus(Status.WARNING);
     },
-    [id, refreshTemplateHooks],
+    [id, refreshTemplateHooks, savePendingEdits],
   );
 
   const gotoPromptVariant = useCallback(
     (shift: number) => {
+      // So the box, filled from the saved variants as it switches, shows edits
+      // to the variant being left when it's switched back to
+      savePendingEdits();
       const prompts =
         typeof promptText === "string" ? [promptText] : promptText;
       const newIdx = Math.max(
@@ -1456,14 +1561,18 @@ Soft failing by replacing undefined with empty strings.`,
       setIdxPromptVariantShown(newIdx);
       // resizeTextarea();
     },
-    [promptText, idxPromptVariantShown],
+    [promptText, idxPromptVariantShown, savePendingEdits],
   );
 
   const handleRemovePromptVariant = useCallback(() => {
-    setPromptText((prompts) => {
-      if (typeof prompts === "string" || prompts.length === 1) return prompts; // cannot remove the last one
-      prompts.splice(idxPromptVariantShown, 1); // remove the indexed variant
+    savePendingEdits(); // so a pending save can't overwrite this one
+    // (New arrays, rather than splicing state in place, which React may run twice)
+    const shown = promptTextShown.current;
+    if (typeof shown !== "string" && shown.length > 1) {
+      // remove the indexed variant
+      const prompts = shown.filter((_, i) => i !== idxPromptVariantShown);
       const newIdx = Math.max(0, idxPromptVariantShown - 1);
+      setPromptText(prompts);
       setIdxPromptVariantShown(newIdx); // goto the previous variant, if possible
 
       if (textAreaRef.current) {
@@ -1475,18 +1584,24 @@ Soft failing by replacing undefined with empty strings.`,
       setDataPropsForNode(id, {
         prompt: prompts,
       });
-      return [...prompts];
-    });
-    setPromptVariantLabel((prev) => {
-      if (prev.length <= 1) return prev; // cannot remove the last one
-      prev.splice(idxPromptVariantShown, 1); // remove the indexed variant
+    } // else: cannot remove the last one
+    if (promptVariantLabel.length > 1) {
+      // remove the indexed variant
+      const labels = promptVariantLabel.filter(
+        (_, i) => i !== idxPromptVariantShown,
+      );
+      setPromptVariantLabel(labels);
       setDataPropsForNode(id, {
-        promptVariantLabel: prev,
+        promptVariantLabel: labels,
       });
-      return [...prev];
-    });
+    } // else: cannot remove the last one
     setStatus(Status.WARNING);
-  }, [idxPromptVariantShown, textAreaRef]);
+  }, [
+    idxPromptVariantShown,
+    promptVariantLabel,
+    textAreaRef,
+    savePendingEdits,
+  ]);
 
   // Whenever idx of prompt variant changes, we need to refresh the Textarea:
   useEffect(() => {
