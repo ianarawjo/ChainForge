@@ -87,5 +87,6 @@ def lab_server(prompt, model=None, chat_history=None, temperature=0.7, max_token
     if reply.get("eval_count") and reply.get("eval_duration"):
         out["decode_tokens_per_s"] = reply["eval_count"] / (reply["eval_duration"] / 1e9)
     # If your server measures each request's energy, pass it on too, in Wh:
-    # out["energy_wh"] = ...  (and, optionally, out["energy_noise_wh"]: how far off it could be)
+    # out["energy_wh"] = ...  (and, optionally, out["energy_noise_wh"]: how far off it could be;
+    # out["energy_other_gpu_use"]: other programs that used the GPU meanwhile, e.g. ["ComfyUI"])
     return out

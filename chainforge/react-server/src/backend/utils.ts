@@ -3232,9 +3232,9 @@ async function call_custom_provider(
 /**
  * A custom provider's reply, as ChainForge keeps it. A provider returns its
  * response's text, an image ({ t: "img", d: <base64> }), or a dict with its
- * text and, where it knows them, its own figures for the response, under
- * ChainForge's names for them (see PROVIDER_REPORTED_STATS; the server
- * checks the reply's shape). The figures are kept apart from the text, under
+ * "text" (or "image", base64-encoded) and, where it knows them, its own
+ * figures for the response, under ChainForge's names for them (see
+ * PROVIDER_REPLY_FIELDS; the server checks the reply's shape). The figures are kept apart from the text, under
  * the key the stats are read from (see statsFromReply), with the time the
  * call took as ChainForge timed it, for where the provider doesn't say.
  */
@@ -3252,15 +3252,20 @@ export function custom_provider_reply(
   )
     return { ...out, image: reply };
   const r = (reply ?? {}) as Dict;
-  if (typeof r.text !== "string")
+  if (typeof r.text === "string") out.text = r.text;
+  // An image the model made, base64-encoded, kept as ChainForge's own are
+  else if (typeof r.image === "string" && r.image.length > 0)
+    out.image = { t: "img", d: r.image };
+  else
     throw new Error(
-      `${provider_name} returned a reply without its text: a custom provider returns a string, or a dict with the response's "text".`,
+      `${provider_name} returned a reply without its response: a custom provider returns a string, or a dict with the response's "text" (or, for an image, "image").`,
     );
-  out.text = r.text;
   if (typeof r.reasoning === "string") out.reasoning = r.reasoning;
   const reported: Dict = {};
   for (const field of PROVIDER_REPORTED_STATS)
     if (r[field] !== undefined && r[field] !== null) reported[field] = r[field];
+  if (Array.isArray(r.energy_other_gpu_use))
+    reported.energy_other_gpu_use = r.energy_other_gpu_use;
   if (Object.keys(reported).length > 0) {
     out[REPORTED_KEY] = reported;
     out[REPORTED_BY_KEY] = provider_name;

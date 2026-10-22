@@ -833,6 +833,23 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       return `These were measured under different power settings (${which}), which change the energy the same work takes. Compare them with care.`;
     }, [isMeasuredEnergy, statsView]);
 
+    // Other programs using the GPU during a request (e.g. an image
+    // generation) add their energy to its measurement
+    const otherUseNote = useMemo(() => {
+      if (!isMeasuredEnergy || !statsView) return undefined;
+      let n = 0;
+      const programs = new Set<string>();
+      statsView.responses.forEach((r) =>
+        r.stats?.forEach((s) => {
+          if (!s?.energy_other_gpu_use) return;
+          n += 1;
+          s.energy_other_gpu_use.forEach((p) => programs.add(p));
+        }),
+      );
+      if (n === 0) return undefined;
+      return `${n} of these ${n === 1 ? "was" : "were"} measured while other programs used the GPU (${Array.from(programs).join(", ")}), whose energy is counted in ${n === 1 ? "it" : "them"}, so ${n === 1 ? "it's" : "they're"} likely too high. Run them again with the GPU otherwise idle to compare.`;
+    }, [isMeasuredEnergy, statsView]);
+
     // Measured energy can come from this machine or from a custom provider's
     // server, which may measure it differently: say when the values plotted
     // came from several places
@@ -869,6 +886,11 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       notes.push({
         text: "Measured under different power settings.",
         details: conditionsNote,
+      });
+    if (otherUseNote)
+      notes.push({
+        text: "Other programs used the GPU during some requests.",
+        details: otherUseNote,
       });
     if (sourcesNote)
       notes.push({

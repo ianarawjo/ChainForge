@@ -152,6 +152,23 @@ describe("custom providers", () => {
     expect(stats?.[0]?.energy_reported_by).toBeUndefined();
   });
 
+  test("other programs on the server's GPU are flagged with its energy", async () => {
+    const { stats } = await run([
+      { text: "x", energy_wh: 0.05, energy_other_gpu_use: ["ComfyUI"] },
+      { text: "y", energy_wh: 0.05, energy_other_gpu_use: [] },
+      // Without its energy, there's nothing for it to flag
+      { text: "z", energy_other_gpu_use: ["ComfyUI"] },
+    ]);
+    expect(stats?.map((s) => s?.energy_other_gpu_use)).toEqual([
+      ["ComfyUI"],
+      undefined,
+      undefined,
+    ]);
+    expect(describeStats(stats?.[0] ?? undefined)).toContain(
+      "  Other programs used the GPU meanwhile (ComfyUI): their energy is counted in this",
+    );
+  });
+
   test("a field left as null is left out", async () => {
     const { stats } = await run([
       { text: "x", output_tokens: 3, energy_wh: null },
@@ -177,10 +194,22 @@ describe("custom providers", () => {
     ]);
   });
 
-  test("a dict without its text is an error", () => {
+  test("an image with what the provider knows about it", async () => {
+    const { responses, stats } = await run([
+      { image: "aGk=", latency_ms: 4200, energy_wh: 0.9 },
+    ]);
+    expect(responses).toEqual([{ t: "img", d: "aGk=" }]);
+    expect(stats?.[0]).toMatchObject({
+      latency_ms: 4200,
+      energy_wh: 0.9,
+      energy_reported_by: "LabServer",
+    });
+  });
+
+  test("a dict without its response is an error", () => {
     expect(() =>
       custom_provider_reply({ output_tokens: 3 }, "LabServer", 1),
-    ).toThrow('a dict with the response\'s "text"');
+    ).toThrow('a dict with the response\'s "text" (or, for an image, "image")');
   });
 });
 

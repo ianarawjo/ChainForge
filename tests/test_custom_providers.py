@@ -65,14 +65,23 @@ class TestCheckingReplies:
         # Other keys beside an image were ignored before, and still are
         assert check_provider_reply({**image, "seed": 42}) == image
 
+    def test_an_image_with_what_the_provider_knows(self):
+        reply = {"image": "aGVsbG8=", "latency_ms": 4200, "energy_wh": 0.9}
+        assert check_provider_reply(reply) == reply
+        # A data URL is kept as its base64 data
+        assert check_provider_reply({"image": "data:image/png;base64,aGVsbG8="}) == {"image": "aGVsbG8="}
+
     def test_everything_a_reply_can_say(self):
         reply = {
             "text": "Hello", "reasoning": "They said hi.",
             "input_tokens": 12, "output_tokens": 40, "latency_ms": 2210.5, "ttft_ms": 180,
             "decode_tokens_per_s": 31.2, "cost_usd": 0.0,
-            "energy_wh": 0.081, "energy_noise_wh": 0.002,
+            "energy_wh": 0.081, "energy_noise_wh": 0.002, "energy_other_gpu_use": ["ComfyUI"],
         }
         assert check_provider_reply(reply) == reply
+        # Checked, and nothing else was using the GPU
+        assert check_provider_reply({"text": "x", "energy_wh": 0.1, "energy_other_gpu_use": []}) == \
+            {"text": "x", "energy_wh": 0.1, "energy_other_gpu_use": []}
 
     def test_none_is_left_out(self):
         # e.g. a server whose meter couldn't measure this request
@@ -91,8 +100,10 @@ class TestCheckingReplies:
 
     @pytest.mark.parametrize("reply, says", [
         (42, "string"),
-        ({"output_tokens": 3}, '"text"'),
-        ({"text": 7}, '"text"'),
+        ({"output_tokens": 3}, '"text" or (for an image) "image"'),
+        ({"text": "x", "image": "aGk="}, "not both"),
+        ({"text": 7}, '"text" should be a string'),
+        ({"image": b"\x89PNG"}, "base64-encoded"),
         ({"text": "x", "latency_ms": -1}, "latency_ms"),
         ({"text": "x", "latency_ms": float("nan")}, "latency_ms"),
         ({"text": "x", "input_tokens": "12"}, "input_tokens"),
@@ -100,6 +111,9 @@ class TestCheckingReplies:
         ({"text": "x", "energy_noise_wh": 0.1}, '"energy_wh" too'),
         ({"text": "x", "energy": {"energy_wh": 0.1}}, "'energy'"),
         ({"text": "x", "reasoning": ["a"]}, "reasoning"),
+        ({"text": "x", "energy_wh": 0.1, "energy_other_gpu_use": "ComfyUI"}, "list of program names"),
+        ({"text": "x", "energy_wh": 0.1, "energy_other_gpu_use": [""]}, "list of program names"),
+        ({"text": "x", "energy_other_gpu_use": ["ComfyUI"]}, '"energy_wh" too'),
     ])
     def test_says_whats_wrong(self, reply, says):
         with pytest.raises(ValueError, match=re.escape(says)):
@@ -111,10 +125,12 @@ class TestCheckingReplies:
 
 
 def test_the_front_end_reads_the_same_fields():
-    """PROVIDER_REPORTED_STATS in responseStats.ts names the same figures
-    (the front end reads "text" and "reasoning" on their own)."""
+    """PROVIDER_REPLY_FIELDS in responseStats.ts, with the PROVIDER_REPORTED_STATS
+    it spreads in, names the same fields."""
     src = (Path(__file__).parents[1] / "chainforge" / "react-server" / "src" / "backend"
            / "responseStats.ts").read_text(encoding="utf-8")
-    body = re.search(r"PROVIDER_REPORTED_STATS\s*=\s*\[([^\]]*)\]", src).group(1)
-    front_end = set(re.findall(r'"([A-Za-z_]+)"', body)) | {"text", "reasoning"}
+    front_end = set()
+    for const in ("PROVIDER_REPORTED_STATS", "PROVIDER_REPLY_FIELDS"):
+        body = re.search(rf"{const}\s*=\s*\[([^\]]*)\]", src).group(1)
+        front_end |= set(re.findall(r'"([A-Za-z_]+)"', body))
     assert front_end == set(PROVIDER_REPLY_FIELDS)

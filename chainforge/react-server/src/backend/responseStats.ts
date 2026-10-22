@@ -65,6 +65,18 @@ export const PROVIDER_REPORTED_STATS = [
 ] as const;
 
 /**
+ * Every field a custom provider's reply can have:
+ * chainforge/providers/protocol.py's ProviderReply lists the same names.
+ */
+export const PROVIDER_REPLY_FIELDS = [
+  "text",
+  "image",
+  "reasoning",
+  ...PROVIDER_REPORTED_STATS,
+  "energy_other_gpu_use",
+] as const;
+
+/**
  * The metavars each response's stats are exposed under, e.g. to code evaluators
  * as `response.meta["stat_tokens_per_s"]`. The prefix keeps them from colliding
  * with metavars of the user's own, which stats would otherwise overwrite.
@@ -211,6 +223,12 @@ export function statsFromReply(reply: Dict): ResponseStats {
       stats.energy_conditions_changed = true;
     if (energy.baseline_before_change === true)
       stats.energy_baseline_before_change = true;
+    if (Array.isArray(energy.other_gpu_use)) {
+      const others = energy.other_gpu_use.filter(
+        (name: unknown) => typeof name === "string" && name.length > 0,
+      );
+      if (others.length > 0) stats.energy_other_gpu_use = others;
+    }
     if (energy.includes_load === true) stats.energy_includes_load = true;
   }
 
@@ -222,8 +240,16 @@ export function statsFromReply(reply: Dict): ResponseStats {
     if (v !== undefined) stats[field] = v;
   }
   const reportedBy = r?.[REPORTED_BY_KEY];
-  if (typeof reportedBy === "string" && num(reported.energy_wh) !== undefined)
+  if (typeof reportedBy === "string" && num(reported.energy_wh) !== undefined) {
     stats.energy_reported_by = reportedBy;
+    // Other programs that used the server's GPU meanwhile, as it says
+    if (Array.isArray(reported.energy_other_gpu_use)) {
+      const others = reported.energy_other_gpu_use.filter(
+        (name: unknown) => typeof name === "string" && name.length > 0,
+      );
+      if (others.length > 0) stats.energy_other_gpu_use = others;
+    }
+  }
 
   return stats;
 }
@@ -270,6 +296,8 @@ function finish(stats: ResponseStats): ResponseStats | null {
   if (stats.energy_conditions_changed) res.energy_conditions_changed = true;
   if (stats.energy_baseline_before_change)
     res.energy_baseline_before_change = true;
+  if (stats.energy_other_gpu_use)
+    res.energy_other_gpu_use = stats.energy_other_gpu_use;
   if (stats.energy_includes_load) res.energy_includes_load = true;
   if (stats.energy_reported_by)
     res.energy_reported_by = stats.energy_reported_by;
@@ -566,6 +594,10 @@ function describeMeasuredEnergy(stats: ResponseStats): string[] {
     lines.push("  Idle power is from before the power settings changed");
   if (stats.energy_shared)
     lines.push("  Shared with requests generating at the same time");
+  if (stats.energy_other_gpu_use)
+    lines.push(
+      `  Other programs used the GPU meanwhile (${stats.energy_other_gpu_use.join(", ")}): their energy is counted in this`,
+    );
   if (stats.energy_includes_load)
     lines.push(
       "  Over the whole request, as the server reports no timings: includes loading the model, if it wasn't loaded",
