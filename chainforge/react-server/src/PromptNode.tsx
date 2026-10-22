@@ -1549,6 +1549,9 @@ Soft failing by replacing undefined with empty strings.`,
 
   const gotoPromptVariant = useCallback(
     (shift: number) => {
+      // So the box, filled from the saved variants as it switches, shows edits
+      // to the variant being left when it's switched back to
+      savePendingEdits();
       const prompts =
         typeof promptText === "string" ? [promptText] : promptText;
       const newIdx = Math.max(
@@ -1558,7 +1561,7 @@ Soft failing by replacing undefined with empty strings.`,
       setIdxPromptVariantShown(newIdx);
       // resizeTextarea();
     },
-    [promptText, idxPromptVariantShown],
+    [promptText, idxPromptVariantShown, savePendingEdits],
   );
 
   const handleRemovePromptVariant = useCallback(() => {

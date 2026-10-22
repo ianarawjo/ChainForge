@@ -123,11 +123,12 @@ const llm2 = {
   settings: { ollamaModel: "qwen3:4b" },
 };
 
-const nodeData = (prompt: string, llms = [llm]) => ({
+const nodeData = (prompt: string | string[], llms = [llm]) => ({
   title: "Prompt Node",
   vars: [],
   llms,
-  prompt,
+  // Prompt variants are saved as an array, though the props' type says string
+  prompt: prompt as string,
   n: 1,
   contChat: false,
   refresh: false,
@@ -145,7 +146,7 @@ const promptNode = (data: ReturnType<typeof nodeData>) => (
 );
 
 /** Renders the node, and lets it settle (it saves its models after a pause). */
-const renderPromptNode = async (prompt: string, llms = [llm]) => {
+const renderPromptNode = async (prompt: string | string[], llms = [llm]) => {
   const data = nodeData(prompt, llms);
   const view = render(promptNode(data));
   await wait(400);
@@ -234,6 +235,35 @@ describe("running a Prompt Node right after editing it", () => {
 
     await waitFor(() => expect(mockQueryLLM).toHaveBeenCalled());
     expect(inputsSent()).toEqual([["a"]]);
+  });
+
+  test("an edited variant shows its edit when switched back to, and runs with it", async () => {
+    const { container } = await renderPromptNode(["A", "B"]);
+    const box = () =>
+      (container.querySelector("textarea") as HTMLTextAreaElement).value;
+    const arrow = (dir: "left" | "right") =>
+      fireEvent.click(
+        (
+          container.querySelector(`.tabler-icon-arrow-${dir}`) as SVGElement
+        ).closest("button") as HTMLButtonElement,
+      );
+
+    // Edited, then switched away and back before the pause
+    type(container, "Edited A");
+    arrow("right");
+    await wait(0);
+    expect(box()).toBe("B");
+    arrow("left");
+    await wait(0);
+    expect(box()).toBe("Edited A");
+
+    clickRun();
+    await waitFor(() => expect(mockQueryLLM).toHaveBeenCalled());
+    expect(mockSetDataPropsForNode).toHaveBeenCalledWith("prompt-1", {
+      prompt: ["Edited A", "B"],
+    });
+    await wait(400);
+    expect(box()).toBe("Edited A");
   });
 
   test("uses the models as chosen, though the change isn't saved yet", async () => {
