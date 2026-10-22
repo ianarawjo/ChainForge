@@ -21,7 +21,11 @@ import RetrievalMethodListContainer, {
   RetrievalMethodSpec,
 } from "./RetrievalMethodListComponent";
 import { LLMResponse, TemplateVarInfo } from "./backend/typing";
-import { FLASK_BASE_URL } from "./backend/utils";
+import {
+  FLASK_BASE_URL,
+  onThisMachine,
+  ragMethodRunsLocalModel,
+} from "./backend/utils";
 import {
   RetrieveRequest,
   RetrieveResponseRow,
@@ -269,12 +273,18 @@ const RetrievalNode: React.FC<RetrievalNodeProps> = ({ id, data }) => {
         request: RetrieveRequest,
       ): Promise<RetrieveResponseRow[]> => {
         let response: Response;
-        try {
-          response = await fetch(`${FLASK_BASE_URL}retrieve`, {
+        const send = () =>
+          fetch(`${FLASK_BASE_URL}retrieve`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...request, api_keys: apiKeys }),
           });
+        try {
+          // A local embedding model shares this machine with local LLMs, so
+          // it takes its turn with their requests (see onThisMachine)
+          response = request.methods.some((m) => ragMethodRunsLocalModel(m))
+            ? await onThisMachine(send)
+            : await send();
         } catch {
           // Nothing answered, as when ChainForge is not running locally.
           throw new Error(
