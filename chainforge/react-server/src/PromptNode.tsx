@@ -387,7 +387,6 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const [idxPromptVariantShown, setIdxPromptVariantShown] = useState<number>(
     data.idxPromptVariantShown ?? 0,
   );
-  const promptTextShown = useRef(promptText); // as typed, saved or not
   const [promptTextOnLastRun, setPromptTextOnLastRun] = useState<
     string | string[] | null
   >(null);
@@ -400,7 +399,6 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   // The LLM items container
   const llmListContainer = useRef<LLMListContainerRef>(null);
   const [llmItemsCurrState, setLLMItemsCurrState] = useState<LLMSpec[]>([]);
-  const llmItemsShown = useRef<LLMSpec[]>([]); // as chosen, saved or not
 
   // For displaying error messages to user
   // Alerts from a run driven elsewhere, such as a chat, are reported there.
@@ -444,10 +442,11 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const debounceTimeoutRef = useRef(null);
   const debounce = genDebounceFunc(debounceTimeoutRef);
 
-  // Edits are saved to the node after a pause in typing, since saving
-  // re-renders the flow. Each has its own timer, so other debounces can't
-  // cancel it; and running first saves any edits still pending, then uses
-  // the prompt and models as they're shown (the refs), not as last saved.
+  // The node's own state (prompt, models) changes as soon as it's edited, so
+  // whatever reads it (running, the Run tooltip, the preview) sees the edit.
+  // Saving it to the flow waits for a pause in typing, since that re-renders
+  // the whole flow, each on its own timer so other debounces can't cancel it.
+  // Running saves any edits still waiting first.
   const pendingSaves = useRef(
     new Map<
       string,
@@ -507,14 +506,11 @@ const PromptNode: React.FC<PromptNodeProps> = ({
 
   const onLLMListItemsChange = useCallback(
     (new_items: LLMSpec[], old_items: LLMSpec[]) => {
-      // Update the local and global state after a pause, to limit re-rendering:
-      llmItemsShown.current = new_items;
+      // This node's state at once; the flow's after a pause (see saveAfterPause)
+      setLLMItemsCurrState(new_items);
       saveAfterPause(
         "llms",
-        () => {
-          setLLMItemsCurrState(new_items);
-          setDataPropsForNode(id, { llms: new_items });
-        },
+        () => setDataPropsForNode(id, { llms: new_items }),
         300,
       );
 
@@ -598,21 +594,22 @@ const PromptNode: React.FC<PromptNodeProps> = ({
         status !== Status.WARNING &&
         value !== promptTextOnLastRun;
 
-      const shown = promptTextShown.current;
+      // This node's state at once (see saveAfterPause)
       const prompts =
-        typeof shown === "string"
+        typeof promptText === "string"
           ? value
-          : shown.map((p, i) => (i === idxPromptVariantShown ? value : p));
-      promptTextShown.current = prompts;
+          : promptText.map((p, i) => (i === idxPromptVariantShown ? value : p));
+      setPromptText(prompts);
+      if (updateStatus) setStatus(Status.WARNING);
 
-      // Save after a pause in typing, as saving forces a costly rerender
+      // The flow's, and the template variables' handles, after a pause in
+      // typing: saving re-renders the flow, and handles shouldn't flicker
+      // in and out while a variable's name is half typed
       saveAfterPause(
         "prompt",
         () => {
-          setPromptText(prompts);
           setDataPropsForNode(id, { prompt: prompts });
           refreshTemplateHooks(prompts);
-          if (updateStatus) setStatus(Status.WARNING);
         },
         300,
       );
@@ -623,6 +620,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     [
       id,
       idxPromptVariantShown,
+      promptText,
       promptTextOnLastRun,
       status,
       refreshTemplateHooks,
@@ -631,16 +629,12 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     ],
   );
 
-  // Changes made other ways (e.g. adding a prompt variant) are shown as soon
-  // as they're saved
-  useEffect(() => {
-    if (!pendingSaves.current.has("prompt"))
-      promptTextShown.current = promptText;
-  }, [promptText]);
-  useEffect(() => {
-    if (!pendingSaves.current.has("llms"))
-      llmItemsShown.current = llmItemsCurrState;
-  }, [llmItemsCurrState]);
+  // The template variables in the prompt as it is now. (The `templateVars`
+  // state, for the handles, follows after a pause in typing.)
+  const currentTemplateVars = useMemo(
+    () => Array.from(templateVarsIn(promptText)),
+    [promptText],
+  );
 
   // On initialization
   useEffect(() => {
@@ -796,7 +790,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
   const handlePreviewHover = useCallback(() => {
     // Pull input data and prompt
     try {
-      const pulled_vars = pullInputData(templateVars, id);
+      const pulled_vars = pullInputData(currentTemplateVars, id);
       updateShowContToggle(pulled_vars);
 
       const prompts =
@@ -832,7 +826,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     }
   }, [
     pullInputData,
-    templateVars,
+    currentTemplateVars,
     id,
     updateShowContToggle,
     generatePrompts,
@@ -869,7 +863,7 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     // Pull the input data
     let pulled_vars = {};
     try {
-      pulled_vars = pullInputData(templateVars, id);
+      pulled_vars = pullInputData(currentTemplateVars, id);
     } catch (err) {
       setRunTooltip("Error: Duplicate variables detected.");
       console.error(err);
@@ -980,22 +974,19 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     pullInputData,
     fetchResponseCounts,
     promptText,
+    currentTemplateVars,
   ]);
 
   const handleRunClick = useCallback(() => {
-    // Save edits still waiting for a pause in typing, and run with the
-    // prompt and models as shown: edits made just before clicking Run count
+    // Save to the flow any edits still waiting for a pause in typing
     savePendingEdits();
-    const prompt_text = promptTextShown.current;
-    const llm_items = llmItemsShown.current;
 
-    // Go through all template hooks (if any) and check they're connected:
-    const is_fully_connected = Array.from(templateVarsIn(prompt_text)).every(
-      (varname) => {
-        // Check that some edge has, as its target, this node and its template hook:
-        return edges.some((e) => e.target === id && e.targetHandle === varname);
-      },
-    );
+    // Go through all template variables in the prompt (if any) and check
+    // they're connected:
+    const is_fully_connected = currentTemplateVars.every((varname) => {
+      // Check that some edge has, as its target, this node and its template hook:
+      return edges.some((e) => e.target === id && e.targetHandle === varname);
+    });
 
     if (!is_fully_connected) {
       triggerAlert("Missing inputs to one or more template variables.");
@@ -1011,11 +1002,11 @@ const PromptNode: React.FC<PromptNodeProps> = ({
     pulled_chats = pulled_chats as ChatHistoryInfo[] | undefined;
 
     // If this is a chat node and 'continuing chat with prior LLMs' is checked,
-    // there's no customizable model list (llm_items). Instead, we need to get the unique
+    // there's no customizable model list (llmItemsCurrState). Instead, we need to get the unique
     // LLMs present by finding the set of 'llm' key with unique 'name' properties
     // in the input variables (if any). If there's keys present w/o LLMs (for instance a text node),
     // we need to pop-up an error message.
-    let _llmItemsCurrState = llm_items;
+    let _llmItemsCurrState = llmItemsCurrState;
     if (node_type === "chat" && contWithPriorLLMs) {
       // If there's nothing attached to past conversations, we can't continue the chat:
       if (past_chat_llms === undefined || pulled_chats === undefined) {
@@ -1061,16 +1052,16 @@ Soft failing by replacing undefined with empty strings.`,
     let var_for_prompt_templates: string;
     try {
       // Try to pull inputs
-      pulled_data = pullInputData(templateVars, id);
+      pulled_data = pullInputData(currentTemplateVars, id);
 
       // Add a special new variable for the root prompt template(s)
       var_for_prompt_templates = ensureUniqueName(
         "prompt",
         Object.keys(pulled_data),
       );
-      if (typeof prompt_text !== "string" && prompt_text.length > 1)
+      if (typeof promptText !== "string" && promptText.length > 1)
         // this will be filled in when calling queryLLMs
-        pulled_data[var_for_prompt_templates] = prompt_text.map(
+        pulled_data[var_for_prompt_templates] = promptText.map(
           (prompt, idx) => {
             const label = promptVariantLabel[idx];
             const info: TemplateVarInfo = {
@@ -1089,7 +1080,7 @@ Soft failing by replacing undefined with empty strings.`,
       return; // early exit
     }
 
-    const prompt_template = prompt_text;
+    const prompt_template = promptText;
 
     // Whether to continue with only the prior LLMs, for each value in vars dict
     if (node_type !== "chat" && showContToggle && contWithPriorLLMs) {
@@ -1360,7 +1351,7 @@ Soft failing by replacing undefined with empty strings.`,
         llmListContainer?.current?.resetLLMItemsProgress();
 
         // Save prompt text so we remember what prompt we have responses cache'd for:
-        setPromptTextOnLastRun(prompt_text);
+        setPromptTextOnLastRun(promptText);
         setNumGenerationsLastRun(numGenerations);
 
         // All responses collected! Change status to 'ready':
@@ -1380,6 +1371,10 @@ Soft failing by replacing undefined with empty strings.`,
       .catch(rejected);
   }, [
     savePendingEdits,
+    currentTemplateVars,
+    edges,
+    promptText,
+    llmItemsCurrState,
     triggerAlert,
     pullInputChats,
     pullInputData,
@@ -1473,10 +1468,9 @@ Soft failing by replacing undefined with empty strings.`,
 
   const deleteVariantConfirmModal = useRef<AreYouSureModalRef>(null);
   const handleAddPromptVariant = useCallback(() => {
-    savePendingEdits(); // so the variant copies the prompt as shown
-    const shown = promptTextShown.current;
+    savePendingEdits(); // so a pending save can't overwrite this one
     // Pushes a new prompt variant, updating the prompts list and duplicating the current shown prompt
-    const prompts = typeof shown === "string" ? [shown] : shown;
+    const prompts = typeof promptText === "string" ? [promptText] : promptText;
     const curIdx = Math.max(
       0,
       Math.min(prompts.length - 1, idxPromptVariantShown),
@@ -1494,14 +1488,14 @@ Soft failing by replacing undefined with empty strings.`,
       promptVariantLabel: updatedPromptVarLabels,
     });
     setStatus(Status.WARNING);
-  }, [idxPromptVariantShown, promptVariantLabel, savePendingEdits]);
+  }, [promptText, idxPromptVariantShown, promptVariantLabel, savePendingEdits]);
 
   // Adds variants an AI wrote after the existing ones, and shows the first.
   // Builds on the prompts and labels as they are when the variants arrive,
   // so edits made while they were being written are kept.
   const handleAddAIPromptVariants = useCallback(
     (variants: string[]) => {
-      savePendingEdits(); // so they're added after edits still being saved
+      savePendingEdits(); // so a pending save can't overwrite this one
       setPromptText((prev) => {
         const prompts = typeof prev === "string" ? [prev] : prev;
         const updatedPrompts = prompts.concat(variants);
@@ -1524,9 +1518,8 @@ Soft failing by replacing undefined with empty strings.`,
 
   const gotoPromptVariant = useCallback(
     (shift: number) => {
-      savePendingEdits(); // the variant being left keeps its edits
-      const shown = promptTextShown.current;
-      const prompts = typeof shown === "string" ? [shown] : shown;
+      const prompts =
+        typeof promptText === "string" ? [promptText] : promptText;
       const newIdx = Math.max(
         0,
         Math.min(prompts.length - 1, idxPromptVariantShown + shift),
@@ -1534,38 +1527,34 @@ Soft failing by replacing undefined with empty strings.`,
       setIdxPromptVariantShown(newIdx);
       // resizeTextarea();
     },
-    [idxPromptVariantShown, savePendingEdits],
+    [promptText, idxPromptVariantShown],
   );
 
   const handleRemovePromptVariant = useCallback(() => {
-    savePendingEdits(); // so edits to the other variants are kept
-    setPromptText((prompts) => {
-      if (typeof prompts === "string" || prompts.length === 1) return prompts; // cannot remove the last one
-      prompts.splice(idxPromptVariantShown, 1); // remove the indexed variant
-      const newIdx = Math.max(0, idxPromptVariantShown - 1);
-      setIdxPromptVariantShown(newIdx); // goto the previous variant, if possible
-
-      if (textAreaRef.current) {
-        // We have to force an update here since idxPromptVariantShown might've not changed
-        setTemplateTextareaValue(textAreaRef.current, prompts[newIdx]);
-        // resizeTextarea();
-      }
-
-      setDataPropsForNode(id, {
-        prompt: prompts,
-      });
-      return [...prompts];
-    });
-    setPromptVariantLabel((prev) => {
-      if (prev.length <= 1) return prev; // cannot remove the last one
-      prev.splice(idxPromptVariantShown, 1); // remove the indexed variant
-      setDataPropsForNode(id, {
-        promptVariantLabel: prev,
-      });
-      return [...prev];
-    });
+    savePendingEdits(); // so a pending save can't overwrite this one
+    if (typeof promptText === "string" || promptText.length <= 1) return; // cannot remove the last one
+    // Without the shown variant (new arrays: state isn't changed in place)
+    const prompts = promptText.filter((_, i) => i !== idxPromptVariantShown);
+    const labels = promptVariantLabel.filter(
+      (_, i) => i !== idxPromptVariantShown,
+    );
+    const newIdx = Math.max(0, idxPromptVariantShown - 1); // goto the previous variant, if possible
+    setPromptText(prompts);
+    setPromptVariantLabel(labels);
+    setIdxPromptVariantShown(newIdx);
+    // We have to force an update here since idxPromptVariantShown might've not changed
+    setTemplateTextareaValue(textAreaRef.current, prompts[newIdx]);
+    setDataPropsForNode(id, { prompt: prompts, promptVariantLabel: labels });
+    refreshTemplateHooks(prompts); // its variables may have gone with it
     setStatus(Status.WARNING);
-  }, [idxPromptVariantShown, textAreaRef, savePendingEdits]);
+  }, [
+    promptText,
+    promptVariantLabel,
+    idxPromptVariantShown,
+    textAreaRef,
+    savePendingEdits,
+    refreshTemplateHooks,
+  ]);
 
   // Whenever idx of prompt variant changes, we need to refresh the Textarea:
   useEffect(() => {

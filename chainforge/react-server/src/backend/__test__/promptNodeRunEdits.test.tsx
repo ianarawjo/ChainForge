@@ -2,9 +2,9 @@
  * @jest-environment jsdom
  */
 
-// A Prompt Node saves what's typed after a pause in typing (saving re-renders
-// the flow). Running right after typing must still use what was typed, not
-// the text as last saved.
+// A Prompt Node saves what's typed to the flow after a pause in typing
+// (saving re-renders the flow). Running right after an edit must still use
+// it: the prompt, its template variables and the models as they are now.
 
 // Plots (in the response inspector) aren't under test, and need a canvas.
 jest.mock("react-plotly.js", () => ({ __esModule: true, default: () => null }));
@@ -45,17 +45,22 @@ jest.mock("../backend", () => ({
     });
   },
 }));
-// The flow: just this node, with no inputs
+// The flow: this node, and the edges into it the test sets
 const mockSetDataPropsForNode = jest.fn();
+let mockEdges: { target: string; targetHandle: string }[] = [];
 jest.mock("../../store", () => {
   const state: Record<string, unknown> = {
-    edges: [],
+    get edges() {
+      return mockEdges;
+    },
     nodes: [],
     apiKeys: {},
     AvailableLLMs: [],
     favorites: {},
     globalSettings: { aiSupport: false },
-    pullInputData: () => ({}),
+    // A value for each variable asked for
+    pullInputData: (vars: string[]) =>
+      Object.fromEntries(vars.map((v) => [v, [`${v} value`]])),
     getImmediateInputNodeTypes: () => [],
     setDataPropsForNode: (...args: unknown[]) =>
       mockSetDataPropsForNode(...args),
@@ -64,10 +69,13 @@ jest.mock("../../store", () => {
     getColorForLLMAndSetIfNotFound: () => "#888",
     getColorForLLM: () => "#888",
   };
-  // Anything else the node or its parts read: a no-op
+  // Anything else the node or its parts read: a no-op (the same one each
+  // time, as the store's functions are, so they don't re-make the node's
+  // callbacks on every render)
+  const noops: Record<string, () => undefined> = {};
   const store = new Proxy(state, {
     get: (target, key: string) =>
-      key in target ? target[key] : () => undefined,
+      key in target ? target[key] : (noops[key] ??= () => undefined),
   });
   const useStore = (select: (s: typeof store) => unknown) => select(store);
   useStore.getState = () => store;
@@ -82,9 +90,15 @@ jest.mock("../../store", () => {
 // eslint-disable-next-line import/first
 import React from "react";
 // eslint-disable-next-line import/first
-import { act, fireEvent, render, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 // eslint-disable-next-line import/first
-import { beforeEach, describe, expect, test } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, test } from "@jest/globals";
 // eslint-disable-next-line import/first
 import { ColorSchemeProvider, MantineProvider } from "@mantine/core";
 // eslint-disable-next-line import/first
@@ -109,46 +123,57 @@ const llm2 = {
   settings: { ollamaModel: "qwen3:4b" },
 };
 
-const renderPromptNode = (prompt: string, llms = [llm]) =>
-  render(
-    <ColorSchemeProvider colorScheme="dark" toggleColorScheme={() => undefined}>
-      <MantineProvider>
-        <ReactFlowProvider>
-          <PromptNode
-            id="prompt-1"
-            type="prompt"
-            data={{
-              title: "Prompt Node",
-              vars: [],
-              llms,
-              prompt,
-              n: 1,
-              contChat: false,
-              refresh: false,
-              refreshLLMList: false,
-            }}
-          />
-        </ReactFlowProvider>
-      </MantineProvider>
-    </ColorSchemeProvider>,
-  );
+const nodeData = (prompt: string, llms = [llm]) => ({
+  title: "Prompt Node",
+  vars: [],
+  llms,
+  prompt,
+  n: 1,
+  contChat: false,
+  refresh: false,
+  refreshLLMList: false,
+});
 
-/** The models each query was sent to. */
+const promptNode = (data: ReturnType<typeof nodeData>) => (
+  <ColorSchemeProvider colorScheme="dark" toggleColorScheme={() => undefined}>
+    <MantineProvider>
+      <ReactFlowProvider>
+        <PromptNode id="prompt-1" type="prompt" data={data} />
+      </ReactFlowProvider>
+    </MantineProvider>
+  </ColorSchemeProvider>
+);
+
+/** Renders the node, and lets it settle (it saves its models after a pause). */
+const renderPromptNode = async (prompt: string, llms = [llm]) => {
+  const data = nodeData(prompt, llms);
+  const view = render(promptNode(data));
+  await wait(400);
+  return { ...view, data };
+};
+
+/** Lets `ms` pass, on Jest's clock. */
+const wait = (ms: number) =>
+  act(async () => {
+    jest.advanceTimersByTime(ms);
+  });
+
+const type = (container: HTMLElement, value: string) =>
+  fireEvent.change(container.querySelector("textarea") as HTMLElement, {
+    target: { value },
+  });
+
+const clickRun = () =>
+  fireEvent.click(screen.getByRole("button", { name: "Run" }));
+
+/** What each query was sent: its prompt, its models and its inputs. */
+const promptsSent = () => mockQueryLLM.mock.calls.map((call) => call[3]);
 const modelsSent = () =>
   mockQueryLLM.mock.calls.map((call) =>
     (call[1] as { name: string }[]).map((m) => m.name),
   );
-
-/** The prompt each query was sent with. */
-const promptsSent = () => mockQueryLLM.mock.calls.map((call) => call[3]);
-
-const promptBox = (container: HTMLElement) =>
-  container.querySelector("textarea") as HTMLTextAreaElement;
-
-const runButton = (container: HTMLElement) =>
-  container.querySelector(
-    "button.AmitSahoo45-button-3:not(.nodrag[title])",
-  ) as HTMLButtonElement;
+const inputsSent = () =>
+  mockQueryLLM.mock.calls.map((call) => Object.keys(call[4] as object).sort());
 
 // jsdom has no ResizeObserver, which the prompt box uses to fit its highlights
 (globalThis as any).ResizeObserver ??= class {
@@ -158,60 +183,87 @@ const runButton = (container: HTMLElement) =>
 };
 
 beforeEach(() => {
+  jest.useFakeTimers();
   mockProgressUpdates = 0;
+  mockEdges = [];
   mockQueryLLM.mockClear();
   mockSetDataPropsForNode.mockClear();
 });
 
+afterEach(() => {
+  jest.runOnlyPendingTimers();
+  jest.useRealTimers();
+});
+
 describe("running a Prompt Node right after editing it", () => {
-  test("sends the prompt as typed, not as last saved", async () => {
-    const { container } = renderPromptNode("An old prompt.");
-    // Let the model list report its models (saved after a pause, too)
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
+  test("sends the prompt as typed, and saves it to the flow", async () => {
+    const { container } = await renderPromptNode("An old prompt.");
 
     // Typed, then Run straight away: before the pause that saves it
-    fireEvent.change(promptBox(container), {
-      target: { value: "Name three colors." },
-    });
-    fireEvent.click(runButton(container));
+    type(container, "Name three colors.");
+    clickRun();
 
     await waitFor(() => expect(mockQueryLLM).toHaveBeenCalled());
     expect(promptsSent()).toEqual(["Name three colors."]);
-    // And the edit was saved to the node then, not dropped
     expect(mockSetDataPropsForNode).toHaveBeenCalledWith("prompt-1", {
       prompt: "Name three colors.",
     });
   });
 
-  test("an edit made while it runs is saved, despite its progress updates", async () => {
-    const { container } = renderPromptNode("An old prompt.");
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
+  test("fills in a template variable just added", async () => {
+    mockEdges = [
+      { target: "prompt-1", targetHandle: "a" },
+      { target: "prompt-1", targetHandle: "b" },
+    ];
+    const { container } = await renderPromptNode("Tell me about {a}.");
 
-    // A run that keeps updating its progress bars for a second
-    mockProgressUpdates = 20;
-    fireEvent.click(runButton(container));
+    type(container, "Compare {a} and {b}.");
+    clickRun();
+
     await waitFor(() => expect(mockQueryLLM).toHaveBeenCalled());
+    expect(inputsSent()).toEqual([["a", "b"]]);
+  });
 
-    fireEvent.change(promptBox(container), {
-      target: { value: "Name three colors." },
-    });
-    // Saved after the pause, though the progress bars updated in between
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
-    expect(mockSetDataPropsForNode).toHaveBeenCalledWith("prompt-1", {
-      prompt: "Name three colors.",
-    });
+  test("counts an input connected just before", async () => {
+    const view = await renderPromptNode("Tell me about {a}.");
+
+    // Connected, then Run (nothing else about the node changed)
+    mockEdges = [{ target: "prompt-1", targetHandle: "a" }];
+    view.rerender(promptNode(view.data));
+    clickRun();
+
+    await waitFor(() => expect(mockQueryLLM).toHaveBeenCalled());
+    expect(inputsSent()).toEqual([["a"]]);
   });
 
   test("uses the models as chosen, though the change isn't saved yet", async () => {
-    const { container } = renderPromptNode("Name three colors.", [llm, llm2]);
-    await act(async () => new Promise((resolve) => setTimeout(resolve, 400)));
+    const { container } = await renderPromptNode("Name three colors.", [
+      llm,
+      llm2,
+    ]);
 
     // Removed a model, then Run straight away
     const items = container.querySelectorAll(".llm-list-item");
     fireEvent.click(items[1].querySelector("button") as HTMLButtonElement);
-    fireEvent.click(runButton(container));
+    clickRun();
 
     await waitFor(() => expect(mockQueryLLM).toHaveBeenCalled());
     expect(modelsSent()).toEqual([["gemma3:1b"]]);
+  });
+
+  test("an edit made while it runs is saved, despite its progress updates", async () => {
+    const { container } = await renderPromptNode("An old prompt.");
+
+    // A run that keeps updating its progress bars for a second
+    mockProgressUpdates = 20;
+    clickRun();
+    await waitFor(() => expect(mockQueryLLM).toHaveBeenCalled());
+
+    type(container, "Name three colors.");
+    // Saved after the pause, though the progress bars updated in between
+    await wait(400);
+    expect(mockSetDataPropsForNode).toHaveBeenCalledWith("prompt-1", {
+      prompt: "Name three colors.",
+    });
   });
 });
