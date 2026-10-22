@@ -311,11 +311,23 @@ export interface ResponseStats {
   /** Set when idle power was measured before the power settings last changed (no idle time since). */
   energy_baseline_before_change?: boolean;
   /**
+   * Other programs that used the GPU during the request (e.g. an image
+   * generation in ComfyUI), whose energy is counted in `energy_wh`. Only set
+   * when there were some.
+   */
+  energy_other_gpu_use?: string[];
+  /**
    * Set when the server reported no timings (e.g. Ollama's decision models),
    * so `energy_wh` is over the whole request as ChainForge timed it, which
    * includes loading the model if it had to be loaded.
    */
   energy_includes_load?: boolean;
+  /**
+   * The custom provider that reported this response's energy, as measured on
+   * its server, rather than ChainForge measuring it. Set only where a
+   * provider did.
+   */
+  energy_reported_by?: string;
   /**
    * Set when the provider reported one total for several responses, e.g. one
    * request that returned n of them: how many responses the total was shared

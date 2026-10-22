@@ -706,4 +706,27 @@ describe("Vis Node plotting response stats", () => {
         ?.textContent,
     ).toContain("1 under unknown power settings");
   });
+
+  test("notes energy measured here and energy a provider reported", async () => {
+    const measured = (reportedBy?: string): ResponseStats => ({
+      latency_ms: 1000,
+      output_tokens: 100,
+      energy_wh: 0.05,
+      energy_conditions: { power_source: "AC power" },
+      ...(reportedBy ? { energy_reported_by: reportedBy } : {}),
+    });
+    await renderVis([
+      respObj("Haiku", "ollama", [measured(), measured()]),
+      respObj("Gemini", "ollama", [measured("LabServer")]),
+    ]);
+    fireEvent.change(xAxisSelect(), {
+      target: { value: "__stat_energy_mwh" },
+    });
+    const note = await screen.findByText("Measured in different places.");
+    const trigger = note.closest("[aria-describedby]") as HTMLElement;
+    expect(
+      document.getElementById(trigger.getAttribute("aria-describedby")!)
+        ?.textContent,
+    ).toContain("(2 on this machine; 1 reported by LabServer)");
+  });
 });

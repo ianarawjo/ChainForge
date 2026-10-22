@@ -22,6 +22,7 @@ import {
   isGeminiImageModel,
   isOpenAIImageModel,
   isOpenRouterImageModel,
+  rateLimitKey,
 } from "./backend/models";
 import {
   Dict,
@@ -2625,16 +2626,6 @@ export const setCustomProvider = (
     postprocessors: {},
   };
 
-  const canon = (id: string) => id.replace(/\/+$/, "");
-
-  ModelSettings[canon(base_model)] = compiled_schema;
-
-  if (typeof rate_limit === "number" && rate_limit > 0) {
-    RATE_LIMIT_BY_MODEL[canon(base_model)] = rate_limit;
-  } else {
-    MAX_CONCURRENT[canon(base_model)] = 1;
-  }
-
   // Add a models selector if there's multiple models
   if (Array.isArray(models) && models.length > 0) {
     compiled_schema.schema.properties.model = {
@@ -2674,16 +2665,11 @@ export const setCustomProvider = (
   else AvailableLLMs.push(new_provider as LLMSpec);
   ModelSettings[base_model] = compiled_schema;
 
-  // Add rate limit info, if specified
-  if (
-    rate_limit !== undefined &&
-    typeof rate_limit === "number" &&
-    rate_limit > 0
-  ) {
-    RATE_LIMIT_BY_MODEL[base_model] = rate_limit;
-  } else {
-    MAX_CONCURRENT[base_model] = 1;
-  }
+  // Its rate limit: requests per minute, or else one request at a time
+  // ("sequential"), for all its models together (see rateLimitKey)
+  if (typeof rate_limit === "number" && rate_limit > 0)
+    RATE_LIMIT_BY_MODEL[rateLimitKey(base_model)] = rate_limit;
+  else MAX_CONCURRENT[rateLimitKey(base_model)] = 1;
 
   // Commit changes to LLM list
   useStore.getState().setAvailableLLMs([...AvailableLLMs]);

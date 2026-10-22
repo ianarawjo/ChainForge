@@ -1,5 +1,7 @@
 from typing import Protocol, Optional, Dict, List, Literal, Union, Any, TypedDict
 import inspect
+import math
+import numbers
 
 """
     OpenAI chat message format typing
@@ -12,6 +14,109 @@ class ChatMessage(Dict):
     function_call: Optional[Dict]
 
 ChatHistory = List[ChatMessage]
+
+
+class ProviderReply(TypedDict, total=False):
+    """
+    What a custom model provider can return for a response, instead of just its
+    text: the text, plus whatever the provider knows about the response, under
+    the names ChainForge uses for them. ChainForge shows these as it does for
+    its built-in providers (on the response, in the Inspector, and as values the
+    Vis Node can plot). Only the response itself is needed, as `text` or, for a
+    model that makes images, `image`; leave out (or set to None) what you don't
+    know.
+
+    For example, from a server that reports its token counts and timings:
+
+        return {"text": reply["response"],
+                "input_tokens": reply["prompt_eval_count"],
+                "output_tokens": reply["eval_count"],
+                "latency_ms": reply["total_duration"] / 1e6}
+
+    Without `latency_ms`, a response's latency is ChainForge's timing of the
+    call, which includes the trip to and from the server. Speed (tokens per
+    second) is worked out from `output_tokens` and the latency.
+    """
+    text: str  # the response (this, or `image`, is required)
+    image: str  # an image the model made, base64-encoded (e.g. a PNG), in place of `text`
+    reasoning: str  # a reasoning model's "thinking", shown apart from the response
+    input_tokens: int  # tokens in the prompt
+    output_tokens: int  # tokens generated, including any reasoning
+    latency_ms: float  # how long the request took on the server, in milliseconds
+    ttft_ms: float  # time before the first output token, in milliseconds
+    decode_tokens_per_s: float  # generation speed, not counting reading the prompt
+    cost_usd: float  # what the request cost, in US dollars
+    energy_wh: float  # the energy the request used, as measured on the server, in Wh
+    energy_noise_wh: float  # how far off energy_wh could be, in Wh (with energy_wh only)
+    energy_other_gpu_use: List[str]  # other programs that used the GPU meanwhile (e.g. ["ComfyUI"]),
+                                     # whose energy is in energy_wh; [] if the server checked and found none
+
+
+# The fields a ProviderReply can have (the front end reads the same names:
+# PROVIDER_REPORTED_STATS in react-server/src/backend/responseStats.ts, with
+# "text" and "reasoning")
+PROVIDER_REPLY_FIELDS = tuple(ProviderReply.__annotations__)
+_NUMBER_FIELDS = tuple(f for f in PROVIDER_REPLY_FIELDS
+                       if f not in ("text", "image", "reasoning", "energy_other_gpu_use"))
+
+
+def _number(value: Any, where: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, numbers.Real) \
+            or not math.isfinite(value) or value < 0:
+        raise ValueError(f'"{where}" should be a number, 0 or more (got {value!r}).')
+    return int(value) if isinstance(value, numbers.Integral) else float(value)
+
+
+def check_provider_reply(reply: Any) -> Union[str, Dict[str, Any]]:
+    """
+    A custom model provider's reply, checked: a string, an image
+    ({"t": "img", "d": <base64>}), or a ProviderReply. A field set to None is
+    taken as left out. Numbers are made plain floats and ints (e.g. from
+    numpy), to send on as JSON.
+    Raises ValueError, saying what's wrong, for anything else.
+    """
+    if isinstance(reply, str):
+        return reply
+    if not isinstance(reply, dict):
+        raise ValueError(f"A custom provider returns a string, or a dict with the response's \"text\" "
+                         f"(got {type(reply).__name__}).")
+    # An image, as ChainForge's own image responses are (any other keys are ignored)
+    if reply.get("t") == "img" and isinstance(reply.get("d"), str):
+        return {"t": "img", "d": reply["d"]}
+    unknown = [k for k in reply if k not in PROVIDER_REPLY_FIELDS]
+    if unknown:
+        raise ValueError(f"ChainForge doesn't know the field(s) {', '.join(map(repr, unknown))}. "
+                         f"A reply can have: {', '.join(PROVIDER_REPLY_FIELDS)}.")
+    text, image = reply.get("text"), reply.get("image")
+    if (text is None) == (image is None):
+        raise ValueError('A reply that\'s a dict needs the response, as "text" or (for an image) '
+                         '"image": one of them, not both.')
+    if text is not None and not isinstance(text, str):
+        raise ValueError('"text" should be a string.')
+    if image is not None:
+        if not isinstance(image, str) or not image:
+            raise ValueError('"image" should be the image, base64-encoded, as a string.')
+        # A data URL is fine too: ChainForge keeps just its base64 data
+        if image.startswith("data:") and ";base64," in image:
+            image = image.split(";base64,", 1)[1]
+    out: Dict[str, Any] = {"text": text} if text is not None else {"image": image}
+    if reply.get("reasoning") is not None:
+        if not isinstance(reply["reasoning"], str):
+            raise ValueError('"reasoning" should be a string.')
+        out["reasoning"] = reply["reasoning"]
+    for field in _NUMBER_FIELDS:
+        if reply.get(field) is not None:
+            out[field] = _number(reply[field], field)
+    if "energy_noise_wh" in out and "energy_wh" not in out:
+        raise ValueError('"energy_noise_wh" is how far off "energy_wh" could be, so needs "energy_wh" too.')
+    others = reply.get("energy_other_gpu_use")
+    if others is not None:
+        if not isinstance(others, (list, tuple)) or not all(isinstance(o, str) and o for o in others):
+            raise ValueError('"energy_other_gpu_use" should be a list of program names, e.g. ["ComfyUI"].')
+        if "energy_wh" not in out:
+            raise ValueError('"energy_other_gpu_use" says what else is in "energy_wh", so needs "energy_wh" too.')
+        out["energy_other_gpu_use"] = list(others)
+    return out
 
 class SettingsSchema(TypedDict, total=False):
     # react-jsonschema-form contract:
@@ -31,7 +136,7 @@ class CustomProviderProtocol(Protocol):
                  prompt: str,
                  model: Optional[str], 
                  chat_history: Optional[ChatHistory],
-                 **kwargs: Any) -> str:
+                 **kwargs: Any) -> Union[str, ProviderReply]:
         """
           Define a call to your custom provider.
 
@@ -42,6 +147,10 @@ class CustomProviderProtocol(Protocol):
                              Chat history does not include the new message to send off (which is passed instead as the `prompt` parameter).
            - `kwargs`: Any other parameters to pass the provider API call, like temperature. Parameter names are the keynames in your provider's settings_schema.
                        Only relevant if you are defining a custom settings_schema JSON to edit provider/model settings in ChainForge. 
+
+          Returns the response's text, or a `ProviderReply`: a dict with the text and what
+          the provider knows about the response (token counts, timings, energy), which
+          ChainForge then shows as it does for its built-in providers.
         """
         pass
 
@@ -195,7 +304,7 @@ def provider(name: str = 'Custom Provider',
         - category: "model" | "retriever" | "chunker"
             Callable shapes:
             - category == "model":
-                (prompt, model, chat_history, **kwargs) -> str
+                (prompt, model, chat_history, **kwargs) -> str | ProviderReply
             - category == "retriever":
                 (chunks, queries, settings) -> List[...]
             - category == "chunker":

@@ -6,6 +6,7 @@ from statistics import mean, median, stdev
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template, send_from_directory, send_file, after_this_request
 from chainforge.providers import ProviderRegistry
+from chainforge.providers.protocol import check_provider_reply
 from chainforge.security.password_utils import ensure_password
 from chainforge.security.secure_save import load_json_file, save_json_file
 from chainforge.local_access import (
@@ -984,6 +985,13 @@ async def callCustomProvider():
         response = await make_sync_call_async(provider_spec.get('func'), **params)
     except Exception as e:
         return jsonify({'error': f'Error encountered while calling custom provider function: {str(e)}'})
+
+    # A string, an image, or a dict with the text and what the provider knows
+    # about the response (see ProviderReply)
+    try:
+        response = check_provider_reply(response)
+    except ValueError as e:
+        return jsonify({'error': f'Custom provider {name} returned a reply ChainForge can\'t read: {e}'})
 
     # Return the response
     return jsonify({'response': response})

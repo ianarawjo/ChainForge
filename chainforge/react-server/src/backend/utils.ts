@@ -14,6 +14,7 @@ import {
   isOpenAIImageModel,
   isOpenRouterImageModel,
   isDecisionModel,
+  parseCustomModel,
   stripBedrockPrefix,
   stripHuggingFacePrefix,
   stripTogetherPrefix,
@@ -58,6 +59,9 @@ import StorageCache, { StringLookup, MediaLookup } from "./cache";
 import {
   ENERGY_KEY,
   LATENCY_KEY,
+  PROVIDER_REPORTED_STATS,
+  REPORTED_BY_KEY,
+  REPORTED_KEY,
   isStatsMetavar,
   statsAt,
   statsToMetavars,
@@ -3184,16 +3188,12 @@ async function call_custom_provider(
       "The ChainForge app does not appear to be running locally. You can only call custom model providers if you are running ChainForge on your local machine, from a Flask app.",
     );
 
-  // The model to call is in format:
-  // __custom/<provider_name>/<submodel name>
-  // It may also exclude the final tag.
-  // We extract the provider name (this is the name used in the Python backend's `ProviderRegistry`) and optionally, the submodel name
-  const provider_path = model.substring(9);
-  const provider_name = provider_path.substring(0, provider_path.indexOf("/"));
-  const submodel_name =
-    provider_path.length === provider_name.length - 1
-      ? undefined
-      : provider_path.substring(provider_path.lastIndexOf("/") + 1);
+  // The provider's name in the Python backend's ProviderRegistry, and the
+  // model to ask it for, if it has several
+  const custom = parseCustomModel(model);
+  if (!custom) throw new Error(`${model} is not a custom provider's model.`);
+  const provider_name = custom.provider;
+  const submodel_name = custom.submodel;
 
   const responses: Dict[] = [];
   const query = { prompt, model, temperature, ...params };
@@ -3207,6 +3207,7 @@ async function call_custom_provider(
     if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
 
     // Collect response from the custom provider
+    const start = performance.now();
     const { response, error } = await call_flask_backend("callCustomProvider", {
       name: provider_name,
       params: {
@@ -3221,9 +3222,55 @@ async function call_custom_provider(
     // Fail if an error is encountered
     if (error !== undefined || response === undefined) throw new Error(error);
 
-    responses.push(response);
+    responses.push(
+      custom_provider_reply(response, provider_name, performance.now() - start),
+    );
   }
   return [query, responses];
+}
+
+/**
+ * A custom provider's reply, as ChainForge keeps it. A provider returns its
+ * response's text, an image ({ t: "img", d: <base64> }), or a dict with its
+ * "text" (or "image", base64-encoded) and, where it knows them, its own
+ * figures for the response, under ChainForge's names for them (see
+ * PROVIDER_REPLY_FIELDS; the server checks the reply's shape). The figures are kept apart from the text, under
+ * the key the stats are read from (see statsFromReply), with the time the
+ * call took as ChainForge timed it, for where the provider doesn't say.
+ */
+export function custom_provider_reply(
+  reply: unknown,
+  provider_name: string,
+  elapsed_ms: number,
+): Dict {
+  const out: Dict = { [LATENCY_KEY]: elapsed_ms };
+  if (typeof reply === "string") return { ...out, text: reply };
+  if (
+    reply &&
+    typeof reply === "object" &&
+    isImageResponseData(reply as LLMResponseData)
+  )
+    return { ...out, image: reply };
+  const r = (reply ?? {}) as Dict;
+  if (typeof r.text === "string") out.text = r.text;
+  // An image the model made, base64-encoded, kept as ChainForge's own are
+  else if (typeof r.image === "string" && r.image.length > 0)
+    out.image = { t: "img", d: r.image };
+  else
+    throw new Error(
+      `${provider_name} returned a reply without its response: a custom provider returns a string, or a dict with the response's "text" (or, for an image, "image").`,
+    );
+  if (typeof r.reasoning === "string") out.reasoning = r.reasoning;
+  const reported: Dict = {};
+  for (const field of PROVIDER_REPORTED_STATS)
+    if (r[field] !== undefined && r[field] !== null) reported[field] = r[field];
+  if (Array.isArray(r.energy_other_gpu_use))
+    reported.energy_other_gpu_use = r.energy_other_gpu_use;
+  if (Object.keys(reported).length > 0) {
+    out[REPORTED_KEY] = reported;
+    out[REPORTED_BY_KEY] = provider_name;
+  }
+  return out;
 }
 
 /**
@@ -3683,6 +3730,10 @@ export function extract_reasoning(
           ),
         );
       break;
+    case LLMProvider.Custom:
+      // A custom provider's own "reasoning" (see custom_provider_reply)
+      reasoning = responses.map((r) => readable(r?.reasoning));
+      break;
   }
   return reasoning.some((r) => r !== null) ? reasoning : undefined;
 }
@@ -3892,6 +3943,8 @@ export function extract_responses(
       return _extract_openai_responses(response as Dict[]);
     case LLMProvider.MiniMax:
       return _extract_openai_responses(response as Dict[]);
+    case LLMProvider.Custom:
+      return _extract_custom_provider_responses(response, llm);
     case LLMProvider.OpenRouter:
       if (isOpenRouterImageModel(llm))
         return _extract_openrouter_image_responses(response as Dict[]);
@@ -3911,6 +3964,24 @@ export function extract_responses(
           `No method defined to extract responses for LLM ${llm}.`,
         );
   }
+}
+
+/**
+ * The text or image of each custom provider reply: as kept by
+ * custom_provider_reply, or, from before it, the string or image itself.
+ */
+function _extract_custom_provider_responses(
+  response: Array<string | Dict> | Dict,
+  llm: LLM | string,
+): LLMResponseData[] {
+  const replies = Array.isArray(response) ? response : [response];
+  return replies.map((r) => {
+    if (typeof r === "string" || isImageResponseData(r))
+      return r as LLMResponseData;
+    if (typeof r?.text === "string") return r.text;
+    if (r?.image && isImageResponseData(r.image)) return r.image;
+    throw new Error(`No method defined to extract responses for LLM ${llm}.`);
+  });
 }
 
 /**
