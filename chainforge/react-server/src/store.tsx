@@ -49,6 +49,7 @@ import {
   openRouterEmoji,
 } from "./backend/models";
 import { StringLookup } from "./backend/cache";
+import { localModelsMenuGroup } from "./backend/localModels";
 import { saveGlobalConfig } from "./backend/backend";
 import { ChunkMethodSpec } from "./ChunkMethodListComponent";
 import type { RetrievalMethodSpec } from "./RetrievalMethodListComponent";
@@ -441,15 +442,10 @@ initLLMProviderMenu.push({
   ),
 });
 
-// Setup for when the app is running locally
+// Models on servers the user runs, like Ollama or LM Studio. Settings fills
+// in the ones it finds running (see refreshLocalModels).
 if (IS_RUNNING_LOCALLY) {
-  initLLMProviderMenu.push({
-    name: "Ollama",
-    emoji: "🦙",
-    model: "ollama",
-    base_model: "ollama",
-    temp: 1.0,
-  });
+  initLLMProviderMenu.push(localModelsMenuGroup([]));
   // Ollama's decision models, which model menus only offer in LLM Scorers
   // (see DECISION_ONLY_BASE_MODELS). The model to ask is in its settings.
   initLLMProviderMenu.push({

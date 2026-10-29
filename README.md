@@ -48,6 +48,12 @@ Open [localhost:8000](http://localhost:8000/) in a Google Chrome, Firefox, Micro
 
 > **Security:** ChainForge can run Python code on your computer, so its server only accepts requests from ChainForge's own page. It refuses requests from other websites, and requests addressed to any name other than `localhost` or `127.0.0.1`. If you reach ChainForge by another name or address (on a server, say, or from another machine), add it: `chainforge serve --host 0.0.0.0 --allowed-hosts your.server.name`.
 
+## Local models
+
+ChainForge finds model servers running on your machine -- Ollama, and servers with an OpenAI-compatible API like LM Studio, llama.cpp's `llama-server`, MLX or vLLM -- and lists their models under **Local models** when you add a model to a prompt node. Servers elsewhere on your network work too: add an *OpenAI-compatible server* model and set its Base URL. If a server needs an API key (e.g. vLLM started with `--api-key`), set it in Settings, under Local Model Servers. Every response records its latency, token counts and tokens per second, shown in the response inspector and readable in evaluators as `response.meta["stat_tokens_per_s"]`. Requests to local models run one at a time, even across servers, so each response's latency (and, where ChainForge can measure it, its energy) is its own rather than shared with others running alongside it.
+
+On a Mac with Apple silicon, [MLX](https://github.com/ml-explore/mlx-lm) is usually the fastest way to run models. Start its server with `pip install mlx-lm` and `mlx_lm.server --model mlx-community/Qwen3-8B-4bit`, or use LM Studio, which runs MLX models too; ChainForge finds either.
+
 ## Retrieval-augmented generation (RAG)
 
 ChainForge's RAG nodes -- Upload, Chunk, Retrieval and Rerank -- work in the
