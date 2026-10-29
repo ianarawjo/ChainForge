@@ -131,6 +131,7 @@ the rest of your evaluation flow.
 # Example experiments
 
 We've prepared many example flows to give you a sense of what's possible with Chainforge.
+For an optional web-grounded workflow, see [Compare prompts using web evidence](chainforge/examples/parallel-search.md).
 Click the "Example Flows" button on the top-right corner and select one. Here is a basic comparison example, plotting the length of responses across different models and arguments for the prompt parameter `{game}`:
 
 <img width="1593" alt="basic-compare" src="https://github.com/ianarawjo/ChainForge/assets/5251713/43c87ab7-aabd-41ba-8d9b-e7e9ebe25c75">
