@@ -6,17 +6,22 @@
 
 Launching it starts `chainforge serve` on this machine only, opens ChainForge
 in the default browser, and puts a ChainForge icon in the menu bar with Open,
-Show Log and Quit. Quitting stops the server. The server is started with
---idle-shutdown, so it also stops by itself once no ChainForge tab has been
-open for a while -- including if this app is force-quit.
+Update, Show Log and Quit. Quitting stops the server. The server is started
+with --idle-shutdown, so it also stops by itself once no ChainForge tab has
+been open for a while -- including if this app is force-quit.
+
+It never updates ChainForge by itself: once a day it checks for a newer
+version and says so, and Update ChainForge installs it when chosen.
 
 Built into ChainForge.app by build_app.sh, which runs it with `uv run`.
 """
 
 import atexit
+import queue
 import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -28,6 +33,7 @@ import launcher_core as core  # noqa: E402
 CONFIG_PATH = HERE / "launcher.json"
 ICON_PATH = HERE / "menubar-icon.png"
 LOG_PATH = core.LOG_DIR / "chainforge.log"
+UPDATE_CHECK_PATH = core.SUPPORT_DIR / "update-check.json"
 
 
 def open_in_browser(url: str) -> None:
@@ -56,14 +62,28 @@ def run_menu_bar(config: core.LauncherConfig, lock: core.SingleInstance) -> None
             self.state = "starting"
             self.started_at = time.monotonic()
             self.status = rumps.MenuItem("Starting ChainForge…")
-            self.menu = [
+            # Results of work done off the main thread (checking for and
+            # installing updates), for tick() to act on: rumps menus and
+            # alerts only work on the main thread
+            self.events = queue.Queue()
+            self.installed = None  # this ChainForge's version, once known
+            self.available = None  # a newer version on PyPI, once known
+            self.checking = False
+            self.updated_to = None  # the version just installed, to say so once it's up
+            self.update_item = rumps.MenuItem("Update ChainForge…", callback=self.update_chainforge)
+            items = [
                 self.status,
                 None,
                 rumps.MenuItem("Open ChainForge", callback=self.open_chainforge),
+            ]
+            if config.uv:  # an app built before updates were added has no uv
+                items.append(self.update_item)
+            items += [
                 rumps.MenuItem("Show Log", callback=self.show_log),
                 None,
                 rumps.MenuItem("Quit ChainForge", callback=self.quit_chainforge),
             ]
+            self.menu = items
             self.timer = rumps.Timer(self.tick, 1)
 
         def begin(self):
@@ -78,9 +98,110 @@ def run_menu_bar(config: core.LauncherConfig, lock: core.SingleInstance) -> None
             self.process = core.start_server(config, LOG_PATH)
             atexit.register(self.stop_server)
             self.timer.start()
+            if config.uv:
+                self.check_for_update(chosen=False)
+
+        # --- updates ---------------------------------------------------
+
+        def check_for_update(self, chosen: bool):
+            """Looks up the installed and newest versions, off the main thread.
+            Unless someone chose to, at most once a day."""
+            if self.checking:
+                return
+            record = core.UpdateCheck(UPDATE_CHECK_PATH)
+            if not chosen and not record.due():
+                # Still worth knowing the version, for the menu
+                threading.Thread(target=self._find_installed, daemon=True).start()
+                return
+            self.checking = True
+
+            def work():
+                installed = core.installed_version(config.uv)
+                latest = core.latest_version()
+                if latest is not None:
+                    record.checked()
+                self.events.put(("checked", chosen, installed, latest))
+
+            threading.Thread(target=work, daemon=True).start()
+
+        def _find_installed(self):
+            self.events.put(("checked", False, core.installed_version(config.uv), None))
+
+        def on_checked(self, chosen, installed, latest):
+            self.checking = False
+            self.installed = installed or self.installed
+            if self.state == "running" and self.installed:
+                self.status.title = f"ChainForge {self.installed} is running"
+            if core.is_newer(latest, self.installed):
+                self.available = latest
+                self.update_item.title = f"Update to ChainForge {latest}…"
+                record = core.UpdateCheck(UPDATE_CHECK_PATH)
+                if not chosen and record.should_announce(latest):
+                    record.announced(latest)
+                    notify(f"ChainForge {latest} is available. "
+                           "Choose Update in the ChainForge menu-bar menu to install it.")
+            if not chosen:
+                return
+            if latest is None:
+                rumps.alert(title="Couldn't check for updates",
+                            message="PyPI, where ChainForge is published, didn't answer. "
+                                    "Check the internet connection and try again.")
+            elif self.installed is None:
+                rumps.alert(title="Can't update ChainForge from here",
+                            message="This ChainForge wasn't installed with uv, so update it the "
+                                    "way it was installed. The newest version is " + latest + ".")
+            elif not core.is_newer(latest, self.installed):
+                rumps.alert(title="ChainForge is up to date",
+                            message=f"You have the newest version, {self.installed}.")
+            else:
+                answer = rumps.alert(
+                    title=f"Update to ChainForge {latest}?",
+                    message=f"You have {self.installed}. Updating restarts ChainForge, "
+                            "which stops anything running in it. Your flows are kept.",
+                    ok="Update", cancel="Not Now")
+                if answer == 1:
+                    self.install_update(latest)
+
+        def update_chainforge(self, _item):
+            if self.state == "running":
+                self.check_for_update(chosen=True)
+
+        def install_update(self, version):
+            """Stops ChainForge, updates it with uv off the main thread, and
+            starts it again (the old version, if the update failed)."""
+            self.state = "updating"
+            self.status.title = f"Updating to ChainForge {version}…"
+            self.stop_server()
+
+            def work():
+                self.events.put(("updated", version, core.upgrade(config.uv, LOG_PATH)))
+
+            threading.Thread(target=work, daemon=True).start()
+
+        def on_updated(self, version, ok):
+            if ok:
+                self.installed, self.available = version, None
+                self.update_item.title = "Update ChainForge…"
+            else:
+                rumps.alert(title="ChainForge wasn't updated",
+                            message="The update didn't work, so ChainForge will start as it was. "
+                                    "See the log for details: " + str(LOG_PATH))
+            self.status.title = "Starting ChainForge…"
+            self.state = "starting"
+            self.started_at = time.monotonic()
+            self.updated_to = version if ok else None
+            self.process = core.start_server(config, LOG_PATH)
+
+        # --- the server --------------------------------------------------
 
         def tick(self, _timer):
-            if self.state == "stopping":
+            while not self.events.empty():
+                event, *args = self.events.get()
+                if event == "checked":
+                    self.on_checked(*args)
+                elif event == "updated":
+                    self.on_updated(*args)
+            if self.state in ("stopping", "updating"):
                 return
             exited = self.process.poll() is not None
             if self.state == "starting":
@@ -92,8 +213,14 @@ def run_menu_bar(config: core.LauncherConfig, lock: core.SingleInstance) -> None
                     self.finish()
                 elif core.server_responds(config.url, timeout=0.5):
                     self.state = "running"
-                    self.status.title = "ChainForge is running"
+                    self.status.title = (f"ChainForge {self.installed} is running"
+                                         if self.installed else "ChainForge is running")
                     open_in_browser(config.url)
+                    if self.updated_to:
+                        # The restarted server doesn't know tabs opened before it
+                        notify(f"ChainForge is updated to {self.updated_to}. "
+                               "Close any ChainForge tabs opened before the update.")
+                        self.updated_to = None
                 elif time.monotonic() - self.started_at > 180:
                     rumps.alert(
                         title="ChainForge is taking too long to start",

@@ -79,7 +79,8 @@ cat > "$RES/launcher.json" <<JSON
   "host": "127.0.0.1",
   "port": $PORT,
   "idle_shutdown_minutes": $IDLE,
-  "flows_dir": $FLOWS_JSON
+  "flows_dir": $FLOWS_JSON,
+  "uv": "$UV"
 }
 JSON
 
@@ -138,4 +139,4 @@ if [[ "$DESKTOP" == 1 ]]; then
 fi
 
 echo "Built $APP"
-echo "Double-click it to start ChainForge. Quit from the ChainForge menu-bar icon."
+echo "Double-click it to start ChainForge. Quit, or update ChainForge, from its menu-bar icon."
