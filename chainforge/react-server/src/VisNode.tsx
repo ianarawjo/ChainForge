@@ -2155,26 +2155,22 @@ export const VisView = forwardRef<VisViewRef, VisViewProps>(
       >
         <Menu.Target>
           {headerSlot ? (
-            <Button
-              className="nodrag"
-              variant="outline"
-              size="xs"
-              compact
-              color="gray"
-              leftIcon={shownGraphType.icon}
+            // Styled as the header's other buttons are, so it lines up with them
+            <button
+              className="custom-button nodrag"
               disabled={disableGraphTypeOption}
-              // The same height and line as the header's other buttons
-              // (inline, since Mantine's compact size sets its own height)
-              style={{
-                height: 20,
-                marginTop: "-7px",
-                marginRight: "4px",
-                position: "relative",
-                top: 5,
-              }}
+              style={
+                disableGraphTypeOption
+                  ? { opacity: 0.5, cursor: "default" }
+                  : undefined
+              }
             >
+              {React.cloneElement(shownGraphType.icon, {
+                size: 11,
+                style: { verticalAlign: "-1px", marginRight: 4 },
+              })}
               {shownGraphType.label}
-            </Button>
+            </button>
           ) : (
             <Button
               variant="outline"
@@ -2459,7 +2455,9 @@ const VisNode: React.FC<VisNodeProps> = ({ data, id }) => {
           <span
             key="graph-type"
             ref={setGraphTypeSlot}
-            style={{ display: data.aiPlot?.code ? "none" : "inline-block" }}
+            // No box of its own: the button inside lines up as if it were
+            // one of the header's buttons
+            style={{ display: data.aiPlot?.code ? "none" : "contents" }}
           />,
           ...(data.aiPlot?.code
             ? [
