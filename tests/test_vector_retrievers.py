@@ -221,6 +221,15 @@ class TestFaissHandler:
                       embedded["query_embeddings"], temp_db_dir, top_k=1)
         assert all(len(r["retrieved_chunks"]) <= 1 for r in results)
 
+    @pytest.mark.parametrize("metric", ["l2", "cosine", "dot"])
+    def test_every_supported_metric_ranks_by_similarity(self, embedded, temp_db_dir, metric):
+        results = run("faiss_vector_store", embedded["chunks"],
+                      embedded["chunk_embeddings"], embedded["queries"],
+                      embedded["query_embeddings"], temp_db_dir, top_k=3, metric=metric)
+        for result in results:
+            similarities = [h["similarity"] for h in result["retrieved_chunks"]]
+            assert similarities and similarities == sorted(similarities, reverse=True)
+
     def test_store_persists_across_calls(self, embedded, temp_db_dir):
         run("faiss_vector_store", embedded["chunks"], embedded["chunk_embeddings"],
             embedded["queries"], embedded["query_embeddings"], temp_db_dir, top_k=3)
