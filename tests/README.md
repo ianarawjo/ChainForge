@@ -30,11 +30,20 @@ similar vectors, so don't write tests that assume otherwise.
 | Marker | Meaning |
 | --- | --- |
 | `slow` | Loads a real ML model or hits the network |
-| `needs_api_key` | Needs a provider API key in the environment |
+| `live_api` | Calls a real provider's API with your key (`test_live_apis.py`) |
 | `needs_faiss` | Needs the optional `faiss-cpu` package |
 
-Tests needing an API key (`OPENAI_API_KEY`, `COHERE_API_KEY`) skip themselves
-when it is absent, so a plain `pytest` stays green and free.
+No test calls a paid API unless asked. The few live checks of real providers'
+APIs (`test_live_apis.py`, marked `live_api`) run only with
+`CHAINFORGE_LIVE_TESTS=1`, and each skips itself without its key
+(`OPENAI_API_KEY`, `COHERE_API_KEY`). So a plain `pytest` stays free, even with
+keys in your environment. Everything else about those providers is tested with
+fakes: the embedders in `test_embedders.py`, the vector stores in
+`test_vector_retrievers.py`.
+
+```bash
+CHAINFORGE_LIVE_TESTS=1 pytest -m live_api
+```
 
 ## FAISS tests run separately
 

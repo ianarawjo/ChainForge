@@ -7,6 +7,7 @@ chainforge_menubar.py for the app, and README.md for what it is for.
 import fcntl
 import json
 import os
+import re
 import signal
 import socket
 import subprocess
@@ -15,7 +16,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import IO, Callable, List, Optional
+from typing import IO, Callable, List, Optional, Tuple
 
 SUPPORT_DIR = Path.home() / "Library" / "Application Support" / "ChainForge Launcher"
 LOG_DIR = Path.home() / "Library" / "Logs" / "ChainForge Launcher"
@@ -35,6 +36,9 @@ class LauncherConfig:
     port: int = 8000
     idle_shutdown_minutes: float = 20
     flows_dir: Optional[str] = None
+    # The uv that installed ChainForge, to check for and install updates.
+    # Apps built before updates were added don't have it: no update menu then.
+    uv: Optional[str] = None
 
     @property
     def url(self) -> str:
@@ -45,7 +49,7 @@ class LauncherConfig:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         if not data.get("chainforge"):
             raise ValueError(f"{path} does not say where the chainforge command is")
-        known = {"chainforge", "host", "port", "idle_shutdown_minutes", "flows_dir"}
+        known = {"chainforge", "host", "port", "idle_shutdown_minutes", "flows_dir", "uv"}
         config = cls(**{k: v for k, v in data.items() if k in known})
         if config.idle_shutdown_minutes <= 0:
             raise ValueError("idle_shutdown_minutes must be positive")
@@ -188,3 +192,118 @@ def why_it_stopped(log_path: Path) -> str:
         return "exited"
     last_start = tail.rfind("--- ")
     return "idle" if IDLE_SHUTDOWN_MARKER in tail[last_start:] else "exited"
+
+
+# ------------------------------- updates -------------------------------
+# The launcher never updates ChainForge by itself: a lab machine shouldn't
+# change under the people using it. It says when a newer version is out (at
+# most once a day, and once per version), and updates when someone chooses
+# Update ChainForge in the menu.
+
+PYPI_URL = "https://pypi.org/pypi/chainforge/json"
+CHECK_EVERY_SECONDS = 24 * 60 * 60
+
+
+def installed_version(uv: str, run: Callable = subprocess.run) -> Optional[str]:
+    """The ChainForge version uv installed, e.g. "0.3.7.7"; None if uv didn't
+    install it (e.g. pip did), or uv can't say."""
+    try:
+        out = run([uv, "tool", "list"], capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    # e.g. "chainforge v0.3.7.7", then a line per command it installed
+    match = re.search(r"^chainforge v(\S+)", out.stdout, re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def latest_version(timeout: float = 5.0, fetch: Optional[Callable] = None) -> Optional[str]:
+    """The newest ChainForge on PyPI; None if PyPI can't be reached."""
+    try:
+        if fetch is not None:
+            data = fetch(PYPI_URL, timeout)
+        else:
+            with urllib.request.urlopen(PYPI_URL, timeout=timeout) as resp:
+                data = json.load(resp)
+        version = data["info"]["version"]
+        return version if isinstance(version, str) and version else None
+    except (OSError, ValueError, KeyError, TypeError, urllib.error.URLError):
+        return None
+
+
+def version_key(version: str) -> Tuple[int, ...]:
+    """A version's numbers, for comparing: "0.3.7.10" -> (0, 3, 7, 10)."""
+    key = []
+    for part in version.split("."):
+        digits = re.match(r"\d+", part)
+        if not digits:
+            break
+        key.append(int(digits.group()))
+    return tuple(key)
+
+
+def is_newer(latest: Optional[str], installed: Optional[str]) -> bool:
+    """Whether `latest` is a newer version than `installed`."""
+    if not latest or not installed:
+        return False
+    return version_key(latest) > version_key(installed)
+
+
+def upgrade(uv: str, log_path: Path, run: Callable = subprocess.run) -> bool:
+    """Updates ChainForge with uv (keeping its extras, e.g. [rag]), writing
+    what uv says to the log. Whether it worked."""
+    log_path = Path(log_path)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    command = [uv, "tool", "upgrade", "chainforge"]
+    with open(log_path, "a", encoding="utf-8") as log:
+        log.write(f"\n--- {time.strftime('%Y-%m-%d %H:%M:%S')} updating: {' '.join(command)}\n")
+        log.flush()
+        try:
+            result = run(command, stdout=log, stderr=subprocess.STDOUT,
+                         stdin=subprocess.DEVNULL, timeout=15 * 60)
+        except (OSError, subprocess.SubprocessError) as err:
+            log.write(f"update failed: {err}\n")
+            return False
+    return result.returncode == 0
+
+
+class UpdateCheck:
+    """When PyPI was last checked, and which new version was last announced,
+    so the launcher checks at most daily and says each version once."""
+
+    def __init__(self, path: Path, every_seconds: float = CHECK_EVERY_SECONDS):
+        self.path = Path(path)
+        self.every = every_seconds
+
+    def _read(self) -> dict:
+        try:
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+        except (OSError, ValueError):
+            return {}
+
+    def _write(self, data: dict) -> None:
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.write_text(json.dumps(data), encoding="utf-8")
+        except OSError:
+            pass
+
+    def due(self, now: Optional[float] = None) -> bool:
+        now = time.time() if now is None else now
+        checked = self._read().get("checked_at")
+        return not isinstance(checked, (int, float)) or now - checked >= self.every
+
+    def checked(self, now: Optional[float] = None) -> None:
+        data = self._read()
+        data["checked_at"] = time.time() if now is None else now
+        self._write(data)
+
+    def should_announce(self, version: str) -> bool:
+        return self._read().get("announced") != version
+
+    def announced(self, version: str) -> None:
+        data = self._read()
+        data["announced"] = version
+        self._write(data)

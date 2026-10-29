@@ -231,106 +231,6 @@ class TestRetrieveEndpoint:
 class TestEmbeddingRetrievalWithLanceDB:
   """Test embedding-based retrieval with LanceDB backend across all providers."""
   
-  @pytest.mark.parametrize("similarity_metric", ["cosine", "euclidean", "dot_product"])
-  def test_lancedb_openai_embeddings(self, temp_db_dir, sample_chunks, sample_queries, similarity_metric):
-    """Test LanceDB retrieval with OpenAI embeddings and different similarity metrics."""
-    # Skip if OpenAI API key not available
-    if not os.environ.get("OPENAI_API_KEY"):
-      pytest.skip("OPENAI_API_KEY not set")
-    
-    # Get embedder
-    embedder = EmbeddingMethodRegistry.get_embedder("openai")
-    api_keys = {"OpenAI": os.environ.get("OPENAI_API_KEY")}
-    
-    # Generate embeddings
-    chunk_texts = [c["text"] for c in sample_chunks]
-    chunk_embeddings = embedder(chunk_texts, model_name="text-embedding-3-small", api_keys=api_keys)
-    
-    query_texts = [q["text"] for q in sample_queries]
-    query_embeddings = embedder(query_texts, model_name="text-embedding-3-small", api_keys=api_keys)
-    
-    # Test retrieval
-    handler = RetrievalMethodRegistry.get_handler("lancedb_vector_store")
-    settings = {
-      "top_k": 3,
-      "metric": similarity_metric,
-    }
-    
-    results = handler(
-      sample_chunks,
-      chunk_embeddings,
-      sample_queries,
-      query_embeddings,
-      settings,
-      temp_db_dir
-    )
-    
-    # Assertions
-    assert len(results) == len(sample_queries)
-    for result in results:
-      assert "query_object" in result
-      assert "retrieved_chunks" in result
-      assert len(result["retrieved_chunks"]) <= 3
-      
-      # Check structure of retrieved chunks
-      for chunk in result["retrieved_chunks"]:
-        assert "text" in chunk
-        assert "similarity" in chunk
-        assert "id" in chunk
-        assert isinstance(chunk["similarity"], (float, int))
-        assert 0 <= chunk["similarity"] <= 1.1  # Allow slight numerical imprecision
-  
-  @pytest.mark.parametrize("top_k", [1, 3, 5])
-  def test_lancedb_openai_different_top_k(self, temp_db_dir, sample_chunks, sample_queries, top_k):
-    """Test LanceDB retrieval with different top_k values."""
-    if not os.environ.get("OPENAI_API_KEY"):
-      pytest.skip("OPENAI_API_KEY not set")
-    
-    embedder = EmbeddingMethodRegistry.get_embedder("openai")
-    api_keys = {"OpenAI": os.environ.get("OPENAI_API_KEY")}
-    
-    chunk_texts = [c["text"] for c in sample_chunks]
-    chunk_embeddings = embedder(chunk_texts, model_name="text-embedding-3-small", api_keys=api_keys)
-    
-    query_texts = [q["text"] for q in sample_queries]
-    query_embeddings = embedder(query_texts, model_name="text-embedding-3-small", api_keys=api_keys)
-    
-    handler = RetrievalMethodRegistry.get_handler("lancedb_vector_store")
-    settings = {"top_k": top_k, "metric": "cosine"}
-    
-    results = handler(sample_chunks, chunk_embeddings, sample_queries, query_embeddings, settings, temp_db_dir)
-    
-    for result in results:
-      assert len(result["retrieved_chunks"]) <= top_k
-      # Check that results are ordered by similarity (descending)
-      similarities = [chunk["similarity"] for chunk in result["retrieved_chunks"]]
-      assert similarities == sorted(similarities, reverse=True)
-
-  # Commented out Cohere tests for now due to API availability issues  
-  # def test_lancedb_cohere_embeddings(self, temp_db_dir, sample_chunks, sample_queries):
-  #   """Test LanceDB retrieval with Cohere embeddings."""
-  #   if not os.environ.get("COHERE_API_KEY"):
-  #     pytest.skip("COHERE_API_KEY not set")
-    
-  #   embedder = EmbeddingMethodRegistry.get_embedder("cohere")
-  #   api_keys = {"Cohere": os.environ.get("COHERE_API_KEY")}
-    
-  #   chunk_texts = [c["text"] for c in sample_chunks]
-  #   chunk_embeddings = embedder(chunk_texts, model_name="embed-english-v3.0", api_keys=api_keys)
-    
-  #   query_texts = [q["text"] for q in sample_queries]
-  #   query_embeddings = embedder(query_texts, model_name="embed-english-v3.0", api_keys=api_keys)
-    
-  #   handler = RetrievalMethodRegistry.get_handler("lancedb_vector_store")
-  #   settings = {"top_k": 3, "metric": "cosine"}
-    
-  #   results = handler(sample_chunks, chunk_embeddings, sample_queries, query_embeddings, settings, temp_db_dir)
-    
-  #   assert len(results) == len(sample_queries)
-  #   for result in results:
-  #     assert len(result["retrieved_chunks"]) <= 3
-  #     assert all("similarity" in chunk for chunk in result["retrieved_chunks"])
-  
   def test_lancedb_sentence_transformers(self, temp_db_dir, sample_chunks, sample_queries):
     """Test LanceDB retrieval with Sentence Transformers embeddings."""
     embedder = EmbeddingMethodRegistry.get_embedder("sentence-transformers")
@@ -422,100 +322,6 @@ class TestEmbeddingRetrievalWithLanceDB:
 @pytest.mark.slow
 class TestEmbeddingRetrievalWithFAISS:
   """Test embedding-based retrieval with FAISS backend across all providers."""
-  
-  @pytest.mark.parametrize("similarity_metric", ["l2", "cosine", "dot"])
-  def test_faiss_openai_embeddings(self, temp_db_dir, sample_chunks, sample_queries, similarity_metric):
-    """Test FAISS retrieval with OpenAI embeddings and different similarity metrics."""
-    # Skip if FAISS not installed
-    try:
-      import faiss
-    except ImportError:
-      pytest.skip("FAISS not installed")
-    
-    if not os.environ.get("OPENAI_API_KEY"):
-      pytest.skip("OPENAI_API_KEY not set")
-    
-    embedder = EmbeddingMethodRegistry.get_embedder("openai")
-    api_keys = {"OpenAI": os.environ.get("OPENAI_API_KEY")}
-    
-    chunk_texts = [c["text"] for c in sample_chunks]
-    chunk_embeddings = embedder(chunk_texts, model_name="text-embedding-3-small", api_keys=api_keys)
-    
-    query_texts = [q["text"] for q in sample_queries]
-    query_embeddings = embedder(query_texts, model_name="text-embedding-3-small", api_keys=api_keys)
-    
-    handler = RetrievalMethodRegistry.get_handler("faiss_vector_store")
-    settings = {"top_k": 3, "metric": similarity_metric}
-    
-    results = handler(sample_chunks, chunk_embeddings, sample_queries, query_embeddings, settings, temp_db_dir)
-    
-    assert len(results) == len(sample_queries)
-    for result in results:
-      assert "query_object" in result
-      assert "retrieved_chunks" in result
-      assert len(result["retrieved_chunks"]) <= 3
-      
-      for chunk in result["retrieved_chunks"]:
-        assert "text" in chunk
-        assert "similarity" in chunk
-        assert "id" in chunk
-        assert isinstance(chunk["similarity"], (float, int))
-  
-  @pytest.mark.parametrize("top_k", [1, 3, 5])
-  def test_faiss_different_top_k(self, temp_db_dir, sample_chunks, sample_queries, top_k):
-    """Test FAISS retrieval with different top_k values."""
-    try:
-      import faiss
-    except ImportError:
-      pytest.skip("FAISS not installed")
-    
-    if not os.environ.get("OPENAI_API_KEY"):
-      pytest.skip("OPENAI_API_KEY not set")
-    
-    embedder = EmbeddingMethodRegistry.get_embedder("openai")
-    api_keys = {"OpenAI": os.environ.get("OPENAI_API_KEY")}
-    
-    chunk_texts = [c["text"] for c in sample_chunks]
-    chunk_embeddings = embedder(chunk_texts, model_name="text-embedding-3-small", api_keys=api_keys)
-    
-    query_texts = [q["text"] for q in sample_queries]
-    query_embeddings = embedder(query_texts, model_name="text-embedding-3-small", api_keys=api_keys)
-    
-    handler = RetrievalMethodRegistry.get_handler("faiss_vector_store")
-    settings = {"top_k": top_k, "metric": "l2"}
-    
-    results = handler(sample_chunks, chunk_embeddings, sample_queries, query_embeddings, settings, temp_db_dir)
-    
-    for result in results:
-      assert len(result["retrieved_chunks"]) <= top_k
-  
-  def test_faiss_cohere_embeddings(self, temp_db_dir, sample_chunks, sample_queries):
-    """Test FAISS retrieval with Cohere embeddings."""
-    try:
-      import faiss
-    except ImportError:
-      pytest.skip("FAISS not installed")
-    
-    if not os.environ.get("COHERE_API_KEY"):
-      pytest.skip("COHERE_API_KEY not set")
-    
-    embedder = EmbeddingMethodRegistry.get_embedder("cohere")
-    api_keys = {"Cohere": os.environ.get("COHERE_API_KEY")}
-    
-    chunk_texts = [c["text"] for c in sample_chunks]
-    chunk_embeddings = embedder(chunk_texts, model_name="embed-english-v3.0", api_keys=api_keys)
-    
-    query_texts = [q["text"] for q in sample_queries]
-    query_embeddings = embedder(query_texts, model_name="embed-english-v3.0", api_keys=api_keys)
-    
-    handler = RetrievalMethodRegistry.get_handler("faiss_vector_store")
-    settings = {"top_k": 3, "metric": "cosine"}
-    
-    results = handler(sample_chunks, chunk_embeddings, sample_queries, query_embeddings, settings, temp_db_dir)
-    
-    assert len(results) == len(sample_queries)
-    for result in results:
-      assert len(result["retrieved_chunks"]) <= 3
   
   def test_faiss_sentence_transformers(self, temp_db_dir, sample_chunks, sample_queries):
     """Test FAISS retrieval with Sentence Transformers embeddings."""
@@ -662,13 +468,10 @@ class TestEmbeddingRetrievalCrossBackend:
     # Both should return the same top result (most relevant chunk)
     assert lance_results[0]["retrieved_chunks"][0]["text"] == faiss_results[0]["retrieved_chunks"][0]["text"]
   
-  @pytest.mark.parametrize("embedding_provider", [
-    "sentence-transformers",
-    pytest.param("openai", marks=pytest.mark.skipif(not os.environ.get("OPENAI_API_KEY"), reason="OPENAI_API_KEY not set")),
-    pytest.param("cohere", marks=pytest.mark.skipif(not os.environ.get("COHERE_API_KEY"), reason="COHERE_API_KEY not set"))
-  ])
-  def test_all_providers_with_both_backends(self, temp_db_dir, sample_chunks, sample_queries, embedding_provider):
-    """Test that all embedding providers work with both backends."""
+  def test_a_local_model_with_both_backends(self, temp_db_dir, sample_chunks, sample_queries):
+    """A real (local) embedding model's vectors work with both backends. Real
+    providers' APIs are checked, on request only, in test_live_apis.py."""
+    embedding_provider = "sentence-transformers"
     try:
       import faiss
     except ImportError:
@@ -676,28 +479,11 @@ class TestEmbeddingRetrievalCrossBackend:
     
     embedder = EmbeddingMethodRegistry.get_embedder(embedding_provider)
     
-    # Configure model and API keys based on provider
-    if embedding_provider == "openai":
-      model_name = "text-embedding-3-small"
-      api_keys = {"OpenAI": os.environ.get("OPENAI_API_KEY")}
-    elif embedding_provider == "cohere":
-      model_name = "embed-english-v3.0"
-      api_keys = {"Cohere": os.environ.get("COHERE_API_KEY")}
-    else:
-      model_name = "all-MiniLM-L6-v2"
-      api_keys = None
-    
+    model_name = "all-MiniLM-L6-v2"
     chunk_texts = [c["text"] for c in sample_chunks]
-    if api_keys:
-      chunk_embeddings = embedder(chunk_texts, model_name=model_name, api_keys=api_keys)
-    else:
-      chunk_embeddings = embedder(chunk_texts, model_name=model_name)
-    
+    chunk_embeddings = embedder(chunk_texts, model_name=model_name)
     query_texts = [q["text"] for q in sample_queries[:1]]
-    if api_keys:
-      query_embeddings = embedder(query_texts, model_name=model_name, api_keys=api_keys)
-    else:
-      query_embeddings = embedder(query_texts, model_name=model_name)
+    query_embeddings = embedder(query_texts, model_name=model_name)
     
     # Test LanceDB
     lancedb_dir = os.path.join(temp_db_dir, f"lancedb_{embedding_provider}")

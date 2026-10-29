@@ -221,3 +221,78 @@ class TestWhyItStopped:
 
     def test_a_missing_log_means_it_simply_exited(self, core, tmp_path):
         assert core.why_it_stopped(tmp_path / "nope.log") == "exited"
+
+
+class TestUpdates:
+    """Checking for and installing a newer ChainForge (never by itself)."""
+
+    def test_the_app_knows_its_uv(self, core, tmp_path):
+        path = tmp_path / "launcher.json"
+        path.write_text(json.dumps({"chainforge": "/x/chainforge", "uv": "/x/uv"}), encoding="utf-8")
+        assert core.LauncherConfig.load(path).uv == "/x/uv"
+        # Built before updates were added: no uv, so no update menu
+        path.write_text(json.dumps({"chainforge": "/x/chainforge"}), encoding="utf-8")
+        assert core.LauncherConfig.load(path).uv is None
+
+    def test_the_installed_version_from_uv(self, core):
+        def run(listed, code=0):
+            return lambda *a, **k: subprocess.CompletedProcess(a, code, stdout=listed, stderr="")
+        listed = "openhands v1.16.0\n- openhands\nchainforge v0.3.7.7\n- chainforge\n"
+        assert core.installed_version("uv", run(listed)) == "0.3.7.7"
+        # Installed some other way (e.g. pip), or uv failed
+        assert core.installed_version("uv", run("openhands v1.16.0\n- openhands\n")) is None
+        assert core.installed_version("uv", run(listed, code=2)) is None
+
+        def missing(*a, **k):
+            raise FileNotFoundError("uv")
+        assert core.installed_version("uv", missing) is None
+
+    def test_the_newest_version_on_pypi(self, core):
+        assert core.latest_version(fetch=lambda url, t: {"info": {"version": "0.3.7.8"}}) == "0.3.7.8"
+        assert core.latest_version(fetch=lambda url, t: {"info": {}}) is None
+
+        def offline(url, timeout):
+            raise OSError("no network")
+        assert core.latest_version(fetch=offline) is None
+
+    def test_comparing_versions(self, core):
+        assert core.is_newer("0.3.7.10", "0.3.7.9")  # by number, not as text
+        assert core.is_newer("0.3.8", "0.3.7.7")
+        assert not core.is_newer("0.3.7.7", "0.3.7.7")
+        assert not core.is_newer("0.3.7.6", "0.3.7.7")
+        assert not core.is_newer(None, "0.3.7.7")
+        assert not core.is_newer("0.3.7.8", None)
+
+    def test_updating_with_uv_logs_what_it_says(self, core, tmp_path):
+        log = tmp_path / "logs" / "chainforge.log"
+        for code, worked in ((0, True), (1, False)):
+            uv = tmp_path / f"uv{code}"
+            uv.write_text(f"#!/bin/sh\necho \"uv $*\"\nexit {code}\n", encoding="utf-8")
+            uv.chmod(0o755)
+            assert core.upgrade(str(uv), log) is worked
+        text = log.read_text(encoding="utf-8")
+        assert text.count("uv tool upgrade chainforge") == 2  # what it said, each time
+
+    def test_updating_with_a_missing_uv_fails_cleanly(self, core, tmp_path):
+        log = tmp_path / "chainforge.log"
+        assert core.upgrade(str(tmp_path / "no-such-uv"), log) is False
+        assert "update failed" in log.read_text(encoding="utf-8")
+
+    def test_checks_at_most_daily_and_announces_each_version_once(self, core, tmp_path):
+        record = core.UpdateCheck(tmp_path / "update-check.json", every_seconds=100)
+        assert record.due(now=1000)
+        record.checked(now=1000)
+        assert not record.due(now=1050)
+        assert record.due(now=1100)
+        assert record.should_announce("0.3.7.8")
+        record.announced("0.3.7.8")
+        assert not record.should_announce("0.3.7.8")
+        assert record.should_announce("0.3.7.9")
+        assert not record.due(now=1050)  # announcing kept the check time
+
+    def test_a_damaged_record_just_means_checking_again(self, core, tmp_path):
+        path = tmp_path / "update-check.json"
+        path.write_text("not json", encoding="utf-8")
+        record = core.UpdateCheck(path)
+        assert record.due()
+        assert record.should_announce("0.3.7.8")
