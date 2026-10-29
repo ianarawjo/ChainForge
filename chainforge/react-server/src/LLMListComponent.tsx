@@ -24,13 +24,9 @@ import ModelSettingsModal, {
   ModelSettingsModalRef,
 } from "./ModelSettingsModal";
 import { getDefaultModelSettings } from "./ModelSettingSchemas";
+import { MODEL_NAME_PREFIXES, newModelSpec } from "./modelSpec";
 import {
-  BEDROCK_PREFIX,
-  TOGETHER_PREFIX,
-  HUGGINGFACE_PREFIX,
   NativeLLM,
-  OPENROUTER_IMAGE_PREFIX,
-  OPENROUTER_PREFIX,
   isDecisionMenuItem,
   offeredInMenu,
   openRouterEmoji,
@@ -46,16 +42,6 @@ import NestedMenu, { NestedMenuItemProps } from "./NestedMenu";
 const DEFAULT_INIT_LLMS = initLLMProviders.filter(
   (m) => m.model === NativeLLM.WebLLM_Qwen2_5_0_5B,
 );
-
-// Base models whose model names carry a prefix, which tells ChainForge which
-// provider they belong to. The settings form shows the name without it.
-const MODEL_NAME_PREFIXES: Record<string, string> = {
-  together: TOGETHER_PREFIX,
-  openrouter: OPENROUTER_PREFIX,
-  "openrouter-image": OPENROUTER_IMAGE_PREFIX,
-  hf: HUGGINGFACE_PREFIX,
-  bedrock: BEDROCK_PREFIX,
-};
 
 // Helper funcs
 /** Get position CSS style below and left-aligned to the input element */
@@ -414,45 +400,12 @@ export const LLMListContainer = forwardRef<
 
   const handleSelectModel = useCallback(
     (_item: LLMSpec) => {
-      // Give it a uid as a unique key (this is needed for the draggable list to support multiple same-model items; keys must be unique)
-      const item = { ..._item, key: uuid() };
-
-      // Repair names to ensure they are unique
-      const unique_name = ensureUniqueName(
-        item.name,
+      // A unique key and name, and the model's default settings:
+      const item = newModelSpec(
+        _item,
         llmItemsCurrState.map((i) => i.name),
+        apiKeys.Ollama_BaseURL,
       );
-      item.name = unique_name;
-      item.formData = { shortname: unique_name };
-
-      // Strip any provider prefix (e.g. "together/") from the model name the form shows:
-      const prefix = MODEL_NAME_PREFIXES[item.base_model];
-      if (prefix && item.model.startsWith(prefix))
-        item.formData.model = item.model.substring(prefix.length);
-      else item.formData.model = item.model;
-
-      // Generate the default settings for this model
-      item.settings = getDefaultModelSettings(
-        item.base_model,
-        item.formData.model as string,
-      );
-
-      // Ollama models use a different format for the model name, that we need to carry over:
-      if (
-        item.base_model === "ollama" ||
-        item.base_model === NativeLLM.Ollama_Decision
-      ) {
-        if (_item?.settings?.ollamaModel) {
-          item.formData.ollamaModel = _item?.settings?.ollamaModel;
-          item.settings.ollamaModel = _item?.settings?.ollamaModel;
-        }
-
-        // If the user has entered a custom base url, pass it over
-        if (apiKeys.Ollama_BaseURL) {
-          item.formData.ollama_url = apiKeys.Ollama_BaseURL;
-          item.settings.ollama_url = apiKeys.Ollama_BaseURL;
-        }
-      }
 
       let new_items: LLMSpec[] = [];
       if (selectModelAction === "add" || selectModelAction === undefined) {
