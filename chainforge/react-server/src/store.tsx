@@ -36,6 +36,7 @@ import {
   HuggingFaceSettings,
   OpenRouterImageSettings,
   OpenRouterSettings,
+  OpperSettings,
   TogetherChatSettings,
 } from "./ModelSettingSchemas";
 import {
@@ -46,6 +47,7 @@ import {
   OPENROUTER_IMAGE_PREFIX,
   OPENROUTER_PREFIX,
   OPENROUTER_EMOJI,
+  OPPER_PREFIX,
   openRouterEmoji,
 } from "./backend/models";
 import { StringLookup } from "./backend/cache";
@@ -373,6 +375,11 @@ export const initLLMProviderMenu: (LLMSpec | LLMGroup)[] = [
         temp: 0.7,
       },
     ],
+  },
+  {
+    group: "Opper",
+    emoji: "🧭",
+    items: prefixedMenuItems(OpperSettings, OPPER_PREFIX, "opper", "🧭", 1.0),
   },
   {
     group: "HuggingFace",

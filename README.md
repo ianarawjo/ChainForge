@@ -101,6 +101,7 @@ For detailed Docker documentation including architecture support, environment va
 - Anthropic
 - Google Gemini
 - DeepSeek
+- [Opper](https://opper.ai) (a European AI gateway: 700+ models from 50+ providers, with one API key)
 - [HuggingFace](https://huggingface.co/docs/inference-providers) (Inference Providers and dedicated Endpoints)
 - Together.ai
 - [Ollama API](https://github.com/jmorganca/ollama) (locally-hosted models)

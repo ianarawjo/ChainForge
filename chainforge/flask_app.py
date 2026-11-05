@@ -694,6 +694,7 @@ def fetchEnvironAPIKeys():
         'DEEPSEEK_API_KEY': 'DeepSeek',
         'MINIMAX_API_KEY': 'MiniMax',
         'OPENROUTER_API_KEY': 'OpenRouter',
+        'OPPER_API_KEY': 'Opper',
     }
     d = { alias: os.environ.get(key) for key, alias in keymap.items() }
     ret = jsonify(d)

@@ -926,6 +926,140 @@ export const OpenRouterImageSettings: ModelSettingsDict = {
   postprocessors: {},
 };
 
+/**
+ * Models reached through Opper's OpenAI-compatible chat completions API. The
+ * listed models fill the model menu; any other model at https://opper.ai/models
+ * can be typed in.
+ */
+export const OpperSettings: ModelSettingsDict = {
+  fullName: "Opper",
+  schema: {
+    type: "object",
+    required: ["shortname"],
+    properties: {
+      shortname: {
+        type: "string",
+        title: "Nickname",
+        description:
+          "Unique identifier to appear in ChainForge. Keep it short.",
+        default: "Opper",
+      },
+      model: {
+        type: "string",
+        title: "Model",
+        description:
+          "The Opper model to query. Pick a popular one, or type any model listed at https://opper.ai/models (e.g. claude-sonnet-5-5). A provider/model ID (e.g. anthropic/claude-sonnet-5-5) pins one route.",
+        // The same mix of frontier and cheap models as the OpenRouter menu.
+        enum: [
+          "claude-sonnet-5-5",
+          "claude-opus-5-5",
+          "claude-sonnet-5",
+          "claude-haiku-4-5",
+          "gpt-6.1-sol",
+          "gpt-6-luna",
+          "gpt-5.4-mini",
+          "gpt-5.4-nano",
+          "gemini-3.8-flash",
+          "gemini-3.1-flash-lite",
+          "grok-4.7",
+          "deepseek-v4-pro",
+          "deepseek-v4.1-flash",
+          "qwen3.8-max",
+          "qwen3.8-flash",
+          "kimi-k3",
+        ],
+        default: "claude-sonnet-5-5",
+        shortname_map: {
+          "claude-sonnet-5-5": "Claude Sonnet 5.5",
+          "claude-opus-5-5": "Claude Opus 5.5",
+          "claude-sonnet-5": "Claude Sonnet 5",
+          "claude-haiku-4-5": "Claude Haiku 4.5",
+          "gpt-6.1-sol": "GPT-6.1 Sol",
+          "gpt-6-luna": "GPT-6 Luna",
+          "gpt-5.4-mini": "GPT-5.4 Mini",
+          "gpt-5.4-nano": "GPT-5.4 Nano",
+          "gemini-3.8-flash": "Gemini 3.8 Flash",
+          "gemini-3.1-flash-lite": "Gemini 3.1 Flash-Lite",
+          "grok-4.7": "Grok 4.7",
+          "deepseek-v4-pro": "DeepSeek V4 Pro",
+          "deepseek-v4.1-flash": "DeepSeek V4.1 Flash",
+          "qwen3.8-max": "Qwen3.8 Max",
+          "qwen3.8-flash": "Qwen3.8 Flash",
+          "kimi-k3": "Kimi K3",
+        },
+      },
+      system_msg: {
+        type: "string",
+        title: "system_msg",
+        description:
+          "Many conversations begin with a system message to gently instruct the assistant. By default, ChainForge includes the suggested 'You are a helpful assistant.'",
+        default: "You are a helpful assistant.",
+        allow_empty_str: true,
+      },
+      temperature: {
+        type: "number",
+        title: "temperature",
+        description:
+          "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. Some models only take their default.",
+        default: 1,
+        minimum: 0,
+        maximum: 2,
+        multipleOf: 0.01,
+      },
+      response_format: {
+        type: "string",
+        title: "response_format",
+        description:
+          "An object specifying the format that the model must output. Can be 'text' or 'json_object', or a JSON schema specifying structured outputs. In ChainForge, you should only specify text, json_object, or the verbatim JSON schema---do not add a JSON object with a 'type' parameter surrounding these values. Not every model supports structured outputs. IMPORTANT: when using JSON mode, you must also instruct the model to produce JSON yourself via a system or user message.",
+        default: "text",
+      },
+      tools: {
+        type: "string",
+        title: "tools",
+        description:
+          "A list of JSON schema objects, each with 'name', 'description', and 'parameters' keys, which describe functions the model may generate JSON inputs for.",
+        default: "",
+      },
+      tool_choice: {
+        type: "string",
+        title: "tool_choice",
+        description:
+          "Controls how the model responds to function calls. 'none' means the model does not call a function, and responds to the end-user. 'auto' means the model can pick between an end-user or calling a function. 'required' means the model must call one or more tools. Specifying a particular function name forces the model to call only that function. Leave blank for default behavior.",
+        default: "",
+      },
+      stop: {
+        type: "string",
+        title: "stop sequences",
+        description:
+          'Up to 4 sequences where the API will stop generating further tokens. Enclose stop sequences in double-quotes "" and use whitespace to separate them.',
+        default: "",
+      },
+      max_tokens: {
+        type: "integer",
+        title: "max_tokens",
+        description:
+          "The maximum number of tokens to generate. Reasoning models may spend much of this on reasoning, so set it generously for them.",
+      },
+    },
+  },
+  uiSchema: {
+    ...ChatGPTSettings.uiSchema,
+    model: {
+      "ui:help":
+        "Defaults to claude-sonnet-5-5. Type to enter any other Opper model ID.",
+      "ui:widget": "datalist",
+    },
+    temperature: {
+      "ui:help": "Defaults to 1.0.",
+      "ui:widget": "range",
+    },
+    max_tokens: {
+      "ui:help": "Defaults to blank (not sent).",
+    },
+  },
+  postprocessors: ChatGPTSettings.postprocessors,
+};
+
 const DalleSettings: ModelSettingsDict = {
   // OpenAI shut down DALL·E on May 12, 2026. Kept so flows that use it still open.
   fullName: "Dall-E Image Models (OpenAI; shut down May 2026)",
@@ -2451,6 +2585,7 @@ export const ModelSettings: Dict<ModelSettingsDict> = {
   minimax: MiniMaxSettings,
   openrouter: OpenRouterSettings,
   "openrouter-image": OpenRouterImageSettings,
+  opper: OpperSettings,
   webllm: WebLLMSettings,
 };
 
@@ -2484,6 +2619,7 @@ export function baseModelToProvider(base_model: string): LLMProvider {
     minimax: LLMProvider.MiniMax,
     openrouter: LLMProvider.OpenRouter,
     "openrouter-image": LLMProvider.OpenRouter,
+    opper: LLMProvider.Opper,
     webllm: LLMProvider.WebLLM,
   };
   return lookup[base_model] ?? LLMProvider.Custom;
@@ -2516,6 +2652,7 @@ export function getSettingsSchemaForLLM(
     [LLMProvider.DeepSeek]: DeepSeekSettings,
     [LLMProvider.MiniMax]: MiniMaxSettings,
     [LLMProvider.OpenRouter]: OpenRouterSettings,
+    [LLMProvider.Opper]: OpperSettings,
     [LLMProvider.WebLLM]: WebLLMSettings,
   };
 

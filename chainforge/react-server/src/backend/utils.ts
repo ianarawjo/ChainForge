@@ -19,6 +19,7 @@ import {
   stripHuggingFacePrefix,
   stripTogetherPrefix,
   stripOpenRouterPrefix,
+  stripOpperPrefix,
 } from "./models";
 import {
   Dict,
@@ -257,6 +258,7 @@ let TOGETHER_API_KEY = get_environ("TOGETHER_API_KEY");
 let DEEPSEEK_API_KEY = get_environ("DEEPSEEK_API_KEY");
 let MINIMAX_API_KEY = get_environ("MINIMAX_API_KEY");
 let OPENROUTER_API_KEY = get_environ("OPENROUTER_API_KEY");
+let OPPER_API_KEY = get_environ("OPPER_API_KEY");
 
 /**
  * The AWS SDK is a heavy dependency that reaches for web-stream globals as soon
@@ -354,6 +356,7 @@ export function clear_api_keys(): void {
   DEEPSEEK_API_KEY = get_environ("DEEPSEEK_API_KEY");
   MINIMAX_API_KEY = get_environ("MINIMAX_API_KEY");
   OPENROUTER_API_KEY = get_environ("OPENROUTER_API_KEY");
+  OPPER_API_KEY = get_environ("OPPER_API_KEY");
 }
 
 /**
@@ -397,6 +400,7 @@ export function set_api_keys(given_keys: Dict<string>): void {
   if (key_is_present("DeepSeek")) DEEPSEEK_API_KEY = api_keys.DeepSeek;
   if (key_is_present("MiniMax")) MINIMAX_API_KEY = api_keys.MiniMax;
   if (key_is_present("OpenRouter")) OPENROUTER_API_KEY = api_keys.OpenRouter;
+  if (key_is_present("Opper")) OPPER_API_KEY = api_keys.Opper;
 }
 
 export function get_azure_openai_api_keys(): [
@@ -1271,6 +1275,97 @@ export async function call_openrouter_image_gen(
       : query,
     results.slice(0, n),
   ];
+}
+
+const OPPER_BASE_URL = "https://api.opper.ai/v3/compat";
+
+/**
+ * Calls a model through Opper's OpenAI-compatible chat completions API.
+ * As with OpenRouter, each response is its own request, since `n` isn't taken.
+ */
+export async function call_opper(
+  prompt: string,
+  model: LLM,
+  n = 1,
+  temperature = 1.0,
+  params?: Dict,
+  should_cancel?: () => boolean,
+  images?: string[],
+): Promise<[Dict, Dict]> {
+  if (!OPPER_API_KEY)
+    throw new Error(
+      "Could not find an Opper API key. Double-check that your API key is set in Settings or in your local environment.",
+    );
+
+  const modelname = stripOpperPrefix(model);
+  const settings: Dict = { ...params };
+  strip_empty_chat_params(settings);
+  // Plain text is the default anyway, so it isn't sent.
+  if (settings.response_format?.type === "text")
+    delete settings.response_format;
+
+  const chat_history: ChatHistory | undefined = settings.chat_history;
+  const system_msg: string | undefined = settings.system_msg;
+  delete settings.chat_history;
+  delete settings.system_msg;
+
+  for (const [key, value] of Object.entries(settings))
+    if (is_blank_setting(value)) delete settings[key];
+
+  const query: Dict = { model: modelname, temperature, ...settings };
+  query.messages = await resolve_images_in_user_messages(
+    construct_chat_history(prompt, images, chat_history, system_msg),
+    "openai",
+  );
+
+  console.log(`Querying Opper model '${modelname}' (n=${n})...`);
+
+  const responses: Dict[] = [];
+  while (responses.length < n) {
+    if (should_cancel && should_cancel()) throw new UserForcedPrematureExit();
+
+    const start = performance.now();
+    const res = await fetch(`${OPPER_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPPER_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(query),
+    });
+
+    let payload: Dict | undefined;
+    try {
+      payload = await res.json();
+    } catch {
+      payload = undefined;
+    }
+    if (res.status === 401)
+      throw new Error(
+        "Opper did not accept the API key. Check the key in Settings.",
+      );
+    if (!res.ok || payload?.error)
+      throw new Error(
+        payload?.error?.message ?? `Opper request failed (HTTP ${res.status}).`,
+      );
+
+    const choice = payload?.choices?.[0];
+    if (!payload || !choice) throw new Error("Opper returned no response.");
+
+    // A reasoning model can spend its whole token budget thinking, leaving no
+    // answer. Say so, rather than recording a blank response.
+    const message = choice.message ?? {};
+    const answered = message.content || message.tool_calls?.length > 0;
+    if (!answered && choice.finish_reason === "length")
+      throw new Error(
+        `${modelname} ran out of tokens before it answered. Raise max_tokens.`,
+      );
+
+    payload[LATENCY_KEY] = performance.now() - start;
+    responses.push(payload);
+  }
+
+  return [query, responses];
 }
 
 /** Whether an OpenAI model reasons: the o-series, and GPT-5 and later (but not their chat models). */
@@ -3412,6 +3507,7 @@ export async function call_llm(
       : isDecisionModel(llm)
         ? call_openrouter_decision
         : call_openrouter;
+  else if (llm_provider === LLMProvider.Opper) call_api = call_opper;
   if (call_api === undefined)
     throw new Error(
       `Adapter for Language model ${llm} and ${llm_provider} not found`,
@@ -3503,8 +3599,9 @@ function _extract_openai_responses(response: Dict): Array<string> {
 }
 
 /**
- * Extracts the text of OpenRouter chat responses: one request per response,
- * each in OpenAI's format. A blank answer is kept as "" rather than null.
+ * Extracts the text of OpenRouter (and Opper) chat responses: one request per
+ * response, each in OpenAI's format. A blank answer is kept as "" rather than
+ * null.
  */
 function _extract_openrouter_chat_responses(
   responses: Array<Dict>,
@@ -3950,6 +4047,8 @@ export function extract_responses(
         return _extract_openrouter_image_responses(response as Dict[]);
       if (isDecisionModel(llm))
         return _extract_decision_responses(response as Dict[]);
+      return _extract_openrouter_chat_responses(response as Dict[]);
+    case LLMProvider.Opper:
       return _extract_openrouter_chat_responses(response as Dict[]);
     default:
       if (

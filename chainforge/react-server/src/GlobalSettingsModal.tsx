@@ -267,6 +267,7 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
         DeepSeek: "",
         MiniMax: "",
         OpenRouter: "",
+        Opper: "",
         Cohere: "",
       },
 
@@ -736,6 +737,14 @@ const GlobalSettingsModal = forwardRef<GlobalSettingsModalRef, object>(
                   label="MiniMax API Key"
                   placeholder="Paste your MiniMax API key here"
                   {...form.getInputProps("MiniMax")}
+                />
+                <br />
+
+                <TextInput
+                  label="Opper API Key"
+                  description="One key for models from many providers."
+                  placeholder="Paste your Opper API key here"
+                  {...form.getInputProps("Opper")}
                 />
                 <br />
 
