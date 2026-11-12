@@ -31,6 +31,7 @@ import {
   NativeLLM,
   OPENROUTER_IMAGE_PREFIX,
   OPENROUTER_PREFIX,
+  OPPER_PREFIX,
   isDecisionMenuItem,
   offeredInMenu,
   openRouterEmoji,
@@ -53,6 +54,7 @@ const MODEL_NAME_PREFIXES: Record<string, string> = {
   together: TOGETHER_PREFIX,
   openrouter: OPENROUTER_PREFIX,
   "openrouter-image": OPENROUTER_IMAGE_PREFIX,
+  opper: OPPER_PREFIX,
   hf: HUGGINGFACE_PREFIX,
   bedrock: BEDROCK_PREFIX,
 };

@@ -310,6 +310,7 @@ export enum LLMProvider {
   DeepSeek = "deepseek",
   MiniMax = "minimax",
   OpenRouter = "openrouter",
+  Opper = "opper",
   Custom = "__custom",
 }
 
@@ -542,6 +543,22 @@ export function stripOpenRouterPrefix(llm: LLM | string): string {
 }
 
 /**
+ * Opper serves hundreds of models, and users can type in any model listed at
+ * https://opper.ai/models. Its model IDs are the models' own names (e.g.
+ * "claude-sonnet-5-5"), so ChainForge prefixes them to map back to Opper
+ * rather than to the model's own lab.
+ */
+export const OPPER_PREFIX = "opper/";
+
+/** The model ID that Opper expects, without ChainForge's prefix. */
+export function stripOpperPrefix(llm: LLM | string): string {
+  const name = llm.toString();
+  return name.startsWith(OPPER_PREFIX)
+    ? name.substring(OPPER_PREFIX.length)
+    : name;
+}
+
+/**
  * Hugging Face serves hundreds of models through Inference Providers, and users
  * can type in any model ID listed at https://router.huggingface.co/v1/models
  * (e.g. "meta-llama/Llama-3.1-8B-Instruct"). ChainForge prefixes those IDs so
@@ -592,6 +609,7 @@ export function getProvider(llm: LLM): LLMProvider | undefined {
     isOpenRouterImageModel(llm)
   )
     return LLMProvider.OpenRouter;
+  else if (llm.toString().startsWith(OPPER_PREFIX)) return LLMProvider.Opper;
   else if (llm_name?.startsWith("OpenAI")) return LLMProvider.OpenAI;
   else if (llm_name?.startsWith("Azure")) return LLMProvider.Azure_OpenAI;
   else if (llm_name?.startsWith("GEMINI")) return LLMProvider.Google;
@@ -654,6 +672,7 @@ export const RATE_LIMIT_BY_PROVIDER: { [key in LLMProvider]?: number } = {
   [LLMProvider.DeepSeek]: 1000, // DeepSeek does not constrain users atm but they might in the future. To be safe we are limiting it to 1000 queries per minute.
   [LLMProvider.MiniMax]: 1000, // MiniMax API rate limits are generous; 1000 RPM to be safe.
   [LLMProvider.OpenRouter]: 500, // OpenRouter sets no fixed limit for paid models, but the providers behind it do; 500 RPM to be safe.
+  [LLMProvider.Opper]: 500, // Same as OpenRouter: 500 RPM to be safe.
   [LLMProvider.Bedrock]: 100, // Bedrock quotas are per account, region and model; a conservative floor.
 };
 
