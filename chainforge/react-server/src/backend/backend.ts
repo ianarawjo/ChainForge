@@ -1291,9 +1291,8 @@ export async function executejs(
 }
 
 /**
- * A copy of `resp_obj` for the Flask evaluator, which builds a `ResponseInfo`
- * from it with no access to the string table: the same text, prompt, vars,
- * meta and llm that `run_over_responses` gives the JS and Pyodide evaluators.
+ * A copy of `resp_obj` with its text, prompt, vars, metavars and llm resolved
+ * from the string table, since Flask has no access to it.
  */
 function resolveForFlask(resp_obj: LLMResponse): LLMResponse {
   const resolved: LLMResponse = {
@@ -1306,7 +1305,6 @@ function resolveForFlask(resp_obj: LLMResponse): LLMResponse {
     metavars: StringLookup.concretizeDict(resp_obj.metavars) || {},
     llm: extract_llm_nickname(resp_obj.llm),
   };
-  // Reasoning may be interned; the server needs its text.
   if (resp_obj.reasoning)
     resolved.reasoning = resp_obj.reasoning.map((x) => StringLookup.get(x));
   return resolved;
@@ -1360,8 +1358,7 @@ export async function executepy(
         exec_response?.error || "Empty response received from Flask server",
       );
 
-    // Flask worked on the resolved copies. Keep the stored responses as they
-    // were (interned), and take from Flask only what the code produced.
+    // Keep the stored (interned) responses; take only the code's output from Flask.
     if (Array.isArray(exec_response.responses)) {
       const produced = process_type === "processor" ? "responses" : "eval_res";
       exec_response.responses = exec_response.responses.map(

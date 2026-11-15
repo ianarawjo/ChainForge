@@ -1,10 +1,4 @@
-"""The Python evaluator route, as the front-end calls it with the sandbox off.
-
-The front-end sends text for every field an evaluator reads (see
-`resolveForFlask` in backend.ts); Flask has no string table to look them up in.
-These tests pin what the evaluator then sees, which is what the docs promise:
-`response.text`, `.prompt`, `.var`, `.meta` and `.llm`.
-"""
+"""The evaluator route sees the documented response fields as plain text."""
 
 import json
 

@@ -1,17 +1,14 @@
 /*
  * @jest-environment jsdom
  */
-// executepy with the sandbox off sends the responses to Flask. Flask builds the
-// evaluator's ResponseInfo from them with no access to the string table, so what
-// it is sent has to be text, not string-table indexes (#371).
+// Flask has no string table, so executepy must send it text (#371).
 
 // The Pyodide loader uses import.meta, which CRA's CommonJS Jest cannot parse.
 jest.mock("../pyodide/exec-py", () => ({
   execPy: () => Promise.reject(new Error("execPy is unavailable in tests")),
 }));
 
-// The app's store and ModelSettingSchemas import each other; these tests don't
-// exercise the store, so stub it (same approach as backend.test.ts).
+// Stub the store, as backend.test.ts does.
 jest.mock("../../store", () => ({
   __esModule: true,
   default: {
@@ -30,7 +27,6 @@ const realFetch = global.fetch;
 
 beforeEach(() => {
   sent = [];
-  // Stand in for Flask: record the request, answer with the responses scored.
   global.fetch = (async (_url: unknown, init?: RequestInit) => {
     const body = JSON.parse(init?.body as string);
     sent.push(body);
