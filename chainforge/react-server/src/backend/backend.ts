@@ -1291,6 +1291,26 @@ export async function executejs(
 }
 
 /**
+ * A copy of `resp_obj` with its text, prompt, vars, metavars and llm resolved
+ * from the string table, since Flask has no access to it.
+ */
+function resolveForFlask(resp_obj: LLMResponse): LLMResponse {
+  const resolved: LLMResponse = {
+    ...resp_obj,
+    responses: resp_obj.responses.map((r) =>
+      cleanEscapedBraces(llmResponseDataToString(r)),
+    ),
+    prompt: StringLookup.get(resp_obj.prompt) ?? "",
+    vars: StringLookup.concretizeDict(resp_obj.vars),
+    metavars: StringLookup.concretizeDict(resp_obj.metavars) || {},
+    llm: extract_llm_nickname(resp_obj.llm),
+  };
+  if (resp_obj.reasoning)
+    resolved.reasoning = resp_obj.reasoning.map((x) => StringLookup.get(x));
+  return resolved;
+}
+
+/**
  * Executes a Python 'evaluate' function over all cache'd responses with given id's.
  * Requires user to be running on localhost, with Flask access.
  *
@@ -1325,12 +1345,7 @@ export async function executepy(
     exec_response = await call_flask_backend("executepy", {
       id,
       code,
-      // Reasoning may be interned; the server needs its text.
-      responses: responses.map((r) =>
-        r.reasoning
-          ? { ...r, reasoning: r.reasoning.map((x) => StringLookup.get(x)) }
-          : r,
-      ),
+      responses: responses.map(resolveForFlask),
       scope,
       process_type,
       script_paths,
@@ -1342,6 +1357,17 @@ export async function executepy(
       throw new Error(
         exec_response?.error || "Empty response received from Flask server",
       );
+
+    // Keep the stored (interned) responses; take only the code's output from Flask.
+    if (Array.isArray(exec_response.responses)) {
+      const produced = process_type === "processor" ? "responses" : "eval_res";
+      exec_response.responses = exec_response.responses.map(
+        (r: LLMResponse, i: number) => ({
+          ...responses[i],
+          [produced]: r[produced],
+        }),
+      );
+    }
 
     // Attempt to execute using Pyodide in a WebWorker (in the browser; safer, sandboxed)
   } else if (executor === "pyodide") {
