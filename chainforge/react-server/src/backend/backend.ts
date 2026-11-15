@@ -1291,6 +1291,28 @@ export async function executejs(
 }
 
 /**
+ * A copy of `resp_obj` for the Flask evaluator, which builds a `ResponseInfo`
+ * from it with no access to the string table: the same text, prompt, vars,
+ * meta and llm that `run_over_responses` gives the JS and Pyodide evaluators.
+ */
+function resolveForFlask(resp_obj: LLMResponse): LLMResponse {
+  const resolved: LLMResponse = {
+    ...resp_obj,
+    responses: resp_obj.responses.map((r) =>
+      cleanEscapedBraces(llmResponseDataToString(r)),
+    ),
+    prompt: StringLookup.get(resp_obj.prompt) ?? "",
+    vars: StringLookup.concretizeDict(resp_obj.vars),
+    metavars: StringLookup.concretizeDict(resp_obj.metavars) || {},
+    llm: extract_llm_nickname(resp_obj.llm),
+  };
+  // Reasoning may be interned; the server needs its text.
+  if (resp_obj.reasoning)
+    resolved.reasoning = resp_obj.reasoning.map((x) => StringLookup.get(x));
+  return resolved;
+}
+
+/**
  * Executes a Python 'evaluate' function over all cache'd responses with given id's.
  * Requires user to be running on localhost, with Flask access.
  *
@@ -1325,12 +1347,7 @@ export async function executepy(
     exec_response = await call_flask_backend("executepy", {
       id,
       code,
-      // Reasoning may be interned; the server needs its text.
-      responses: responses.map((r) =>
-        r.reasoning
-          ? { ...r, reasoning: r.reasoning.map((x) => StringLookup.get(x)) }
-          : r,
-      ),
+      responses: responses.map(resolveForFlask),
       scope,
       process_type,
       script_paths,
@@ -1342,6 +1359,18 @@ export async function executepy(
       throw new Error(
         exec_response?.error || "Empty response received from Flask server",
       );
+
+    // Flask worked on the resolved copies. Keep the stored responses as they
+    // were (interned), and take from Flask only what the code produced.
+    if (Array.isArray(exec_response.responses)) {
+      const produced = process_type === "processor" ? "responses" : "eval_res";
+      exec_response.responses = exec_response.responses.map(
+        (r: LLMResponse, i: number) => ({
+          ...responses[i],
+          [produced]: r[produced],
+        }),
+      );
+    }
 
     // Attempt to execute using Pyodide in a WebWorker (in the browser; safer, sandboxed)
   } else if (executor === "pyodide") {
